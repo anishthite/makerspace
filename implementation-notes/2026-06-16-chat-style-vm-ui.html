@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — chat style vm ui</title>
+<meta name="task" content="Collapse the remote pi launcher into a chat-like prompt box that starts a VM and streams output back to the browser.">
+<meta name="date-started" content="2026-06-16">
+<meta name="date-updated" content="2026-06-16">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="micro-cloud,exe.dev,pi,chat,streaming,ui">
+<meta name="related" content="2026-06-16-exedev-pi-ui.html,2026-06-12-micro-cloud-v0.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code, pre { font-family: ui-monospace, Menlo, monospace; }
+  code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  pre { background: #f6f6f6; padding: .55rem .7rem; border-radius: 4px; overflow-x: auto; font-size: 12.5px; line-height: 1.4; }
+  ul, ol { margin: .3rem 0 .8rem 1.2rem; padding: 0; }
+  li { margin: .15rem 0; }
+  .blast-low { color: #2a7a2a; } .blast-med { color: #b85c00; } .blast-high { color: #b00020; font-weight: 600; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>chat style vm ui</h1>
+<p class="meta"><code>nogit</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-16 · status <b>shipped</b> · blast <span class="blast-med">medium</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Replace the manual launch-first flow with one prompt box that launches a VM and shows the run inline.</div>
+  <b>Source</b><div><code>POST /api/sessions</code>, remote <code>pi.log</code>, remote <code>STATUS</code>, local JSON persistence.</div>
+  <b>Surface</b><div><code>POST /api/chat</code>, <code>GET /api/sessions/:name/output</code>, <code>/</code>, setup-script status writes.</div>
+  <b>Schema</b><div><code>data/sessions.json</code> only; no DB.</div>
+  <b>UI</b><div>Chat composer, streamed transcript, existing session table as a lower debug surface.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>API contract</h2>
+<pre>POST /api/chat
+{
+  "prompt": "Build the first version of the app."
+}
+
+201
+{
+  "provider": { "kind": "ssh" | "mock", "transport": string, "ready": true, "note": string },
+  "session": { "name": string, "status": string, "sshDest": string, "httpsUrl": string, "taskPrompt": string, "commands": { ... } }
+}
+
+GET /api/sessions/:name/output?offset=0
+200
+{
+  "session": { "name": string, "status": string, "sshDest": string, "httpsUrl": string, "commands": { ... } },
+  "chunk": "new text since offset",
+  "nextOffset": 123,
+  "runStatus": "ready" | "running" | "completed" | "failed" | "unknown",
+  "warning": string?
+}</pre>
+
+<h2>Algorithm</h2>
+<ol>
+  <li>Accept a prompt; normalize it into a private blank-repo session with <code>autoRunAgent=true</code>.</li>
+  <li>Launch the VM through the existing provider path; persist the session as before.</li>
+  <li>Poll remote <code>pi.log</code> from a byte offset; return only the unread suffix plus remote <code>STATUS</code>.</li>
+  <li>Render prompt + streamed output in a chat transcript; stop polling on <code>completed</code> or <code>failed</code>.</li>
+</ol>
+
+<h2>UI layout</h2>
+<ol>
+  <li><b>Hero</b>: say the app feels like chat while still running a fresh remote VM.</li>
+  <li><b>Chat panel</b>: show prompt history, streaming assistant output, and one textarea composer.</li>
+  <li><b>Advanced panels</b>: keep image settings and raw VM session table below the chat surface.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>public/index.html</code></td><td>touch</td><td>Swap the manual launch form for a chat transcript and prompt composer.</td></tr>
+  <tr><td><code>public/app.js</code></td><td>touch</td><td>Post prompts, poll streamed output, and render chat bubbles.</td></tr>
+  <tr><td><code>public/styles.css</code></td><td>touch</td><td>Add chat bubble, transcript, and composer styles.</td></tr>
+  <tr><td><code>src/server.js</code></td><td>touch</td><td>Add async chat launch, background VM creation, and incremental output endpoints.</td></tr>
+  <tr><td><code>src/provider.js</code></td><td>touch</td><td>Read incremental output from mock and ssh-backed sessions.</td></tr>
+  <tr><td><code>src/session.js</code></td><td>touch</td><td>Normalize prompt-only chat launches.</td></tr>
+  <tr><td><code>src/setup-script.js</code></td><td>touch</td><td>Write run lifecycle status for output polling.</td></tr>
+  <tr><td><code>README.md</code></td><td>touch</td><td>Document the chat-like prompt flow and output polling.</td></tr>
+  <tr><td><code>test/session.test.js</code></td><td>touch</td><td>Assert prompt-only chat request defaults.</td></tr>
+  <tr><td><code>test/setup-script.test.js</code></td><td>touch</td><td>Assert run lifecycle status writes.</td></tr>
+  <tr><td><code>test/provider.test.js</code></td><td>new</td><td>Assert mock incremental output behavior.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Launch a fresh blank-repo VM per prompt. Smallest path from input box to remote run without adding stateful multi-turn session routing.</td></tr>
+  <tr><td>D-002</td><td>Poll incremental log output over plain HTTP. Keeps the browser surface simple and still feels live at 1s cadence.</td></tr>
+  <tr><td>D-003</td><td>Return from launch requests before VM creation finishes. Prevent the browser from sitting on a long <code>ssh exe.dev new</code> call and timing out.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td><code>polling output endpoint</code> over WebSocket or SSE. Smaller server diff; enough for first-pass chat feel.</td></tr>
+  <tr><td>T-002</td><td><code>one prompt = one VM</code> over reusing one long-lived VM. Avoid command multiplexing and remote session bookkeeping.</td></tr>
+</table>
+
+<h2>Assumptions</h2>
+<ul>
+  <li>A-001 · A fresh blank repo is acceptable for the first prompt-only UI. If wrong: add repo selection as an advanced option.</li>
+  <li>A-002 · One-second polling is close enough to “real time” for this surface. If wrong: swap the transport, keep the UI.</li>
+</ul>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Restore the old launch form and remove the polling endpoints; persisted session data stays compatible.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>The homepage leads with one prompt box instead of the old launch form.</li>
+  <li>Submitting a prompt creates a VM-backed run without asking for manual session metadata.</li>
+  <li>The browser appends remote output as it arrives and stops on completion or failure.</li>
+  <li>Launch requests return immediately instead of waiting for full VM provisioning.</li>
+  <li>Tests pass.</li>
+</ul>
+</body>
+</html>

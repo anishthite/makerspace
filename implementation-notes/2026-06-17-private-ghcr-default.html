@@ -1,0 +1,10 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="status" content="shipped"><meta name="tags" content="settings,image,registry"><meta name="related" content="2026-06-17-image-settings-default.html"><title>Private GHCR default</title></head><body>
+<h1>Private GHCR default</h1>
+<p class="meta">main · makerspace · 2026-06-17 · shipped · blast low</p>
+<h2>Summary</h2><table><tr><th>Goal</th><td>Stop implicit cloud launches from pulling <code>ghcr.io/anishthite/makerspace-pi:latest</code> without registry auth.</td></tr><tr><th>Source</th><td>User saw exe.dev bridge fail with <code>image not found or not accessible</code>.</td></tr><tr><th>Surface</th><td><code>src/settings.js</code>, <code>public/index.html</code>, <code>test/settings.test.js</code>.</td></tr></table>
+<h2>Files</h2><table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>src/settings.js</code></td><td>touch</td><td>Preserve blank <code>imageRef</code> instead of substituting private GHCR.</td></tr><tr><td><code>public/index.html</code></td><td>touch</td><td>Keep private image as example placeholder only.</td></tr><tr><td><code>test/settings.test.js</code></td><td>touch</td><td>Pin blank default behavior.</td></tr></table>
+<h2>Decisions</h2><table><tr><th>ID</th><th>Choice</th><th>Rationale</th></tr><tr><td>D-001</td><td>Blank means exe.dev default image.</td><td>A private optimized image needs explicit <code>registryAuth</code>.</td></tr></table>
+<h2>Tradeoffs</h2><table><tr><th>ID</th><th>Picked over Rejected</th><th>Reason</th></tr><tr><td>T-001</td><td>Opt-in image over bundled default.</td><td>Launch works without secrets.</td></tr></table>
+<h2>Reversibility</h2><p>R-001 Low: restore <code>DEFAULT_IMAGE_REF</code> if the registry becomes public or auth is always configured.</p>
+<h2>Definition of done</h2><ul><li>Blank settings do not pass <code>--image</code>.</li><li>Saved custom image still trims and passes through.</li><li><code>npm test</code> passes.</li></ul>
+</body></html>

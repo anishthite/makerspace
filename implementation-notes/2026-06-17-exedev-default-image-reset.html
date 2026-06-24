@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — exe.dev default image reset</title>
+<meta name="task" content="Reset bridge launches to exe.dev default image, remove persisted registry auth, and validate a fresh bridge launch.">
+<meta name="date-started" content="2026-06-17">
+<meta name="date-updated" content="2026-06-17">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="micro-cloud,exe.dev,bridge,image,security,latency">
+<meta name="related" content="2026-06-16-baked-exedev-image.html,2026-06-17-scalable-bootup.html,2026-06-17-host-dispatch-cold-path.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 900px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .blast-med { color: #b85c00; }
+</style>
+</head>
+<body>
+<h1>exe.dev default image reset</h1>
+<p class="meta"><code>nogit</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-17 · status <b>shipped</b> · blast <span class="blast-med">medium</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Stop using the flaky custom GHCR bridge image and return fresh launches to exe.dev default <code>boldsoftware/exeuntu</code>.</div>
+  <b>Settings</b><div><code>imageRef=""</code>, <code>registryAuth=""</code>, <code>autoBuildImage=false</code>.</div>
+  <b>Derived base</b><div><code>ghcr.io/boldsoftware/exeuntu:latest</code> manifest unavailable from Docker; defer thin derived image.</div>
+  <b>Validation</b><div><code>PI_HOST_DISPATCH=0</code> smoke reached first LLM call in <code>50023 ms</code> with image <code>boldsoftware/exeuntu</code>.</div>
+  <b>Artifact</b><div><code>implementation-notes/artifacts/2026-06-17-default-exeuntu-smoke.txt</code>.</div>
+</div>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>data/settings.json</code></td><td>touch</td><td>Clear custom image ref and persisted registry credentials.</td></tr>
+  <tr><td><code>image/Dockerfile</code></td><td>touch</td><td>Keep experimental image label <code>exe.dev/install-shelley=true</code>; not selected by settings.</td></tr>
+  <tr><td><code>implementation-notes/artifacts/2026-06-17-default-exeuntu-smoke.txt</code></td><td>new</td><td>Capture default-image bridge smoke result.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Use exe.dev default image now. It is the known-good boot contract and the custom GHCR image failed bridge health.</td></tr>
+  <tr><td>D-002</td><td>Clear persisted registry auth. Default image needs no private registry token.</td></tr>
+  <tr><td>D-003</td><td>Do not switch <code>image/Dockerfile</code> to a derived exeuntu base yet. Public <code>ghcr.io/boldsoftware/exeuntu:latest</code> was not pullable by manifest check.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td>Reliability over theoretical cold-boot savings. Default exeuntu validates in one fresh bridge smoke.</td></tr>
+  <tr><td>T-002</td><td>Host dispatch/intent prelaunch over true subsecond cold VM boot. Cold bridge still takes tens of seconds.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Restore a custom <code>imageRef</code> and registry auth in <code>data/settings.json</code> if a derived image proves healthier and faster than default.</p>
+
+<h2>Followups</h2>
+<ul>
+  <li>L-001 · Rotate the GHCR token that had been persisted in <code>data/settings.json</code>.</li>
+  <li>L-002 · If exe.dev publishes a pullable exeuntu base or digest, build the thin derived image and A/B against this smoke artifact.</li>
+  <li>L-003 · 2026-06-17 23:10/23:14 launches used <code>ghcr.io/anishthite/makerspace-pi:latest</code> again and stayed on bridge health polling; reset <code>data/settings.json</code> to default image again.</li>
+</ul>
+
+<h2>Definition of done</h2>
+<ul>
+  <li><code>data/settings.json</code> contains no image ref and no registry auth.</li>
+  <li>Fresh bridge launch uses <code>boldsoftware/exeuntu</code>.</li>
+  <li>Fresh bridge launch reaches first LLM call.</li>
+  <li>Bad custom-image smoke VM is deleted.</li>
+</ul>
+</body>
+</html>

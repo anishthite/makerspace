@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Codex settings auth</title>
+<meta name="task" content="Move Codex auth to settings and show main-page auth status">
+<meta name="date-started" content="2026-06-18">
+<meta name="date-updated" content="2026-06-18">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="makerspace,ui,settings,auth,codex">
+<meta name="related" content="2026-06-17-codex-ui-login.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code, pre { font-family: ui-monospace, Menlo, monospace; }
+  code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  ul, ol { margin: .3rem 0 .8rem 1.2rem; padding: 0; }
+  li { margin: .15rem 0; }
+  .blast-med { color: #b85c00; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>Codex settings auth</h1>
+<p class="meta"><code>no-git</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-18 · status <b>shipped</b> · blast <span class="blast-med">medium</span></p>
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Move Codex login controls off <code>/</code> and show one auth indicator on the main page.</div>
+  <b>Source</b><div><code>/api/auth/openai-codex</code> remains the status source.</div>
+  <b>Surface</b><div><code>/</code>, <code>/settings.html</code>, <code>/app.js</code>, <code>/settings.js</code>.</div>
+  <b>Schema</b><div>None.</div>
+  <b>Mobile</b><div>Reuse existing responsive panel styles.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+<h2>UI layout</h2>
+<ol>
+  <li><b>Main nav</b>: show <code>Codex</code> status chip and settings link; hide login copy.</li>
+  <li><b>Settings page</b>: place Codex auth and existing sandbox credentials in one panel stack.</li>
+</ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+<tr><td><code>public/index.html</code></td><td>touch</td><td>Remove auth/settings panels and add compact nav status.</td></tr>
+<tr><td><code>public/app.js</code></td><td>touch</td><td>Load Codex status only for the main indicator.</td></tr>
+<tr><td><code>public/settings.html</code></td><td>new</td><td>Host Codex login and backend settings.</td></tr>
+<tr><td><code>public/settings.js</code></td><td>new</td><td>Handle settings save and Codex device login.</td></tr>
+<tr><td><code>public/styles.css</code></td><td>touch</td><td>Add tiny nav link and auth dot states.</td></tr>
+</table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr>
+<tr><td>D-001</td><td>Use a static <code>/settings.html</code> page. Avoid routing machinery for one settings surface.</td></tr>
+</table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+<tr><td>T-001</td><td>Duplicate small fetch helpers in <code>settings.js</code> over shared module extraction. Fewer moving files.</td></tr>
+</table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Revert the static page split; auth endpoints and saved credentials stay unchanged.</p>
+<h2>Definition of done</h2>
+<ul>
+  <li>Main page has no Codex login panel.</li>
+  <li>Main page shows green Codex dot only when <code>configured</code> is true.</li>
+  <li>Settings page can start Codex login and save existing settings.</li>
+  <li><code>npm test && npm run build</code> passes.</li>
+  <li>Curl smoke verifies <code>/</code> and <code>/settings.html</code>.</li>
+</ul>
+</body>
+</html>

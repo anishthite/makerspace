@@ -1,0 +1,9 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="status" content="shipped"><meta name="tags" content="settings,image,registry"><meta name="related" content="2026-06-17-registry-sign-in.html"><title>Registry save visibility</title></head><body>
+<h1>Registry save visibility</h1>
+<p class="meta">main · makerspace · 2026-06-17 · shipped · blast low</p>
+<h2>Summary</h2><table><tr><th>Goal</th><td>Make registry sign-in visibly update after save.</td></tr><tr><th>Surface</th><td>Settings response and browser cache path.</td></tr></table>
+<h2>Files</h2><table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>src/settings.js</code></td><td>touch</td><td>Expose redacted <code>registryUsername</code>.</td></tr><tr><td><code>public/app.js</code></td><td>touch</td><td>Show signed-in username and keep username filled.</td></tr><tr><td><code>public/index.html</code></td><td>touch</td><td>Cache-bust app script.</td></tr><tr><td><code>test/settings.test.js</code></td><td>touch</td><td>Pin redacted username visibility.</td></tr></table>
+<h2>Decisions</h2><table><tr><th>ID</th><th>Choice</th><th>Rationale</th></tr><tr><td>D-001</td><td>Expose username but never token.</td><td>User can confirm save without leaking the secret.</td></tr></table>
+<h2>Reversibility</h2><p>R-001 Low: remove <code>registryUsername</code> from public settings.</p>
+<h2>Definition of done</h2><ul><li>Save status says signed in as username.</li><li>Token remains redacted.</li><li><code>npm test</code> passes.</li></ul>
+</body></html>

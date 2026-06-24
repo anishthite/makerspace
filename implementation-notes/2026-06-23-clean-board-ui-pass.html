@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Clean board UI pass</title>
+<meta name="task" content="Simplify the board-skin Makerspace UI into a cleaner command surface and calmer thread view.">
+<meta name="date-started" content="2026-06-23">
+<meta name="date-updated" content="2026-06-23">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="makerspace,ui,cleanup,board-skin,command-palette,ide">
+<meta name="related" content="2026-06-23-board-command-inbox-ide-ui.html,2026-06-23-ui-layout-design-systems.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}.blast-med{color:#b85c00}</style>
+</head>
+<body>
+<h1>Clean board UI pass</h1>
+<p class="meta"><code>nogit</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-23 · status <b class="status-shipped">shipped</b> · blast <span class="blast-med">medium</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Reduce visual clutter and labels while preserving command start, inbox recent threads, and visible Pi activity.</div>
+  <b>Plan</b><div>Homepage: one command card + one recent list. Thread: chat + activity sidebar, raw facts behind details.</div>
+  <b>Telemetry</b><div>Keep status, model-call start, tool events, warnings, and transcript text.</div>
+  <b>Surface</b><div><code>public/index.html</code>, <code>public/thread.html</code>, <code>public/styles.css</code>, <code>public/app.js</code>, <code>public/thread.js</code>.</div>
+  <b>Workflow</b><div>No multi-agent workflow. Scope is small enough for one direct pass.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>UI layout</h2>
+<ol>
+  <li><b>Home</b>: remove explainer panels; repo picker becomes a quiet row under the command.</li>
+  <li><b>Recent</b>: inbox rows stay, headers shrink, provider details hide in advanced mode.</li>
+  <li><b>Thread</b>: default hides raw facts, keeps activity sidebar visible, removes fake tabs.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>public/index.html</code></td><td>touch</td><td>Simplify homepage structure and labels.</td></tr>
+  <tr><td><code>public/thread.html</code></td><td>touch</td><td>Simplify thread structure and move raw facts behind details.</td></tr>
+  <tr><td><code>public/styles.css</code></td><td>touch</td><td>Reduce chrome density and tune clean layout states.</td></tr>
+  <tr><td><code>public/app.js</code></td><td>touch</td><td>Render shorter thread rows and quieter provider/repo copy.</td></tr>
+  <tr><td><code>public/thread.js</code></td><td>touch</td><td>Default details closed and simplify activity/tool wording.</td></tr>
+  <tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Add this task to the notes index.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Hide raw thread facts by default. Activity is useful; bridge URLs are not first-glance UI.</td></tr>
+  <tr><td>D-002</td><td>Remove decorative IDE tabs. They imply navigation that does not exist.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td>Cleaner default over maximum visible metadata. Details toggle keeps debugging available.</td></tr>
+</table>
+
+<h2>Verification</h2>
+<table>
+  <tr><th>Check</th><th>Result</th></tr>
+  <tr><td><code>node --check public/app.js public/thread.js src/server.js src/host-pi-runner.js src/setup-script.js</code></td><td>Passed.</td></tr>
+  <tr><td><code>npm test</code></td><td>Passed 27/27.</td></tr>
+  <tr><td><code>npm run build</code></td><td>Passed; copied public assets to ignored <code>dist/</code>.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Revert the public asset changes to restore the previous board-skin dense UI; telemetry backend is unchanged.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>Homepage has fewer labels and one obvious run flow.</li>
+  <li>Thread page keeps Pi activity visible without raw debug clutter.</li>
+  <li><code>npm test</code> and <code>npm run build</code> pass.</li>
+</ul>
+</body>
+</html>

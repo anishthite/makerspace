@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>GitHub auth session hardening</title>
+<meta name="task" content="Move GitHub auth off global settings and protect GitHub-backed routes.">
+<meta name="date-started" content="2026-06-18">
+<meta name="date-updated" content="2026-06-18">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="makerspace,github,oauth,security,session,cors">
+<meta name="related" content="2026-06-18-github-oauth-repo-picker.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code, pre { font-family: ui-monospace, Menlo, monospace; }
+  code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  ul, ol { margin: .3rem 0 .8rem 1.2rem; padding: 0; }
+  .blast-med { color: #b85c00; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>GitHub auth session hardening</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-18 · status <b>shipped</b> · blast <span class="blast-med">medium</span></p>
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Bind GitHub auth to one browser session and block open GitHub-backed access.</div>
+  <b>Source</b><div>Review findings <code>run-mqk89tnj-2</code>, existing GitHub OAuth flow, existing control-token guard.</div>
+  <b>Surface</b><div><code>/api/auth/github*</code>, <code>/api/github/repos</code>, <code>/api/threads</code>, <code>public/app.js</code>, <code>public/settings.js</code>.</div>
+  <b>Schema</b><div>Remove legacy GitHub fields from <code>data/settings.json</code>; keep browser-session auth in memory only.</div>
+  <b>Mobile</b><div>Untouched.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+<h2>Algorithm</h2>
+<ol>
+  <li>Generate one browser session id in local storage; send it on GitHub-aware requests.</li>
+  <li>Store GitHub token/user in server memory keyed by that session id; bind OAuth <code>state</code> to the same session id.</li>
+  <li>Reject GitHub-aware requests without a browser session id; when <code>CONTROL_API_TOKEN</code> is blank, also require same-origin browser requests.</li>
+  <li>Use GitHub auth only when the thread came from the repo picker; leave manual public repo URLs alone.</li>
+</ol>
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>src/server.js</code></td><td>touch</td><td>Add browser-session GitHub auth state and route guards.</td></tr>
+  <tr><td><code>src/settings.js</code></td><td>touch</td><td>Drop persisted GitHub auth and scrub legacy saved fields.</td></tr>
+  <tr><td><code>src/session.js</code></td><td>touch</td><td>Mark repo-picker sourced threads.</td></tr>
+  <tr><td><code>public/app.js</code></td><td>touch</td><td>Send browser session id and mark repo-picker sourced thread creation.</td></tr>
+  <tr><td><code>public/settings.js</code></td><td>touch</td><td>Send browser session id on GitHub auth calls.</td></tr>
+  <tr><td><code>public/thread.js</code></td><td>touch</td><td>Send browser session id on thread reads, prompts, and SSE stream URLs.</td></tr>
+  <tr><td><code>public/index.html</code></td><td>touch</td><td>Add hidden repo-source field.</td></tr>
+  <tr><td><code>test/settings.test.js</code></td><td>touch</td><td>Remove persisted GitHub expectations and cover legacy scrub.</td></tr>
+  <tr><td><code>test/session.test.js</code></td><td>touch</td><td>Cover repo-source normalization.</td></tr>
+</table>
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Use a browser session id header over durable server-side user accounts. Smallest fix that splits browsers cleanly.</td></tr>
+  <tr><td>D-002</td><td>Keep GitHub auth in server memory only. Removes the server-global secret file immediately.</td></tr>
+  <tr><td>D-003</td><td>Require same-origin browser requests for API routes when <code>CONTROL_API_TOKEN</code> is blank. Blocks credentialless cross-origin reads and writes without breaking token-protected remote deployments.</td></tr>
+  <tr><td>D-004</td><td>Bind GitHub-backed threads to the creating browser session. Prevents other browsers from listing, reading, or prompting private workspaces.</td></tr>
+  <tr><td>D-005</td><td>Accept GitHub auth only for repos previously loaded into the browser-session repo list. Stops client-only <code>repoSource</code> spoofing from attaching private clone auth to arbitrary URLs.</td></tr>
+  <tr><td>D-006</td><td>Bind every browser-created thread to the browser session, not only GitHub-picked threads. Prevents manual private repo URLs from leaking across browsers.</td></tr>
+</table>
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td>In-memory GitHub session over file-backed per-browser sessions. Less code; restart just asks for GitHub reconnect.</td></tr>
+  <tr><td>T-002</td><td>Repo-picker-only GitHub auth over auto-enriching every GitHub URL. Avoids turning manual public URLs into auth-coupled failures.</td></tr>
+</table>
+<h2>Assumptions</h2>
+<ul>
+  <li>A-001 · Losing GitHub auth on server restart is acceptable. If wrong: add durable per-user session storage later.</li>
+</ul>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Revert the browser-session header and restore global settings auth; no schema migration blocks rollback.</p>
+<h2>Definition of done</h2>
+<ul>
+  <li>GitHub auth is no longer stored in <code>data/settings.json</code>.</li>
+  <li>Two browsers do not share GitHub identity.</li>
+  <li>GitHub repo listing and private repo thread creation reject cross-origin credentialless calls when <code>CONTROL_API_TOKEN</code> is blank.</li>
+  <li><code>npm test</code> and <code>npm run build</code> pass.</li>
+</ul>
+</body>
+</html>

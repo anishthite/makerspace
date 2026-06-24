@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>GitHub OAuth repo picker</title>
+<meta name="task" content="Add GitHub OAuth login, repo picking, and private-repo sandbox cloning.">
+<meta name="date-started" content="2026-06-18">
+<meta name="date-updated" content="2026-06-18">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="makerspace,github,oauth,repo,threads,sandbox,auth">
+<meta name="related" content="2026-06-18-codex-settings-auth.html,2026-06-17-repo-thread-ui.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code, pre { font-family: ui-monospace, Menlo, monospace; }
+  code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  pre { background: #f6f6f6; padding: .55rem .7rem; border-radius: 4px; overflow-x: auto; font-size: 12.5px; line-height: 1.4; }
+  ul, ol { margin: .3rem 0 .8rem 1.2rem; padding: 0; }
+  li { margin: .15rem 0; }
+  .blast-low { color: #2a7a2a; } .blast-med { color: #b85c00; } .blast-high { color: #b00020; font-weight: 600; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>GitHub OAuth repo picker</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-18 · status <b>shipped</b> · blast <span class="blast-med">medium</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Add GitHub login, list selectable repos, and clone the chosen repo into new sandbox threads.</div>
+  <b>Source</b><div><code>GitHub OAuth web flow</code>, <code>GET /user/repos</code>, existing thread/session store.</div>
+  <b>Surface</b><div><code>/api/auth/github*</code>, <code>/api/github/repos</code>, <code>/api/threads</code>, <code>/settings.html</code>, <code>/</code>.</div>
+  <b>Schema</b><div>Extend <code>data/settings.json</code> with GitHub token/user metadata; extend session rows with repo auth fields for sandbox clone.</div>
+  <b>Mobile</b><div>Untouched.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>API contract</h2>
+<pre>GET /api/auth/github
+POST /api/auth/github/login
+GET /api/auth/github/callback?code=...&state=...
+POST /api/auth/github/logout
+GET /api/github/repos?visibility=all</pre>
+<pre>{
+  configured: boolean,
+  connected: boolean,
+  loginUrl?: string,
+  user?: { login: string, name: string|null },
+  repos?: [{ id: number, fullName: string, cloneUrl: string, private: boolean, defaultBranch: string|null }]
+}</pre>
+
+<h2>Algorithm</h2>
+<ol>
+  <li>Start OAuth with backend-generated <code>state</code>; redirect browser to GitHub authorize URL.</li>
+  <li>Exchange callback <code>code</code> for access token; save token and user metadata in backend settings.</li>
+  <li>List repos from <code>GET /user/repos</code>; show them in the UI; use repo clone URL plus default branch when chosen.</li>
+  <li>Pass repo auth metadata into stored thread session; clone private repos with <code>git -c http.extraHeader</code> instead of embedding the token in the URL.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>src/server.js</code></td><td>touch</td><td>Add GitHub auth and repo-list routes.</td></tr>
+  <tr><td><code>src/settings.js</code></td><td>touch</td><td>Persist and redact GitHub token and user metadata.</td></tr>
+    <tr><td><code>src/setup-script.js</code></td><td>touch</td><td>Clone private GitHub repos with an auth header.</td></tr>
+  <tr><td><code>src/config.js</code></td><td>touch</td><td>Read GitHub OAuth client env.</td></tr>
+  <tr><td><code>public/index.html</code></td><td>touch</td><td>Add repo picker entry points.</td></tr>
+  <tr><td><code>public/app.js</code></td><td>touch</td><td>Drive GitHub auth state, repo loading, and thread creation.</td></tr>
+  <tr><td><code>public/settings.html</code></td><td>touch</td><td>Add GitHub auth controls.</td></tr>
+  <tr><td><code>public/settings.js</code></td><td>touch</td><td>Handle GitHub login/logout and callback reload.</td></tr>
+  <tr><td><code>public/styles.css</code></td><td>touch</td><td>Style the new auth and repo-picker controls.</td></tr>
+  <tr><td><code>test/*.test.js</code></td><td>touch</td><td>Cover settings/session/setup-script behavior.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Use GitHub OAuth web flow over device flow. Matches the browser-first repo picker ask.</td></tr>
+  <tr><td>D-002</td><td>Store the GitHub token in backend settings only. Keeps the browser token-free.</td></tr>
+  <tr><td>D-003</td><td>Clone private repos with <code>http.extraHeader</code> over tokenized URLs. Avoids leaking tokens into stored repo URLs.</td></tr>
+  <tr><td>D-004</td><td>Bypass <code>CONTROL_API_TOKEN</code> only for <code>/api/auth/github/callback</code>. GitHub cannot send the bearer token back.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td>Settings-backed single-user token storage over per-browser sessions. Matches the app's existing single-user settings model.</td></tr>
+  <tr><td>T-002</td><td>Fetch repo list on demand over syncing all repo metadata into local files. Less state to own.</td></tr>
+</table>
+
+<h2>Assumptions</h2>
+<ul>
+  <li>A-001 · This app stays single-user. If wrong: GitHub token storage needs per-user isolation.</li>
+  <li>A-002 · Sandboxes can reach <code>github.com</code> over HTTPS. If wrong: auth succeeds but clone still fails.</li>
+</ul>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Revert UI and route changes; clear saved GitHub token fields from <code>data/settings.json</code>.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>GitHub login connects from <code>settings.html</code>.</li>
+  <li>Homepage can load and choose GitHub repos.</li>
+  <li>Creating a thread from a chosen repo uses the selected branch or default branch.</li>
+  <li>Private repo clones use auth without exposing the token in public session payloads.</li>
+  <li><code>npm test</code> passes.</li>
+</ul>
+</body>
+</html>

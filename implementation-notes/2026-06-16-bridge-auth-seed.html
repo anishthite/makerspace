@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — bridge auth seed</title>
+<meta name="task" content="Unblock real SDK-bridge runs by seeding local Pi auth into the VM during bootstrap and fix the bridge stream bug found in smoke testing.">
+<meta name="date-started" content="2026-06-16">
+<meta name="date-updated" content="2026-06-16">
+<meta name="status" content="ready-for-review">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="micro-cloud,exe.dev,bridge,auth,smoke-test">
+<meta name="related" content="2026-06-16-pi-sdk-bridge.html,2026-06-16-bridge-bootstrap-size.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 900px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code, pre { font-family: ui-monospace, Menlo, monospace; }
+  code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .blast-med { color: #b85c00; }
+</style>
+</head>
+<body>
+<h1>bridge auth seed</h1>
+<p class="meta"><code>nogit</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-16 · status <b>ready-for-review</b> · blast <span class="blast-med">medium</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Make a real bridged SDK run complete on exe.dev.</div>
+  <b>Source</b><div>Real smoke tests failed first on <code>exe-setup</code> permissions, then on missing auth, then on a bridge stream handler typo.</div>
+  <b>Surface</b><div><code>src/setup-script.js</code>, <code>src/server.js</code>, <code>test/setup-script.test.js</code>, README/diagram.</div>
+  <b>Schema</b><div>None.</div>
+  <b>Verification</b><div>Real prompt <code>Reply with exactly: bridge smoke ok</code> completed through <code>/api/chat</code> and server SSE.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>Algorithm</h2>
+<ol>
+  <li>Self-elevate the exe.dev setup script with <code>sudo</code> when it starts as an unprivileged user.</li>
+  <li>After VM provisioning, copy local <code>~/.pi/agent/auth.json</code> into the VM over bootstrap SSH before starting the bridge run.</li>
+  <li>Wait for bridge health, then start the Pi SDK run as before.</li>
+  <li>Fix the bridge stream route to read <code>streamMatch[1]</code>, not <code>runMatch[1]</code>.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>src/setup-script.js</code></td><td>touch</td><td>Re-exec under <code>sudo</code> so apt/systemd bootstrap succeeds on real exe.dev VMs.</td></tr>
+  <tr><td><code>src/server.js</code></td><td>touch</td><td>Seed local Pi auth into the VM over SSH before <code>POST /runs</code>.</td></tr>
+  <tr><td><code>test/setup-script.test.js</code></td><td>touch</td><td>Assert the setup script self-elevates and keep bridge extraction checks passing.</td></tr>
+  <tr><td><code>pi-sdk-bridge-architecture.excalidraw</code></td><td>touch</td><td>Show auth seeding as part of bootstrap.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Copy local auth at launch time instead of baking secrets into the image. Keeps the secret out of image layers.</td></tr>
+  <tr><td>D-002</td><td>Use one extra bootstrap SSH write to the VM. User already accepts SSH for provisioning/bootstrap.</td></tr>
+  <tr><td>D-003</td><td>Stop on a real end-to-end success signal, not just green unit tests. The breakages were runtime-only.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td><code>runtime auth seeding</code> over <code>bake keys into image</code>. Safer and easier to rotate.</td></tr>
+  <tr><td>T-002</td><td><code>copy full auth.json</code> over <code>translate OAuth tokens to env vars</code>. Smaller diff; Pi already knows how to read its own auth file.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Remove the auth copy step and the sudo preamble when a proper custom image or secret-delivery path exists.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>Real exe.dev bridged run reaches <code>completed</code>.</li>
+  <li>The stream contains the assistant text <code>bridge smoke ok</code>.</li>
+  <li><code>npm test</code> stays green.</li>
+</ul>
+</body>
+</html>

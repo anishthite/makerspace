@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — repo thread UI</title>
+<meta name="task" content="Add a minimal repo-thread website that creates cloud Pi agents and opens a separate mirrored I/O page per thread.">
+<meta name="date-started" content="2026-06-17">
+<meta name="date-updated" content="2026-06-17">
+<meta name="status" content="completed">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="micro-cloud,ui,threads,repo,pi,streaming">
+<meta name="related" content="2026-06-16-chat-style-vm-ui.html,2026-06-16-vm-bridge-sse.html,2026-06-17-loadsessions-ui-error.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 900px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .blast-med { color: #b85c00; }
+</style>
+</head>
+<body>
+<h1>repo thread UI</h1>
+<p class="meta"><code>nogit</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-17 · status <b>completed</b> · blast <span class="blast-med">medium</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Create repo-backed cloud Pi threads from the homepage and chat with each thread on a separate page.</div>
+  <b>API</b><div><code>GET/POST /api/threads</code>, <code>GET /api/threads/:name</code>, <code>POST /api/threads/:name/messages</code>.</div>
+  <b>UI</b><div><code>/</code> creates/lists threads; <code>/thread.html?name=...</code> mirrors prompt input and streamed Pi output.</div>
+  <b>Storage</b><div>Reuse <code>data/sessions.json</code> with <code>threadBridge=true</code>; no new DB.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>src/server.js</code></td><td>touch</td><td>Add thread bridge launch, thread listing, lookup, and prompt-run endpoints.</td></tr>
+  <tr><td><code>src/session.js</code></td><td>touch</td><td>Normalize repo thread creation requests.</td></tr>
+  <tr><td><code>public/index.html</code></td><td>touch</td><td>Replace generic chat/settings surface with thread create/list page.</td></tr>
+  <tr><td><code>public/app.js</code></td><td>touch</td><td>Drive thread creation/list refresh.</td></tr>
+  <tr><td><code>public/thread.html</code></td><td>new</td><td>Add per-thread mirrored Pi I/O page.</td></tr>
+  <tr><td><code>public/thread.js</code></td><td>new</td><td>Send prompts to a selected thread and stream SSE output.</td></tr>
+  <tr><td><code>test/session.test.js</code></td><td>touch</td><td>Cover repo thread normalization.</td></tr>
+  <tr><td><code>deploy/digitalocean/*</code></td><td>new</td><td>Document tiny DO control backend service, Caddy reverse proxy, and systemd unit.</td></tr>
+  <tr><td><code>vercel.json</code></td><td>new</td><td>Static Vercel build from <code>public/</code> to <code>dist/</code>.</td></tr>
+  <tr><td><code>README.md</code></td><td>touch</td><td>Document thread flow, APIs, and Vercel UI + DO backend split.</td></tr>
+  <tr><td><code>.gitignore</code></td><td>touch</td><td>Ignore generated Vercel build output <code>dist/</code>.</td></tr>
+  <tr><td><code>src/config.js</code></td><td>touch</td><td>Add optional <code>CONTROL_API_TOKEN</code> for public control backends.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Reuse sessions as threads. One JSON store already captures repo, VM, bridge, and run state.</td></tr>
+  <tr><td>D-002</td><td>Use <code>/thread.html?name=...</code> instead of router fallback. Static server stays boring.</td></tr>
+  <tr><td>D-003</td><td>Thread prompts run sequentially on the same bridge VM. Avoid multiplexing one Pi bridge.</td></tr>
+  <tr><td>D-004</td><td>Vercel serves only static UI. DigitalOcean keeps the current SSH/spawn/SSE control process intact.</td></tr>
+  <tr><td>D-005</td><td>Add CORS plus a single optional bearer token. No accounts yet, but public VM-spinning endpoints are not left open when <code>CONTROL_API_TOKEN</code> is set.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td>Existing SSE bridge over terminal emulation. It mirrors Pi input/output with fewer moving parts.</td></tr>
+</table>
+
+<h2>Workflow review</h2>
+<table>
+  <tr><th>ID</th><th>Finding · Resolution</th></tr>
+  <tr><td>X-001</td><td>Workflow <code>run-mqiku5m4-4</code> found later prompt startup failure could wedge a thread. Fixed by rolling back <code>bridgeClaimed</code>/<code>taskPrompt</code> and emitting a failed terminal event when <code>startBridgeRun</code> throws.</td></tr>
+  <tr><td>X-002</td><td>Workflow found DO docs cloned as root while service runs as <code>makerspace</code>. Fixed docs to <code>chown -R makerspace:makerspace /opt/makerspace</code> and run <code>npm install</code> as that user.</td></tr>
+  <tr><td>X-003</td><td>Workflow found Ubuntu apt Node may be too old. Fixed docs to install Node 22 via NodeSource.</td></tr>
+</table>
+
+<h2>Validation</h2>
+<table>
+  <tr><th>ID</th><th>Command · Result</th></tr>
+  <tr><td>V-001</td><td><code>node --check src/server.js src/session.js public/app.js public/thread.js</code> · pass.</td></tr>
+  <tr><td>V-002</td><td><code>npm test</code> · 16/16 pass.</td></tr>
+  <tr><td>V-003</td><td><code>npm run build</code> · creates <code>dist/index.html</code> and <code>dist/thread.html</code>.</td></tr>
+  <tr><td>V-004</td><td>Chrome smoke with intercepted API/SSE · create thread, redirect to thread page, stream output, send follow-up prompt all pass.</td></tr>
+  <tr><td>V-005</td><td>Backend API smoke · <code>GET /api/threads</code>, <code>GET /api/threads/:name</code>, and CORS <code>OPTIONS</code> pass.</td></tr>
+  <tr><td>V-006</td><td>Rollback smoke · dead bridge URL returns failure, clears claim/task prompt, and later prompt is not rejected as already running.</td></tr>
+  <tr><td>V-007</td><td>Live exe.dev thread smoke · created repo thread VM, bridge became ready, Pi run reached <code>completed</code>, cleanup removed <code>thread-smoke-*</code> VM.</td></tr>
+  <tr><td>V-008</td><td>Token smoke · unauthenticated API returns <code>401</code>, bearer token succeeds, browser fetches send auth, and SSE includes token query.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Remove <code>threadBridge</code> endpoints/pages and return to single chat page; existing session records remain readable.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>Homepage creates a repo-backed thread and links to its page.</li>
+  <li>Thread page displays repo/status and streams prompt output.</li>
+  <li>Thread prompt can attach while the bridge is still preparing.</li>
+  <li>Tests pass and browser smoke covers create/list/thread prompt without launching a VM.</li>
+</ul>
+</body>
+</html>

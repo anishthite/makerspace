@@ -1,0 +1,13 @@
+node_modules/
+dist/
+data/sessions.json
+data/settings.json
+.DS_Store
+.env
+.env.local
+.vercel
+.pi/
+.playwright-cli/
+output/
+test-results/
+implementation-notes/artifacts/

@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — empty GitHub repo clone</title>
+<meta name="task" content="Allow Daytona thread setup to clone empty GitHub repos when a default branch name is present but no remote heads exist.">
+<meta name="date-started" content="2026-06-23">
+<meta name="date-updated" content="2026-06-23">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="makerspace,github,clone,daytona,setup">
+<meta name="related" content="2026-06-18-github-oauth-repo-picker.html,2026-06-18-github-auth-session-hardening.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code, pre { font-family: ui-monospace, Menlo, monospace; }
+  code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  ul, ol { margin: .3rem 0 .8rem 1.2rem; padding: 0; }
+  .blast-low { color: #2a7a2a; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>Empty GitHub repo clone</h1>
+<p class="meta"><code>nogit</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-23 · status <b>shipped</b> · blast <span class="blast-low">low</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Let setup continue when GitHub reports <code>default_branch=main</code> but the repo has no branches yet.</div>
+  <b>Source</b><div><code>https://github.com/anishthite/buildspace-balls.git</code> has no remote heads; branch clone fails.</div>
+  <b>Surface</b><div><code>src/setup-script.js</code>, <code>test/setup-script.test.js</code>.</div>
+  <b>Schema</b><div>None.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>Algorithm</h2>
+<ol>
+  <li>Try the requested branch clone first.</li>
+  <li>If it fails, remove the partial workspace and retry a plain shallow clone.</li>
+  <li>Keep <code>GIT_TERMINAL_PROMPT=0</code> exported once so both clone attempts stay non-interactive.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>src/setup-script.js</code></td><td>touch</td><td>Add empty-repo fallback for branch-specific clone.</td></tr>
+  <tr><td><code>test/setup-script.test.js</code></td><td>touch</td><td>Assert generated setup script retries plain clone only for repos with no heads.</td></tr>
+  <tr><td><code>implementation-notes/2026-06-23-empty-github-repo-clone.html</code></td><td>new</td><td>Record clone fallback behavior.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Fix the generated setup shell instead of special-casing GitHub API data. The failure happens at clone time and applies to private repos too.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td>Plain-clone retry over <code>ls-remote --heads</code> guard. Keeps the setup script under the existing 10KB size check.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Remove the clone fallback block and restore direct branch clone.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>Generated setup script contains branch clone plus empty-repo fallback.</li>
+  <li><code>npm test</code> passes.</li>
+</ul>
+</body>
+</html>

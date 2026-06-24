@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — subsecond bootup latency</title>
+<meta name="task" content="Measure and reduce query-submit to first Pi LLM-call startup latency below one second.">
+<meta name="date-started" content="2026-06-16">
+<meta name="date-updated" content="2026-06-16">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="micro-cloud,exe.dev,bridge,pi-sdk,performance,benchmark">
+<meta name="related" content="2026-06-16-bridge-bootstrap-speed.html,2026-06-16-bridge-auth-seed.html,2026-06-16-pi-sdk-bridge.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 900px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code, pre { font-family: ui-monospace, Menlo, monospace; }
+  code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .blast-med { color: #b85c00; }
+</style>
+</head>
+<body>
+<h1>subsecond bootup latency</h1>
+<p class="meta"><code>nogit</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-16 · status <b>shipped</b> · blast <span class="blast-med">medium</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Get measured prompt-submit to first Pi agent/LLM-start latency below <code>1000 ms</code> for three consecutive warm-bridge runs.</div>
+  <b>Metric</b><div><code>first_llm_call_start</code> event, computed as host receive time minus <code>/api/chat</code> accept time.</div>
+  <b>Surface</b><div><code>src/server.js</code>, <code>src/setup-script.js</code>, <code>src/config.js</code>, <code>src/store.js</code>, <code>scripts/measure-bootup.js</code>, tests.</div>
+  <b>Baseline</b><div><code>39346 ms</code> for one cold default-image run; raw output in <code>implementation-notes/artifacts/2026-06-16-bootup-baseline.txt</code>.</div>
+  <b>Final</b><div><code>239 ms</code>, <code>553 ms</code>, <code>392 ms</code> via <code>node scripts/measure-bootup.js --runs 3 --gap-ms 7000 --timeout-ms 30000 --require-pass</code>; raw output in <code>implementation-notes/artifacts/2026-06-16-bootup-final.txt</code>.</div>
+  <b>Schema</b><div><code>data/sessions.json</code> persists warm-bridge and timing fields for new chat sessions.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>src/setup-script.js</code></td><td>touch</td><td>Emit bridge timing metrics and accept auth upload before prewarming the SDK-backed Pi session.</td></tr>
+  <tr><td><code>src/server.js</code></td><td>touch</td><td>Trust client submit timestamps, relay bridge metric events, claim reusable warm bridges, and release them after completion.</td></tr>
+  <tr><td><code>src/config.js</code></td><td>touch</td><td>Default <code>WARM_BRIDGE_POOL_SIZE</code> to <code>1</code> and extend bridge readiness timeout for cold default-image boots.</td></tr>
+  <tr><td><code>src/store.js</code></td><td>touch</td><td>Serialize session-file upserts so concurrent warm launches do not corrupt JSON.</td></tr>
+  <tr><td><code>scripts/measure-bootup.js</code></td><td>new</td><td>Stamp <code>submittedAtMs</code> before <code>fetch('/api/chat')</code> and poll until <code>first_llm_call_start</code> appears.</td></tr>
+  <tr><td><code>public/app.js</code></td><td>touch</td><td>Send browser-side <code>submittedAtMs</code> with chat prompts.</td></tr>
+  <tr><td><code>test/setup-script.test.js</code></td><td>touch</td><td>Assert generated bridge code contains metric and auth-prewarm hooks.</td></tr>
+  <tr><td><code>data/settings.json</code></td><td>touch</td><td>Use the default exe.dev image for the verified run after the baked image failed bridge health.</td></tr>
+  <tr><td><code>README.md</code></td><td>touch</td><td>Document warm bridge reuse, auth upload, and <code>WARM_BRIDGE_POOL_SIZE</code>.</td></tr>
+  <tr><td><code>implementation-notes/artifacts/2026-06-16-bootup-baseline.txt</code></td><td>new</td><td>Capture raw baseline measurement output.</td></tr>
+  <tr><td><code>implementation-notes/artifacts/2026-06-16-bootup-final.txt</code></td><td>new</td><td>Capture raw three-run final verifier output.</td></tr>
+  <tr><td><code>implementation-notes/artifacts/2026-06-16-bootup-npm-test.txt</code></td><td>new</td><td>Capture raw <code>npm test</code> output.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Wrap <code>piSession.agent.streamFn</code> and emit <code>first_llm_call_start</code> immediately before the provider stream call. This marks the actual LLM request boundary.</td></tr>
+  <tr><td>D-002</td><td>Use client-side <code>submittedAtMs</code> and host receive time for the persisted metric. It covers browser/script submission and avoids trusting cross-VM clock sync.</td></tr>
+  <tr><td>D-003</td><td>Prewarm the SDK session after bridge auth upload. It moves import/model/session setup off the post-submit path for ready bridges.</td></tr>
+  <tr><td>D-004</td><td>Serve chat prompts from reusable warm bridges when available. Cold VM provisioning cannot meet a subsecond submit-to-first-call target.</td></tr>
+  <tr><td>D-005</td><td>Use HTTP bridge auth upload instead of post-provision SSH seeding. Fresh SSH was flaky and inline auth exceeded exe.dev's setup-script size limit.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td>Conservative measured event over provider internals. The SDK does not expose a dedicated provider-call-start hook.</td></tr>
+  <tr><td>T-002</td><td>Live benchmark script over unit-only timing. The goal is end-to-end latency through the app and exe.dev bridge.</td></tr>
+  <tr><td>T-003</td><td>Warm reusable bridge over fresh VM per prompt. It is the only path measured below <code>1000 ms</code>.</td></tr>
+</table>
+
+<h2>Assumptions</h2>
+<ul>
+  <li>A-001 · A warm bridge may be reused for separate one-shot prompts. If wrong: set <code>WARM_BRIDGE_POOL_SIZE=0</code> and accept cold-start latency.</li>
+</ul>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Set <code>WARM_BRIDGE_POOL_SIZE=0</code> and remove timing fields, metric events, SDK prewarm, and warm-claim logic to restore one fresh VM per prompt.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>Measurement command records baseline <code>39346 ms</code> and final latencies <code>239</code>/<code>553</code>/<code>392 ms</code>.</li>
+  <li>Raw outputs are captured under <code>implementation-notes/artifacts/</code>.</li>
+  <li>Three consecutive measured runs report <code>first_llm_call_start &lt; 1000 ms</code>.</li>
+  <li><code>npm test</code> passes.</li>
+</ul>
+</body>
+</html>

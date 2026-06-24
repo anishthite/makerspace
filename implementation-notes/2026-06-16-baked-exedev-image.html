@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — baked exe.dev image</title>
+<meta name="task" content="Build the repo exe.dev image and configure new launches to use it.">
+<meta name="date-started" content="2026-06-16">
+<meta name="date-updated" content="2026-06-16">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="high">
+<meta name="tags" content="micro-cloud,exe.dev,docker,image,settings">
+<meta name="related" content="2026-06-16-dockerfile-settings-panel.html,2026-06-16-bridge-bootstrap-size.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code { font-family: ui-monospace, Menlo, monospace; background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  ul { margin: .3rem 0 .8rem 1.2rem; padding: 0; }
+  .blast-high { color: #b00020; font-weight: 600; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+</style>
+</head>
+<body>
+<h1>baked exe.dev image</h1>
+<p class="meta"><code>nogit</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-16 · status <b>shipped</b> · blast <span class="blast-high">high</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Use a prebuilt image so launch setup skips Pi and bridge SDK npm installs.</div>
+  <b>Image ref</b><div><code>ghcr.io/anishthite/makerspace-pi:latest</code>.</div>
+  <b>Registry auth</b><div><code>data/settings.json</code> stores a GHCR pull token per user choice.</div>
+  <b>Source</b><div>User asked to get the repo image ready and use it for new launches.</div>
+  <b>Surface</b><div><code>image/Dockerfile</code>, Docker registry, <code>data/settings.json</code>.</div>
+</div>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>data/settings.json</code></td><td>touch</td><td>Point new launches at the pushed baked image.</td></tr>
+  <tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Add this task to the notes index.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Tag the image under <code>ghcr.io/anishthite</code>. Docker is already logged into GHCR on this machine.</td></tr>
+  <tr><td>D-002</td><td>Set <code>autoBuildImage=false</code> after pushing. New prompts should pull the ready image, not rebuild it.</td></tr>
+  <tr><td>D-003</td><td>Store registry auth instead of making the package public. User chose private pull access over exposing baked config.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-high">high</span>. Clear <code>imageRef</code> in <code>data/settings.json</code> to return to exe.dev's default image; delete the registry tag if needed.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>Docker build succeeds.</li>
+  <li>Docker push succeeds.</li>
+  <li>New app settings use the pushed image.</li>
+</ul>
+</body>
+</html>

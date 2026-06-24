@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — UI layout concepts</title>
+<meta name="task" content="Replace color-swatch samples with ten distinct Makerspace layout concepts.">
+<meta name="date-started" content="2026-06-23">
+<meta name="date-updated" content="2026-06-23">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="makerspace,ui,layout,concepts,samples">
+<meta name="related" content="2026-06-23-ui-design-samples.html,2026-06-18-nerv-ui-modes.html,2026-06-17-repo-thread-ui.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}.blast-low{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>UI layout concepts</h1>
+<p class="meta"><code>nogit</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-23 · status <b class="status-shipped">shipped</b> · blast <span class="blast-low">low</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Make ten reviewable HTML concepts that change information architecture, not only theme tokens.</div>
+  <b>Surface</b><div><code>public/design-samples.html</code>.</div>
+  <b>Runtime</b><div>Static HTML/CSS only; no app API calls.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>UI layout</h2>
+<ol>
+  <li><b>Command Palette App</b>: one command surface plus searchable thread history.</li>
+  <li><b>Agent Kanban Board</b>: threads as cards moving through lifecycle columns.</li>
+  <li><b>IDE Cockpit</b>: sidebars, transcript, inspector, composer.</li>
+  <li><b>Mission Dossier</b>: case-file brief and operation log.</li>
+  <li><b>Inbox for Agents</b>: mailbox list plus reading pane.</li>
+  <li><b>Workspace Map</b>: graph of repo, sandbox, bridge, and Pi run.</li>
+  <li><b>Split-Screen Pair Programmer</b>: chat beside plan/files/tests workbench.</li>
+  <li><b>Timeline-First UI</b>: run events as the primary object.</li>
+  <li><b>Desktop OS Metaphor</b>: windows, dock, and mini apps.</li>
+  <li><b>One-Button Autopilot</b>: minimal start screen that turns into progress focus.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>public/design-samples.html</code></td><td>touch</td><td>Replace four themed artboards with ten layout-first artboards.</td></tr>
+  <tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Add this task to the notes index.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Overwrite the existing sample page. One comparison URL is enough.</td></tr>
+  <tr><td>D-002</td><td>Keep artboards static. The decision needed is layout direction, not app wiring.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td>Layout diversity over polished components. The next decision is product shape.</td></tr>
+</table>
+
+<h2>Verification</h2>
+<table>
+  <tr><th>Check</th><th>Result</th></tr>
+  <tr><td><code>npm run build</code></td><td>Passed; copied <code>public/design-samples.html</code> to ignored <code>dist/design-samples.html</code>.</td></tr>
+  <tr><td><code>grep</code></td><td>Confirmed all ten concept headings exist in <code>public/design-samples.html</code>.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Revert <code>public/design-samples.html</code>; no runtime app code changes.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>Ten concepts are visible on <code>/design-samples.html</code>.</li>
+  <li>Each concept has a distinct layout pattern.</li>
+  <li><code>npm run build</code> passes.</li>
+</ul>
+</body>
+</html>

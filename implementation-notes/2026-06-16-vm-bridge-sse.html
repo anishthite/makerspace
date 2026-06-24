@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — vm bridge sse</title>
+<meta name="task" content="Replace SSH log polling for chat sessions with a tiny HTTP/SSE bridge that runs on the VM and proxies structured pi output back through the server.">
+<meta name="date-started" content="2026-06-16">
+<meta name="date-updated" content="2026-06-16">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="micro-cloud,exe.dev,bridge,sse,streaming,pi">
+<meta name="related" content="2026-06-16-chat-style-vm-ui.html,2026-06-16-ssh-only-provider.html,2026-06-16-ssh-poll-hostkey-fix.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 900px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code, pre { font-family: ui-monospace, Menlo, monospace; }
+  code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .blast-med { color: #b85c00; }
+</style>
+</head>
+<body>
+<h1>vm bridge sse</h1>
+<p class="meta"><code>nogit</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-16 · status <b>shipped</b> · blast <span class="blast-med">medium</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Use SSH once to provision the VM, then talk to a tiny VM-local bridge over HTTP/SSE for chat runs.</div>
+  <b>Source</b><div>User wants structured streaming instead of repeated SSH log scraping.</div>
+  <b>Surface</b><div><code>src/server.js</code>, <code>src/provider.js</code>, <code>src/setup-script.js</code>, <code>public/app.js</code>, <code>src/session.js</code>, tests.</div>
+  <b>Schema</b><div><code>data/sessions.json</code> gains bridge metadata for chat sessions.</div>
+  <b>UI</b><div>Frontend switches chat output from polling JSON to SSE.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>API contract</h2>
+<pre>VM bridge
+POST /runs
+Authorization: Bearer &lt;token&gt;
+{ "id": string, "prompt": string, "name": string }
+
+202
+{ "id": string, "status": "running" }
+
+GET /runs/:id/stream
+Authorization: Bearer &lt;token&gt;
+text/event-stream
+
+data: {"index":1,"type":"stdout","chunk":"...","runStatus":"running"}
+
+data: {"index":2,"type":"status","runStatus":"completed"}
+
+Server proxy
+GET /api/sessions/:name/stream
+text/event-stream
+
+data: {"chunk":"[system] Starting a fresh VM...\n","runStatus":"launching"}
+
+data: {"chunk":"...pi output...","runStatus":"running"}
+
+data: {"done":true,"runStatus":"completed"}</pre>
+
+<h2>Algorithm</h2>
+<ol>
+  <li>Chat launches mark the session as <code>bridgeMode</code> and reserve the shared proxy port for the bridge.</li>
+  <li>Setup writes a tiny <code>pi-bridge.mjs</code> daemon, an env file, and a systemd unit; boot starts the bridge but not <code>pi</code>.</li>
+  <li>After VM creation, the server waits for <code>/healthz</code>, then starts a run via <code>POST /runs</code>.</li>
+  <li>The server follows the bridge SSE in the background and mirrors those events into an in-memory event log.</li>
+  <li>The browser opens one SSE connection to the server; the server replays buffered launch events and then pushes live bridge events.</li>
+</ol>
+
+<h2>UI layout</h2>
+<ol>
+  <li><b>Chat transcript</b>: append SSE chunks as they arrive; stop on <code>done</code>.</li>
+  <li><b>Status banner</b>: use launch/bridge/run status events instead of poll warnings.</li>
+  <li><b>Session table</b>: keep SSH/debug commands; chat sessions expose the bridge URL as the shared URL.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>src/config.js</code></td><td>touch</td><td>Add bridge port and bridge wait settings.</td></tr>
+  <tr><td><code>src/session.js</code></td><td>touch</td><td>Mark chat sessions as bridge-backed and carry bridge metadata.</td></tr>
+  <tr><td><code>src/setup-script.js</code></td><td>touch</td><td>Write the VM bridge daemon, env file, and service unit.</td></tr>
+  <tr><td><code>src/provider.js</code></td><td>touch</td><td>Share the bridge port for chat sessions and keep SSH limited to provisioning.</td></tr>
+  <tr><td><code>src/server.js</code></td><td>touch</td><td>Start bridge-backed runs, mirror bridge SSE into an event log, and expose server-side SSE.</td></tr>
+  <tr><td><code>public/app.js</code></td><td>touch</td><td>Use <code>EventSource</code> instead of polling chat output.</td></tr>
+  <tr><td><code>README.md</code></td><td>touch</td><td>Document bridge-backed chat streaming.</td></tr>
+  <tr><td><code>test/session.test.js</code></td><td>touch</td><td>Assert chat sessions default to bridge mode and bridge port.</td></tr>
+  <tr><td><code>test/setup-script.test.js</code></td><td>touch</td><td>Assert the bridge daemon and service unit are written.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Use a tiny VM-local bridge instead of SSH tailing. Keeps the remote protocol structured and removes repeated SSH command execution.</td></tr>
+  <tr><td>D-002</td><td>Use SSE, not WebSocket, for browser delivery. One-way output is the only thing the current UI needs.</td></tr>
+  <tr><td>D-003</td><td>Reserve the shared proxy port for the bridge on chat launches. Smallest path; app previews can come back when dual-port routing is actually needed.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td><code>systemd bridge daemon</code> over ad-hoc <code>nohup</code>. Slightly more setup, cleaner restarts and logs.</td></tr>
+  <tr><td>T-002</td><td><code>server-side bridge relay</code> over direct browser-to-VM connection. Keeps one stable app API and hides bridge tokens from the frontend URL surface.</td></tr>
+</table>
+
+<h2>Assumptions</h2>
+<ul>
+  <li>A-001 · exe.dev's shared proxy URL reaches the single configured shared port for the VM. If wrong: fall back to an SSH tunnel only for backend-to-bridge transport.</li>
+  <li>A-002 · Chat sessions do not need a simultaneous app preview URL in v1. If wrong: add dual-port routing or a second transport later.</li>
+</ul>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Re-enable SSH polling and remove the bridge setup/service if the proxy path proves unreliable.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>Chat runs start <code>pi</code> through a VM-local bridge, not by auto-running it directly in the setup shell.</li>
+  <li>The browser receives streamed output from one SSE connection to the app server.</li>
+  <li>SSH remains in the provisioning path only for chat runs.</li>
+  <li>Tests pass.</li>
+</ul>
+</body>
+</html>

@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — pi sdk bridge</title>
+<meta name="task" content="Swap the VM bridge from spawning `pi -p` to embedding Pi through the SDK while keeping the existing HTTP/SSE bridge contract.">
+<meta name="date-started" content="2026-06-16">
+<meta name="date-updated" content="2026-06-16">
+<meta name="status" content="ready-for-review">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="micro-cloud,exe.dev,bridge,pi-sdk,streaming">
+<meta name="related" content="2026-06-16-vm-bridge-sse.html,2026-06-16-exedev-pi-ui.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 900px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code, pre { font-family: ui-monospace, Menlo, monospace; }
+  code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .blast-med { color: #b85c00; }
+</style>
+</head>
+<body>
+<h1>pi sdk bridge</h1>
+<p class="meta"><code>nogit</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-16 · status <b>ready-for-review</b> · blast <span class="blast-med">medium</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Keep the VM bridge transport, but run Pi through the SDK instead of spawning <code>pi -p</code>.</div>
+  <b>Source</b><div>User wants the bridged architecture to use the SDK, not CLI stdout as the runtime interface.</div>
+  <b>Surface</b><div><code>src/setup-script.js</code>, <code>image/Dockerfile</code>, <code>README.md</code>, <code>public/index.html</code>, <code>test/setup-script.test.js</code>.</div>
+  <b>Schema</b><div>None.</div>
+  <b>Runtime</b><div>Bridge keeps <code>POST /runs</code> and <code>GET /runs/:id/stream</code>; only the VM-side execution engine changes.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>API contract</h2>
+<pre>VM bridge request
+POST /runs
+{ "id": string, "name": string, "prompt": string }
+
+Bridge SSE payloads
+{ "type": "stdout", "chunk": string, "runStatus": "running" }
+{ "type": "status", "runStatus": "completed" | "failed", "done": true, "exitCode": number }
+
+SDK event mapping
+message_update.text_delta -> stdout chunk
+tool_execution_update.partialResult -> stdout delta
+tool_execution_end.isError -> [system] ... failed line</pre>
+
+<h2>Algorithm</h2>
+<ol>
+  <li>Install or reuse <code>@earendil-works/pi-coding-agent</code> in <code>/home/exedev/.pi/agent/bridge-sdk</code>.</li>
+  <li>Resolve that package from <code>pi-bridge.mjs</code> with <code>createRequire(...).resolve(...)</code>.</li>
+  <li>Create one in-memory Pi session with <code>createAgentSession({ cwd, sessionManager: SessionManager.inMemory(...) })</code>.</li>
+  <li>Map SDK text and tool events into the existing bridge <code>stdout</code>/<code>status</code> SSE envelope.</li>
+  <li>Leave the server and browser relay contract unchanged.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>src/setup-script.js</code></td><td>touch</td><td>Install a local SDK package, load it from the bridge, and stream SDK events instead of child-process stdout.</td></tr>
+  <tr><td><code>image/Dockerfile</code></td><td>touch</td><td>Bake the Pi SDK package into the custom image at the bridge import path.</td></tr>
+  <tr><td><code>image/INVENTORY.md</code></td><td>touch</td><td>Document the baked bridge SDK package.</td></tr>
+  <tr><td><code>README.md</code></td><td>touch</td><td>Describe the SDK-backed bridge flow.</td></tr>
+  <tr><td><code>public/index.html</code></td><td>touch</td><td>Tell the UI copy that the bridge runs Pi through the SDK.</td></tr>
+  <tr><td><code>test/setup-script.test.js</code></td><td>touch</td><td>Assert the generated setup script installs and uses the SDK-backed bridge.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Keep the bridge HTTP/SSE contract stable. Server and browser already speak that shape.</td></tr>
+  <tr><td>D-002</td><td>Install the SDK into <code>/home/exedev/.pi/agent/bridge-sdk</code>. The standalone <code>pi</code> binary is not importable by Node.</td></tr>
+  <tr><td>D-003</td><td>Use <code>SessionManager.inMemory(...)</code> in the bridge. One prompt maps to one VM-backed run; no extra session files needed.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td><code>SDK event mapping</code> over <code>spawn('pi', ['-p', ...])</code>. Structured events beat terminal text scraping.</td></tr>
+  <tr><td>T-002</td><td><code>local package import path</code> over global npm resolution. Deterministic path works with both the baked image and setup-script fallback.</td></tr>
+</table>
+
+<h2>Assumptions</h2>
+<ul>
+  <li>A-001 · <code>pi --version</code> matches an installable npm package version. If wrong: pin the bridge package separately.</li>
+  <li>A-002 · The current frontend still only needs the bridge's coarse <code>stdout</code>/<code>status</code> stream. If wrong: expose richer event types later.</li>
+</ul>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Restore the old child-process bridge path and remove the local SDK package install if the SDK-backed bridge misbehaves on real VMs.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>The generated bridge script imports Pi through the SDK.</li>
+  <li>The image bakes the same SDK package path the bridge expects.</li>
+  <li>Docs and tests mention the SDK-backed bridge.</li>
+  <li><code>npm test</code> passes and the extracted bridge script parses with <code>node --check</code>.</li>
+</ul>
+</body>
+</html>

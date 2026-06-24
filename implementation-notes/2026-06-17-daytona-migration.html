@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Daytona migration</title>
+<meta name="task" content="Migrate makerspace sandbox execution from exe.dev SSH to Daytona SDK.">
+<meta name="date-started" content="2026-06-17">
+<meta name="date-updated" content="2026-06-17">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="high">
+<meta name="tags" content="micro-cloud,daytona,sandbox,provider,migration">
+<meta name="related" content="2026-06-16-ssh-only-provider.html,2026-06-16-vm-bridge-sse.html,2026-06-17-host-dispatch-cold-path.html,2026-06-17-api-key-settings.html,2026-06-16-sandbox-provider-math.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code,pre{font-family:ui-monospace,Menlo,monospace}code{background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}pre{background:#f6f6f6;padding:.55rem .7rem;border-radius:4px;overflow-x:auto;font-size:12.5px;line-height:1.4}ul,ol{margin:.3rem 0 .8rem 1.2rem;padding:0}li{margin:.15rem 0}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.kv b{color:#444;font-weight:600}.blast-high{color:#b00020;font-weight:600}.status-shipped{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Daytona migration</h1>
+<p class="meta"><code>nogit</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-17 · status <b class="status-shipped">shipped</b> · blast <span class="blast-high">high</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Replace exe.dev SSH provisioning with Daytona SDK sandboxes while preserving threads, bridge runs, host dispatch, manual sessions, images, and settings.</div>
+  <b>Source</b><div><code>src/provider.js</code>, <code>src/server.js</code>, <code>src/host-pi-runner.js</code>, Genasite <code>backend-daytona/src/agent/sandbox/daytona.ts</code> as reference only.</div>
+  <b>Surface</b><div><code>/api/threads</code>, <code>/api/chat</code>, <code>/api/sessions</code>, <code>/api/bridge-intents</code>, <code>/api/sessions/:name/share</code>, UI copy, docs, tests.</div>
+  <b>Schema</b><div><code>data/sessions.json</code> keeps session rows; provider kind changes to <code>daytona</code> and stores <code>daytonaSandboxId</code>, <code>previewToken</code>, and <code>connectCommand</code>.</div>
+  <b>Credentials</b><div>Read <code>DAYTONA_API_KEY</code>, <code>DAYTONA_API_URL</code>, <code>DAYTONA_TARGET</code>, and forwarded model keys from env/settings only.</div>
+  <b>Verification</b><div><code>npm test</code> 21/21, <code>npm run build</code>, zero active exe.dev/Genasite/secret grep hits after runtime-data sanitization, live Daytona provider smoke, live bridge run smoke.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>Algorithm</h2>
+<ol>
+  <li>Instantiate Daytona lazily from env and keep SDK calls behind <code>src/provider.js</code>.</li>
+  <li>Create or reuse a sandbox by <code>name</code> plus labels, apply lifecycle intervals, then run <code>buildSetupScript()</code> with env vars through <code>process.executeCommand()</code>.</li>
+  <li>Expose bridge URLs through <code>getPreviewLink(port)</code>; pass <code>x-daytona-preview-token</code> for app-server requests while retaining the bridge bearer token.</li>
+  <li>Replace host-dispatch SSH with Daytona <code>process.executeCommand()</code> and <code>fs.downloadFile()/uploadFile()</code>.</li>
+  <li>Poll manual-session output by executing the same log-envelope shell inside the sandbox instead of SSH.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>package.json</code>, <code>package-lock.json</code></td><td>touch</td><td>Add <code>@daytona/sdk</code>.</td></tr>
+  <tr><td><code>src/config.js</code></td><td>touch</td><td>Replace <code>EXEDEV_*</code> knobs with <code>DAYTONA_*</code> and default provider kind.</td></tr>
+  <tr><td><code>src/provider.js</code></td><td>touch</td><td>Replace SSH adapter with Daytona sandbox lifecycle, preview, process, file, and output helpers.</td></tr>
+  <tr><td><code>src/server.js</code></td><td>touch</td><td>Use provider preview headers, push Pi auth/settings to bridges, and route host dispatch through provider helpers.</td></tr>
+  <tr><td><code>src/host-pi-runner.js</code></td><td>touch</td><td>Proxy remote tools through Daytona provider helpers.</td></tr>
+  <tr><td><code>src/session.js</code></td><td>touch</td><td>Decorate sessions with provider connect commands and hide bridge/preview tokens from public payloads.</td></tr>
+  <tr><td><code>src/setup-script.js</code></td><td>touch</td><td>Use provider-neutral home/user paths, Daytona-compatible node launch, settings upload, and non-systemd bridge fallback.</td></tr>
+  <tr><td><code>src/image-builder.js</code></td><td>touch</td><td>Remove exe.dev extension image-context coupling.</td></tr>
+  <tr><td><code>src/settings.js</code></td><td>touch</td><td>Default image ref to blank so Daytona snapshot/default can be used.</td></tr>
+  <tr><td><code>src/report.js</code></td><td>touch</td><td>Replace provider recommendation with Daytona architecture notes.</td></tr>
+  <tr><td><code>image/Dockerfile</code>, <code>image/init-wrapper.sh</code></td><td>touch</td><td>Rename image user/copy from exe.dev to Daytona.</td></tr>
+  <tr><td><code>image/exe-setup.service</code></td><td>delete</td><td>Remove provider-specific setup service.</td></tr>
+  <tr><td><code>README.md</code>, <code>deploy/digitalocean/README.md</code></td><td>touch</td><td>Document Daytona setup, env, deployment, and smoke checks.</td></tr>
+  <tr><td><code>public/index.html</code>, <code>public/app.js</code>, <code>public/thread.js</code>, <code>public/sandbox-provider-guide.html</code></td><td>touch</td><td>Update visible copy from VM/exe.dev wording to Daytona sandbox wording.</td></tr>
+  <tr><td><code>test/provider.test.js</code>, <code>test/session.test.js</code>, <code>test/setup-script.test.js</code></td><td>touch</td><td>Update provider/session/setup tests for Daytona semantics.</td></tr>
+  <tr><td><code>data/settings.json</code>, <code>data/sessions.json</code></td><td>touch</td><td>Clear copied secrets/stale image setting and remove legacy exe.dev-backed stored sessions from active runtime state.</td></tr>
+  <tr><td><code>startup-flow.excalidraw</code>, <code>pi-sdk-bridge-architecture.excalidraw</code></td><td>touch</td><td>Update architecture diagrams from exe.dev/VM/SSH wording to Daytona/sandbox wording.</td></tr>
+  <tr><td><code>implementation-notes/artifacts/2026-06-17-daytona-*.txt</code></td><td>new</td><td>Capture final tests, build, grep, env-file check, provider smoke, bridge run smoke, runtime data sanitization, and completion audit.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Use <code>@daytona/sdk</code> instead of <code>@daytonaio/sdk</code>. Daytona renamed the package and current docs use <code>@daytona/sdk</code>.</td></tr>
+  <tr><td>D-002</td><td>Keep the existing provider method shape. This minimizes server/UI churn while changing the transport.</td></tr>
+  <tr><td>D-003</td><td>Use Daytona preview tokens only from server-to-sandbox requests. Browser clients continue to talk to the makerspace backend, not directly to Daytona.</td></tr>
+  <tr><td>D-004</td><td>Upload both Pi auth and Pi settings to bridge sandboxes. Auth alone produced no assistant output in live smoke.</td></tr>
+  <tr><td>D-005</td><td>Return from <code>/auth</code> before bridge session warming completes. Long model/session initialization should not make auth upload look failed.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td><code>execute setup script after create</code> over provider-native setup-script support. Daytona SDK exposes process execution and keeps bootstrap logic reusable.</td></tr>
+  <tr><td>T-002</td><td><code>provider remote helpers</code> over a new generic abstraction layer. One provider is required and the contract stays testable.</td></tr>
+  <tr><td>T-003</td><td><code>omit resources for snapshot creates</code> over forcing CPU/memory/disk on every create. Daytona rejects resources when using snapshots.</td></tr>
+</table>
+
+<h2>Assumptions</h2>
+<ul>
+  <li>A-001 · Daytona sandboxes can run shell commands, serve preview ports, and upload/download files through SDK APIs. Verified by <code>2026-06-17-daytona-provider-smoke.txt</code>.</li>
+  <li>A-002 · Daytona credentials are already available in env for smoke checks. Verified by live smoke artifacts without printing values.</li>
+  <li>A-003 · A Node-capable Daytona snapshot/image is available via <code>DAYTONA_SNAPSHOT</code> or default Daytona image. Verified by bridge health and run smoke.</li>
+</ul>
+
+<h2>Verification</h2>
+<table>
+  <tr><th>Artifact</th><th>Result</th></tr>
+  <tr><td><code>implementation-notes/artifacts/2026-06-17-daytona-npm-test.txt</code></td><td><code>npm test</code> passed 21/21.</td></tr>
+  <tr><td><code>implementation-notes/artifacts/2026-06-17-daytona-build.txt</code></td><td><code>npm run build</code> passed.</td></tr>
+  <tr><td><code>implementation-notes/artifacts/2026-06-17-daytona-exedev-grep.txt</code></td><td>No active source/UI/docs/tests/image hits for exe.dev/EXEDEV/exe.xyz/SSH-provider patterns.</td></tr>
+  <tr><td><code>implementation-notes/artifacts/2026-06-17-daytona-env-files.txt</code>, <code>implementation-notes/artifacts/2026-06-17-daytona-env-files-post-audit.txt</code></td><td>No local <code>.env*</code> files exist in this repo.</td></tr>
+  <tr><td><code>implementation-notes/artifacts/2026-06-17-daytona-data-sanitize.txt</code>, <code>implementation-notes/artifacts/2026-06-17-daytona-runtime-data-summary-post-audit.txt</code></td><td>Cleared copied registry/API secrets and removed 526 legacy exe.dev-backed stored sessions; runtime data summary shows no settings secrets and 0 stored sessions.</td></tr>
+  <tr><td><code>implementation-notes/artifacts/2026-06-17-daytona-exedev-grep-post-audit.txt</code>, <code>implementation-notes/artifacts/2026-06-17-daytona-genasite-grep-post-audit.txt</code>, <code>implementation-notes/artifacts/2026-06-17-daytona-secret-grep-post-audit.txt</code></td><td>No active repo/runtime data hits for exe.dev leftovers, Genasite runtime coupling, or key/PAT-shaped secret patterns after final build.</td></tr>
+  <tr><td><code>implementation-notes/artifacts/2026-06-17-daytona-diagram-parse-post-audit.txt</code></td><td>Updated Excalidraw diagrams parse as JSON.</td></tr>
+  <tr><td><code>implementation-notes/artifacts/2026-06-17-daytona-provider-smoke.txt</code></td><td>Live Daytona sandbox created; bridge health 200; remote file/write exec helpers passed; output status ready; cleanup attempted.</td></tr>
+  <tr><td><code>implementation-notes/artifacts/2026-06-17-daytona-bridge-run-smoke.txt</code></td><td>Live bridge <code>/runs</code> completed with expected <code>DAYTONA_SMOKE_OK</code> output and exit code 0.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-high">high</span>. Revert touched source/docs/tests and reinstall dependencies to return to SSH transport.</p>
+
+<h2>Followups</h2>
+<ul>
+  <li>L-001 · Review <code>npm audit</code> output from the new SDK dependency tree outside this migration.</li>
+</ul>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>No active app/runtime code path or stored runtime data invokes <code>ssh exe.dev</code>, derives <code>*.exe.xyz</code>, or reads <code>EXEDEV_*</code> env.</li>
+  <li>Daytona provider supports list/create/share/destroy/read-output and host-dispatch file/exec helpers.</li>
+  <li>Bridge endpoints still pass through backend with bearer-token auth and Daytona preview token headers.</li>
+  <li><code>npm test</code> and <code>npm run build</code> pass.</li>
+  <li>Live Daytona provider and bridge-run smoke commands pass without printing secrets.</li>
+  <li>Stored runtime data contains no copied credentials and no legacy exe.dev-backed sessions.</li>
+</ul>
+</body>
+</html>

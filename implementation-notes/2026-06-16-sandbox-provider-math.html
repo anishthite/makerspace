@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sandbox provider math</title>
+<meta name="task" content="Compare exe.dev, Cloudflare Sandbox SDK, and Daytona for subsecond Pi bridge startup latency and cost.">
+<meta name="date-started" content="2026-06-16">
+<meta name="date-updated" content="2026-06-18">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="micro-cloud,exe.dev,cloudflare,daytona,sandbox,pricing,latency">
+<meta name="related" content="2026-06-16-subsecond-bootup-latency.html,2026-06-17-daytona-migration.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code, pre { font-family: ui-monospace, Menlo, monospace; }
+  code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  pre { background: #f6f6f6; padding: .55rem .7rem; border-radius: 4px; overflow-x: auto; font-size: 12.5px; line-height: 1.4; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .blast-low { color: #2a7a2a; }
+</style>
+</head>
+<body>
+<h1>Sandbox provider math</h1>
+<p class="meta"><code>nogit</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-16 · updated 2026-06-18 · status <b>shipped</b> · blast <span class="blast-low">low</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Create a browser-readable guide comparing <code>exe.dev</code>, <code>Cloudflare Sandbox SDK</code>, and <code>Daytona</code> for this app's subsecond warm-bridge target.</div>
+  <b>Source</b><div>Recovered original <code>public/sandbox-provider-guide.html</code> from Pi session log, plus Daytona pricing page read 2026-06-18, <code>src/config.js</code>, <code>src/provider.js</code>, and local boot note.</div>
+  <b>Surface</b><div><code>public/sandbox-provider-guide.html</code>.</div>
+  <b>Schema</b><div>None.</div>
+  <b>Pricing</b><div><code>$0.0504/vCPU-hour</code>, <code>$0.0162/GiB RAM-hour</code>, <code>$0.000108/GiB disk-hour after first 5 GiB</code>.</div>
+  <b>Runtime default</b><div><code>WARM_BRIDGE_POOL_SIZE=0</code>, <code>DAYTONA_AUTOSTOP_MINUTES=60</code>, <code>DAYTONA_AUTODELETE_MINUTES=120</code>.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>Recovered original guide math</h2>
+<table>
+  <tr><th>Scenario</th><th>Inputs</th><th>Cost</th><th>Note</th></tr>
+  <tr><td>exe.dev warm month</td><td><code>1 core</code>, <code>1 GiB RAM</code>, <code>3 GiB disk</code></td><td><code>$47.76</code></td><td><code>720 × ($0.05 CPU + $0.016 RAM) + 3 × $0.08 disk</code>.</td></tr>
+  <tr><td>Cloudflare basic warm month</td><td><code>0.25 vCPU</code>, <code>1 GiB RAM</code>, <code>4 GB disk</code></td><td><code>$11.93 idle</code>; <code>$24.44 full CPU</code>.</td><td>Includes <code>$5</code> Workers Paid plan and included monthly usage.</td></tr>
+  <tr><td>Cloudflare standard-2 warm month</td><td><code>1 vCPU</code>, <code>6 GiB RAM</code>, <code>12 GB disk</code></td><td><code>$45.78 idle</code>; <code>$97.17 full CPU</code>.</td><td>Closest 1-vCPU Cloudflare shape in the original comparison.</td></tr>
+  <tr><td>Daytona default warm month</td><td><code>1 vCPU</code>, <code>1 GiB RAM</code>, <code>3 GiB disk</code></td><td><code>$47.95</code></td><td><code>720 × ($0.0504 CPU + $0.0162 RAM)</code>; first <code>5 GB</code> storage free.</td></tr>
+</table>
+
+<h2>Recovered burst math</h2>
+<table>
+  <tr><th>Provider</th><th>60-second compute math</th><th>Approx cost</th><th>Reality check</th></tr>
+  <tr><td>exe.dev</td><td><code>$0.05 + $0.016 + 3×$0.000111</code></td><td><code>$0.0663</code> if the hour is opened.</td><td>Bad for many tiny throwaways if billed at hourly peak granularity.</td></tr>
+  <tr><td>Cloudflare basic</td><td><code>(0.25×$0.072 + 1×$0.009 + 4×$0.000252) / 60</code></td><td><code>$0.00047</code> marginal after included plan usage.</td><td>Very cheap, but cold start usually misses a strict subsecond target.</td></tr>
+  <tr><td>Daytona default</td><td><code>($0.0504 + $0.0162) / 60</code></td><td><code>$0.00111</code>.</td><td>Best-looking throwaway option from the original guide: fast advertised creation plus per-second billing.</td></tr>
+</table>
+
+<h2>Recovered latency fit</h2>
+<table>
+  <tr><th>Provider</th><th>Cold path</th><th>Warm path</th><th>Risk</th></tr>
+  <tr><td>exe.dev</td><td><code>39.346s</code> cold default-image Pi bridge.</td><td><code>239–553ms</code> to first LLM call.</td><td>Requires a warm pool; cold VM per prompt misses target.</td></tr>
+  <tr><td>Cloudflare</td><td>Container cold starts often <code>1–3s</code>; first deploy waits <code>2–3min</code>.</td><td><code>KeepAlive</code>/<code>sleepAfter</code> can keep a container warm.</td><td>Container disk is ephemeral on sleep; app needs Worker + Durable Object + storage redesign.</td></tr>
+  <tr><td>Daytona</td><td>Docs/marketing claimed sub-<code>90ms</code>; launch benchmark cited <code>71ms</code> create and <code>197ms</code> total.</td><td>Can stay running or auto-stop.</td><td>Original guide required a real Pi bridge benchmark before switching.</td></tr>
+</table>
+
+<h2>Current Daytona formulas</h2>
+<table>
+  <tr><th>Item</th><th>Formula</th><th>Result</th></tr>
+  <tr><td>Hourly</td><td><code>cpu*0.0504 + ramGiB*0.0162 + max(diskGiB - 5, 0)*0.000108</code></td><td>Bill running sandboxes by allocated resources; first <code>5 GiB</code> disk is free.</td></tr>
+  <tr><td>60-second burst</td><td><code>hourly / 60</code></td><td>Use when create/run/delete completes near one minute.</td></tr>
+  <tr><td>730-hour month</td><td><code>hourly * 730</code></td><td>Use for always-on warm capacity.</td></tr>
+  <tr><td>Free-credit runway</td><td><code>200 / hourly</code></td><td>Estimate hours covered by Daytona's advertised <code>$200</code> credits.</td></tr>
+</table>
+
+<h2>Current Daytona scenarios</h2>
+<table>
+  <tr><th>Scenario</th><th>Inputs</th><th>Cost</th><th>Applies when</th></tr>
+  <tr><td>Provider default</td><td><code>1 vCPU</code>, <code>1 GiB RAM</code>, <code>3 GiB disk</code></td><td><code>$0.0666/hour</code>; <code>$1.60/day</code>; <code>$48.62/730h</code>; <code>$0.00111/60s</code>.</td><td>No custom image/resource request is sent.</td></tr>
+  <tr><td>Makerspace custom image defaults</td><td><code>DAYTONA_CPU=2</code>, <code>DAYTONA_MEMORY=8</code>, <code>DAYTONA_DISK=10</code></td><td><code>$0.23094/hour</code>; <code>$5.54/day</code>; <code>$168.59/730h</code>; <code>$0.00385/60s</code>.</td><td><code>imageRef</code> or <code>DAYTONA_IMAGE</code> selects an image.</td></tr>
+  <tr><td>Abandoned sandbox cap</td><td><code>autostop=60m</code>, <code>autodelete=120m</code></td><td>About one running hour plus billable disk until delete.</td><td>Default: <code>~$0.067</code>; custom: <code>~$0.231</code>, before model/API costs.</td></tr>
+  <tr><td>Free-credit runway</td><td><code>$200</code> credits</td><td>About <code>3003</code> provider-default hours or <code>866</code> custom-image hours.</td><td>Credits hide early usage but not always-on economics.</td></tr>
+</table>
+
+<h2>Operational notes</h2>
+<table>
+  <tr><th>Guardrail</th><th>Effect</th></tr>
+  <tr><td><code>WARM_BRIDGE_POOL_SIZE=0</code></td><td>Steady-state Daytona spend stays at zero until a thread creates a sandbox.</td></tr>
+  <tr><td><code>DAYTONA_AUTOSTOP_MINUTES=60</code></td><td>Abandoned threads stop CPU/RAM billing after roughly one idle hour.</td></tr>
+  <tr><td><code>DAYTONA_AUTODELETE_MINUTES=120</code></td><td>Abandoned threads should clear retained disk within two idle hours.</td></tr>
+  <tr><td>Model/API spend</td><td>Anthropic/OpenAI/Gemini/etc. token costs are separate from Daytona sandbox cost.</td></tr>
+</table>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>public/sandbox-provider-guide.html</code></td><td>new</td><td>Static comparison guide with cost formulas, latency fit, and recommendation.</td></tr>
+  <tr><td><code>implementation-notes/2026-06-16-sandbox-provider-math.html</code></td><td>new</td><td>Record assumptions and formulas.</td></tr>
+  <tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Add task row.</td></tr>
+  <tr><td><code>implementation-notes/2026-06-16-sandbox-provider-math.html</code></td><td>touch</td><td>Append Daytona unit prices, runtime-default caveat, scenario math, and operational guardrails.</td></tr>
+  <tr><td><code>implementation-notes/artifacts/2026-06-18-original-sandbox-provider-guide.html</code></td><td>new</td><td>Recover the original comparison guide that was overwritten during Daytona migration.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Use one static HTML file. The user asked for a guide, not app navigation or a calculator.</td></tr>
+  <tr><td>D-002</td><td>Compare warm monthly and 60-second burst scenarios. These expose the real split between always-ready latency and throwaway sandbox economics.</td></tr>
+  <tr><td>D-003</td><td>Keep the current Daytona math in this note. The public guide was simplified after migration and no longer carries formulas.</td></tr>
+  <tr><td>D-004</td><td>Supersedes <code>D-003</code>: keep both the recovered original comparison math and the current Daytona runtime math. The original public guide was overwritten during migration.</td></tr>
+</table>
+
+<h2>Assumptions</h2>
+<ul>
+  <li>A-001 · Cloudflare <code>basic</code> uses <code>0.25 vCPU</code>; closest 1-vCPU comparison is <code>standard-2</code>.</li>
+  <li>A-002 · exe.dev short burst cost uses an opened hour because CPU and active memory are priced by hourly peak usage.</li>
+  <li>A-003 · Daytona default 3 GiB disk falls under the first 5 GB free storage line.</li>
+  <li>A-004 · Daytona pricing page read 2026-06-18 lists <code>$0.0504/vCPU-hour</code>, <code>$0.0162/GiB RAM-hour</code>, and <code>$0.000108/GiB disk-hour after first 5 GiB</code>.</li>
+  <li>A-005 · <code>src/provider.js</code> sends custom resources only when <code>imageRef</code> or <code>DAYTONA_IMAGE</code> selects an image; snapshot/default launches omit <code>resources</code>.</li>
+  <li>A-006 · Stopped sandboxes stop CPU/RAM billing and retain only billable disk until autodelete.</li>
+  <li>A-007 · Model-provider token spend is outside Daytona sandbox cost.</li>
+  <li>A-008 · Original guide used a <code>720h</code> month; the 2026-06-18 Daytona quick estimate used <code>730h</code>.</li>
+</ul>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Delete <code>public/sandbox-provider-guide.html</code> and this note row.</p>
+<p>R-002 · <span class="blast-low">low</span>. Remove the 2026-06-18 cost sections if Daytona pricing or app defaults change.</p>
+<p>R-003 · <span class="blast-low">low</span>. Delete <code>implementation-notes/artifacts/2026-06-18-original-sandbox-provider-guide.html</code> if the recovered guide should not be preserved.</p>
+
+<h2>Followups</h2>
+<ul>
+  <li>L-001 · Re-check Daytona pricing before using this note for a paid deployment quote.</li>
+  <li>L-002 · Compare actual Daytona billing export against the abandoned-sandbox estimate after one real autostop/autodelete cycle.</li>
+</ul>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>Guide includes exe.dev, Cloudflare, and Daytona.</li>
+  <li>Guide shows latency, monthly warm cost, burst cost, formulas, recommendation, and sources.</li>
+  <li>Note shows recovered exe.dev, Cloudflare, and Daytona monthly/burst math plus current Daytona unit prices, provider-default/custom-image scenarios, lifecycle cap, and model-cost exclusion.</li>
+  <li>Static HTML exists under <code>public/</code>.</li>
+</ul>
+</body>
+</html>

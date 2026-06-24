@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — dockerfile settings panel</title>
+<meta name="task" content="Add a settings panel for editing the Dockerfile and use the configured image for new exe.dev sessions.">
+<meta name="date-started" content="2026-06-16">
+<meta name="date-updated" content="2026-06-16">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="micro-cloud,exe.dev,dockerfile,image,settings">
+<meta name="related" content="2026-06-16-exedev-pi-ui.html,2026-06-12-micro-cloud-v0.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code, pre { font-family: ui-monospace, Menlo, monospace; }
+  code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  pre { background: #f6f6f6; padding: .55rem .7rem; border-radius: 4px; overflow-x: auto; font-size: 12.5px; line-height: 1.4; }
+  ul, ol { margin: .3rem 0 .8rem 1.2rem; padding: 0; }
+  li { margin: .15rem 0; }
+  .blast-low { color: #2a7a2a; } .blast-med { color: #b85c00; } .blast-high { color: #b00020; font-weight: 600; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>dockerfile settings panel</h1>
+<p class="meta"><code>nogit</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-16 · status <b>shipped</b> · blast <span class="blast-med">medium</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Let the user edit a Dockerfile in the UI and make new exe.dev sessions launch from the resulting image.</div>
+  <b>Source</b><div><code>exe.dev new --image</code> plus the existing local <code>image/Dockerfile</code>.</div>
+  <b>Surface</b><div><code>GET /api/settings</code>, <code>POST /api/settings</code>, <code>POST /api/sessions</code>, <code>public/index.html</code>.</div>
+  <b>Schema</b><div><code>data/settings.json</code> for image metadata; <code>image/Dockerfile</code> for Dockerfile text.</div>
+  <b>Build</b><div>Optional local <code>docker build</code> and <code>docker push</code> before launch.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>API contract</h2>
+<pre>GET /api/settings
+{
+  imageRef: string,
+  registryAuth: string,
+  autoBuildImage: boolean,
+  dockerfile: string
+}
+
+POST /api/settings
+{
+  imageRef: string,
+  registryAuth: string,
+  autoBuildImage: boolean,
+  dockerfile: string
+}</pre>
+
+<h2>Algorithm</h2>
+<ol>
+  <li>Read the saved image settings from <code>data/settings.json</code> and Dockerfile text from <code>image/Dockerfile</code>.</li>
+  <li>Save settings edits back to those same files.</li>
+  <li>When launching a session, if <code>imageRef</code> is set and <code>autoBuildImage</code> is true, generate a temporary Docker build context, run <code>docker build</code>, then <code>docker push</code>.</li>
+  <li>Pass <code>--image imageRef</code> to <code>ssh exe.dev new</code>; add <code>--registry-auth</code> when configured.</li>
+</ol>
+
+<h2>UI layout</h2>
+<ol>
+  <li><b>Settings panel</b>: image ref, registry auth, auto-build toggle, Dockerfile textarea, save button.</li>
+  <li><b>Launch form</b>: mention that launches use the saved image when present.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>src/settings.js</code></td><td>new</td><td>Persist and normalize Dockerfile/image settings.</td></tr>
+  <tr><td><code>src/image-builder.js</code></td><td>new</td><td>Prepare Docker build context and build/push the configured image.</td></tr>
+  <tr><td><code>src/server.js</code></td><td>touch</td><td>Expose settings APIs and pass saved settings into session creation.</td></tr>
+  <tr><td><code>src/provider.js</code></td><td>touch</td><td>Use the configured image and optional registry auth for <code>exe.dev new</code>.</td></tr>
+  <tr><td><code>src/config.js</code></td><td>touch</td><td>Add settings and Dockerfile paths.</td></tr>
+  <tr><td><code>public/index.html</code></td><td>touch</td><td>Add the settings panel.</td></tr>
+  <tr><td><code>public/app.js</code></td><td>touch</td><td>Load/save image settings.</td></tr>
+  <tr><td><code>README.md</code></td><td>touch</td><td>Document the image-backed launch flow.</td></tr>
+  <tr><td><code>test/settings.test.js</code></td><td>new</td><td>Cover settings normalization and Docker dependency derivation.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Keep the Dockerfile in <code>image/Dockerfile</code>. The repo already treats that as the image source of truth.</td></tr>
+  <tr><td>D-002</td><td>Save image metadata in <code>data/settings.json</code>. Keep mutable local config out of source-controlled files.</td></tr>
+  <tr><td>D-003</td><td>Build and push locally before launch when enabled. exe.dev consumes image refs, not raw Dockerfiles.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td><code>docker build + docker push</code> over pretending a Dockerfile can be sent straight to exe.dev. Matches exe.dev's real image model.</td></tr>
+  <tr><td>T-002</td><td><code>plain-text local registry auth</code> over a separate secret store. Smallest thing that works for a local control panel.</td></tr>
+</table>
+
+<h2>Assumptions</h2>
+<ul>
+  <li>A-001 · Docker is installed on the local machine when <code>autoBuildImage</code> is enabled. If wrong: launch should fail loudly.</li>
+  <li>A-002 · The user has already authenticated locally for <code>docker push</code>. If wrong: the push step will fail and show the registry error.</li>
+</ul>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Delete the settings API and UI panel; old setup-script launches still work.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>The page has a settings panel for Dockerfile-backed image launches.</li>
+  <li>Saving settings updates <code>image/Dockerfile</code> and <code>data/settings.json</code>.</li>
+  <li>Session launch uses the configured image, with optional pre-launch build/push.</li>
+  <li>Tests pass.</li>
+</ul>
+</body>
+</html>

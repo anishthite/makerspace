@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Settings</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300..700;1,400&family=Noto+Serif+Display:wght@600;700;800;900&family=Saira+Extra+Condensed:wght@400;500;600;700;800&family=Shippori+Mincho+B1:wght@500;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2305040A'/%3E%3Cpath d='M6 24V8h4l6 9V8h4v16h-4l-6-9v9H6Zm18 0V8h2v16h-2Z' fill='%23F59B2D'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="crt-vignette" aria-hidden="true"></div>
+  <div class="crt-scanlines" aria-hidden="true"></div>
+
+  <main class="shell console-grid">
+    <nav class="topbar panel-lite" aria-label="Settings controls">
+      <a class="brand-mark" href="/" aria-label="Makerspace home">
+        <strong>settings</strong>
+      </a>
+      <div class="topbar-actions">
+        <a class="nav-link" href="/">threads</a>
+      </div>
+    </nav>
+
+    <header class="hero panel stack-lg">
+      <h1>Settings</h1>
+    </header>
+
+    <section class="panel stack-lg">
+      <div class="panel-header">
+        <div>
+          <h2>Codex</h2>
+        </div>
+        <button id="codex-login" type="button">Sign in</button>
+      </div>
+      <p id="codex-status" class="muted">Checking…</p>
+      <div id="codex-device" class="notice hidden"></div>
+    </section>
+
+    <section class="panel stack-lg">
+      <div class="panel-header">
+        <div>
+          <h2>GitHub</h2>
+        </div>
+        <div class="inline-actions">
+          <button id="github-login" type="button">Sign in</button>
+          <button id="github-logout" type="button">Disconnect</button>
+        </div>
+      </div>
+      <p id="github-status" class="muted">Checking…</p>
+    </section>
+
+    <section class="panel stack-lg">
+      <div class="connection-card full-width">
+        <div class="connection-head">
+          <div>
+            <h3>Backend</h3>
+          </div>
+          <p id="connection-summary" class="connection-summary">same-origin · no token</p>
+        </div>
+        <div class="input-row">
+          <label>
+            <span>Backend URL</span>
+            <input id="api-base" type="url" placeholder="https://api.yourdomain.com">
+            <small>Blank = same-origin.</small>
+          </label>
+          <label>
+            <span>Access token</span>
+            <input id="api-token" type="password" placeholder="CONTROL_API_TOKEN" autocomplete="current-password">
+            <small>Browser only.</small>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel stack-lg">
+      <div class="panel-header">
+        <div>
+          <h2>Sandbox</h2>
+        </div>
+      </div>
+      <form id="settings-form" class="stack-lg">
+        <div class="form-grid">
+          <label class="full-width">
+            <span>Image ref</span>
+            <input id="image-ref" name="imageRef" placeholder="image ref">
+            <small>Blank = default.</small>
+          </label>
+          <label>
+            <span>Registry username</span>
+            <input id="registry-username" name="registryUsername" placeholder="username" autocomplete="username">
+          </label>
+          <label>
+            <span>Registry token</span>
+            <input id="registry-password" name="registryPassword" type="password" placeholder="token" autocomplete="current-password">
+            <small>Blank keeps current.</small>
+          </label>
+          <label class="full-width">
+            <span>Anthropic API key</span>
+            <input id="anthropic-api-key" name="anthropicApiKey" type="password" placeholder="API key" autocomplete="off">
+            <small>Blank keeps current.</small>
+          </label>
+        </div>
+        <div class="form-actions">
+          <button id="settings-submit" type="submit">Save</button>
+          <p id="settings-status" class="muted">Loading…</p>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <script type="module" src="/settings.js?v=copy-trim-1"></script>
+</body>
+</html>

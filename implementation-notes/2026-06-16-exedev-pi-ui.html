@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — exe.dev pi ui</title>
+<meta name="task" content="Simplify micro-cloud into a minimal HTML UI for launching and using pi on remote exe.dev VMs.">
+<meta name="date-started" content="2026-06-16">
+<meta name="date-updated" content="2026-06-16">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="micro-cloud,exe.dev,pi,ui,simplification">
+<meta name="related" content="2026-06-12-micro-cloud-v0.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code, pre { font-family: ui-monospace, Menlo, monospace; }
+  code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  pre { background: #f6f6f6; padding: .55rem .7rem; border-radius: 4px; overflow-x: auto; font-size: 12.5px; line-height: 1.4; }
+  ul, ol { margin: .3rem 0 .8rem 1.2rem; padding: 0; }
+  li { margin: .15rem 0; }
+  .blast-low { color: #2a7a2a; } .blast-med { color: #b85c00; } .blast-high { color: #b00020; font-weight: 600; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>exe.dev pi ui</h1>
+<p class="meta"><code>nogit</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-16 · status <b>shipped</b> · blast <span class="blast-med">medium</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Trim the dashboard to the one job: launch a remote exe.dev VM and use <code>pi</code> there.</div>
+  <b>Source</b><div><code>ssh exe.dev new --setup-script</code>, exe.dev HTTP proxy, local JSON persistence.</div>
+  <b>Surface</b><div><code>GET /api/sessions</code>, <code>POST /api/sessions</code>, <code>POST /api/sessions/:name/share</code>, <code>/</code>.</div>
+  <b>Schema</b><div><code>data/sessions.json</code> only; no DB.</div>
+  <b>UI</b><div>Single page: intro, launch form, session list.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>UI layout</h2>
+<ol>
+  <li><b>Hero</b>: say the UI launches <code>pi</code> on remote exe.dev VMs; show provider mode.</li>
+  <li><b>Launch form</b>: keep only fields needed to create a repo-backed or blank remote workspace.</li>
+  <li><b>Session list</b>: show SSH, run, logs, preview URL, and share toggles.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>public/index.html</code></td><td>touch</td><td>Remove the compare-report UI; keep launch and session surfaces.</td></tr>
+  <tr><td><code>public/app.js</code></td><td>touch</td><td>Drop report fetching; render a smaller remote-session dashboard.</td></tr>
+  <tr><td><code>public/styles.css</code></td><td>touch</td><td>Trim report-specific styles; add small helper layout styles.</td></tr>
+  <tr><td><code>src/session.js</code></td><td>touch</td><td>Derive a default exe.dev preview URL from the VM name.</td></tr>
+  <tr><td><code>README.md</code></td><td>touch</td><td>Document the repo as a simple remote-pi launcher instead of a hosting comparison tool.</td></tr>
+  <tr><td><code>test/session.test.js</code></td><td>touch</td><td>Assert the derived preview URL.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Keep the existing <code>ssh</code> provider flow. The app already provisions remote VMs; the problem is UI focus, not transport.</td></tr>
+  <tr><td>D-002</td><td>Drop the exe.dev-vs-VPS report from the homepage. The user asked to use <code>pi</code> on exe.dev, not compare hosting options.</td></tr>
+  <tr><td>D-003</td><td>Derive <code>https://&lt;vm&gt;.exe.xyz/</code> when a session has no explicit <code>httpsUrl</code>. exe.dev proxies that host by default.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td><code>copyable SSH/log commands</code> over embedded terminal/log streaming. Smaller diff; enough to use the remote VM now.</td></tr>
+</table>
+
+<h2>Assumptions</h2>
+<ul>
+  <li>A-001 · Cloneable repos or blank repos still cover the first cut. If wrong: add upload/sync later.</li>
+  <li>A-002 · A derived proxy URL is acceptable even when live <code>ls --json</code> data omits it. If wrong: fetch <code>share show</code> later.</li>
+</ul>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Restore the report UI and old README copy; no schema or provisioning changes become irreversible.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>The homepage only talks about remote <code>pi</code> sessions on exe.dev.</li>
+  <li>The form still creates sessions and the list still exposes remote commands.</li>
+  <li>Sessions show a preview URL even without provider-supplied <code>httpsUrl</code>.</li>
+  <li>Tests pass.</li>
+</ul>
+</body>
+</html>

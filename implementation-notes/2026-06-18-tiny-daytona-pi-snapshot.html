@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — tiny Daytona Pi snapshot</title>
+<meta name="task" content="Create a small Daytona snapshot with Pi and bridge dependencies preinstalled.">
+<meta name="date-started" content="2026-06-18">
+<meta name="date-updated" content="2026-06-23">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="makerspace,daytona,snapshot,pi,latency">
+<meta name="related" content="2026-06-17-daytona-migration.html,2026-06-18-local-daytona-pi-smoke.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code,pre{font-family:ui-monospace,Menlo,monospace}code{background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}pre{background:#f6f6f6;padding:.55rem .7rem;border-radius:4px;overflow-x:auto;font-size:12.5px;line-height:1.4}ul,ol{margin:.3rem 0 .8rem 1.2rem;padding:0}li{margin:.15rem 0}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.kv b{color:#444;font-weight:600}.blast-med{color:#b85c00}</style>
+</head>
+<body>
+<h1>Tiny Daytona Pi snapshot</h1>
+<p class="meta"><code>nogit</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-18 · status <b>shipped</b> · blast <span class="blast-med">medium</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Build <code>makerspace-pi-tiny-v2</code> so bridge runs skip Pi, SDK, and extension npm installs with one npm prefix.</div>
+  <b>Source</b><div><code>genasite-base</code> inspection showed Node 20, no <code>pi</code>, no bridge SDK, no <code>/home/daytona</code>.</div>
+  <b>Surface</b><div><code>image/daytona-pi-tiny.Dockerfile</code>, <code>image/package.json</code>, <code>src/setup-script.js</code>, local <code>.env</code>.</div>
+  <b>Snapshot</b><div><code>makerspace-pi-tiny-v2</code> active; smoke has <code>node v22.23.0</code>, <code>pi 0.79.7</code>, bridge SDK <code>0.79.7</code>, root <code>510M</code>.</div>
+  <b>Schema</b><div>No app data schema change.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>Algorithm</h2>
+<ol>
+  <li>Base from <code>node:22-bookworm-slim</code>; install only <code>git</code>, <code>curl</code>, and certificates.</li>
+  <li>Install <code>image/package.json</code> once into <code>/home/daytona/.pi/agent/npm</code>.</li>
+  <li>Symlink <code>/usr/local/bin/pi</code> to <code>/home/daytona/.pi/agent/npm/node_modules/.bin/pi</code>.</li>
+  <li>Set bridge setup to load SDK from <code>/home/daytona/.pi/agent/npm</code> instead of <code>bridge-sdk</code>.</li>
+  <li>Create Daytona snapshot <code>makerspace-pi-tiny-v2</code>; point <code>DAYTONA_SNAPSHOT</code> at it after smoke passes.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>image/daytona-pi-tiny.Dockerfile</code>, <code>image/Dockerfile</code></td><td>new/touch</td><td>Define Pi-ready images and install one npm prefix.</td></tr>
+  <tr><td><code>image/package.json</code></td><td>new</td><td>Pin the cloud Pi package set copied into both image paths.</td></tr>
+  <tr><td><code>src/setup-script.js</code>, <code>test/setup-script.test.js</code></td><td>touch</td><td>Load bridge SDK from <code>/home/daytona/.pi/agent/npm</code> and allow stale peer metadata.</td></tr>
+  <tr><td><code>.env</code></td><td>touch</td><td>Switch local launches from <code>genasite-base</code> to <code>makerspace-pi-tiny-v2</code> after verification.</td></tr>
+  <tr><td><code>implementation-notes/artifacts/2026-06-18-tiny-daytona-*.txt</code></td><td>new</td><td>Record initial snapshot build and smoke output.</td></tr>
+  <tr><td><code>implementation-notes/artifacts/2026-06-21-boardstyle-*.txt</code></td><td>new</td><td>Record the Cloudflare sandbox base comparison and cleanup.</td></tr>
+  <tr><td><code>implementation-notes/artifacts/2026-06-23-pi-runtime-dedupe-*.txt</code></td><td>new</td><td>Record the single-prefix snapshot build, smoke, tests, and cleanup.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Use a Daytona snapshot instead of <code>imageRef</code>. Existing provider already selects <code>DAYTONA_SNAPSHOT</code> when settings keep <code>imageRef=""</code>.</td></tr>
+  <tr><td>D-002</td><td>Keep the image root-based. Current Daytona Node snapshots execute setup as root, and creating a <code>daytona</code> user would make missing <code>sudo</code> matter.</td></tr>
+  <tr><td>D-003</td><td>Keep <code>makerspace-pi-tiny</code> over <code>makerspace-pi-boardstyle</code>. The Board-style base is larger and did not improve measured startup.</td></tr>
+  <tr><td>D-004</td><td>Supersedes: D-001. Use <code>makerspace-pi-tiny-v2</code> with one npm prefix. It removes the global plus bridge duplicate install.</td></tr>
+  <tr><td>D-005</td><td>Use <code>--legacy-peer-deps</code> for runtime package install. <code>pi-simplify</code> advertises a stale peer range but already worked in the prior image.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td><code>node:22-bookworm-slim</code> over Ubuntu/systemd. The bridge path needs Node, git, curl, Pi, and npm packages.</td></tr>
+  <tr><td>T-002</td><td>Preinstall npm extensions over only preinstalling Pi. Local Pi settings otherwise reinstall those packages during <code>Starting pi</code>.</td></tr>
+  <tr><td>T-003</td><td><code>node:22-bookworm-slim</code> over <code>cloudflare/sandbox:0.12.1</code>. Cloudflare base adds about <code>264 MiB</code> root filesystem and no recurring Daytona cost advantage.</td></tr>
+  <tr><td>T-004</td><td>One npm prefix over separate global and bridge installs. Snapshot smoke drops root filesystem from <code>988M</code> to <code>510M</code>.</td></tr>
+</table>
+
+<h2>Assumptions</h2>
+<ul>
+  <li>A-001 · Daytona accepts a plain long-running container entrypoint. If wrong: snapshot smoke fails before app config changes.</li>
+</ul>
+
+<h2>Verification</h2>
+<table>
+  <tr><th>Artifact</th><th>Result</th></tr>
+  <tr><td><code>2026-06-18-tiny-daytona-build.txt</code></td><td><code>daytona snapshot create makerspace-pi-tiny</code> succeeded.</td></tr>
+  <tr><td><code>2026-06-18-tiny-daytona-smoke.txt</code></td><td>Fresh sandbox exposes <code>node v22.23.0</code>, <code>pi 0.79.7</code>, bridge SDK <code>0.79.7</code>, npm extensions, and ponytail clone.</td></tr>
+  <tr><td><code>2026-06-18-tiny-daytona-npm-test.txt</code></td><td><code>npm test</code> passed 24/24.</td></tr>
+  <tr><td><code>2026-06-21-boardstyle-daytona-compare.txt</code></td><td><code>makerspace-pi-tiny</code> create <code>1136ms</code>; <code>makerspace-pi-boardstyle</code> create <code>1603ms</code>.</td></tr>
+  <tr><td><code>2026-06-21-boardstyle-daytona-du.txt</code></td><td><code>makerspace-pi-tiny</code> root <code>988M</code>; <code>makerspace-pi-boardstyle</code> root <code>1252M</code>.</td></tr>
+  <tr><td><code>2026-06-21-boardstyle-daytona-cleanup.txt</code></td><td>Deleted <code>makerspace-pi-boardstyle</code> after comparison.</td></tr>
+  <tr><td><code>2026-06-23-pi-runtime-dedupe-build.txt</code></td><td><code>makerspace-pi-tiny-v2</code> build succeeded after switching to adjacent <code>package.json</code> and <code>--legacy-peer-deps</code>.</td></tr>
+  <tr><td><code>2026-06-23-pi-runtime-dedupe-smoke.txt</code></td><td>Fresh v2 sandbox exposes <code>pi</code> from <code>/usr/local/bin/pi</code>, bridge SDK in <code>agent/npm</code>, no <code>bridge-sdk</code> dir, and root <code>510M</code>.</td></tr>
+  <tr><td><code>2026-06-23-pi-runtime-dedupe-latency.txt</code></td><td>Fresh v2 bridge ready in <code>8392ms</code>; submit-to-first-LLM <code>883ms</code>.</td></tr>
+  <tr><td><code>2026-06-23-pi-runtime-dedupe-npm-test.txt</code></td><td><code>npm test</code> passed 27/27.</td></tr>
+  <tr><td><code>2026-06-23-pi-runtime-dedupe-cleanup.txt</code></td><td>Deleted superseded <code>makerspace-pi-tiny</code> after switching <code>.env</code> to <code>makerspace-pi-tiny-v2</code>.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Set <code>DAYTONA_SNAPSHOT=genasite-base</code> or rebuild from <code>image/daytona-pi-tiny.Dockerfile</code> if launch smoke regresses.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li><code>daytona snapshot create makerspace-pi-tiny-v2</code> succeeds.</li>
+  <li>Fresh sandbox from <code>makerspace-pi-tiny-v2</code> has <code>node</code>, <code>pi</code>, and bridge SDK already present.</li>
+  <li>Local <code>.env</code> points at <code>makerspace-pi-tiny-v2</code>.</li>
+</ul>
+</body>
+</html>

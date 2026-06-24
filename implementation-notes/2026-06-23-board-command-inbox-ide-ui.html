@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Board command/inbox/IDE UI</title>
+<meta name="task" content="Apply the board design system to a command-palette homepage, inbox repo view, and IDE thread view with richer Pi activity telemetry.">
+<meta name="date-started" content="2026-06-23">
+<meta name="date-updated" content="2026-06-23">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="makerspace,ui,board-skin,command-palette,inbox,ide,telemetry">
+<meta name="related" content="2026-06-23-ui-layout-design-systems.html,2026-06-23-ui-layout-concepts.html,2026-06-18-nerv-ui-modes.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}.blast-med{color:#b85c00}</style>
+</head>
+<body>
+<h1>Board command/inbox/IDE UI</h1>
+<p class="meta"><code>nogit</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-23 · status <b class="status-shipped">shipped</b> · blast <span class="blast-med">medium</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Make <code>/</code> a command-palette start page, use inbox styling for repo/thread triage, and make <code>/thread.html</code> an IDE cockpit with visible Pi activity.</div>
+  <b>Design</b><div>Use <code>~/workspace/board</code> engineering-paper tokens and 2px chrome.</div>
+  <b>Telemetry</b><div>Show status, model-call start, tool call start/update/end, warnings, and streamed answer text.</div>
+  <b>Surface</b><div><code>public/index.html</code>, <code>public/thread.html</code>, <code>public/app.js</code>, <code>public/thread.js</code>, <code>public/styles.css</code>, bridge/host stream code.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>UI layout</h2>
+<ol>
+  <li><b>Start</b>: command box, GitHub repo picker, mission textarea, and auth/provider strip.</li>
+  <li><b>Repo inbox</b>: thread list as mailbox items with status, repo, branch, and open action.</li>
+  <li><b>Thread</b>: IDE shell with explorer rail, center transcript, right activity/tools inspector, bottom composer.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>public/index.html</code></td><td>touch</td><td>Replace NERV homepage with board-skin command palette and inbox regions.</td></tr>
+  <tr><td><code>public/thread.html</code></td><td>touch</td><td>Replace thread page with IDE cockpit regions for transcript, activity, tools, and facts.</td></tr>
+  <tr><td><code>public/styles.css</code></td><td>touch</td><td>Replace NERV styles with board engineering-paper system plus command/inbox/IDE components.</td></tr>
+  <tr><td><code>public/app.js</code></td><td>touch</td><td>Render threads as inbox items and keep existing auth/repo creation behavior.</td></tr>
+  <tr><td><code>public/thread.js</code></td><td>touch</td><td>Render stream events into transcript, activity feed, tool list, and inspector facts.</td></tr>
+  <tr><td><code>src/setup-script.js</code></td><td>touch</td><td>Publish structured tool events from bridge Pi sessions.</td></tr>
+  <tr><td><code>src/host-pi-runner.js</code></td><td>touch</td><td>Publish structured tool events from host-dispatch Pi sessions.</td></tr>
+  <tr><td><code>src/server.js</code></td><td>touch</td><td>Persist structured tool events and expose event history in output response.</td></tr>
+  <tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Add this task to the notes index.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Show visible telemetry, not private chain-of-thought. The UI can expose status, tool calls, and streamed explanations safely.</td></tr>
+  <tr><td>D-002</td><td>Keep vanilla HTML/CSS/JS. Existing build stays a static copy step.</td></tr>
+  <tr><td>D-003</td><td>Use one <code>/thread.html</code> IDE page. No new router.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td>Structured stream events over parsing transcript text. Tool calls become reliable UI objects.</td></tr>
+</table>
+
+<h2>Verification</h2>
+<table>
+  <tr><th>Check</th><th>Result</th></tr>
+  <tr><td><code>node --check public/app.js public/thread.js src/server.js src/host-pi-runner.js src/setup-script.js</code></td><td>Passed.</td></tr>
+  <tr><td><code>npm test</code></td><td>Passed 27/27.</td></tr>
+  <tr><td><code>npm run build</code></td><td>Passed; copied public assets to ignored <code>dist/</code>.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Revert public assets and stream-event additions to restore NERV UI and raw transcript behavior.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>Homepage uses command-palette start flow.</li>
+  <li>Thread list uses inbox-style triage.</li>
+  <li>Thread page uses IDE cockpit layout.</li>
+  <li>Pi status, metric, tool, warning, and output events render separately.</li>
+  <li><code>npm test</code> and <code>npm run build</code> pass.</li>
+</ul>
+</body>
+</html>

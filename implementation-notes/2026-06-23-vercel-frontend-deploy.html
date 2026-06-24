@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Vercel frontend deploy</title>
+<meta name="task" content="Deploy the static Makerspace frontend to Vercel without shipping local secrets or backend runtime files.">
+<meta name="date-started" content="2026-06-23">
+<meta name="date-updated" content="2026-06-23">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="high">
+<meta name="tags" content="makerspace,vercel,frontend,deploy,secrets">
+<meta name="related" content="2026-06-17-repo-thread-ui.html,2026-06-17-connection-ui-polish.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code, pre { font-family: ui-monospace, Menlo, monospace; }
+  code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  ul { margin: .3rem 0 .8rem 1.2rem; padding: 0; }
+  li { margin: .15rem 0; }
+  .blast-low { color: #2a7a2a; } .blast-med { color: #b85c00; } .blast-high { color: #b00020; font-weight: 600; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>Vercel frontend deploy</h1>
+<p class="meta"><code>nogit</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-23 · status <b>shipped</b> · blast <span class="blast-high">high</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Deploy <code>public/</code> as the Vercel frontend while keeping the Node control backend separate.</div>
+  <b>Source</b><div><code>npm run build</code> copies <code>public/</code> to <code>dist/</code>.</div>
+  <b>Surface</b><div><code>/</code>, <code>/thread.html</code>, <code>/settings.html</code>, and static docs.</div>
+  <b>Schema</b><div>None.</div>
+  <b>Mobile</b><div>Untouched.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>.vercelignore</code></td><td>new</td><td>Exclude local secrets, backend runtime state, dependencies, and generated artifacts from Vercel source uploads.</td></tr>
+  <tr><td><code>vercel.json</code></td><td>touch</td><td>Skip dependency install for the static-only frontend build.</td></tr>
+  <tr><td><code>.gitignore</code></td><td>touch</td><td>Ignore Vercel's local project link directory.</td></tr>
+  <tr><td><code>implementation-notes/2026-06-23-vercel-frontend-deploy.html</code></td><td>new</td><td>Record the deploy decision and validation.</td></tr>
+  <tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Add this task to the notes index.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Use the existing static <code>vercel.json</code> and skip install. <code>npm run build</code> only copies <code>public/</code> to <code>dist/</code>.</td></tr>
+  <tr><td>D-002</td><td>Keep the control backend off Vercel. Daytona credentials and long-running SSE belong on the separate Node backend.</td></tr>
+  <tr><td>D-003</td><td>Add <code>.vercelignore</code> before deployment. Local <code>.env</code> contains deploy-irrelevant secrets.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td><code>.vercelignore</code> over a new <code>frontend/</code> package. Smaller diff and no copied assets.</td></tr>
+  <tr><td>T-002</td><td>Static Vercel deploy over serverless API routes. The browser already supports a remote control backend URL.</td></tr>
+</table>
+
+<h2>Assumptions</h2>
+<ul>
+  <li>A-001 · The current Vercel login and default scope are acceptable. If wrong: redeploy under the chosen scope.</li>
+  <li>A-002 · A separate HTTPS control backend will be configured after frontend deploy. If wrong: the UI loads but API actions fail until configured.</li>
+</ul>
+
+<h2>Validation</h2>
+<table>
+  <tr><th>ID</th><th>Command · Result</th></tr>
+  <tr><td>V-001</td><td><code>npm run build</code> · pass.</td></tr>
+  <tr><td>V-002</td><td><code>npm test</code> · 27/27 pass.</td></tr>
+  <tr><td>V-003</td><td><code>vercel deploy --prod --yes</code> · <code>https://makerspace-red.vercel.app</code>.</td></tr>
+  <tr><td>V-004</td><td><code>curl</code> smoke · <code>/</code>, <code>/thread</code>, and <code>/settings.html</code> return the expected titles.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-high">high</span>. Remove the Vercel deployment/project and restore ignored files if a broader source upload is needed.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li><code>npm run build</code> passes.</li>
+  <li><code>npm test</code> passes.</li>
+  <li>Vercel returns a production URL for the static frontend.</li>
+  <li>The final reply lists the URL and the separate backend requirement.</li>
+</ul>
+</body>
+</html>

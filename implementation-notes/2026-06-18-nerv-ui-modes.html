@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — NERV UI modes</title>
+<meta name="task" content="Restyle the thread UI in a NERV-OS warm terminal aesthetic with front-office and debug modes.">
+<meta name="date-started" content="2026-06-18">
+<meta name="date-updated" content="2026-06-18">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="makerspace,ui,threads,nerv,debug-mode">
+<meta name="related" content="2026-06-17-repo-thread-ui.html,2026-06-17-connection-ui-polish.html,2026-06-18-provider-boundary.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code,pre{font-family:ui-monospace,Menlo,monospace}code{background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.status-in-progress{color:#b85c00}.blast-medium{color:#b85c00}</style>
+</head>
+<body>
+<h1>NERV UI modes</h1>
+<p class="meta"><code>nogit</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-18 · status <b>shipped</b> · blast <span class="blast-medium">medium</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Make the static UI feel like a warm NERV operations console while keeping front-office mode calm and thread-first.</div>
+  <b>Modes</b><div><code>office</code> hides backend panels and raw bridge data; <code>debug</code> shows provider, auth, settings, connection, and raw thread telemetry.</div>
+  <b>Surface</b><div><code>public/index.html</code>, <code>public/thread.html</code>, <code>public/app.js</code>, <code>public/thread.js</code>, <code>public/styles.css</code>.</div>
+  <b>Persistence</b><div>Mode uses <code>localStorage.makerspaceUiMode</code>; links preserve backend URL only as before.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>public/styles.css</code></td><td>touch</td><td>Replace blue card theme with NERV-OS tokens, CRT overlays, panels, badges, transcript, and mode visibility.</td></tr>
+  <tr><td><code>public/index.html</code></td><td>touch</td><td>Add mode toggle, office hero copy, and mark operational panels as debug-only.</td></tr>
+  <tr><td><code>public/thread.html</code></td><td>touch</td><td>Add mode toggle, front-office chat shell, and debug telemetry panel.</td></tr>
+  <tr><td><code>public/app.js</code></td><td>touch</td><td>Persist mode, render office/debug copy, and enrich thread cards without extra APIs.</td></tr>
+  <tr><td><code>public/thread.js</code></td><td>touch</td><td>Persist mode, hide raw bridge URL in office mode, and fill debug telemetry from stored session data.</td></tr>
+  <tr><td><code>implementation-notes/artifacts/2026-06-18-nerv-ui-modes-check.txt</code></td><td>new</td><td>Record syntax, test, build, and Playwright smoke checks.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Default to <code>office</code>. Normal users should see the thread, not sandbox plumbing.</td></tr>
+  <tr><td>D-002</td><td>Keep debug panels in DOM with <code>data-mode</code> visibility. No router or extra pages needed.</td></tr>
+  <tr><td>D-003</td><td>Use only CSS animations for cursor/status/emergency. Repeated chat actions should stay instant.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td>Static CSS/JS over a component rewrite. Existing app is vanilla and build stays a copy step.</td></tr>
+</table>
+
+<h2>Verification</h2>
+<table>
+  <tr><th>Check</th><th>Result</th></tr>
+  <tr><td><code>node --check public/app.js public/thread.js</code></td><td>Passed.</td></tr>
+  <tr><td><code>npm test</code></td><td>Passed 22/22.</td></tr>
+  <tr><td><code>npm run build</code></td><td>Passed.</td></tr>
+  <tr><td>Playwright homepage office</td><td><code>output/playwright/nerv-home-after.txt</code> shows only thread creation/listing.</td></tr>
+  <tr><td>Playwright homepage debug</td><td><code>output/playwright/nerv-home-debug.txt</code> shows provider, auth, settings, backend, and telemetry.</td></tr>
+  <tr><td>Playwright thread office</td><td><code>output/playwright/nerv-thread-status-fixed.txt</code> hides bridge URL and shows friendly lifecycle status.</td></tr>
+  <tr><td>Playwright thread debug</td><td><code>output/playwright/nerv-thread-toggled.txt</code> shows bridge URL, sandbox id, commands, and timestamps.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-medium">medium</span>. Revert public assets to restore the previous blue card UI; APIs and server code are unchanged.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>Homepage and thread page both have office/debug mode toggles.</li>
+  <li>Office mode hides backend/auth/settings/provider detail and presents friendly lifecycle copy.</li>
+  <li>Debug mode shows operational detail and raw provider/thread telemetry.</li>
+  <li>NERV-OS font, palette, CRT, panel, badge, input, and transcript rules are applied.</li>
+  <li><code>npm test</code> and <code>npm run build</code> pass.</li>
+</ul>
+</body>
+</html>

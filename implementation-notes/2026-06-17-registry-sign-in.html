@@ -1,0 +1,9 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="status" content="shipped"><meta name="tags" content="settings,image,registry"><meta name="related" content="2026-06-17-stored-registry-auth.html"><title>Registry sign-in</title></head><body>
+<h1>Registry sign-in</h1>
+<p class="meta">main · makerspace · 2026-06-17 · shipped · blast medium</p>
+<h2>Summary</h2><table><tr><th>Goal</th><td>Let the user sign in to an image registry with username and token fields.</td></tr><tr><th>Surface</th><td>Settings UI and <code>/api/settings</code>.</td></tr><tr><th>Secret</th><td>Server stores <code>registryUsername:registryPassword</code> as existing <code>registryAuth</code>.</td></tr></table>
+<h2>Files</h2><table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>src/settings.js</code></td><td>touch</td><td>Accept username/password and convert to <code>registryAuth</code>.</td></tr><tr><td><code>public/index.html</code></td><td>touch</td><td>Replace raw auth with sign-in fields.</td></tr><tr><td><code>public/app.js</code></td><td>touch</td><td>Submit sign-in fields and clear them after save.</td></tr><tr><td><code>test/settings.test.js</code></td><td>touch</td><td>Pin username/password normalization.</td></tr></table>
+<h2>Decisions</h2><table><tr><th>ID</th><th>Choice</th><th>Rationale</th></tr><tr><td>D-001</td><td>Keep stored shape as <code>registryAuth</code>.</td><td>exe.dev launch path already consumes that format.</td></tr></table>
+<h2>Reversibility</h2><p>R-001 Medium: revert the UI fields; saved <code>registryAuth</code> remains compatible.</p>
+<h2>Definition of done</h2><ul><li>Username/token saves as registry auth.</li><li>Existing blank-secret preservation still works.</li><li><code>npm test</code> passes.</li></ul>
+</body></html>

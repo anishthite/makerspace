@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — host dispatch cold path</title>
+<meta name="task" content="Start the actual Pi LLM call on normal cold /api/chat before VM provisioning finishes.">
+<meta name="date-started" content="2026-06-17">
+<meta name="date-updated" content="2026-06-17">
+<meta name="status" content="in-progress">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="micro-cloud,pi-sdk,cold-start,latency,tools,exe.dev">
+<meta name="related" content="2026-06-17-intent-prelaunch.html,2026-06-17-scalable-bootup.html,2026-06-16-subsecond-bootup-latency.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 900px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code, pre { font-family: ui-monospace, Menlo, monospace; }
+  code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .blast-med { color: #b85c00; }
+</style>
+</head>
+<body>
+<h1>host dispatch cold path</h1>
+<p class="meta"><code>nogit</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-17 · status <b>in-progress</b> · blast <span class="blast-med">medium</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Make direct cold <code>POST /api/chat</code> start the actual Pi provider request under <code>1000 ms</code>.</div>
+  <b>Rejected prior</b><div><code>2026-06-17-intent-prelaunch.html</code> proved a prepared bridge path, not true cold submit.</div>
+  <b>Approach</b><div>Run the Pi SDK on the app server immediately with remote-tool definitions that wait for the new exe.dev VM only when tools execute.</div>
+  <b>Measurement</b><div>Use direct <code>scripts/measure-bootup.js</code> with isolated <code>SESSION_DATA_PATH</code>, <code>WARM_BRIDGE_POOL_SIZE=0</code>, and no <code>--intent-prep</code>.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>Algorithm</h2>
+<ol>
+  <li>Accept <code>POST /api/chat</code>; create one stored session and start host Pi dispatch immediately.</li>
+  <li>Wrap <code>piSession.agent.streamFn</code>; persist <code>first_llm_call_start</code> before the provider request leaves the host process.</li>
+  <li>Provision the exe.dev VM concurrently with <code>autoRunAgent=false</code> so setup creates the same workspace and bridge but does not start a second Pi run.</li>
+  <li>Expose remote proxy tools with the standard Pi tool names; tool execution awaits VM readiness and runs against <code>/srv/workspace</code>.</li>
+  <li>Stream host Pi SDK events through the existing session SSE endpoints.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>src/host-pi-runner.js</code></td><td>new</td><td>Load local Pi SDK, create host Pi sessions, emit metrics, and define remote-backed tools.</td></tr>
+  <tr><td><code>src/server.js</code></td><td>touch</td><td>Route fresh cold chat sessions to host dispatch while provisioning the VM in parallel.</td></tr>
+  <tr><td><code>public/app.js</code></td><td>touch</td><td>Remove automatic intent prep and submit gating from the normal browser path.</td></tr>
+  <tr><td><code>scripts/measure-bootup.js</code></td><td>touch</td><td>Keep direct chat as the default verifier and add evidence fields for host-dispatch sessions.</td></tr>
+  <tr><td><code>README.md</code></td><td>touch</td><td>Document direct cold host dispatch and keep intent prep out of the normal path.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Start Pi SDK on the app server for cold submit. VM provisioning cannot physically finish under <code>1000 ms</code>.</td></tr>
+  <tr><td>D-002</td><td>Proxy standard Pi tools to the new VM when they execute. The first LLM request sees normal tool availability while tool effects remain remote.</td></tr>
+  <tr><td>D-003</td><td>Remove browser submit gating. Normal submit must be measurable without hidden prep state.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td>Host provider call with remote tool proxies over prepared bridge. It satisfies the true cold metric without a pool.</td></tr>
+  <tr><td>T-002</td><td>Tool execution waits for VM readiness over failing early. Correctness beats instant tool failure.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Disable host dispatch to return fresh chats to bridge-only VM execution; cold submit latency returns to VM provisioning time.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>Normal browser submit posts directly to <code>/api/chat</code> without automatic <code>/api/bridge-intents</code>.</li>
+  <li>Fresh <code>/api/chat</code> starts an actual Pi SDK provider request under <code>1000 ms</code>.</li>
+  <li>Pi tool names remain available and execute against the provisioned VM.</li>
+  <li>Direct cold measurement from empty stored sessions passes without <code>--intent-prep</code>.</li>
+  <li><code>npm test</code> passes.</li>
+</ul>
+</body>
+</html>

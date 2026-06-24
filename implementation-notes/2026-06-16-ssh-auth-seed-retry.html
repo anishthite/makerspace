@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — ssh auth seed retry</title>
+<meta name="task" content="Retry transient SSH failures while seeding Pi auth into fresh exe.dev VMs.">
+<meta name="date-started" content="2026-06-16">
+<meta name="date-updated" content="2026-06-16">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="micro-cloud,exe.dev,ssh,bridge,auth">
+<meta name="related" content="2026-06-16-ssh-poll-hostkey-fix.html,2026-06-16-bridge-auth-seed.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code { font-family: ui-monospace, Menlo, monospace; background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  ul, ol { margin: .3rem 0 .8rem 1.2rem; padding: 0; }
+  .blast-med { color: #b85c00; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+</style>
+</head>
+<body>
+<h1>ssh auth seed retry</h1>
+<p class="meta"><code>nogit</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-16 · status <b>shipped</b> · blast <span class="blast-med">medium</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Keep bridge launches alive when exe.dev reports a VM before SSH accepts commands.</div>
+  <b>Source</b><div>Screenshot shows <code>Connection to *.exe.xyz closed by remote host</code> immediately after <code>VM ready</code>.</div>
+  <b>Surface</b><div><code>src/server.js</code>, <code>src/provider.js</code>, <code>test/provider.test.js</code>.</div>
+  <b>Failure point</b><div><code>seedRemotePiAuth()</code> runs before <code>waitForBridge()</code>.</div>
+</div>
+
+<h2>Algorithm</h2>
+<ol>
+  <li>Classify <code>closed by remote host</code> as a transient SSH readiness error.</li>
+  <li>Retry only transient auth-seed SSH failures until <code>PI_BRIDGE_READY_TIMEOUT_MS</code>.</li>
+  <li>Throw non-transient SSH errors immediately.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>src/provider.js</code></td><td>touch</td><td>Recognize exe.dev's <code>Connection to host closed by remote host</code> wording as transient.</td></tr>
+  <tr><td><code>src/server.js</code></td><td>touch</td><td>Retry the auth seed SSH command on transient readiness failures.</td></tr>
+  <tr><td><code>test/provider.test.js</code></td><td>touch</td><td>Pin the observed closed-by-remote-host wording.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Retry <code>seedRemotePiAuth()</code> instead of adding a separate SSH readiness probe. The failed command is the probe.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Remove <code>runTransientSsh()</code> usage and the new classifier substring to restore fail-fast auth seeding.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>Observed SSH close message is transient.</li>
+  <li>Auth seeding waits through early SSH readiness blips.</li>
+  <li>Tests pass.</li>
+</ul>
+</body>
+</html>

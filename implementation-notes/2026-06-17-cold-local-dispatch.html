@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — cold local dispatch</title>
+<meta name="task" content="Start the first Pi LLM call locally on normal cold chat submit while the remote workspace provisions for tools.">
+<meta name="date-started" content="2026-06-17">
+<meta name="date-updated" content="2026-06-17">
+<meta name="status" content="in-progress">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="micro-cloud,pi-sdk,latency,cold-start,dispatch,tools">
+<meta name="related" content="2026-06-17-intent-prelaunch.html,2026-06-17-scalable-bootup.html,2026-06-16-subsecond-bootup-latency.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 900px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  h3 { font-size: 13px; margin: 1rem 0 .3rem; color: #444; text-transform: uppercase; letter-spacing: .04em; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code, pre { font-family: ui-monospace, Menlo, monospace; }
+  code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  pre { background: #f6f6f6; padding: .55rem .7rem; border-radius: 4px; overflow-x: auto; font-size: 12.5px; line-height: 1.4; }
+  ul, ol { margin: .3rem 0 .8rem 1.2rem; padding: 0; }
+  li { margin: .15rem 0; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .blast-med { color: #b85c00; }
+</style>
+</head>
+<body>
+<h1>cold local dispatch</h1>
+<p class="meta"><code>nogit</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-17 · status <b>in-progress</b> · blast <span class="blast-med">medium</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Make a normal empty-session <code>POST /api/chat</code> start Pi's first provider call under <code>1000 ms</code> without claiming a warm or intent bridge.</div>
+  <b>Source</b><div>Local Pi SDK starts the agent; exe.dev VM provisions concurrently as the remote workspace for tool execution.</div>
+  <b>Metric</b><div><code>first_llm_call_start = Date.now() - submittedAtMs</code> at the wrapped local SDK <code>streamFn</code>.</div>
+  <b>Cold guard</b><div>Verifier uses empty <code>SESSION_DATA_PATH</code>, <code>WARM_BRIDGE_POOL_SIZE=0</code>, and <code>--require-cold-path</code>.</div>
+  <b>Surface</b><div><code>src/server.js</code>, <code>src/local-pi-dispatch.js</code>, <code>src/config.js</code>, <code>scripts/measure-bootup.js</code>, docs/tests.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>Algorithm</h2>
+<ol>
+  <li>Preload the Pi SDK module before the HTTP listener accepts chat traffic.</li>
+  <li>On normal <code>/api/chat</code>, skip reusable bridge claims and create a <code>localDispatchMode</code> session.</li>
+  <li>Start remote exe.dev provisioning in the background and expose a promise for remote tool operations.</li>
+  <li>Create a local Pi SDK session with <code>read</code>, <code>bash</code>, <code>edit</code>, and <code>write</code> definitions backed by SSH into <code>REMOTE_WORKSPACE_DIR</code>.</li>
+  <li>Wrap <code>session.agent.streamFn</code> and persist <code>firstLlmLatencyMs</code> at the first provider-call boundary.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>src/local-pi-dispatch.js</code></td><td>new</td><td>Load Pi SDK, run local SDK prompts, and proxy core file/shell tools over SSH.</td></tr>
+  <tr><td><code>src/server.js</code></td><td>touch</td><td>Use local dispatch for normal chat and provision remote workspace separately.</td></tr>
+  <tr><td><code>src/config.js</code></td><td>touch</td><td>Add local dispatch and SDK-entry configuration.</td></tr>
+  <tr><td><code>scripts/measure-bootup.js</code></td><td>touch</td><td>Report cold-path flags and fail when a run used warm or intent state.</td></tr>
+  <tr><td><code>README.md</code></td><td>touch</td><td>Document local-first cold dispatch and the no-warm verifier command.</td></tr>
+  <tr><td><code>implementation-notes/artifacts/2026-06-17-cold-local-dispatch-*.txt</code></td><td>new</td><td>Capture test and verifier output.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Move the first Pi provider call to the app server. Remote VM provisioning has measured <code>47–54 s</code> cold latency.</td></tr>
+  <tr><td>D-002</td><td>Proxy core tools over SSH instead of making a probe call. The measured call belongs to the user prompt's real Pi session.</td></tr>
+  <tr><td>D-003</td><td>Skip reusable bridge claims when local dispatch is enabled. Empty-session verification must not depend on warm or intent bridges.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td>Local SDK agent over remote bridge agent. Provider-call latency becomes independent of VM boot latency.</td></tr>
+  <tr><td>T-002</td><td>Remote tool proxy over local tools. Tool side effects stay in the exe.dev workspace.</td></tr>
+</table>
+
+<h2>Assumptions</h2>
+<ul>
+  <li>A-001 · The server host has the <code>pi</code> CLI installed or <code>PI_LOCAL_SDK_ENTRY</code> set. If wrong: normal chat fails before launching remote fallback.</li>
+</ul>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Set <code>PI_LOCAL_DISPATCH=0</code> to return normal chat to bridge-backed VM execution.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>Normal direct <code>/api/chat</code> uses <code>localDispatchMode</code> from an empty session store.</li>
+  <li>Verifier shows three cold runs with <code>first_llm_call_start &lt; 1000 ms</code>.</li>
+  <li>Verifier output proves <code>warmClaimed=false</code>, <code>warmBridge=false</code>, and <code>intentBridge=false</code>.</li>
+  <li><code>npm test</code> passes.</li>
+</ul>
+</body>
+</html>

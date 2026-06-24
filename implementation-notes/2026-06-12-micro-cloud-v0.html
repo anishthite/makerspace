@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — micro-cloud-v0</title>
+<meta name="task" content="Bootstrap a minimal micro-cloud control plane for exe.dev-backed agent sessions plus a lightweight frontend.">
+<meta name="date-started" content="2026-06-12">
+<meta name="date-updated" content="2026-06-12">
+<meta name="status" content="ready-for-review">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="micro-cloud,exe.dev,pi,frontend">
+<meta name="related" content="">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code, pre { font-family: ui-monospace, Menlo, monospace; }
+  code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  pre { background: #f6f6f6; padding: .55rem .7rem; border-radius: 4px; overflow-x: auto; font-size: 12.5px; line-height: 1.4; }
+  ul, ol { margin: .3rem 0 .8rem 1.2rem; padding: 0; }
+  li { margin: .15rem 0; }
+  .blast-low { color: #2a7a2a; } .blast-med { color: #b85c00; } .blast-high { color: #b00020; font-weight: 600; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>Micro cloud v0</h1>
+<p class="meta"><code>nogit</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-12 · status <b>ready-for-review</b> · blast <span class="blast-med">medium</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Ship a tiny local control plane that can create exe.dev-backed workspaces, sketch the hosting decision, and expose a minimal browser UI.</div>
+  <b>Source</b><div><code>ssh exe.dev ...</code>, local JSON persistence, static assets, generated setup scripts.</div>
+  <b>Surface</b><div><code>GET /api/report</code>, <code>GET /api/sessions</code>, <code>POST /api/sessions</code>, <code>POST /api/sessions/:name/share</code>, <code>/</code>.</div>
+  <b>Schema</b><div><code>data/sessions.json</code> only; no DB.</div>
+  <b>Mobile</b><div>Responsive single-column fallback; no separate mobile views.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>API contract</h2>
+<pre>GET /api/report
+GET /api/sessions
+POST /api/sessions
+{
+  name?: string,
+  repoUrl: string,
+  branch?: string,
+  taskPrompt?: string,
+  visibility?: "private" | "public",
+  sharePort?: number,
+  autoRunAgent?: boolean
+}
+POST /api/sessions/:name/share
+{
+  visibility: "private" | "public",
+  sharePort?: number
+}</pre>
+<pre>{
+  provider: "mock" | "ssh",
+  report: { recommendation, rationale, comparison, architecture },
+  sessions: [{ name, status, sshDest, httpsUrl, repoUrl, branch, visibility }]
+}</pre>
+
+<h2>Algorithm</h2>
+<ol>
+  <li>Read config; choose <code>ssh</code> when <code>MICRO_CLOUD_PROVIDER=ssh</code>, else choose <code>mock</code>.</li>
+  <li>Build a setup script that installs base tools, clones the repo or initializes an empty repo, writes helper scripts, and optionally starts <code>pi</code> in <code>tmux</code>.</li>
+  <li>Call <code>ssh exe.dev new --json --setup-script /dev/stdin</code>; persist request metadata plus returned VM fields in <code>data/sessions.json</code>.</li>
+  <li>Apply <code>share port</code> and <code>share set-public|set-private</code> when requested.</li>
+  <li>Serve a static dashboard that posts form data, shows the compare report, and lists sessions with copyable commands.</li>
+</ol>
+
+<h2>UI layout</h2>
+<ol>
+  <li><b>Report cards</b>: show recommendation, when to use exe.dev, when VPS wins.</li>
+  <li><b>Launch form</b>: capture repo URL, branch, task prompt, visibility, share port, and auto-run toggle.</li>
+  <li><b>Session table</b>: show provider, VM name, status, SSH target, HTTPS URL, and quick actions.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>package.json</code></td><td>new</td><td>Define a no-deps Node app with start and test scripts.</td></tr>
+  <tr><td><code>.gitignore</code></td><td>new</td><td>Ignore local runtime output.</td></tr>
+  <tr><td><code>README.md</code></td><td>new</td><td>Document the report, architecture, env vars, and local run steps.</td></tr>
+  <tr><td><code>data/.gitkeep</code></td><td>new</td><td>Keep the runtime data directory in the repo.</td></tr>
+  <tr><td><code>src/config.js</code></td><td>new</td><td>Resolve env-driven config and forwarded provider keys.</td></tr>
+  <tr><td><code>src/provider.js</code></td><td>new</td><td>Implement <code>mock</code> and <code>ssh</code> provider transports.</td></tr>
+  <tr><td><code>src/report.js</code></td><td>new</td><td>Store the compare report and architecture sketch.</td></tr>
+  <tr><td><code>src/server.js</code></td><td>new</td><td>Serve API routes and static frontend.</td></tr>
+  <tr><td><code>src/session.js</code></td><td>new</td><td>Normalize launch requests and derive helper commands.</td></tr>
+  <tr><td><code>src/setup-script.js</code></td><td>new</td><td>Generate the VM bootstrap script and launch helper.</td></tr>
+  <tr><td><code>src/store.js</code></td><td>new</td><td>Persist session metadata in JSON.</td></tr>
+  <tr><td><code>public/index.html</code></td><td>new</td><td>Render the control-plane dashboard shell.</td></tr>
+  <tr><td><code>public/app.js</code></td><td>new</td><td>Drive form submits, sharing, copy actions, and session rendering.</td></tr>
+  <tr><td><code>public/styles.css</code></td><td>new</td><td>Style the minimal dashboard.</td></tr>
+  <tr><td><code>test/session.test.js</code></td><td>new</td><td>Cover request normalization and helper command derivation.</td></tr>
+  <tr><td><code>test/setup-script.test.js</code></td><td>new</td><td>Cover repo bootstrap and auto-run script generation.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Use plain Node HTTP plus static files. Avoid framework setup in an empty repo.</td></tr>
+  <tr><td>D-002</td><td>Store session metadata in <code>data/sessions.json</code>. Keep v0 state inspectable and file-based.</td></tr>
+  <tr><td>D-003</td><td>Expose a control plane, not an in-browser terminal. Ship launch/status first.</td></tr>
+  <tr><td>D-004</td><td>Default to <code>exe.dev</code> for v0. It already provides pooled VMs, HTTPS, and SSH-centric automation.</td></tr>
+  <tr><td>D-005</td><td>Fallback to a mock provider when live access is unavailable. Keep local iteration unblocked.</td></tr>
+  <tr><td>D-006</td><td>Use <code>ssh exe.dev</code> before adding tokenized HTTP. Piping setup scripts via stdin is smaller and matches the official API.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td><code>ssh exe.dev</code> over tokenized HTTPS. Smaller auth surface and stdin setup-script support.</td></tr>
+  <tr><td>T-002</td><td><code>single-process Node app</code> over split frontend/backend repos. Reduce iteration friction.</td></tr>
+  <tr><td>T-003</td><td><code>prepare-and-optional-run</code> over mandatory auto-run. Pi install/auth details may vary per environment.</td></tr>
+  <tr><td>T-004</td><td><code>forward selected API-key env vars</code> over manual per-VM secret entry. Faster first-run setup at the cost of a rougher secret story.</td></tr>
+</table>
+
+<h2>Assumptions</h2>
+<ul>
+  <li>A-001 · <code>pi</code> install command varies; make it env-configurable. If wrong: sessions still provision but need manual install tweaks.</li>
+  <li>A-002 · <code>tmux</code> is acceptable for detached agent runs. If wrong: replace with <code>systemd --user</code> later.</li>
+  <li>A-003 · Local verification will use mock mode because live exe.dev credentials may be unavailable. If wrong: add a live smoke pass.</li>
+  <li>A-004 · Public or cloneable repos are enough for v0. If wrong: add repo upload or sync.</li>
+</ul>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Delete generated files; no external schema or irreversible migrations.</p>
+
+<h2>Followups</h2>
+<ul>
+  <li>L-001 · Add log streaming and terminal attach.</li>
+  <li>L-002 · Add real auth, multi-user state, and secret management.</li>
+  <li>L-003 · Add a VPS/Docker provider when cost pressure or custom networking appears.</li>
+</ul>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>Local server boots and serves the dashboard.</li>
+  <li><code>GET /api/report</code>, <code>POST /api/sessions</code>, and <code>POST /api/sessions/:name/share</code> work in mock mode.</li>
+  <li>Bootstrap script generation is covered by tests.</li>
+  <li>README explains the compare report, env vars, and next steps.</li>
+</ul>
+</body>
+</html>

@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Implementation Notes — Index</title>
+<style>
+  body { font: 14px/1.5 -apple-system, system-ui, sans-serif; max-width: 1100px; margin: 2rem auto; padding: 0 1rem; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; position: sticky; top: 0; }
+  .blast-high { color: #b00020; font-weight: 600; } .blast-med { color: #b85c00; } .blast-low { color: #2a7a2a; }
+  .status-in-progress { color: #b85c00; } .status-shipped { color: #2a7a2a; } .status-blocked { color: #b00020; }
+  a { color: #1a5fb4; text-decoration: none; } a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<h1>Implementation Notes — Index</h1>
+<p>One row per task, newest first. Never delete — superseded rows get strikethrough and a <code>[superseded by …]</code> note.</p>
+<table>
+  <thead><tr><th>Date</th><th>Task</th><th>Status</th><th>Blast</th><th>Tags</th><th>Summary</th></tr></thead>
+  <tbody>
+    <tr><td>2026-06-23</td><td><a href="2026-06-23-ui-copy-trim.html">UI copy trim</a></td><td class="status-shipped">shipped</td><td class="blast-low">low</td><td>makerspace, ui, copy, cleanup</td><td>Keep only essential text on the main screens.</td></tr>
+    <tr><td>2026-06-23</td><td><a href="2026-06-23-vercel-frontend-deploy.html">Vercel frontend deploy</a></td><td class="status-shipped">shipped</td><td class="blast-high">high</td><td>makerspace, vercel, frontend, deploy, secrets</td><td>Deploy the static frontend to Vercel while excluding local backend secrets and runtime state.</td></tr>
+    <tr><td>2026-06-23</td><td><a href="2026-06-23-home-screen-design-polish.html">Home screen design polish</a></td><td class="status-shipped">shipped</td><td class="blast-med">medium</td><td>makerspace, ui, home, board-skin, design-polish</td><td>Rework the home screen into one polished launch surface.</td></tr>
+    <tr><td>2026-06-23</td><td><a href="2026-06-23-single-flow-thread-ui.html">Single-flow thread UI</a></td><td class="status-shipped">shipped</td><td class="blast-med">medium</td><td>makerspace, ui, thread, timeline, tools, cleanup</td><td>Replace the noisy three-column thread UI with one centered timeline flow.</td></tr>
+    <tr><td>2026-06-23</td><td><a href="2026-06-23-clean-board-ui-pass.html">Clean board UI pass</a></td><td class="status-shipped">shipped</td><td class="blast-med">medium</td><td>makerspace, ui, cleanup, board-skin, command-palette, ide</td><td>Simplify the board-skin UI while keeping Pi activity visible.</td></tr>
+    <tr><td>2026-06-23</td><td><a href="2026-06-23-board-command-inbox-ide-ui.html">Board command/inbox/IDE UI</a></td><td class="status-shipped">shipped</td><td class="blast-med">medium</td><td>makerspace, ui, board-skin, command-palette, inbox, ide, telemetry</td><td>Apply command-palette, inbox, and IDE layouts with richer Pi activity telemetry.</td></tr>
+    <tr><td>2026-06-23</td><td><a href="2026-06-23-ui-layout-design-systems.html">Board-skin UI layout samples</a></td><td class="status-shipped">shipped</td><td class="blast-low">low</td><td>makerspace, ui, layout, design-system, samples</td><td>Apply the board engineering-paper skin to all ten layout concepts.</td></tr>
+    <tr><td>2026-06-23</td><td><a href="2026-06-23-ui-layout-concepts.html">UI layout concepts</a></td><td class="status-shipped">shipped</td><td class="blast-low">low</td><td>makerspace, ui, layout, concepts, samples</td><td>Replace theme samples with ten layout-first redesign concepts.</td></tr>
+    <tr><td>2026-06-23</td><td><a href="2026-06-23-ui-design-samples.html">UI design samples</a></td><td class="status-shipped">shipped</td><td class="blast-low">low</td><td>makerspace, ui, design, samples, theme</td><td>Compare four static redesign directions without changing app behavior.</td></tr>
+    <tr><td>2026-06-23</td><td><a href="2026-06-23-empty-github-repo-clone.html">Empty GitHub repo clone</a></td><td class="status-shipped">shipped</td><td class="blast-low">low</td><td>makerspace, github, clone, daytona, setup</td><td>Retry plain clone when a branch-specific clone hits an empty repo.</td></tr>
+    <tr><td>2026-06-18</td><td><a href="2026-06-18-github-auth-session-hardening.html">GitHub auth session hardening</a></td><td class="status-shipped">shipped</td><td class="blast-med">medium</td><td>makerspace, github, oauth, security, session, cors</td><td>Move GitHub auth off global settings and protect GitHub-backed routes.</td></tr>
+    <tr><td>2026-06-18</td><td><a href="2026-06-18-github-oauth-repo-picker.html">GitHub OAuth repo picker</a></td><td class="status-shipped">shipped</td><td class="blast-med">medium</td><td>makerspace, github, oauth, repo, threads, sandbox, auth</td><td>Add GitHub login, list selectable repos, and clone the chosen repo into new sandbox threads.</td></tr>
+    <tr><td>2026-06-18</td><td><a href="2026-06-18-tiny-daytona-pi-snapshot.html">Tiny Daytona Pi snapshot</a></td><td class="status-shipped">shipped</td><td class="blast-med">medium</td><td>makerspace, daytona, snapshot, pi, latency</td><td>Build a small single-prefix Daytona snapshot with Pi and bridge dependencies preinstalled.</td></tr>
+    <tr><td>2026-06-18</td><td><a href="2026-06-18-local-provider-architecture.html">Local provider architecture</a></td><td class="status-shipped">shipped</td><td class="blast-low">low</td><td>makerspace, local-provider, docs, architecture</td><td>Explain the proposed local sandbox simulator and its provider contract.</td></tr>
+    <tr><td>2026-06-18</td><td><a href="2026-06-18-codex-settings-auth.html">Codex settings auth</a></td><td class="status-shipped">shipped</td><td class="blast-med">medium</td><td>makerspace, ui, settings, auth, codex</td><td>Move Codex login to settings and keep one main-page auth indicator.</td></tr>
+    <tr><td>2026-06-18</td><td><a href="2026-06-18-duplicate-sandbox-wake.html">Duplicate sandbox wake</a></td><td class="status-shipped">shipped</td><td class="blast-med">medium</td><td>makerspace, daytona, threads, wake, bugfix</td><td>Recover stale thread prompts when Daytona reports the sandbox name already exists.</td></tr>
+    <tr><td>2026-06-18</td><td><a href="2026-06-18-nerv-ui-modes.html">NERV UI modes</a></td><td class="status-shipped">shipped</td><td class="blast-med">medium</td><td>makerspace, ui, threads, nerv, debug-mode</td><td>Restyle the static UI with NERV-OS front-office and debug modes.</td></tr>
+    <tr><td>2026-06-18</td><td><a href="2026-06-18-provider-boundary.html">Provider boundary</a></td><td class="status-shipped">shipped</td><td class="blast-med">medium</td><td>makerspace, daytona, provider, lifecycle, threads</td><td>Move Daytona SDK and preview-header details behind a provider adapter boundary.</td></tr>
+    <tr><td>2026-06-18</td><td><a href="2026-06-18-daytona-env-frontend.html">Daytona env frontend</a></td><td class="status-shipped">shipped</td><td class="blast-med">medium</td><td>makerspace, daytona, env, frontend</td><td>Load local Daytona env and show backend env status in the UI.</td></tr>
+    <tr><td>2026-06-18</td><td><a href="2026-06-18-local-daytona-pi-smoke.html">Local Daytona Pi smoke</a></td><td class="status-shipped">shipped</td><td class="blast-med">medium</td><td>makerspace, daytona, smoke, pi</td><td>Run the local app and verify it opens Pi through Daytona.</td></tr>
+    <tr><td>2026-06-17</td><td><a href="2026-06-17-daytona-migration.html">Daytona migration</a></td><td class="status-shipped">shipped</td><td class="blast-high">high</td><td>micro-cloud, daytona, sandbox, provider, migration</td><td>Replace exe.dev SSH provisioning with Daytona SDK sandboxes while preserving bridge and host-dispatch features.</td></tr>
+    <tr><td>2026-06-17</td><td><a href="2026-06-17-simplify-ghcr-image.html">simplify ghcr image</a></td><td class="status-shipped">shipped</td><td class="blast-med">medium</td><td>micro-cloud, exe.dev, image, ghcr, bridge, amd64</td><td>Replace the baked workstation image with a bridge-only amd64 image and verify exe.dev bridge health.</td></tr>
+    <tr><td>2026-06-17</td><td><a href="2026-06-17-registry-save-visibility.html">Registry save visibility</a></td><td>shipped</td><td>low</td><td>settings,image,registry</td><td>Show saved registry username and bust stale app script.</td></tr>
+    <tr><td>2026-06-17</td><td><a href="2026-06-17-registry-sign-in.html">Registry sign-in</a></td><td>shipped</td><td>medium</td><td>settings,image,registry</td><td>Add username/token sign-in for image registry auth.</td></tr>
+    <tr><td>2026-06-17</td><td><a href="2026-06-17-stored-registry-auth.html">Stored registry auth</a></td><td>shipped</td><td>medium</td><td>settings,image,registry</td><td>Default to private GHCR and persist redacted registry auth.</td></tr>
+    <tr><td>2026-06-17</td><td><a href="2026-06-17-private-ghcr-default.html">Private GHCR default</a></td><td>shipped</td><td>low</td><td>settings,image,registry</td><td>Stop implicit cloud launches from pulling private GHCR without auth.</td></tr>
+    <tr>
+      <td>2026-06-17</td>
+      <td><a href="2026-06-17-api-key-settings.html">api key settings</a></td>
+      <td class="status-shipped">shipped</td>
+      <td class="blast-med">medium</td>
+      <td>micro-cloud, settings, secrets, bridge, vm</td>
+      <td>Save an Anthropic key in backend settings and pass it to new bridge VMs.</td>
+    </tr>
+    <tr>
+      <td>2026-06-17</td>
+      <td><a href="2026-06-17-bridge-final-output-fallback.html">bridge final output fallback</a></td>
+      <td class="status-shipped">shipped</td>
+      <td class="blast-low">low</td>
+      <td>micro-cloud, bridge, pi-sdk, streaming, threads</td>
+      <td>Wait for bridge agent completion and fail loud when Pi returns no assistant output.</td>
+    </tr>
+    <tr>
+      <td>2026-06-17</td>
+      <td><a href="2026-06-17-connection-ui-polish.html">connection UI polish</a></td>
+      <td class="status-shipped">shipped</td>
+      <td class="blast-low">low</td>
+      <td>micro-cloud, ui, connection, vercel, digitalocean, token</td>
+      <td>Group backend URL and token controls into a clearer local/remote connection card.</td>
+    </tr>
+    <tr>
+      <td>2026-06-17</td>
+      <td><a href="2026-06-17-idle-vm-expiry.html">idle VM expiry</a></td>
+      <td class="status-shipped">shipped</td>
+      <td class="blast-med">medium</td>
+      <td>micro-cloud, exe.dev, bridge, cleanup, ttl</td>
+      <td>Destroy reusable bridge VMs after one hour idle and remove local session rows.</td>
+    </tr>
+    <tr>
+      <td>2026-06-17</td>
+      <td><a href="2026-06-17-repo-thread-ui.html">repo thread UI</a></td>
+      <td class="status-shipped">shipped</td>
+      <td class="blast-med">medium</td>
+      <td>micro-cloud, ui, threads, repo, pi, streaming, deployment</td>
+      <td>Create repo-backed cloud Pi threads with Vercel static UI and DigitalOcean control backend docs.</td>
+    </tr>
+    <tr>
+      <td>2026-06-17</td>
+      <td><a href="2026-06-17-loadsessions-ui-error.html">loadSessions UI error</a></td>
+      <td class="status-shipped">shipped</td>
+      <td class="blast-low">low</td>
+      <td>micro-cloud, ui, sessions, chat, bugfix</td>
+      <td>Restore missing browser load helpers and validate refresh/chat paths in real Chrome.</td>
+    </tr>
+    <tr>
+      <td>2026-06-17</td>
+      <td><a href="2026-06-17-exedev-default-image-reset.html">exe.dev default image reset</a></td>
+      <td class="status-shipped">shipped</td>
+      <td class="blast-med">medium</td>
+      <td>micro-cloud, exe.dev, bridge, image, security, latency</td>
+      <td>Reset fresh bridge launches to exe.dev default image, remove persisted registry auth, and verify a 50s cold bridge smoke.</td>
+    </tr>
+    <tr>
+      <td>2026-06-17</td>
+      <td><a href="2026-06-17-host-dispatch-cold-path.html">host dispatch cold path</a></td>
+      <td class="status-in-progress">in-progress</td>
+      <td class="blast-med">medium</td>
+      <td>micro-cloud, pi-sdk, cold-start, tools, exe.dev</td>
+      <td>Start the real Pi provider request from direct cold chat submit while proxying tools to the new VM.</td>
+    </tr>
+    <tr>
+      <td>2026-06-17</td>
+      <td><a href="2026-06-17-intent-prelaunch.html">intent prelaunch</a></td>
+      <td class="status-shipped">shipped</td>
+      <td class="blast-med">medium</td>
+      <td>micro-cloud, exe.dev, bridge, performance, prelaunch, ui</td>
+      <td>Gate normal browser submits on a fresh client-owned bridge and verify submit-to-first-LLM at 118 ms / 95 ms.</td>
+    </tr>
+    <tr>
+      <td>2026-06-17</td>
+      <td><a href="2026-06-17-scalable-bootup.html">scalable bootup</a></td>
+      <td class="status-shipped">shipped</td>
+      <td class="blast-med">medium</td>
+      <td>micro-cloud, exe.dev, bridge, performance, image, reuse</td>
+      <td>Replace default always-on warm pool with idle bridge reuse and baked-image cold launch optimization.</td>
+    </tr>
+    <tr>
+      <td>2026-06-16</td>
+      <td><a href="2026-06-16-sandbox-provider-math.html">Sandbox provider math</a></td>
+      <td class="status-shipped">shipped</td>
+      <td class="blast-low">low</td>
+      <td>micro-cloud, exe.dev, cloudflare, daytona, sandbox</td>
+      <td>Compare provider startup fit and warm/burst pricing for the subsecond Pi bridge path.</td>
+    </tr>
+    <tr>
+      <td>2026-06-16</td>
+      <td><a href="2026-06-16-subsecond-bootup-latency.html">subsecond bootup latency</a></td>
+      <td class="status-shipped">shipped</td>
+      <td class="blast-med">medium</td>
+      <td>micro-cloud, exe.dev, bridge, pi-sdk, performance, benchmark</td>
+      <td>Measure prompt-submit to first Pi agent/LLM-start latency and verify three warm-bridge runs under one second.</td>
+    </tr>
+    <tr>
+      <td>2026-06-16</td>
+      <td><a href="2026-06-16-bridge-bootstrap-speed.html">bridge bootstrap speed</a></td>
+      <td class="status-in-progress">ready-for-review</td>
+      <td class="blast-med">medium</td>
+      <td>micro-cloud, exe.dev, bridge, bootstrap, performance</td>
+      <td>Skip redundant apt, tmux, and SDK ownership work during baked-image bridge setup.</td>
+    </tr>
+    <tr>
+      <td>2026-06-16</td>
+      <td><a href="2026-06-16-launch-log-timestamps.html">launch log timestamps</a></td>
+      <td class="status-in-progress">ready-for-review</td>
+      <td class="blast-low">low</td>
+      <td>micro-cloud, launch, logs, timestamps, chat</td>
+      <td>Stamp system launch lines so slow provisioning phases are visible.</td>
+    </tr>
+    <tr>
+      <td>2026-06-16</td>
+      <td><a href="2026-06-16-baked-exedev-image.html">baked exe.dev image</a></td>
+      <td class="status-shipped">shipped</td>
+      <td class="blast-high">high</td>
+      <td>micro-cloud, exe.dev, docker, image, settings</td>
+      <td>Build and push a baked Pi bridge image, then use it for new launches.</td>
+    </tr>
+    <tr>
+      <td>2026-06-16</td>
+      <td><a href="2026-06-16-ssh-auth-seed-retry.html">ssh auth seed retry</a></td>
+      <td class="status-shipped">shipped</td>
+      <td class="blast-med">medium</td>
+      <td>micro-cloud, exe.dev, ssh, bridge, auth</td>
+      <td>Retry transient SSH close failures while seeding Pi auth into fresh bridge VMs.</td>
+    </tr>
+    <tr>
+      <td>2026-06-16</td>
+      <td><a href="2026-06-16-bridge-ready-ui.html">bridge ready ui</a></td>
+      <td class="status-in-progress">ready-for-review</td>
+      <td class="blast-low">low</td>
+      <td>micro-cloud, ui, sse, bridge, chat</td>
+      <td>Keep the chat stream open after VM ready so bridge startup and final agent output still reach the browser.</td>
+    </tr>
+    <tr>
+      <td>2026-06-16</td>
+      <td><a href="2026-06-16-session-name-collisions.html">session name collisions</a></td>
+      <td class="status-in-progress">ready-for-review</td>
+      <td class="blast-low">low</td>
+      <td>micro-cloud, sessions, naming, chat</td>
+      <td>Use second precision plus a short random suffix so autogenerated session names do not collide on rapid launches.</td>
+    </tr>
+    <tr>
+      <td>2026-06-16</td>
+      <td><a href="2026-06-16-bridge-auth-seed.html">bridge auth seed</a></td>
+      <td class="status-in-progress">ready-for-review</td>
+      <td class="blast-med">medium</td>
+      <td>micro-cloud, exe.dev, bridge, auth, smoke-test</td>
+      <td>Seed local Pi auth into the VM at launch time and verify a real bridged SDK run completes on exe.dev.</td>
+    </tr>
+    <tr>
+      <td>2026-06-16</td>
+      <td><a href="2026-06-16-bridge-bootstrap-size.html">bridge bootstrap size</a></td>
+      <td class="status-in-progress">ready-for-review</td>
+      <td class="blast-med">medium</td>
+      <td>micro-cloud, exe.dev, bridge, bootstrap, setup-script</td>
+      <td>Compress the bridge payload so exe.dev's 10 KiB setup-script limit does not break SDK-backed launches.</td>
+    </tr>
+    <tr>
+      <td>2026-06-16</td>
+      <td><a href="2026-06-16-pi-sdk-bridge.html">pi sdk bridge</a></td>
+      <td class="status-in-progress">ready-for-review</td>
+      <td class="blast-med">medium</td>
+      <td>micro-cloud, exe.dev, bridge, pi-sdk, streaming</td>
+      <td>Keep the VM bridge contract, but execute Pi through the SDK instead of spawning `pi -p`.</td>
+    </tr>
+    <tr>
+      <td>2026-06-16</td>
+      <td><a href="2026-06-16-vm-bridge-sse.html">vm bridge sse</a></td>
+      <td class="status-shipped">shipped</td>
+      <td class="blast-med">medium</td>
+      <td>micro-cloud, exe.dev, bridge, sse, streaming, pi</td>
+      <td>Use SSH only for provisioning, start a tiny VM bridge, and relay structured pi output through server-side SSE.</td>
+    </tr>
+    <tr>
+      <td>2026-06-16</td>
+      <td><a href="2026-06-16-ssh-poll-hostkey-fix.html">ssh poll hostkey fix</a></td>
+      <td class="status-shipped">shipped</td>
+      <td class="blast-med">medium</td>
+      <td>micro-cloud, exe.dev, ssh, hostkey, streaming</td>
+      <td>Auto-accept first VM host keys and treat early SSH reachability failures as transient during output polling.</td>
+    </tr>
+    <tr>
+      <td>2026-06-16</td>
+      <td><a href="2026-06-16-ssh-only-provider.html">ssh only provider</a></td>
+      <td class="status-shipped">shipped</td>
+      <td class="blast-med">medium</td>
+      <td>micro-cloud, exe.dev, ssh, provider, simplification</td>
+      <td>Remove mock mode, force real exe.dev SSH launches, and ignore stale fake sessions.</td>
+    </tr>
+    <tr>
+      <td>2026-06-16</td>
+      <td><a href="2026-06-16-chat-style-vm-ui.html">chat style vm ui</a></td>
+      <td class="status-shipped">shipped</td>
+      <td class="blast-med">medium</td>
+      <td>micro-cloud, exe.dev, pi, chat, streaming, ui</td>
+      <td>Replace the launch form with a chat-style prompt box, launch VMs in the background, and stream run output back into the page.</td>
+    </tr>
+    <tr>
+      <td>2026-06-16</td>
+      <td><a href="2026-06-16-dockerfile-settings-panel.html">dockerfile settings panel</a></td>
+      <td class="status-shipped">shipped</td>
+      <td class="blast-med">medium</td>
+      <td>micro-cloud, exe.dev, dockerfile, image, settings</td>
+      <td>Add a settings panel for editing the Dockerfile and launch new exe.dev sessions from the resulting image.</td>
+    </tr>
+    <tr>
+      <td>2026-06-16</td>
+      <td><a href="2026-06-16-exedev-pi-ui.html">exe.dev pi ui</a></td>
+      <td class="status-shipped">shipped</td>
+      <td class="blast-med">medium</td>
+      <td>micro-cloud, exe.dev, pi, ui, simplification</td>
+      <td>Simplify the dashboard to launching and using pi on remote exe.dev VMs; remove the hosting-comparison focus.</td>
+    </tr>
+    <tr>
+      <td>2026-06-12</td>
+      <td><a href="2026-06-12-micro-cloud-v0.html">Micro cloud v0</a></td>
+      <td class="status-in-progress">ready-for-review</td>
+      <td class="blast-med">medium</td>
+      <td>micro-cloud, exe.dev, pi, frontend</td>
+      <td>Bootstrap a no-deps control plane, exe.dev adapter, report, and minimal dashboard; defer terminal streaming and durable auth.</td>
+    </tr>
+  </tbody>
+</table>
+</body>
+</html>

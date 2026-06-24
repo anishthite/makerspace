@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>idle VM expiry</title>
+<meta name="status" content="shipped">
+<meta name="blast" content="medium">
+<meta name="tags" content="micro-cloud, exe.dev, bridge, cleanup, ttl">
+<meta name="related" content="2026-06-17-scalable-bootup.html">
+<style>body{font:14px/1.5 -apple-system,system-ui,sans-serif;max-width:1000px;margin:2rem auto;padding:0 1rem}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ddd;padding:6px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6}code{background:#f6f6f6;padding:1px 3px}</style>
+</head>
+<body>
+<h1>idle VM expiry</h1>
+<p class="meta">branch unknown · <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-17 · shipped · blast medium</p>
+<h2>Summary</h2>
+<table><tbody>
+<tr><th>Goal</th><td>Destroy reusable bridge VMs after one hour idle.</td></tr>
+<tr><th>Surface</th><td><code>src/server.js</code> cleanup loop and <code>src/provider.js</code> destroy command.</td></tr>
+<tr><th>TTL</th><td><code>IDLE_BRIDGE_TTL_MS=3600000</code> default.</td></tr>
+<tr><th>State</th><td>Remove destroyed sessions from <code>data/sessions.json</code>.</td></tr>
+<tr><th>Verification</th><td><code>npm test</code> passes.</td></tr>
+<tr><th>Tags</th><td>micro-cloud, exe.dev, bridge, cleanup, ttl</td></tr>
+</tbody></table>
+<h2>Algorithm</h2>
+<ol>
+<li>Select sessions where <code>bridgeMode</code>, unclaimed, <code>status=ready</code>, and idle age exceeds <code>idleBridgeTtlMs</code>.</li>
+<li>Call <code>provider.destroySession(name)</code>.</li>
+<li>Remove the session row after successful destroy.</li>
+<li>Run on startup and every <code>idleBridgeTtlMs</code>.</li>
+</ol>
+<h2>Files</h2>
+<table><thead><tr><th>Path</th><th>Kind</th><th>Delta</th></tr></thead><tbody>
+<tr><td><code>src/config.js</code></td><td>touch</td><td>Change idle bridge TTL default from 10 minutes to 1 hour.</td></tr>
+<tr><td><code>src/provider.js</code></td><td>touch</td><td>Add <code>destroySession</code> wrapper for exe.dev VM deletion.</td></tr>
+<tr><td><code>src/store.js</code></td><td>touch</td><td>Add <code>removeStoredSession</code>.</td></tr>
+<tr><td><code>src/server.js</code></td><td>touch</td><td>Prune expired idle bridge VMs on startup and interval.</td></tr>
+<tr><td><code>test/store.test.js</code></td><td>touch</td><td>Check stored session removal.</td></tr>
+<tr><td><code>README.md</code></td><td>touch</td><td>Document one-hour idle TTL default.</td></tr>
+<tr><td><code>deploy/digitalocean/README.md</code></td><td>touch</td><td>Document one-hour idle TTL default.</td></tr>
+</tbody></table>
+<h2>Decisions</h2>
+<table><thead><tr><th>ID</th><th>Choice</th><th>Rationale</th></tr></thead><tbody>
+<tr><td>D-001</td><td>Destroy only idle reusable bridges.</td><td>Running, claimed, manual, and failed sessions need explicit operator handling.</td></tr>
+<tr><td>D-002</td><td>Use exe.dev CLI through existing SSH provider.</td><td>The current control plane already stores auth and transport there.</td></tr>
+</tbody></table>
+<h2>Tradeoffs</h2>
+<table><thead><tr><th>ID</th><th>Picked over Rejected</th><th>Reason</th></tr></thead><tbody>
+<tr><td>T-001</td><td>Interval cleanup over scheduler service.</td><td>One process owns session state today.</td></tr>
+</tbody></table>
+<h2>Reversibility</h2>
+<p>R-001: Revert the provider/store/server/config diff to stop app-managed VM destruction.</p>
+<h2>Definition of done</h2>
+<ul>
+<li>Default idle TTL is one hour.</li>
+<li>Expired idle bridge VMs are destroyed and removed from local state.</li>
+<li><code>npm test</code> passes.</li>
+</ul>
+</body>
+</html>

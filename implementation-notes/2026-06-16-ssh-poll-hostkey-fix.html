@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — ssh poll hostkey fix</title>
+<meta name="task" content="Make VM output polling auto-accept first SSH host keys and stop surfacing transient reachability failures as hard chat errors.">
+<meta name="date-started" content="2026-06-16">
+<meta name="date-updated" content="2026-06-16">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="micro-cloud,exe.dev,ssh,hostkey,streaming">
+<meta name="related" content="2026-06-16-chat-style-vm-ui.html,2026-06-16-ssh-only-provider.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code { font-family: ui-monospace, Menlo, monospace; background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  ul, ol { margin: .3rem 0 .8rem 1.2rem; padding: 0; }
+  .blast-med { color: #b85c00; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+</style>
+</head>
+<body>
+<h1>ssh poll hostkey fix</h1>
+<p class="meta"><code>nogit</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-16 · status <b>shipped</b> · blast <span class="blast-med">medium</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Stop fresh VM output polling from hanging on SSH trust prompts or early reachability blips.</div>
+  <b>Source</b><div>User hit a <code>timed out after 15000ms</code> poll error and saw the server ask whether to trust the host.</div>
+  <b>Surface</b><div><code>src/provider.js</code>, <code>test/provider.test.js</code>.</div>
+  <b>UI</b><div>Keep the transcript in a loading state until SSH is actually reachable.</div>
+</div>
+
+<h2>Algorithm</h2>
+<ol>
+  <li>Add shared SSH args with <code>StrictHostKeyChecking=accept-new</code>.</li>
+  <li>Use a short connect timeout for per-VM output polling.</li>
+  <li>Treat timeout/refused/unresolved poll failures as transient; keep polling instead of surfacing a hard error.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>src/provider.js</code></td><td>touch</td><td>Add SSH option helpers and transient poll error handling.</td></tr>
+  <tr><td><code>test/provider.test.js</code></td><td>touch</td><td>Assert SSH args include auto-accept and transient error detection works.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Use <code>accept-new</code> instead of disabling host-key checks. Removes the prompt without throwing SSH trust away entirely.</td></tr>
+  <tr><td>D-002</td><td>Classify early reachability failures as transient. Fresh VMs often exist before SSH is ready.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Remove the SSH options helper and transient classifier to return to strict manual trust prompts.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>Fresh VM polling no longer asks for interactive trust confirmation.</li>
+  <li>Transient SSH readiness errors do not show as final chat failures.</li>
+  <li>Tests pass.</li>
+</ul>
+</body>
+</html>

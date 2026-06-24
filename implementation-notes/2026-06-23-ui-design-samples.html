@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — UI design samples</title>
+<meta name="task" content="Create static sample pages for four possible Makerspace redesign directions.">
+<meta name="date-started" content="2026-06-23">
+<meta name="date-updated" content="2026-06-23">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="makerspace,ui,design,samples,theme">
+<meta name="related" content="2026-06-18-nerv-ui-modes.html,2026-06-17-repo-thread-ui.html,2026-06-17-connection-ui-polish.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code,pre{font-family:ui-monospace,Menlo,monospace}code{background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}.blast-low{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>UI design samples</h1>
+<p class="meta"><code>nogit</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-23 · status <b class="status-shipped">shipped</b> · blast <span class="blast-low">low</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Make reviewable mock pages for <code>Quiet Cloud Console</code>, <code>Maker Workbench</code>, <code>Ops Flight Deck</code>, and <code>Monastic Terminal</code>.</div>
+  <b>Surface</b><div><code>public/design-samples.html</code>.</div>
+  <b>Runtime</b><div>Static HTML/CSS only; no app API calls.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>UI layout</h2>
+<ol>
+  <li><b>Index nav</b>: link directly to each design artboard.</li>
+  <li><b>Sample page</b>: show hero, start-thread form, status/thread cards, and transcript preview.</li>
+  <li><b>Design notes</b>: keep tokens and guidelines beside each sample for quick comparison.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>public/design-samples.html</code></td><td>new</td><td>Add one static comparison page with four full redesign artboards.</td></tr>
+  <tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Add this task to the notes index.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Use one self-contained page. Easier to compare directions and revert.</td></tr>
+  <tr><td>D-002</td><td>Mock product state with static copy. The user asked for design samples, not wired prototypes.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td>Inline sample CSS over changing <code>public/styles.css</code>. The live UI stays untouched.</td></tr>
+</table>
+
+<h2>Verification</h2>
+<table>
+  <tr><th>Check</th><th>Result</th></tr>
+  <tr><td><code>npm run build</code></td><td>Passed; copied <code>public/design-samples.html</code> to ignored <code>dist/design-samples.html</code>.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Delete <code>public/design-samples.html</code> and this notes row to remove the samples; no app behavior changes.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>Each proposed direction has a visible sample artboard.</li>
+  <li>Each artboard includes visual tokens and guidelines.</li>
+  <li><code>npm run build</code> passes.</li>
+</ul>
+</body>
+</html>

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — loadSessions UI error</title>
+<meta name="task" content="Restore missing browser helpers that broke session refresh and chat submit with loadSessions is not defined.">
+<meta name="date-started" content="2026-06-17">
+<meta name="date-updated" content="2026-06-17">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="micro-cloud,ui,sessions,chat,bugfix">
+<meta name="related" content="2026-06-16-chat-style-vm-ui.html,2026-06-16-dockerfile-settings-panel.html,2026-06-16-bridge-ready-ui.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 900px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .blast-low { color: #2a7a2a; }
+</style>
+</head>
+<body>
+<h1>loadSessions UI error</h1>
+<p class="meta"><code>nogit</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-17 · status <b>shipped</b> · blast <span class="blast-low">low</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Make the browser load settings/sessions and complete the chat refresh path without <code>ReferenceError</code>.</div>
+  <b>Cause</b><div><code>public/app.js</code> called <code>loadSettings()</code> and <code>loadSessions()</code> but defined neither helper.</div>
+  <b>Surface</b><div><code>/</code>, refresh button, chat submit, SSE status refresh.</div>
+  <b>Verification</b><div><code>node --check public/app.js</code>, <code>npm test</code>, real Chrome smoke with fake chat/SSE route.</div>
+  <b>Workflow</b><div><code>run-mqiiv46b-3</code> confirmed the patched file contains <code>loadSessions</code>.</div>
+</div>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>public/app.js</code></td><td>touch</td><td>Add <code>loadSettings</code> and <code>loadSessions</code> wrappers around existing API/render functions.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Restore two helpers instead of changing call sites. Existing code already centralizes rendering through <code>renderSettings</code> and <code>renderSessions</code>.</td></tr>
+  <tr><td>D-002</td><td>Browser-test chat with intercepted <code>/api/chat</code> and SSE. It exercises the failing browser path without launching a VM.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td>Fake browser chat route over real VM launch. This bug is client-side helper resolution, not exe.dev provisioning.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Remove the helper definitions if the UI is replaced with a different state-loading pattern.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li><code>loadSettings</code> and <code>loadSessions</code> are defined before use.</li>
+  <li>Static syntax check passes.</li>
+  <li>Unit tests pass.</li>
+  <li>Real browser submit path finishes without console/page errors.</li>
+</ul>
+</body>
+</html>

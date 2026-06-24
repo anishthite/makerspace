@@ -1,0 +1,175 @@
+import os from 'node:os';
+import path from 'node:path';
+import { access, cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { spawn } from 'node:child_process';
+
+function dependencyFromNpmSpec(spec) {
+  if (!spec) return null;
+
+  if (spec.startsWith('@')) {
+    const versionIndex = spec.lastIndexOf('@');
+    if (versionIndex > 0) {
+      return {
+        name: spec.slice(0, versionIndex),
+        version: spec.slice(versionIndex + 1) || 'latest',
+      };
+    }
+  }
+
+  const versionIndex = spec.lastIndexOf('@');
+  if (versionIndex > 0) {
+    return {
+      name: spec.slice(0, versionIndex),
+      version: spec.slice(versionIndex + 1) || 'latest',
+    };
+  }
+
+  return { name: spec, version: 'latest' };
+}
+
+export function deriveNpmPackageManifest(settingsText) {
+  let parsed = {};
+
+  try {
+    parsed = JSON.parse(settingsText || '{}');
+  } catch {
+    parsed = {};
+  }
+
+  const dependencies = {};
+
+  for (const entry of Array.isArray(parsed.packages) ? parsed.packages : []) {
+    if (typeof entry !== 'string' || !entry.startsWith('npm:')) continue;
+    const dependency = dependencyFromNpmSpec(entry.slice(4));
+    if (!dependency) continue;
+    dependencies[dependency.name] = dependency.version;
+  }
+
+  return {
+    name: 'micro-cloud-image-packages',
+    private: true,
+    dependencies,
+  };
+}
+
+function runCommand(command, args, options = {}) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, { stdio: 'pipe' });
+    const stdout = [];
+    const stderr = [];
+    const timeoutMs = options.timeoutMs || 30 * 60 * 1000;
+
+    const timeout = setTimeout(() => {
+      child.kill('SIGTERM');
+      reject(new Error(`${command} ${args.join(' ')} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    child.stdout.on('data', (chunk) => stdout.push(chunk));
+    child.stderr.on('data', (chunk) => stderr.push(chunk));
+    child.on('error', (error) => {
+      clearTimeout(timeout);
+      reject(error);
+    });
+    child.on('close', (code) => {
+      clearTimeout(timeout);
+      const out = Buffer.concat(stdout).toString('utf8').trim();
+      const err = Buffer.concat(stderr).toString('utf8').trim();
+
+      if (code !== 0) {
+        reject(new Error(err || out || `${command} exited with code ${code}`));
+        return;
+      }
+
+      resolve({ stdout: out, stderr: err });
+    });
+  });
+}
+
+async function exists(filePath) {
+  try {
+    await access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function copyIfExists(source, destination) {
+  if (!(await exists(source))) return false;
+  await cp(source, destination, { recursive: true });
+  return true;
+}
+
+async function writePlaceholder(filePath, content) {
+  await mkdir(path.dirname(filePath), { recursive: true });
+  await writeFile(filePath, content, 'utf8');
+}
+
+export async function prepareBuildContext(config) {
+  const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'micro-cloud-image-'));
+  const contextDir = path.join(tempRoot, 'image');
+
+  await cp(config.imageAssetsDir, contextDir, { recursive: true });
+
+  const dockerfileText = await readFile(path.join(contextDir, 'Dockerfile'), 'utf8').catch(() => '');
+  if (!dockerfileText.includes('ctx/')) {
+    return { tempRoot, contextDir };
+  }
+
+  const ctxDir = path.join(contextDir, 'ctx');
+  const homeDir = os.homedir();
+  const agentDir = path.join(homeDir, '.pi', 'agent');
+  const skillsDir = path.join(homeDir, '.agents', 'skills');
+  const agentSettingsPath = path.join(agentDir, 'settings.json');
+  const settingsText = (await exists(agentSettingsPath))
+    ? await readFile(agentSettingsPath, 'utf8')
+    : '{}\n';
+
+  await mkdir(ctxDir, { recursive: true });
+
+  if (!(await copyIfExists(path.join(agentDir, 'AGENTS.md'), path.join(ctxDir, 'AGENTS.md')))) {
+    await writePlaceholder(path.join(ctxDir, 'AGENTS.md'), '# AGENTS\n');
+  }
+
+  await writePlaceholder(path.join(ctxDir, 'settings.json'), settingsText);
+  await writePlaceholder(
+    path.join(ctxDir, 'npm-package.json'),
+    `${JSON.stringify(deriveNpmPackageManifest(settingsText), null, 2)}\n`,
+  );
+
+  if (!(await copyIfExists(skillsDir, path.join(ctxDir, 'skills')))) {
+    await mkdir(path.join(ctxDir, 'skills'), { recursive: true });
+  }
+
+  if (!(await copyIfExists(path.join(agentDir, 'extensions'), path.join(ctxDir, 'extensions')))) {
+    await mkdir(path.join(ctxDir, 'extensions'), { recursive: true });
+  }
+
+  return {
+    tempRoot,
+    contextDir,
+  };
+}
+
+export async function buildAndPushImage(config, imageSettings) {
+  if (!imageSettings?.imageRef) {
+    throw new Error('Image ref is required to build a custom image.');
+  }
+
+  const { tempRoot, contextDir } = await prepareBuildContext(config);
+
+  try {
+    await runCommand('docker', [
+      'buildx',
+      'build',
+      '--platform',
+      'linux/amd64',
+      '-t',
+      imageSettings.imageRef,
+      '--push',
+      contextDir,
+    ]);
+  } finally {
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+}

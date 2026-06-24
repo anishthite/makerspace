@@ -1,0 +1,9 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="status" content="shipped"><meta name="tags" content="settings,image,bridge"><title>Image settings default</title></head><body>
+<h1>Image settings default</h1>
+<p class="meta">main · makerspace · 2026-06-17 · shipped · blast low</p>
+<h2>Summary</h2><table><tr><th>Goal</th><td>Expose <code>imageRef</code> in the thread UI and default launches to <code>ghcr.io/anishthite/makerspace-pi:latest</code>.</td></tr><tr><th>Surface</th><td><code>/api/settings</code>, <code>public/index.html</code>, <code>public/app.js</code>.</td></tr></table>
+<h2>Files</h2><table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>src/settings.js</code></td><td>touch</td><td>Default empty settings to optimized image.</td></tr><tr><td><code>public/index.html</code></td><td>touch</td><td>Add image settings form.</td></tr><tr><td><code>public/app.js</code></td><td>touch</td><td>Load and save settings.</td></tr><tr><td><code>test/settings.test.js</code></td><td>touch</td><td>Pin default image behavior.</td></tr></table>
+<h2>Decisions</h2><table><tr><th>ID</th><th>Choice</th><th>Rationale</th></tr><tr><td>D-001</td><td>Use existing <code>/api/settings</code>.</td><td>No new route needed.</td></tr></table>
+<h2>Reversibility</h2><p>R-001 Low: revert the UI block and default constant.</p>
+<h2>Definition of done</h2><ul><li>Settings page saves image ref.</li><li>Blank settings use optimized image.</li><li><code>npm test</code> passes.</li></ul>
+</body></html>

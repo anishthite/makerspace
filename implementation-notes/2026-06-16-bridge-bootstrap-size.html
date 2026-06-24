@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — bridge bootstrap size</title>
+<meta name="task" content="Keep the exe.dev setup script under the 10 KiB stdin limit after adding the SDK-backed VM bridge.">
+<meta name="date-started" content="2026-06-16">
+<meta name="date-updated" content="2026-06-16">
+<meta name="status" content="ready-for-review">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="micro-cloud,exe.dev,bridge,bootstrap,setup-script">
+<meta name="related" content="2026-06-16-pi-sdk-bridge.html,2026-06-16-vm-bridge-sse.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 900px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code, pre { font-family: ui-monospace, Menlo, monospace; }
+  code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .blast-med { color: #b85c00; }
+</style>
+</head>
+<body>
+<h1>bridge bootstrap size</h1>
+<p class="meta"><code>nogit</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-16 · status <b>ready-for-review</b> · blast <span class="blast-med">medium</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Keep <code>ssh exe.dev new --setup-script /dev/stdin</code> below exe.dev's <code>10 KiB</code> input limit.</div>
+  <b>Source</b><div>Real launch failed with <code>--setup-script=/dev/stdin: input exceeds 10 KiB limit</code>.</div>
+  <b>Surface</b><div><code>src/setup-script.js</code>, <code>test/setup-script.test.js</code>, this note.</div>
+  <b>Schema</b><div>None.</div>
+  <b>Runtime</b><div>Bridge still writes the same <code>pi-bridge.mjs</code>; only the bootstrap transport changes.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>Algorithm</h2>
+<ol>
+  <li>Generate the bridge source as a normal JavaScript string inside <code>src/setup-script.js</code>.</li>
+  <li>Compress it with <code>gzipSync(...).toString('base64')</code> at setup-script build time.</li>
+  <li>Emit a short shell heredoc that runs <code>base64 -d | gzip -d &gt; /srv/micro-cloud/pi-bridge.mjs</code> on the VM.</li>
+  <li>Keep tests extracting and gunzipping the payload so they still inspect the real bridge source.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>src/setup-script.js</code></td><td>touch</td><td>Compress the bridge payload before embedding it in the exe.dev setup script.</td></tr>
+  <tr><td><code>test/setup-script.test.js</code></td><td>touch</td><td>Decode the compressed bridge payload and assert the full setup script stays under <code>10 KiB</code>.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Compress the bridge payload instead of adding a second SSH bootstrap phase. Keeps SSH limited to the one exe.dev launch call.</td></tr>
+  <tr><td>D-002</td><td>Test size at the generated-script boundary. The failure is about bytes sent to exe.dev, not source-file length.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td><code>gzip + base64 heredoc</code> over <code>plain inline JS</code>. Same behavior, smaller transport.</td></tr>
+  <tr><td>T-002</td><td><code>compressed inline payload</code> over <code>post-boot SSH file copy</code>. Fewer moving parts in the launch flow.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Restore the plain heredoc bridge payload if exe.dev lifts the input limit or if compressed bootstrap proves harder to debug.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>Bridge chat setup scripts fit under <code>10 KiB</code>.</li>
+  <li>Tests still inspect the decoded bridge source.</li>
+  <li><code>npm test</code> passes.</li>
+</ul>
+</body>
+</html>

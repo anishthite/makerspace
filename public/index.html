@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Makerspace</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23FAF8F3'/%3E%3Cpath d='M7 23V9h4l5 8 5-8h4v14h-4v-8l-4 6h-2l-4-6v8H7Z' fill='%231F5E9C'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body data-mode="office">
+  <main class="home-shell">
+    <nav class="home-topbar" aria-label="Makerspace navigation">
+      <a class="brand" href="/" aria-label="Makerspace home">
+        <span class="brand-box">M</span>
+        <span>makerspace</span>
+      </a>
+      <div class="header-actions home-actions">
+        <span id="codex-auth-pill" class="auth-pill" data-status="checking" aria-live="polite"><span class="status-dot" aria-hidden="true"></span><span id="codex-auth-label">codex</span></span>
+        <span id="github-auth-pill" class="auth-pill" data-status="checking" aria-live="polite"><span class="status-dot" aria-hidden="true"></span><span id="github-auth-label">github</span></span>
+        <a class="textbtn" href="/settings.html">settings</a>
+      </div>
+    </nav>
+
+    <section class="home-hero" aria-labelledby="start-title">
+      <h1 id="start-title">New thread</h1>
+    </section>
+
+    <form id="thread-form" class="launch-card" aria-label="Start a Pi thread">
+      <input name="repoSource" type="hidden" value="">
+
+      <label class="sr-only" for="prompt">Task</label>
+      <textarea id="prompt" name="prompt" rows="6" placeholder="Task…" required></textarea>
+
+      <div class="prompt-suggestions" aria-label="Prompt examples">
+        <button type="button" data-prompt="Simplify the roughest part and run one check.">simplify</button>
+        <button type="button" data-prompt="Polish the UI. Keep the diff small.">UI</button>
+        <button type="button" data-prompt="Run tests. Fix the first real failure.">tests</button>
+      </div>
+
+      <div class="target-row">
+        <div class="target-input">
+          <span aria-hidden="true">repo</span>
+          <label class="sr-only" for="repo-url">Git repo URL</label>
+          <input id="repo-url" name="repoUrl" placeholder="github.com/you/repo" required>
+        </div>
+        <button id="thread-submit" class="primary-btn run-btn" type="submit">start thread</button>
+      </div>
+
+      <div class="repo-tray">
+        <select id="repo-picker" class="board-select" disabled>
+          <option value="">GitHub repos</option>
+        </select>
+        <button id="repo-refresh" class="textbtn" type="button">refresh</button>
+        <p id="repo-hint" class="muted">Sign in for repo picker.</p>
+        <button id="mode-toggle" class="textbtn" type="button" aria-pressed="false"><span id="mode-label">details</span></button>
+      </div>
+
+      <div class="advanced-fields launch-details">
+        <input name="branch" placeholder="branch">
+        <input name="name" placeholder="thread name">
+        <div id="provider-banner" class="notice" aria-live="polite">Connecting…</div>
+      </div>
+
+      <p id="thread-status" class="status-line">Ready</p>
+    </form>
+
+    <section class="home-recent" aria-label="Recent threads">
+      <div class="section-row">
+        <div>
+          <h2>Threads</h2>
+        </div>
+        <button id="refresh-threads" class="textbtn" type="button">refresh</button>
+      </div>
+      <div id="threads-list" class="thread-inbox"></div>
+    </section>
+  </main>
+
+  <script type="module" src="/app.js?v=copy-trim-1"></script>
+</body>
+</html>
