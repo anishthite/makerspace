@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
+  "main": "desktop/main.js",
   "engines": {
     "node": ">=20"
   },
@@ -10,9 +11,16 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "build": "rm -rf dist && cp -R public dist",
-    "test": "node --test"
+    "test": "node --test test/*.test.js",
+    "desktop:dev": "electron desktop/main.js",
+    "desktop:package": "bash scripts/package-desktop.sh",
+    "desktop:install": "bash scripts/install-desktop-app.sh"
   },
   "dependencies": {
-    "@daytona/sdk": "^0.187.0"
+    "@daytona/sdk": "^0.187.0",
+    "@earendil-works/pi-coding-agent": "0.79.7"
+  },
+  "devDependencies": {
+    "electron": "^42.5.0"
   }
 }

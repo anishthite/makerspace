@@ -149,9 +149,9 @@ Provider adapter
           <span>Creates a repo worktree, starts the same Pi bridge on <code>127.0.0.1</code>, and streams through the backend.</span>
           <pre class="code-box">~/.makerspace/
   repos/&lt;repo-hash&gt;.git
-  worktrees/&lt;thread&gt;/
-  control/&lt;thread&gt;/
-  logs/&lt;thread&gt;.log</pre>
+  worktrees/&lt;agent&gt;/
+  control/&lt;agent&gt;/
+  logs/&lt;agent&gt;.log</pre>
         </div>
         <div class="provider-card daytona">
           <p class="eyebrow">daytona provider</p>
@@ -173,10 +173,10 @@ Provider adapter
         <em class="jp-label">局所実行</em>
       </div>
       <ol class="flow">
-        <li class="flow-step"><span>Backend receives <code>POST /api/threads</code> with repo, branch, thread name, and prompt.</span></li>
+        <li class="flow-step"><span>Backend receives <code>POST /api/threads</code> with repo, branch, agent name, and prompt.</span></li>
         <li class="flow-step"><span>Local provider keeps a bare repo cache at <code>~/.makerspace/repos/&lt;repo-hash&gt;.git</code>.</span></li>
-        <li class="flow-step"><span>It runs <code>git fetch</code>, then creates <code>git worktree add ~/.makerspace/worktrees/&lt;thread&gt;</code>.</span></li>
-        <li class="flow-step"><span>It creates <code>~/.makerspace/control/&lt;thread&gt;</code> for status files, logs, bridge auth, and run state.</span></li>
+        <li class="flow-step"><span>It runs <code>git fetch</code>, then creates <code>git worktree add ~/.makerspace/worktrees/&lt;agent&gt;</code>.</span></li>
+        <li class="flow-step"><span>It creates <code>~/.makerspace/control/&lt;agent&gt;</code> for status files, logs, bridge auth, and run state.</span></li>
         <li class="flow-step"><span>It starts the bridge as a child process with <code>PI_BRIDGE_WORKSPACE_DIR</code> pointing at the worktree.</span></li>
         <li class="flow-step"><span>Backend talks to <code>http://127.0.0.1:&lt;port&gt;</code>, then relays output to the browser over the existing SSE route.</span></li>
       </ol>

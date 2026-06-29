@@ -4,7 +4,7 @@ A tiny control plane for talking to `pi` inside fresh Daytona sandboxes.
 
 ## What this app does
 
-- shows one repo-thread form for a Git repo and starting prompt
+- shows one repo-agent form for a Git repo and starting prompt
 - creates a Daytona sandbox, clones the repo or initializes an empty workspace, and starts a tiny Pi bridge service
 - uses Daytona preview URLs for the bridge port while the browser only talks to this control backend
 - streams live Pi output back to the browser over server-sent events
@@ -21,12 +21,12 @@ A tiny control plane for talking to `pi` inside fresh Daytona sandboxes.
 
 That is deliberate. The goal is one prompt in, one real sandbox-backed run out.
 
-## How the thread flow works
+## How the agent flow works
 
 1. the homepage posts `repoUrl`, optional `branch`, optional `name`, and a starting `prompt` to `POST /api/threads`
 2. the control backend creates a Daytona sandbox for that repo and starts the sandbox-local Pi bridge
-3. the browser redirects to `/thread.html?name=<thread>`
-4. the thread page reads `GET /api/threads/:name`, mirrors output from `GET /api/sessions/:name/stream`, and sends follow-up prompts to `POST /api/threads/:name/messages`
+3. the browser redirects to `/thread.html?name=<agent>`
+4. the agent page reads `GET /api/threads/:name`, mirrors output from `GET /api/sessions/:name/stream`, and sends follow-up prompts to `POST /api/threads/:name/messages`
 5. after each run completes, the same bridge sandbox returns to `ready` so the next prompt can reuse the repo workspace
 
 For deployment, put the static UI on Vercel and this Node control backend on a server with Daytona credentials. The UI has “Control backend URL” and “Control API token” fields; set them to the backend HTTPS URL and `CONTROL_API_TOKEN`. The backend keeps Daytona and model-provider credentials server-side.
@@ -77,11 +77,50 @@ npm install
 npm start
 ```
 
+For local-folder mode, skip Daytona and run Pi directly on a folder:
+
+```bash
+INFRA_PROVIDER=local npm start
+npm run desktop:dev
+```
+
+Run multiple local projects by giving each process its own port and state folder:
+
+```bash
+INFRA_PROVIDER=local MAKERSPACE_PROJECT=site MAKERSPACE_HOME=~/.makerspace/site PORT=8787 npm start
+INFRA_PROVIDER=local MAKERSPACE_PROJECT=api  MAKERSPACE_HOME=~/.makerspace/api  PORT=8788 npm start
+```
+
+Desktop dev accepts a folder argument and uses that folder name in the header:
+
+```bash
+npm run desktop:dev -- ~/code/site
+npm run desktop:dev -- ~/code/api
+```
+
+The desktop dev shell starts the same `public/` UI, binds the backend to `127.0.0.1`, and stores local state in a per-project folder when a folder argument is provided.
+
+Package and install the macOS app/DMG from the installed Electron binary:
+
+```bash
+npm run desktop:package
+npm run desktop:install
+```
+
+The installer copies `output/desktop-package/Makerspace.app` into `/Applications`. Pass a path when needed: `npm run desktop:install -- output/desktop-package/makerspace.dmg`.
+The DMG lands at `output/desktop-package/makerspace.dmg`; copy it to `public/downloads/makerspace.dmg` only when you want the landing page to serve that build.
+
 Optional env vars:
 
 ```bash
 PORT=8787
+MAKERSPACE_PROJECT=site
+MAKERSPACE_HOME=~/.makerspace/site
 CONTROL_API_TOKEN=
+MAKERSPACE_STATE_STORE=file # set d1 for hosted Cloudflare D1 persistence
+CLOUDFLARE_ACCOUNT_ID=
+CLOUDFLARE_D1_DATABASE_ID=
+CLOUDFLARE_API_TOKEN=
 DAYTONA_API_KEY=
 DAYTONA_API_URL=https://app.daytona.io/api
 DAYTONA_TARGET=
@@ -97,23 +136,42 @@ DAYTONA_AUTODELETE_MINUTES=120
 IMAGE_ASSETS_DIR=./image
 DOCKERFILE_PATH=./image/Dockerfile
 SETTINGS_DATA_PATH=./data/settings.json
+RECENT_PROJECTS_DATA_PATH=./data/recent-projects.json
+PI_SESSION_TRACE_DIR=./data/pi-sessions
+PI_CODING_AGENT_DIR=~/.pi/agent
+PI_PROFILE_DATA_PATH=./data/pi-profile.json
+MAKERSPACE_PI_DEFAULTS_PACKAGE_DIR=./packages/makerspace-pi-defaults
 REMOTE_WORKSPACE_DIR=/srv/workspace
 REMOTE_CONTROL_DIR=/srv/micro-cloud
+REMOTE_PI_DEFAULTS_PACKAGE_DIR=/home/daytona/.pi/agent/makerspace-pi-defaults
 PI_BRIDGE_PORT=4310
 PI_BRIDGE_READY_TIMEOUT_MS=240000
 PI_BRIDGE_READY_POLL_MS=1000
 IDLE_BRIDGE_TTL_MS=3600000
 WARM_BRIDGE_POOL_SIZE=0
-FORWARD_ENV_KEYS=ANTHROPIC_API_KEY,OPENAI_API_KEY,GOOGLE_API_KEY,GEMINI_API_KEY,OPENROUTER_API_KEY
+FORWARD_ENV_KEYS=ANTHROPIC_API_KEY,OPENAI_API_KEY,GOOGLE_API_KEY,GEMINI_API_KEY,OPENROUTER_API_KEY,INFERENCE_API_KEY
 PI_INSTALL_COMMAND=npm install -g --ignore-scripts @earendil-works/pi-coding-agent
 ```
+
+For hosted App Platform deployments, set `MAKERSPACE_STATE_STORE=d1` plus the three Cloudflare values above. D1 stores sessions, settings, recent projects, Dockerfile text, and Pi profile choices/text; repo files still live in Git/Daytona/local disk.
+
+## Pi defaults package
+
+Makerspace ships a starter Pi package at `packages/makerspace-pi-defaults`. Local and host-dispatch SDK runs load it directly when the directory exists. Custom Daytona image builds copy it into the sandbox at `REMOTE_PI_DEFAULTS_PACKAGE_DIR`, and the remote bridge loads that baked copy without touching user dotfiles.
+
+The package contains a prompt-injecting extension, the `inference/nvidia/nemotron3-super` provider registration, starter skills, and prompts. Set `INFERENCE_API_KEY` to use Inference.net. Publish the same package later for online installs with `pi install npm:@makerspace/pi-defaults@0.1.0`.
+
+The settings page also exposes your current Pi profile: `~/.pi/agent/AGENTS.md`, discovered skills, extensions, and prompts. Saving the profile writes `AGENTS.md` and stores Makerspace-only resource selection in `PI_PROFILE_DATA_PATH`. Remote bridge runs sync selected profile files per run; personal files are not baked into public images.
 
 ## API
 
 - `GET /healthz`
 - `GET /api/report`
+- `GET /api/performance`
 - `GET /api/settings`
 - `POST /api/settings`
+- `GET /api/recent-projects`
+- `POST /api/recent-projects`
 - `GET /api/threads`
 - `POST /api/threads`
 - `GET /api/threads/:name`
@@ -128,18 +186,18 @@ PI_INSTALL_COMMAND=npm install -g --ignore-scripts @earendil-works/pi-coding-age
 
 Set `CONTROL_API_TOKEN` on public control backends. API clients send it as `Authorization: Bearer <token>`; SSE streams may pass `?token=<token>` because browser `EventSource` cannot set custom headers.
 
-### Create thread body
+### Create agent body
 
 ```json
 {
   "repoUrl": "https://github.com/you/repo.git",
   "branch": "main",
-  "name": "optional-thread-name",
+  "name": "optional-agent-name",
   "prompt": "Read the repo and make the smallest useful change."
 }
 ```
 
-### Thread message body
+### Agent message body
 
 ```json
 {

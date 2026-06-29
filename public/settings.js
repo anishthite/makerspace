@@ -1,4 +1,27 @@
+import { applyAppearance, getAppearance, saveAppearance } from './appearance.js?v=palette-2';
+
 const BROWSER_SESSION_KEY = 'makerspaceBrowserSession';
+const connectionParams = new URLSearchParams(location.search);
+const apiFromUrl = connectionParams.get('api');
+const tokenFromUrl = connectionParams.get('token');
+let cleanedParams = false;
+
+if (apiFromUrl) {
+  localStorage.setItem('makerspaceApiBase', apiFromUrl.replace(/\/+$/, ''));
+  connectionParams.delete('api');
+  cleanedParams = true;
+}
+
+if (tokenFromUrl) {
+  localStorage.setItem('makerspaceApiToken', tokenFromUrl);
+  connectionParams.delete('token');
+  cleanedParams = true;
+}
+
+if (cleanedParams) {
+  const nextSearch = connectionParams.toString();
+  history.replaceState(null, '', `${location.pathname}${nextSearch ? `?${nextSearch}` : ''}${location.hash}`);
+}
 
 const apiBaseInput = document.querySelector('#api-base');
 const apiTokenInput = document.querySelector('#api-token');
@@ -10,6 +33,18 @@ const githubLogin = document.querySelector('#github-login');
 const githubLogout = document.querySelector('#github-logout');
 const githubStatus = document.querySelector('#github-status');
 const settingsForm = document.querySelector('#settings-form');
+const piProfileForm = document.querySelector('#pi-profile-form');
+const piAgentsInput = document.querySelector('#pi-agents');
+const piAgentsPath = document.querySelector('#pi-agents-path');
+const piSyncRemoteInput = document.querySelector('#pi-sync-remote');
+const piSkillsList = document.querySelector('#pi-skills');
+const piExtensionsList = document.querySelector('#pi-extensions');
+const piPromptsList = document.querySelector('#pi-prompts');
+const piProfileSubmit = document.querySelector('#pi-profile-submit');
+const piProfileStatus = document.querySelector('#pi-profile-status');
+const darkModeInput = document.querySelector('#dark-mode');
+const darkPaletteInput = document.querySelector('#dark-palette');
+const monoFontInput = document.querySelector('#mono-font');
 const imageRefInput = document.querySelector('#image-ref');
 const registryUsernameInput = document.querySelector('#registry-username');
 const registryPasswordInput = document.querySelector('#registry-password');
@@ -17,6 +52,7 @@ const anthropicApiKeyInput = document.querySelector('#anthropic-api-key');
 const settingsSubmit = document.querySelector('#settings-submit');
 const settingsStatus = document.querySelector('#settings-status');
 let currentSettings = null;
+let currentPiProfile = null;
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -106,6 +142,22 @@ function settingsSummary(settings) {
   return `image: ${settings.imageRef || 'default'} · ${registryStatus} · ${keyStatus}`;
 }
 
+function loadAppearanceControls() {
+  const appearance = getAppearance();
+  darkModeInput.checked = appearance.theme === 'dark';
+  darkPaletteInput.value = appearance.palette;
+  monoFontInput.checked = appearance.font === 'mono';
+  applyAppearance(appearance);
+}
+
+function saveAppearanceControls() {
+  saveAppearance({
+    theme: darkModeInput.checked ? 'dark' : 'light',
+    palette: darkPaletteInput.value,
+    font: monoFontInput.checked ? 'mono' : 'sans',
+  });
+}
+
 async function loadCodexAuth() {
   const status = await fetchJson('/api/auth/openai-codex');
   codexStatus.textContent = status.configured
@@ -166,22 +218,64 @@ async function loadSettings() {
   return currentSettings;
 }
 
+function renderProfileResources(container, resources) {
+  if (!resources.length) {
+    container.classList.add('muted');
+    container.textContent = 'None found.';
+    return;
+  }
+
+  container.classList.remove('muted');
+  container.innerHTML = resources.map((resource) => `
+    <label class="resource-item">
+      <input type="checkbox" data-resource-id="${escapeHtml(resource.id)}" ${resource.enabled ? 'checked' : ''}>
+      <span>${escapeHtml(resource.name)}<small>${escapeHtml(resource.description || resource.path)}</small></span>
+    </label>
+  `).join('');
+}
+
+function checkedResourceIds(container) {
+  return [...container.querySelectorAll('input[type="checkbox"]:checked')].map((input) => input.dataset.resourceId || '');
+}
+
+function profileSummary(profile) {
+  const count = (name) => (profile.resources?.[name] || []).filter((resource) => resource.enabled).length;
+  return `${count('skills')} skills · ${count('extensions')} extensions · ${count('prompts')} prompts`;
+}
+
+async function loadPiProfile() {
+  currentPiProfile = await fetchJson('/api/pi-profile');
+  piAgentsInput.value = currentPiProfile.agentsText || '';
+  piAgentsPath.textContent = currentPiProfile.agentsPath || 'AGENTS.md';
+  piSyncRemoteInput.checked = currentPiProfile.syncToRemote !== false;
+  renderProfileResources(piSkillsList, currentPiProfile.resources?.skills || []);
+  renderProfileResources(piExtensionsList, currentPiProfile.resources?.extensions || []);
+  renderProfileResources(piPromptsList, currentPiProfile.resources?.prompts || []);
+  piProfileStatus.textContent = profileSummary(currentPiProfile);
+  return currentPiProfile;
+}
+
 async function reloadSettingsData() {
   try {
-    await Promise.all([loadCodexAuth(), loadGitHubAuth(), loadSettings()]);
+    await Promise.all([loadCodexAuth(), loadGitHubAuth(), loadSettings(), loadPiProfile()]);
   } catch (error) {
     codexStatus.textContent = error.message;
     githubStatus.textContent = error.message;
     settingsStatus.textContent = error.message;
+    piProfileStatus.textContent = error.message;
   }
 }
 
 apiBaseInput.value = getApiBase();
 apiTokenInput.value = getApiToken();
 getBrowserSessionId();
+loadAppearanceControls();
 updateConnectionSummary();
 apiBaseInput.addEventListener('input', updateConnectionSummary);
 apiTokenInput.addEventListener('input', updateConnectionSummary);
+darkModeInput.addEventListener('change', saveAppearanceControls);
+darkPaletteInput.addEventListener('change', saveAppearanceControls);
+monoFontInput.addEventListener('change', saveAppearanceControls);
 apiBaseInput.addEventListener('change', async () => {
   await persistConnectionInputs(true);
 });
@@ -233,6 +327,31 @@ githubLogout.addEventListener('click', async () => {
     githubStatus.textContent = error.message;
   } finally {
     githubLogout.disabled = false;
+  }
+});
+
+piProfileForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  await persistConnectionInputs();
+  piProfileSubmit.disabled = true;
+  piProfileStatus.textContent = 'Saving…';
+  try {
+    currentPiProfile = await fetchJson('/api/pi-profile', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        agentsText: piAgentsInput.value,
+        syncToRemote: piSyncRemoteInput.checked,
+        enabledSkills: checkedResourceIds(piSkillsList),
+        enabledExtensions: checkedResourceIds(piExtensionsList),
+        enabledPrompts: checkedResourceIds(piPromptsList),
+      }),
+    });
+    await loadPiProfile();
+  } catch (error) {
+    piProfileStatus.textContent = error.message;
+  } finally {
+    piProfileSubmit.disabled = false;
   }
 });
 

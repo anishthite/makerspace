@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { realpath } from 'node:fs/promises';
 
 import { createProvider, isTransientSandboxError } from '../src/provider.js';
 
@@ -99,6 +100,17 @@ test('createProvider rejects unknown infrastructure providers', () => {
     () => createProvider({ ...config, provider: 'nope' }, { daytonaClient: { list: async () => [] } }),
     /Unknown infrastructure provider: nope/,
   );
+});
+
+test('createProvider exposes local metadata and validates repo paths', async () => {
+  const provider = createProvider({ ...config, provider: 'local', projectName: 'api', localDataDir: '/tmp/makerspace-test' });
+
+  assert.equal(provider.kind, 'local');
+  assert.equal(provider.info().transport, 'local-process');
+  assert.equal(provider.info().ready, true);
+  assert.deepEqual(provider.info().project, { name: 'api', home: '/tmp/makerspace-test' });
+  assert.equal(await provider.resolveRepoPath('.'), await realpath('.'));
+  await assert.rejects(() => provider.resolveRepoPath('/definitely/missing/makerspace'), /ENOENT|no such file/i);
 });
 
 test('createSession creates a Daytona sandbox and returns bridge preview metadata', async () => {

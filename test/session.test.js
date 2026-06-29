@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { decorateSession, normalizeChatRequest, normalizeClientId, normalizeCreateRequest, normalizeThreadRequest } from '../src/session.js';
+import { appendThreadMessages, decorateSession, normalizeChatRequest, normalizeClientId, normalizeCreateRequest, normalizeImageAttachments, normalizeModelOptions, normalizeThreadRequest, threadMessage } from '../src/session.js';
 
 const config = {
   defaultTaskPrompt: 'Inspect the repo and do the task.',
@@ -41,7 +41,28 @@ test('normalizeChatRequest turns a prompt into a private auto-run blank repo ses
   assert.equal(session.bridgeMode, true);
   assert.equal(session.sharePort, 4310);
   assert.equal(session.taskPrompt, 'Build the app.');
+  assert.equal(session.modelRef, '');
+  assert.equal(session.thinkingLevel, '');
   assert.match(session.name, /^blank-repo-\d{14}-[a-f0-9]{6}$/);
+});
+
+test('normalizeChatRequest preserves image attachments', () => {
+  const session = normalizeChatRequest(
+    {
+      prompt: 'Describe this.',
+      images: [{ type: 'image', mimeType: 'image/png', data: Buffer.from('png').toString('base64') }],
+    },
+    config,
+  );
+
+  assert.deepEqual(session.images, [{ type: 'image', mimeType: 'image/png', data: 'cG5n' }]);
+});
+
+test('normalizeImageAttachments rejects unsupported images', () => {
+  assert.throws(
+    () => normalizeImageAttachments([{ type: 'image', mimeType: 'image/svg+xml', data: 'PHN2Zz4=' }]),
+    /PNG, JPEG, GIF, or WebP/,
+  );
 });
 
 test('normalizeChatRequest preserves a browser client id for intent bridge claims', () => {
@@ -64,6 +85,8 @@ test('normalizeThreadRequest creates a repo-backed bridge thread with an initial
       branch: 'main',
       prompt: 'Start here.',
       repoSource: 'github',
+      modelRef: 'openai-codex/gpt-5.4-mini',
+      thinkingLevel: 'high',
     },
     config,
   );
@@ -72,12 +95,53 @@ test('normalizeThreadRequest creates a repo-backed bridge thread with an initial
   assert.equal(session.repoUrl, 'https://github.com/acme/demo.git');
   assert.equal(session.branch, 'main');
   assert.equal(session.taskPrompt, 'Start here.');
+  assert.equal(session.initialPrompt, 'Start here.');
+  assert.equal(session.modelRef, 'openai-codex/gpt-5.4-mini');
+  assert.equal(session.thinkingLevel, 'high');
   assert.equal(session.repoSource, 'github');
   assert.equal(session.bridgeMode, true);
   assert.equal(session.threadBridge, true);
   assert.equal(session.bridgeClaimed, true);
   assert.equal(session.sharePort, 4310);
   assert.match(session.name, /^demo-\d{14}-[a-f0-9]{6}$/);
+});
+
+test('normalizeThreadRequest preserves a local repo path', () => {
+  const session = normalizeThreadRequest(
+    {
+      repoPath: '/Users/me/project',
+      prompt: 'Run locally.',
+    },
+    config,
+  );
+
+  assert.equal(session.repoMode, 'local');
+  assert.equal(session.repoPath, '/Users/me/project');
+  assert.equal(session.repoUrl, '');
+  assert.equal(session.taskPrompt, 'Run locally.');
+  assert.equal(session.initialPrompt, 'Run locally.');
+  assert.equal(session.localMode, true);
+  assert.equal(session.bridgeMode, undefined);
+  assert.equal(session.threadBridge, true);
+  assert.match(session.name, /^project-\d{14}-[a-f0-9]{6}$/);
+});
+
+test('normalizeModelOptions rejects invalid thinking levels', () => {
+  assert.throws(() => normalizeModelOptions({ thinkingLevel: 'maximum' }), /Thinking level/);
+});
+
+test('appendThreadMessages keeps bounded user and assistant history', () => {
+  const session = { threadMessages: [threadMessage('user', 'old', 1, 'a')] };
+  const next = appendThreadMessages(session, [
+    threadMessage('assistant', 'done', 2, 'a'),
+    { role: 'tool', text: 'ignored' },
+    null,
+  ]);
+
+  assert.deepEqual(next, [
+    { role: 'user', text: 'old', timestamp: '1970-01-01T00:00:00.001Z', runId: 'a' },
+    { role: 'assistant', text: 'done', timestamp: '1970-01-01T00:00:00.002Z', runId: 'a' },
+  ]);
 });
 
 test('normalizeCreateRequest avoids collisions for back-to-back generated names', () => {
@@ -125,6 +189,7 @@ test('decorateSession preserves provider commands and hides bridge secrets', () 
   assert.equal(session.previewToken, undefined);
   assert.equal(session.repoAuthHeader, undefined);
   assert.equal(session.githubOwnerSessionId, undefined);
+  assert.equal(session.images, undefined);
   assert.equal(session.hasBridgeToken, true);
   assert.equal(session.commands.connect, 'daytona ssh sandbox-123');
   assert.equal(session.commands.runAgent, 'daytona ssh sandbox-123 -- bash /srv/micro-cloud/run-pi.sh');

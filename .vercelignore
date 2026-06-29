@@ -14,6 +14,7 @@ test-results/
 src/
 test/
 deploy/
+desktop/
 image/
 implementation-notes/
 

@@ -40,7 +40,7 @@ export const report = {
       'Start the Pi bridge and expose it through a Daytona preview link.',
     ],
     frontend: [
-      'Create repo-backed cloud Pi threads.',
+      'Create repo-backed cloud Pi agents.',
       'Stream runs through the control backend over SSE.',
       'Keep Daytona credentials on the backend only.',
     ],

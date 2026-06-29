@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 220" role="img" aria-labelledby="title desc">
+  <title id="title">Makerspace logo</title>
+  <desc id="desc">A blue workshop tile with an angular M beside the makerspace wordmark.</desc>
+  <rect width="720" height="220" fill="none"/>
+  <g transform="translate(40 40)">
+    <rect width="140" height="140" rx="16" fill="#1F5E9C"/>
+    <path d="M22 32h96M22 70h96M22 108h96M32 22v96M70 22v96M108 22v96" stroke="#FAF8F3" stroke-width="2" opacity=".18"/>
+    <path d="M28 108V34h24l18 29 18-29h24v74H89V72L70 102 51 72v36H28Z" fill="#FAF8F3"/>
+    <path d="M28 126h84" stroke="#FAF8F3" stroke-width="8" stroke-linecap="square" opacity=".95"/>
+  </g>
+  <g font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+    <text x="214" y="105" fill="#241A12" font-size="56" font-weight="850" letter-spacing="-3">makerspace</text>
+    <text x="218" y="139" fill="#1F5E9C" font-family="JetBrains Mono, 'SF Mono', ui-monospace, monospace" font-size="15" font-weight="700" letter-spacing="2.5">AGENT WORKBENCH</text>
+  </g>
+</svg>

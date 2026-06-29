@@ -3,6 +3,9 @@ import path from 'node:path';
 import { access, cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 
+import { d1StateRequested, readD1Kv } from './d1-state.js';
+import { defaultPiDefaultsPackageDir } from './pi-defaults-package.js';
+
 function dependencyFromNpmSpec(spec) {
   if (!spec) return null;
 
@@ -100,49 +103,26 @@ async function copyIfExists(source, destination) {
   return true;
 }
 
-async function writePlaceholder(filePath, content) {
-  await mkdir(path.dirname(filePath), { recursive: true });
-  await writeFile(filePath, content, 'utf8');
-}
-
 export async function prepareBuildContext(config) {
   const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'micro-cloud-image-'));
   const contextDir = path.join(tempRoot, 'image');
 
   await cp(config.imageAssetsDir, contextDir, { recursive: true });
 
-  const dockerfileText = await readFile(path.join(contextDir, 'Dockerfile'), 'utf8').catch(() => '');
+  const dockerfilePath = path.join(contextDir, 'Dockerfile');
+  const diskDockerfileText = await readFile(dockerfilePath, 'utf8').catch(() => '');
+  const dockerfileText = d1StateRequested() ? await readD1Kv('dockerfile', diskDockerfileText) : diskDockerfileText;
+  if (dockerfileText !== diskDockerfileText) await writeFile(dockerfilePath, dockerfileText, 'utf8');
   if (!dockerfileText.includes('ctx/')) {
     return { tempRoot, contextDir };
   }
 
   const ctxDir = path.join(contextDir, 'ctx');
-  const homeDir = os.homedir();
-  const agentDir = path.join(homeDir, '.pi', 'agent');
-  const skillsDir = path.join(homeDir, '.agents', 'skills');
-  const agentSettingsPath = path.join(agentDir, 'settings.json');
-  const settingsText = (await exists(agentSettingsPath))
-    ? await readFile(agentSettingsPath, 'utf8')
-    : '{}\n';
-
   await mkdir(ctxDir, { recursive: true });
 
-  if (!(await copyIfExists(path.join(agentDir, 'AGENTS.md'), path.join(ctxDir, 'AGENTS.md')))) {
-    await writePlaceholder(path.join(ctxDir, 'AGENTS.md'), '# AGENTS\n');
-  }
-
-  await writePlaceholder(path.join(ctxDir, 'settings.json'), settingsText);
-  await writePlaceholder(
-    path.join(ctxDir, 'npm-package.json'),
-    `${JSON.stringify(deriveNpmPackageManifest(settingsText), null, 2)}\n`,
-  );
-
-  if (!(await copyIfExists(skillsDir, path.join(ctxDir, 'skills')))) {
-    await mkdir(path.join(ctxDir, 'skills'), { recursive: true });
-  }
-
-  if (!(await copyIfExists(path.join(agentDir, 'extensions'), path.join(ctxDir, 'extensions')))) {
-    await mkdir(path.join(ctxDir, 'extensions'), { recursive: true });
+  const defaultsPackageDir = config.piDefaultsPackageDir || defaultPiDefaultsPackageDir(config.rootDir);
+  if (!(await copyIfExists(defaultsPackageDir, path.join(ctxDir, 'makerspace-pi-defaults')))) {
+    await mkdir(path.join(ctxDir, 'makerspace-pi-defaults'), { recursive: true });
   }
 
   return {

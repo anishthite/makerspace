@@ -1,6 +1,8 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
+import { d1StateRequested, readD1Kv, writeD1Kv } from './d1-state.js';
+
 export const DEFAULT_IMAGE_REF = '';
 
 const DEFAULT_SETTINGS = {
@@ -66,6 +68,10 @@ async function writeNormalizedSettings(filePath, settings) {
 }
 
 export async function readSavedSettings(filePath) {
+  if (d1StateRequested()) {
+    return normalizeImageSettings({ ...DEFAULT_SETTINGS, ...(await readD1Kv('settings', {})) });
+  }
+
   await ensureSettingsFile(filePath);
   const text = await readFile(filePath, 'utf8');
   const rawSettings = JSON.parse(text || '{}');
@@ -85,15 +91,21 @@ export async function saveSavedSettings(filePath, input) {
     throw new Error('Image ref is required when auto-build is enabled.');
   }
 
+  if (d1StateRequested()) {
+    await writeD1Kv('settings', settings);
+    return settings;
+  }
+
   await ensureSettingsFile(filePath);
   await writeNormalizedSettings(filePath, settings);
   return settings;
 }
 
 export async function readAppSettings(config) {
+  const diskDockerfile = await readFile(config.dockerfilePath, 'utf8');
   const [settings, dockerfile] = await Promise.all([
     readSavedSettings(config.settingsFile),
-    readFile(config.dockerfilePath, 'utf8'),
+    d1StateRequested() ? readD1Kv('dockerfile', diskDockerfile) : diskDockerfile,
   ]);
 
   return publicSettings(settings, dockerfile);
@@ -111,6 +123,7 @@ export async function saveAppSettings(config, input) {
 
   await mkdir(path.dirname(config.dockerfilePath), { recursive: true });
   await writeFile(config.dockerfilePath, dockerfile, 'utf8');
+  if (d1StateRequested()) await writeD1Kv('dockerfile', dockerfile);
 
   return publicSettings(settings, dockerfile);
 }

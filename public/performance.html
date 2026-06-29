@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Main Agent Performance · Makerspace</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="/favicon.svg">
+  <link rel="stylesheet" href="/styles.css?v=palette-2">
+</head>
+<body>
+  <main class="home-shell performance-shell">
+    <nav class="home-topbar" aria-label="Makerspace navigation">
+      <a class="brand" href="/" aria-label="Makerspace home">
+        <img class="brand-logo" src="/logo-mark.svg" alt="" aria-hidden="true">
+        <span>makerspace</span>
+      </a>
+      <div class="header-actions home-actions">
+        <a class="textbtn" href="/">main agents</a>
+        <a class="textbtn" href="/settings.html">settings</a>
+      </div>
+    </nav>
+
+    <section class="performance-hero">
+      <p class="eyebrow">lookback</p>
+      <h1>Main agent performance</h1>
+      <p id="performance-status" class="muted">Loading main agent metrics…</p>
+    </section>
+
+    <section id="performance-stats" class="performance-stats" aria-label="Performance summary"></section>
+
+    <section class="performance-grid">
+      <div class="performance-panel">
+        <div class="section-row">
+          <h2>Signals</h2>
+          <button id="refresh-performance" class="textbtn" type="button">refresh</button>
+        </div>
+        <ul id="performance-insights" class="signal-list"></ul>
+      </div>
+
+      <div class="performance-panel table-panel">
+        <div class="section-row">
+          <h2>Main agents</h2>
+          <p id="performance-count" class="muted"></p>
+        </div>
+        <div class="performance-table-wrap">
+          <table class="performance-table">
+            <thead><tr><th>main agent</th><th>status</th><th>first llm</th><th>duration</th><th>tools</th><th>tokens</th><th>cache</th><th>flags</th></tr></thead>
+            <tbody id="performance-rows"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="/performance.js?v=palette-2"></script>
+</body>
+</html>

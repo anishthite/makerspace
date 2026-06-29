@@ -1,18 +1,42 @@
+import './appearance.js?v=palette-2';
+import { bindImageDropZone, clearImageInput, filesToImageAttachments, imageInputFiles, updateImageStatus } from './image-attachments.js';
+import { submitOnEnter } from './submit-on-enter.js';
+
 const BROWSER_SESSION_KEY = 'makerspaceBrowserSession';
+const MODEL_REF_KEY = 'makerspaceModelRef';
+const THINKING_LEVEL_KEY = 'makerspaceThinkingLevel';
+const PROJECT_KEY = 'makerspaceSelectedProject';
+const THINKING_LEVELS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh'];
+const ARCHIVEABLE_THREAD_STATUSES = ['completed', 'ready', 'failed'];
+const params = new URLSearchParams(location.search);
+const tokenFromUrl = params.get('token');
+if (tokenFromUrl) {
+  localStorage.setItem('makerspaceApiToken', tokenFromUrl);
+  params.delete('token');
+  const nextSearch = params.toString();
+  history.replaceState(null, '', `${location.pathname}${nextSearch ? `?${nextSearch}` : ''}${location.hash}`);
+}
 
 const providerBanner = document.querySelector('#provider-banner');
-const modeToggle = document.querySelector('#mode-toggle');
-const modeLabel = document.querySelector('#mode-label');
+const projectLabel = document.querySelector('#project-label');
+const workspaceLabel = document.querySelector('#workspace-label');
+const actionSummary = document.querySelector('#action-summary');
 const codexAuthPill = document.querySelector('#codex-auth-pill');
 const codexAuthLabel = document.querySelector('#codex-auth-label');
 const githubAuthPill = document.querySelector('#github-auth-pill');
 const githubAuthLabel = document.querySelector('#github-auth-label');
 const repoUrlInput = document.querySelector('input[name="repoUrl"]');
 const promptInput = document.querySelector('textarea[name="prompt"]');
+const imageInput = document.querySelector('#prompt-images');
+const imageStatus = document.querySelector('#image-status');
+const modelRefInput = document.querySelector('#model-ref');
+const thinkingLevelInput = document.querySelector('#thinking-level');
+const thinkingLevelOutput = document.querySelector('#thinking-level-value');
 const branchInput = document.querySelector('input[name="branch"]');
 const repoSourceInput = document.querySelector('input[name="repoSource"]');
 const repoPicker = document.querySelector('#repo-picker');
 const repoRefresh = document.querySelector('#repo-refresh');
+const chooseFolder = document.querySelector('#choose-folder');
 const repoHint = document.querySelector('#repo-hint');
 const threadForm = document.querySelector('#thread-form');
 const threadSubmit = document.querySelector('#thread-submit');
@@ -22,7 +46,11 @@ const refreshThreads = document.querySelector('#refresh-threads');
 
 let githubRepos = [];
 let selectedRepo = null;
-
+let selectedProject = readSelectedProject();
+let localProvider = false;
+let defaultThinkingLevel = 'xhigh';
+let runtimeTickTimer = null;
+let finishedThreadNames = [];
 function escapeHtml(value) {
   return String(value ?? '')
     .replaceAll('&', '&amp;')
@@ -41,24 +69,57 @@ function getBrowserSessionId() {
   return sessionId;
 }
 
-function advancedMode() {
-  return localStorage.getItem('makerspaceUiMode') === 'debug';
-}
-
-function setAdvancedMode(enabled) {
-  const next = enabled ? 'debug' : 'office';
-  localStorage.setItem('makerspaceUiMode', next);
-  document.body.dataset.mode = next;
-  modeLabel.textContent = enabled ? 'hide details' : 'details';
-  modeToggle.setAttribute('aria-pressed', String(enabled));
-}
-
 function getApiBase() {
   return (localStorage.getItem('makerspaceApiBase') || '').replace(/\/+$/, '');
 }
 
 function getApiToken() {
   return localStorage.getItem('makerspaceApiToken') || '';
+}
+
+function thinkingLevelValue() {
+  return THINKING_LEVELS[Number(thinkingLevelInput.value)] || '';
+}
+
+function renderThinkingLevel() {
+  const level = thinkingLevelValue();
+  const label = level || defaultThinkingLevel || 'xhigh';
+  const title = `Thinking: ${label}`;
+  thinkingLevelOutput.textContent = label;
+  thinkingLevelOutput.title = title;
+  thinkingLevelInput.title = title;
+  thinkingLevelInput.setAttribute('aria-valuetext', label);
+}
+
+function setThinkingLevel(value) {
+  const level = String(value || 'xhigh').trim().toLowerCase();
+  thinkingLevelInput.value = String(Math.max(0, THINKING_LEVELS.indexOf(level)));
+  renderThinkingLevel();
+}
+
+function ensureModelOption(value) {
+  const text = String(value || '').trim();
+  if (!text || Array.from(modelRefInput.options).some((option) => option.value === text)) return;
+  const option = document.createElement('option');
+  option.value = text;
+  option.textContent = text;
+  modelRefInput.append(option);
+}
+
+function setModelRef(value) {
+  const text = String(value || '').trim();
+  ensureModelOption(text);
+  modelRefInput.value = text;
+}
+
+function saveRunControls() {
+  localStorage.setItem(MODEL_REF_KEY, modelRefInput.value.trim());
+  localStorage.setItem(THINKING_LEVEL_KEY, thinkingLevelValue());
+}
+
+function loadRunControls() {
+  setModelRef(localStorage.getItem(MODEL_REF_KEY) || '');
+  setThinkingLevel(localStorage.getItem(THINKING_LEVEL_KEY) || '');
 }
 
 function authHeaders() {
@@ -88,6 +149,41 @@ async function fetchJson(path, options = {}) {
   return payload;
 }
 
+function readSelectedProject() {
+  try {
+    const project = JSON.parse(localStorage.getItem(PROJECT_KEY) || 'null');
+    return project?.value ? project : null;
+  } catch {
+    return null;
+  }
+}
+
+function cleanProjectValue(value) {
+  return String(value || '').trim().replace(/[\\/]+$/, '');
+}
+
+function compactProjectLabel(value) {
+  const text = cleanProjectValue(value)
+    .replace(/^https?:\/\/github\.com\//i, '')
+    .replace(/\.git$/i, '');
+  const parts = text.split(/[\\/]+/).filter(Boolean);
+  return parts.slice(-2).join('/') || text || 'workspace';
+}
+
+function applySelectedProject() {
+  if (!selectedProject) {
+    location.replace('/');
+    return;
+  }
+  repoUrlInput.value = selectedProject.value || '';
+  repoSourceInput.value = selectedProject.repoSource || '';
+  branchInput.value = selectedProject.branch || '';
+  if (workspaceLabel) {
+    workspaceLabel.textContent = selectedProject.label || compactProjectLabel(selectedProject.value);
+    workspaceLabel.title = selectedProject.value;
+  }
+}
+
 function threadUrl(name) {
   const params = new URLSearchParams({ name });
   const apiBase = getApiBase();
@@ -103,20 +199,101 @@ function normalizeRepoUrl(value) {
   return text;
 }
 
-function daytonaEnvSummary(provider) {
-  if (provider?.kind !== 'daytona') return '';
-  const env = provider.env || {};
-  const auth = env.apiKey ? 'api key' : 'no api key';
-  const snapshot = env.snapshot ? 'snapshot' : 'default image';
-  return `${auth}; ${snapshot}; stop ${env.autostopMinutes}m; delete ${env.autodeleteMinutes}m`;
+function canonicalRepo(value) {
+  return normalizeRepoUrl(value).replace(/\.git$/i, '').toLowerCase();
+}
+
+function selectedProjectIsLocal() {
+  return selectedProject?.kind === 'local' || localProvider;
+}
+
+function sameSelectedProject(thread) {
+  if (!selectedProject?.value) return true;
+  if (selectedProject.kind === 'local') return cleanProjectValue(thread.repoPath) === cleanProjectValue(selectedProject.value);
+  return canonicalRepo(thread.repoUrl) === canonicalRepo(selectedProject.value);
+}
+
+function renderProject(provider) {
+  const project = provider?.project || {};
+  const name = String(project.name || '').trim();
+  const visible = name && name !== 'makerspace';
+  if (!projectLabel) return;
+  projectLabel.hidden = !visible;
+  projectLabel.textContent = visible ? name : '';
+  projectLabel.title = project.home ? `Project state: ${project.home}` : `Project: ${name}`;
+  document.title = visible ? `Makerspace · ${name}` : 'Makerspace';
+}
+
+function providerSummary(provider) {
+  if (provider?.kind === 'daytona') {
+    const env = provider.env || {};
+    const auth = env.apiKey ? 'api key' : 'no api key';
+    const snapshot = env.snapshot ? 'snapshot' : 'default image';
+    return `${auth}; ${snapshot}; stop ${env.autostopMinutes}m; delete ${env.autodeleteMinutes}m`;
+  }
+  if (provider?.kind === 'local') return 'local folders';
+  return '';
+}
+
+async function loadLastLocalFolder() {
+  if (!globalThis.makerspaceDesktop?.getLastFolder || repoUrlInput.value.trim()) return;
+  try {
+    const folder = await globalThis.makerspaceDesktop.getLastFolder();
+    if (!folder || repoUrlInput.value.trim()) return;
+    repoUrlInput.value = folder;
+    repoHint.textContent = 'Last local folder.';
+  } catch {}
+}
+
+function applyProviderMode(provider) {
+  localProvider = provider?.kind === 'local';
+  repoUrlInput.placeholder = localProvider ? '/Users/you/project' : 'github.com/you/repo';
+  chooseFolder.hidden = !localProvider || !globalThis.makerspaceDesktop?.chooseFolder;
+
+  if (localProvider) {
+    repoPicker.disabled = true;
+    repoRefresh.disabled = true;
+    resetRepoSelection('Pick or paste a local folder.');
+    loadLastLocalFolder();
+  }
 }
 
 function renderProvider(provider) {
+  renderProject(provider);
   const target = getApiBase() ? 'remote' : 'local';
+  const summary = providerSummary(provider);
   providerBanner.dataset.tone = provider?.ready === false ? 'error' : 'success';
   providerBanner.textContent = provider
-    ? `${target} · ${provider.kind} · ${daytonaEnvSummary(provider)}`
+    ? [target, provider.kind, summary].filter(Boolean).join(' · ')
     : target;
+  applyProviderMode(provider);
+}
+
+function renderModelOptions(model, options = []) {
+  const modelLabel = model === 'Pi default model' ? 'main agent model' : model;
+  const selected = localStorage.getItem(MODEL_REF_KEY) || modelRefInput.value || '';
+  const selectedValue = selected === model || selected === 'Pi default model' ? '' : selected;
+  const values = [];
+  const seen = new Set();
+  for (const value of [...(Array.isArray(options) ? options : []), selectedValue]) {
+    const text = String(value || '').trim();
+    if (!text || text === model || text === modelLabel || text === 'Pi default model' || seen.has(text)) continue;
+    seen.add(text);
+    values.push(text);
+  }
+
+  modelRefInput.innerHTML = `<option value="">${escapeHtml(modelLabel)}</option>${values.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join('')}`;
+  setModelRef(selectedValue);
+  modelRefInput.title = values.length
+    ? `Model: ${modelLabel}\nOptions: ${values.join(', ')}`
+    : `Model: ${modelLabel}`;
+}
+
+function renderPiDefaults(defaults = {}) {
+  const model = String(defaults.model || defaults.agent || 'main agent model').trim();
+  defaultThinkingLevel = String(defaults.thinking || 'xhigh').trim();
+  renderModelOptions(model, defaults.models);
+  renderThinkingLevel();
 }
 
 function renderAuthPill(node, labelNode, ok, title, label) {
@@ -140,10 +317,11 @@ function renderCodexAuth(status) {
 
 function renderGitHubAuth(status) {
   const connected = Boolean(status.connected);
-  renderAuthPill(githubAuthPill, githubAuthLabel, connected, connected ? `GitHub: ${status.user?.login || 'connected'}` : status.configured ? 'GitHub: signed out' : 'GitHub: not configured', 'github');
-  repoPicker.disabled = !connected;
-  repoRefresh.disabled = !connected;
-  if (!connected) {
+  const login = status.user?.login || '';
+  renderAuthPill(githubAuthPill, githubAuthLabel, connected, connected ? `GitHub: ${login || 'connected'}` : status.configured ? 'GitHub: signed out' : 'GitHub: not configured', 'github');
+  repoPicker.disabled = localProvider || !connected;
+  repoRefresh.disabled = localProvider || !connected;
+  if (!connected && !localProvider) {
     githubRepos = [];
     repoPicker.innerHTML = '<option value="">Sign in first</option>';
     resetRepoSelection(status.configured ? 'Sign in in Settings.' : 'GitHub OAuth missing.');
@@ -189,60 +367,199 @@ function statusClass(value) {
   return String(value || 'unknown').toLowerCase().replace(/[^a-z0-9_-]/g, '-') || 'unknown';
 }
 
-function statusCopy(thread) {
-  const status = String(thread.runStatus || thread.status || 'unknown');
-  if (status === 'ready') return 'ready';
-  if (status === 'running') return 'running';
-  if (status === 'completed') return 'done';
-  if (status === 'failed') return 'failed';
-  if (['launching', 'queued', 'starting'].includes(status)) return 'starting';
-  return status;
+function effectiveThreadStatus(thread) {
+  const runStatus = String(thread?.runStatus || '').toLowerCase();
+  return runStatus && runStatus !== 'unknown' ? runStatus : String(thread?.status || '').toLowerCase();
 }
 
-function repoLabel(url) {
-  const text = String(url || '').replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/i, '');
+function repoLabel(thread) {
+  const value = typeof thread === 'string' ? thread : thread.repoPath || thread.repoUrl;
+  const text = String(value || '').replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/i, '');
   return text || 'repo';
 }
 
-function formatUpdated(value) {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+function formatDurationSeconds(totalSeconds, showSeconds = false) {
+  const safeSeconds = Math.max(0, Math.floor(totalSeconds));
+  const minutes = Math.floor(safeSeconds / 60);
+  const seconds = safeSeconds % 60;
+  if (showSeconds && minutes < 60) return minutes ? `${minutes}m ${seconds}s` : `${seconds}s`;
+  if (minutes < 1) return '<1m';
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (showSeconds && hours < 24) return `${hours}h ${minutes % 60}m ${seconds}s`;
+  if (hours < 24) return `${hours}h ${minutes % 60}m`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ${hours % 24}h`;
+}
+
+function formatElapsed(startValue, endValue = Date.now(), showSeconds = false) {
+  const start = Date.parse(startValue || '');
+  const end = typeof endValue === 'number' ? endValue : Date.parse(endValue || '');
+  if (Number.isNaN(start) || Number.isNaN(end)) return '';
+  return formatDurationSeconds(Math.floor(Math.max(0, end - start) / 1000), showSeconds);
+}
+
+function formatFinishedAgo(value) {
+  const elapsed = formatElapsed(value).replace(/m\b/g, ' min');
+  return elapsed ? `finished ${elapsed} ago` : '';
+}
+
+function finalAnswerSummary(thread, maxLength = 160) {
+  const text = String(thread?.finalAnswerSummary || '').replace(/\s+/g, ' ').trim();
+  return text.length > maxLength ? `${text.slice(0, maxLength - 1).trimEnd()}…` : text;
+}
+
+function finishedOutcome(thread, rawStatus) {
+  const summary = finalAnswerSummary(thread, 150);
+  if (summary) return summary;
+  const warning = String(thread?.warning || '').replace(/\s+/g, ' ').trim();
+  if (warning) return `status: ${warning}`;
+  const status = String(rawStatus || '').replace(/[-_]+/g, ' ').trim().toLowerCase();
+  return status ? `status: ${status}` : '';
+}
+
+function isActiveThread(thread) {
+  return ['launching', 'starting', 'queued', 'running'].includes(effectiveThreadStatus(thread));
+}
+
+function runningActivity(thread, rawStatus = effectiveThreadStatus(thread)) {
+  const activity = String(thread?.latestActivity || thread?.warning || '').trim();
+  if (activity) return activity;
+  const status = String(rawStatus || '').toLowerCase();
+  if (status === 'queued') return 'waiting for main agent';
+  if (status === 'launching' || status === 'starting') return 'starting main agent';
+  return status === 'running' ? 'working' : status || 'working';
+}
+
+function canArchiveThread(thread) {
+  return ARCHIVEABLE_THREAD_STATUSES.includes(effectiveThreadStatus(thread));
+}
+
+function runtimeStart(thread) {
+  return thread.createdAt || thread.updatedAt || '';
+}
+
+function formatRunningTotal(starts, endValue = Date.now()) {
+  const end = typeof endValue === 'number' ? endValue : Date.parse(endValue || '');
+  if (Number.isNaN(end)) return '';
+  let totalMs = 0;
+  for (const startValue of starts) {
+    const start = Date.parse(startValue || '');
+    if (!Number.isNaN(start)) totalMs += Math.max(0, end - start);
+  }
+  return totalMs ? formatDurationSeconds(Math.floor(totalMs / 1000), true) : '';
+}
+
+function renderActionSummary(runningCount, doneCount, runningStarts = []) {
+  actionSummary.dataset.runningCount = String(runningCount);
+  actionSummary.dataset.doneCount = String(doneCount);
+  actionSummary.dataset.runningStarts = JSON.stringify(runningStarts);
+  const total = formatRunningTotal(runningStarts);
+  actionSummary.textContent = `${runningCount} running${total ? ` for ${total} total` : ''} · ${doneCount} recently finished`;
+}
+
+function updateActionSummary() {
+  let runningStarts = [];
+  try {
+    runningStarts = JSON.parse(actionSummary.dataset.runningStarts || '[]');
+  } catch {}
+  renderActionSummary(Number(actionSummary.dataset.runningCount || 0), Number(actionSummary.dataset.doneCount || 0), runningStarts);
+}
+
+function threadLane(thread) {
+  return isActiveThread(thread) ? 'running' : 'done';
+}
+
+function renderThreadCard(thread) {
+  const rawStatus = effectiveThreadStatus(thread) || 'unknown';
+  const badgeClass = statusClass(rawStatus);
+  const repo = repoLabel(thread);
+  const branch = thread.branch ? ` · ${thread.branch}` : '';
+  const active = isActiveThread(thread);
+  const finished = active ? '' : formatFinishedAgo(thread.updatedAt || thread.createdAt);
+  const detail = active ? runningActivity(thread, rawStatus) : `${repo}${branch}`;
+  const outcome = active ? '' : finishedOutcome(thread, rawStatus);
+  const start = runtimeStart(thread);
+  const runtimeEnd = active ? Date.now() : thread.updatedAt || start;
+  const runtime = formatElapsed(start, runtimeEnd, active);
+  const inactiveTimes = !active ? [finished, runtime ? `ran ${runtime}` : ''].filter(Boolean) : [];
+  const inactiveMeta = inactiveTimes.length ? `<span class="finished-meta">${inactiveTimes.map((text) => `<time>${escapeHtml(text)}</time>`).join('')}</span>` : '';
+  const activeRuntime = active && runtime ? `<time class="runtime-label" data-runtime-start="${escapeHtml(start)}">running ${escapeHtml(runtime)}</time>` : '';
+  const displayTitle = thread.title || thread.name;
+  const archiveButton = canArchiveThread(thread)
+    ? `<button class="textbtn archive-thread" type="button" data-archive-thread="${escapeHtml(thread.name)}">mark as done</button>`
+    : '';
+  return `
+    <div class="inbox-item action-thread ${badgeClass}">
+      <span class="status-dot" aria-hidden="true"></span>
+      <a class="inbox-main" href="${escapeHtml(threadUrl(thread.name))}">
+        <strong>${escapeHtml(displayTitle)}</strong>
+        <small>${escapeHtml(detail)}</small>
+      </a>
+      <span class="inbox-side">
+        ${archiveButton}
+        ${inactiveMeta || activeRuntime}
+      </span>
+      ${outcome ? `<small class="answer-preview">${escapeHtml(outcome)}</small>` : ''}
+    </div>
+  `;
+}
+
+function updateRuntimeLabels() {
+  const labels = threadsList.querySelectorAll('[data-runtime-start]');
+  for (const label of labels) {
+    label.textContent = `running ${formatElapsed(label.dataset.runtimeStart, Date.now(), true)}`;
+  }
+  updateActionSummary();
+  if (!labels.length && runtimeTickTimer) {
+    clearInterval(runtimeTickTimer);
+    runtimeTickTimer = null;
+  }
+}
+
+function syncRuntimeTick() {
+  const hasActiveRuntime = Boolean(threadsList.querySelector('[data-runtime-start]'));
+  if (hasActiveRuntime && !runtimeTickTimer) {
+    runtimeTickTimer = setInterval(updateRuntimeLabels, 1000);
+  } else if (!hasActiveRuntime && runtimeTickTimer) {
+    clearInterval(runtimeTickTimer);
+    runtimeTickTimer = null;
+  }
 }
 
 function renderThreads(threads) {
-  if (!threads.length) {
-    threadsList.innerHTML = '<p class="empty-state">No threads.</p>';
-    return;
-  }
+  const lanes = [
+    { key: 'running', title: 'Running', empty: 'No agents running.' },
+    { key: 'done', title: 'Recently finished', empty: 'Nothing finished recently.' },
+  ];
+  const grouped = Object.fromEntries(lanes.map((lane) => [lane.key, []]));
+  for (const thread of threads) grouped[threadLane(thread)].push(thread);
 
-  threadsList.innerHTML = threads.slice(0, 8).map((thread) => {
-    const rawStatus = thread.runStatus || thread.status || 'unknown';
-    const badgeClass = statusClass(rawStatus);
-    const repo = repoLabel(thread.repoUrl);
-    const branch = thread.branch ? ` · ${thread.branch}` : '';
-    const updated = formatUpdated(thread.updatedAt || thread.createdAt);
-    return `
-      <a class="inbox-item ${badgeClass}" href="${escapeHtml(threadUrl(thread.name))}">
-        <span class="status-dot" aria-hidden="true"></span>
-        <span class="inbox-main">
-          <strong>${escapeHtml(thread.name)}</strong>
-          <small>${escapeHtml(repo)}${escapeHtml(branch)}</small>
+  const runningStarts = grouped.running.filter(isActiveThread).map(runtimeStart).filter(Boolean);
+  finishedThreadNames = grouped.done.filter(canArchiveThread).map((thread) => thread.name);
+  renderActionSummary(grouped.running.length, grouped.done.length, runningStarts);
+  threadsList.innerHTML = lanes.map((lane) => `
+    <section class="action-lane" aria-label="${escapeHtml(lane.title)} agents">
+      <div class="action-lane-head">
+        <h3>${escapeHtml(lane.title)}</h3>
+        <span class="action-lane-tools">
+          <span class="action-count">${grouped[lane.key].length}</span>
+          ${lane.key === 'done' && finishedThreadNames.length ? '<button id="clear-finished-threads" class="textbtn lane-clear" type="button">clear all</button>' : ''}
         </span>
-        <span class="inbox-side">
-          ${updated ? `<time>${escapeHtml(updated)}</time>` : ''}
-          <span class="badge ${badgeClass}">${escapeHtml(statusCopy(thread))}</span>
-        </span>
-      </a>
-    `;
-  }).join('');
+      </div>
+      <div class="action-list">
+        ${grouped[lane.key].length ? grouped[lane.key].map(renderThreadCard).join('') : `<p class="empty-state">${escapeHtml(lane.empty)}</p>`}
+      </div>
+    </section>
+  `).join('');
+  syncRuntimeTick();
 }
 
 async function loadThreads() {
   const payload = await fetchJson('/api/threads');
   renderProvider(payload.provider);
-  renderThreads(payload.threads || []);
+  renderPiDefaults(payload.defaults);
+  renderThreads((payload.threads || []).filter(sameSelectedProject));
   return payload;
 }
 
@@ -250,7 +567,6 @@ async function reloadControlData() {
   try {
     const github = await loadGitHubAuth();
     await Promise.all([loadCodexAuth(), loadThreads()]);
-    if (github.connected) await loadGitHubRepos();
   } catch (error) {
     renderAuthError(error.message);
     providerBanner.dataset.tone = 'error';
@@ -261,17 +577,19 @@ async function reloadControlData() {
 }
 
 getBrowserSessionId();
-setAdvancedMode(advancedMode());
-modeToggle.addEventListener('click', () => setAdvancedMode(!advancedMode()));
-
-document.querySelectorAll('[data-prompt]').forEach((button) => {
-  button.addEventListener('click', () => {
-    promptInput.value = button.dataset.prompt || '';
-    promptInput.focus();
-  });
+applySelectedProject();
+loadRunControls();
+modelRefInput.addEventListener('change', saveRunControls);
+thinkingLevelInput.addEventListener('input', () => {
+  renderThinkingLevel();
+  saveRunControls();
 });
+imageInput?.addEventListener('change', () => updateImageStatus(imageInput, imageStatus));
+bindImageDropZone(threadForm, imageInput, imageStatus);
+submitOnEnter(promptInput, threadForm, threadSubmit);
 
 repoRefresh.addEventListener('click', async () => {
+  if (localProvider) return;
   repoRefresh.disabled = true;
   repoHint.textContent = 'Loading…';
   try {
@@ -281,6 +599,13 @@ repoRefresh.addEventListener('click', async () => {
   } finally {
     repoRefresh.disabled = false;
   }
+});
+
+chooseFolder.addEventListener('click', async () => {
+  const folder = await globalThis.makerspaceDesktop?.chooseFolder?.(repoUrlInput.value.trim());
+  if (!folder) return;
+  repoUrlInput.value = folder;
+  resetRepoSelection('Local folder selected.');
 });
 
 repoPicker.addEventListener('change', () => {
@@ -304,22 +629,35 @@ repoUrlInput.addEventListener('input', () => {
 threadForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   const form = new FormData(threadForm);
-  const body = {
-    repoUrl: normalizeRepoUrl(form.get('repoUrl')),
-    branch: form.get('branch'),
-    name: form.get('name'),
-    prompt: form.get('prompt'),
-    repoSource: form.get('repoSource'),
-  };
-
+  const repoInput = String(form.get('repoUrl') || '').trim();
+  saveRunControls();
   threadSubmit.disabled = true;
   threadStatus.textContent = 'Starting…';
   try {
+    const images = await filesToImageAttachments(imageInputFiles(imageInput));
+    const localProject = selectedProjectIsLocal();
+    const body = {
+      ...(localProject ? { repoPath: repoInput } : { repoUrl: normalizeRepoUrl(repoInput) }),
+      branch: form.get('branch'),
+      name: form.get('name'),
+      prompt: form.get('prompt'),
+      repoSource: localProject ? '' : form.get('repoSource'),
+      modelRef: modelRefInput.value,
+      thinkingLevel: thinkingLevelValue(),
+      images,
+    };
     const payload = await fetchJson('/api/threads', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
     });
+    if (localProject) {
+      try {
+        await globalThis.makerspaceDesktop?.rememberFolder?.(repoInput);
+      } catch {}
+    }
+    clearImageInput(imageInput);
+    updateImageStatus(imageInput, imageStatus);
     location.href = threadUrl(payload.thread.name);
   } catch (error) {
     providerBanner.dataset.tone = 'error';
@@ -335,6 +673,40 @@ refreshThreads.addEventListener('click', async () => {
     await loadThreads();
   } finally {
     refreshThreads.disabled = false;
+  }
+});
+
+threadsList.addEventListener('click', async (event) => {
+  const clearButton = event.target.closest('#clear-finished-threads');
+  if (clearButton) {
+    const names = [...finishedThreadNames];
+    if (!names.length) return;
+    clearButton.disabled = true;
+    clearButton.textContent = 'clearing…';
+    try {
+      for (const name of names) {
+        await fetchJson(`/api/threads/${encodeURIComponent(name)}/archive`, { method: 'POST' });
+      }
+      await loadThreads();
+    } catch (error) {
+      clearButton.disabled = false;
+      clearButton.textContent = 'clear all';
+      threadStatus.textContent = error.message;
+    }
+    return;
+  }
+
+  const button = event.target.closest('[data-archive-thread]');
+  if (!button) return;
+  button.disabled = true;
+  button.textContent = 'marking…';
+  try {
+    await fetchJson(`/api/threads/${encodeURIComponent(button.dataset.archiveThread)}/archive`, { method: 'POST' });
+    await loadThreads();
+  } catch (error) {
+    button.disabled = false;
+    button.textContent = 'mark as done';
+    threadStatus.textContent = error.message;
   }
 });
 

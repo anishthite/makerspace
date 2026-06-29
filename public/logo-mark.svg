@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 140" role="img" aria-labelledby="title desc">
+  <title id="title">Makerspace mark</title>
+  <desc id="desc">A blue workshop tile with an angular M.</desc>
+  <rect width="140" height="140" rx="16" fill="#1F5E9C"/>
+  <path d="M22 32h96M22 70h96M22 108h96M32 22v96M70 22v96M108 22v96" stroke="#FAF8F3" stroke-width="2" opacity=".18"/>
+  <path d="M28 108V34h24l18 29 18-29h24v74H89V72L70 102 51 72v36H28Z" fill="#FAF8F3"/>
+  <path d="M28 126h84" stroke="#FAF8F3" stroke-width="8" stroke-linecap="square" opacity=".95"/>
+</svg>

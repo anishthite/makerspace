@@ -1,3 +1,4 @@
+import { homedir } from 'node:os';
 import path from 'node:path';
 
 try {
@@ -13,6 +14,7 @@ const DEFAULT_FORWARD_ENV_KEYS = [
   'GEMINI_API_KEY',
   'OPENROUTER_API_KEY',
   'DEEPSEEK_API_KEY',
+  'INFERENCE_API_KEY',
 ];
 
 function splitList(value) {
@@ -22,14 +24,33 @@ function splitList(value) {
     .filter(Boolean);
 }
 
+function projectNameFromEnv(localDataDir) {
+  const explicit = String(process.env.MAKERSPACE_PROJECT || process.env.MAKERSPACE_NAME || '').trim();
+  if (explicit) return explicit;
+
+  if (process.env.MAKERSPACE_HOME) {
+    const name = path.basename(path.resolve(localDataDir)).replace(/^\.+/, '').trim();
+    if (name) return name;
+  }
+
+  return 'makerspace';
+}
+
 export function getConfig() {
   const rootDir = process.cwd();
+  const provider = process.env.INFRA_PROVIDER || process.env.PROVIDER || 'daytona';
+  const localDataDir = process.env.MAKERSPACE_HOME || path.join(homedir(), '.makerspace');
+  const defaultDataDir = provider === 'local' ? localDataDir : path.join(rootDir, 'data');
 
   return {
     rootDir,
-    provider: process.env.INFRA_PROVIDER || process.env.PROVIDER || 'daytona',
+    provider,
+    projectName: projectNameFromEnv(localDataDir),
+    localDataDir,
+    host: process.env.HOST || (provider === 'local' ? '127.0.0.1' : ''),
     port: Number(process.env.PORT || 8787),
     controlApiToken: process.env.CONTROL_API_TOKEN || '',
+    stateStore: process.env.MAKERSPACE_STATE_STORE || process.env.STATE_STORE || 'file',
     daytonaApiKey: process.env.DAYTONA_API_KEY || '',
     daytonaApiUrl: process.env.DAYTONA_API_URL || 'https://app.daytona.io/api',
     daytonaTarget: process.env.DAYTONA_TARGET || '',
@@ -47,7 +68,8 @@ export function getConfig() {
     githubClientSecret: process.env.GITHUB_CLIENT_SECRET || '',
     imageAssetsDir: process.env.IMAGE_ASSETS_DIR || path.join(rootDir, 'image'),
     dockerfilePath: process.env.DOCKERFILE_PATH || path.join(rootDir, 'image', 'Dockerfile'),
-    settingsFile: process.env.SETTINGS_DATA_PATH || path.join(rootDir, 'data', 'settings.json'),
+    settingsFile: process.env.SETTINGS_DATA_PATH || path.join(defaultDataDir, 'settings.json'),
+    recentProjectsFile: process.env.RECENT_PROJECTS_DATA_PATH || path.join(defaultDataDir, 'recent-projects.json'),
     remoteWorkspaceDir: process.env.REMOTE_WORKSPACE_DIR || '/srv/workspace',
     remoteControlDir: process.env.REMOTE_CONTROL_DIR || '/srv/micro-cloud',
     bridgePort: Number(process.env.PI_BRIDGE_PORT || 4310),
@@ -55,16 +77,30 @@ export function getConfig() {
     bridgeReadyPollMs: Number(process.env.PI_BRIDGE_READY_POLL_MS || 1000),
     warmBridgePoolSize: Number(process.env.WARM_BRIDGE_POOL_SIZE || 0),
     idleBridgeTtlMs: Number(process.env.IDLE_BRIDGE_TTL_MS || 60 * 60 * 1000),
-    hostDispatchEnabled: process.env.PI_LOCAL_DISPATCH !== '0' && process.env.PI_HOST_DISPATCH !== '0',
+    hostDispatchEnabled: provider !== 'local' && ['1', 'true', 'yes'].includes(String(process.env.PI_HOST_DISPATCH || process.env.PI_LOCAL_DISPATCH || '').toLowerCase()),
     piSdkPackageDir: process.env.PI_SDK_PACKAGE_DIR || '',
+    piAgentDir: process.env.PI_CODING_AGENT_DIR || path.join(homedir(), '.pi', 'agent'),
+    piProfileFile: process.env.PI_PROFILE_DATA_PATH || path.join(defaultDataDir, 'pi-profile.json'),
+    piDefaultsPackageDir:
+      process.env.MAKERSPACE_PI_DEFAULTS_PACKAGE_DIR ||
+      path.join(rootDir, 'packages', 'makerspace-pi-defaults'),
+    remotePiDefaultsPackageDir:
+      process.env.REMOTE_PI_DEFAULTS_PACKAGE_DIR ||
+      `/home/${process.env.DAYTONA_USER || 'daytona'}/.pi/agent/makerspace-pi-defaults`,
     piInstallCommand:
       process.env.PI_INSTALL_COMMAND ||
       'npm install -g --ignore-scripts @earendil-works/pi-coding-agent',
     defaultTaskPrompt:
       process.env.DEFAULT_TASK_PROMPT ||
       'Read AGENTS.md if present, inspect the repo, and complete the requested task.',
+    threadTitleModel: process.env.THREAD_TITLE_MODEL || 'openai-codex/gpt-5.4-mini',
+    threadTitleTimeoutMs: Number(process.env.THREAD_TITLE_TIMEOUT_MS || 15000),
+    threadSummaryModel: process.env.THREAD_SUMMARY_MODEL || process.env.THREAD_TITLE_MODEL || 'openai-codex/gpt-5.4-mini',
+    threadSummaryTimeoutMs: Number(process.env.THREAD_SUMMARY_TIMEOUT_MS || 15000),
     sessionFile:
-      process.env.SESSION_DATA_PATH || path.join(rootDir, 'data', 'sessions.json'),
+      process.env.SESSION_DATA_PATH || path.join(defaultDataDir, 'sessions.json'),
+    piSessionTraceDir:
+      process.env.PI_SESSION_TRACE_DIR || path.join(defaultDataDir, 'pi-sessions'),
     forwardEnvKeys: splitList(
       process.env.FORWARD_ENV_KEYS || DEFAULT_FORWARD_ENV_KEYS.join(','),
     ),

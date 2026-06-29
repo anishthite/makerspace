@@ -7,8 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300..700;1,400&family=Noto+Serif+Display:wght@600;700;800;900&family=Saira+Extra+Condensed:wght@400;500;600;700;800&family=Shippori+Mincho+B1:wght@500;700;800&display=swap" rel="stylesheet">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2305040A'/%3E%3Cpath d='M6 24V8h4l6 9V8h4v16h-4l-6-9v9H6Zm18 0V8h2v16h-2Z' fill='%23F59B2D'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="/styles.css">
+  <link rel="icon" href="/favicon.svg">
+  <link rel="stylesheet" href="/styles.css?v=palette-2">
 </head>
 <body>
   <div class="crt-vignette" aria-hidden="true"></div>
@@ -16,11 +16,12 @@
 
   <main class="shell console-grid">
     <nav class="topbar panel-lite" aria-label="Settings controls">
-      <a class="brand-mark" href="/" aria-label="Makerspace home">
+      <a class="brand-mark has-logo" href="/" aria-label="Makerspace home">
+        <img class="brand-logo" src="/logo-mark.svg" alt="" aria-hidden="true">
         <strong>settings</strong>
       </a>
       <div class="topbar-actions">
-        <a class="nav-link" href="/">threads</a>
+        <a class="nav-link" href="/">agents</a>
       </div>
     </nav>
 
@@ -28,7 +29,7 @@
       <h1>Settings</h1>
     </header>
 
-    <section class="panel stack-lg">
+    <section id="codex" class="panel stack-lg">
       <div class="panel-header">
         <div>
           <h2>Codex</h2>
@@ -39,7 +40,7 @@
       <div id="codex-device" class="notice hidden"></div>
     </section>
 
-    <section class="panel stack-lg">
+    <section id="github" class="panel stack-lg">
       <div class="panel-header">
         <div>
           <h2>GitHub</h2>
@@ -78,6 +79,71 @@
     <section class="panel stack-lg">
       <div class="panel-header">
         <div>
+          <h2>Appearance</h2>
+        </div>
+      </div>
+      <div class="toggle-list">
+        <label class="toggle-card">
+          <span>Dark mode <small>Default.</small></span>
+          <input id="dark-mode" type="checkbox">
+        </label>
+        <label class="toggle-card">
+          <span>Dark palette <small>Dark mode only.</small></span>
+          <select id="dark-palette" aria-label="Dark palette">
+            <option value="slate">slate — lighter</option>
+            <option value="midnight">midnight — current</option>
+            <option value="graphite">graphite — neutral</option>
+            <option value="dusk">dusk — purple</option>
+            <option value="nerv-os">NERV-OS — retro cyan</option>
+          </select>
+        </label>
+        <label class="toggle-card">
+          <span>Monospace font <small>Default.</small></span>
+          <input id="mono-font" type="checkbox">
+        </label>
+      </div>
+    </section>
+
+    <section id="pi-profile" class="panel stack-lg">
+      <div class="panel-header">
+        <div>
+          <h2>Pi profile</h2>
+        </div>
+      </div>
+      <form id="pi-profile-form" class="stack-lg">
+        <label class="full-width">
+          <span>AGENTS.md</span>
+          <textarea id="pi-agents" rows="12" spellcheck="false" placeholder="Your ~/.pi/agent/AGENTS.md instructions"></textarea>
+          <small id="pi-agents-path" class="muted">Loading…</small>
+        </label>
+        <label class="toggle-card">
+          <span>Sync selected profile to remote sandboxes <small>Per run; not baked into public images.</small></span>
+          <input id="pi-sync-remote" type="checkbox">
+        </label>
+        <div class="profile-resource-grid">
+          <div>
+            <h3>Skills</h3>
+            <div id="pi-skills" class="resource-list muted">Loading…</div>
+          </div>
+          <div>
+            <h3>Extensions</h3>
+            <div id="pi-extensions" class="resource-list muted">Loading…</div>
+          </div>
+          <div>
+            <h3>Prompts</h3>
+            <div id="pi-prompts" class="resource-list muted">Loading…</div>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button id="pi-profile-submit" type="submit">Save profile</button>
+          <p id="pi-profile-status" class="muted">Loading…</p>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel stack-lg">
+      <div class="panel-header">
+        <div>
           <h2>Sandbox</h2>
         </div>
       </div>
@@ -111,6 +177,6 @@
     </section>
   </main>
 
-  <script type="module" src="/settings.js?v=copy-trim-1"></script>
+  <script type="module" src="/settings.js?v=palette-2"></script>
 </body>
 </html>

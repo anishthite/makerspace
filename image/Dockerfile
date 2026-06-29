@@ -72,11 +72,21 @@ RUN usermod -l daytona -c "Daytona user" ubuntu && \
     echo '/dev/vda / ext4 defaults,x-systemd.growfs 0 1' > /etc/fstab
 
 COPY package.json /home/daytona/.pi/agent/npm/package.json
+COPY ctx/ /tmp/makerspace-ctx/
 
 RUN npm install --prefix /home/daytona/.pi/agent/npm --no-audit --no-fund --omit=dev --ignore-scripts --legacy-peer-deps && \
+    if [ -d /tmp/makerspace-ctx/makerspace-pi-defaults ]; then \
+      rm -rf /home/daytona/.pi/agent/makerspace-pi-defaults && \
+      cp -R /tmp/makerspace-ctx/makerspace-pi-defaults /home/daytona/.pi/agent/makerspace-pi-defaults; \
+    fi && \
     ln -sf /home/daytona/.pi/agent/npm/node_modules/.bin/pi /home/daytona/.local/bin/pi && \
     ln -sf /home/daytona/.local/bin/pi /usr/local/bin/pi && \
-    printf '%s\n' '{"defaultProvider":"openai-codex","defaultModel":"gpt-5.4","defaultThinkingLevel":"medium","enabledModels":["openai-codex/gpt-5.4","openai-codex/gpt-5.4-mini"],"packages":["npm:pi-chrome"]}' > /home/daytona/.pi/agent/settings.json && \
+    if [ -d /home/daytona/.pi/agent/makerspace-pi-defaults ]; then \
+      settings='{"defaultProvider":"openai-codex","defaultModel":"gpt-5.4","defaultThinkingLevel":"medium","enabledModels":["openai-codex/gpt-5.4","openai-codex/gpt-5.4-mini","inference/nvidia/nemotron3-super"],"packages":["/home/daytona/.pi/agent/makerspace-pi-defaults","npm:pi-chrome"]}'; \
+    else \
+      settings='{"defaultProvider":"openai-codex","defaultModel":"gpt-5.4","defaultThinkingLevel":"medium","enabledModels":["openai-codex/gpt-5.4","openai-codex/gpt-5.4-mini"],"packages":["npm:pi-chrome"]}'; \
+    fi && \
+    printf '%s\n' "$settings" > /home/daytona/.pi/agent/settings.json && \
     chown -R daytona:daytona /home/daytona
 
 COPY init-wrapper.sh /usr/local/bin/init
