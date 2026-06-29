@@ -31,6 +31,8 @@ That is deliberate. The goal is one prompt in, one real sandbox-backed run out.
 
 For deployment, put the static UI on Vercel and this Node control backend on a server with Daytona credentials. The UI has “Control backend URL” and “Control API token” fields; set them to the backend HTTPS URL and `CONTROL_API_TOKEN`. The backend keeps Daytona and model-provider credentials server-side.
 
+DigitalOcean App Platform can build the root `Dockerfile` for the control backend. Keep the source directory at `/`, use the Dockerfile build strategy, and set the public HTTP port to `8080`. `image/Dockerfile` is still the separate Daytona sandbox image.
+
 To repeat the cold intent-prep measurement without relying on an existing warm bridge, start the server with an empty `SESSION_DATA_PATH`, then run:
 
 ```bash

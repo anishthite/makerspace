@@ -1,0 +1,21 @@
+# Keep the backend image boring and small.
+.git
+node_modules
+dist
+data
+output
+test-results
+.vercel
+.pi
+.playwright-cli
+implementation-notes
+test
+desktop
+
+.env
+.env.*
+.DS_Store
+*.log
+/*.excalidraw
+/*.png
+/good-html-tests.md
