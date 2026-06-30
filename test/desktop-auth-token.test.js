@@ -3,6 +3,9 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 const desktopMain = readFileSync(new URL('../desktop/main.js', import.meta.url), 'utf8');
+const desktopPreload = readFileSync(new URL('../desktop/preload.cjs', import.meta.url), 'utf8');
+const frontendEntry = readFileSync(new URL('../frontend/src/entry.jsx', import.meta.url), 'utf8');
+const frontendStyles = readFileSync(new URL('../frontend/public/styles.css', import.meta.url), 'utf8');
 const serverJs = readFileSync(new URL('../src/server.js', import.meta.url), 'utf8');
 const packageScript = readFileSync(new URL('../scripts/package-desktop.sh', import.meta.url), 'utf8');
 
@@ -22,6 +25,19 @@ test('packaged desktop app checks public GitHub releases for updates', () => {
   assert.match(desktopMain, /updateElectronApp/);
   assert.match(desktopMain, /UpdateSourceType\.ElectronPublicUpdateService/);
   assert.match(desktopMain, /repo: 'anishthite\/makerspace-downloads'/);
+});
+
+test('downloaded desktop updates show a dismissible restart banner', () => {
+  assert.match(desktopMain, /onNotifyUser: announceUpdateDownloaded/);
+  assert.match(desktopMain, /makerspace:update-downloaded/);
+  assert.match(desktopMain, /makerspace:get-pending-update/);
+  assert.match(desktopMain, /makerspace:restart-to-update/);
+  assert.match(desktopPreload, /onUpdateDownloaded/);
+  assert.match(desktopPreload, /getPendingUpdate/);
+  assert.match(desktopPreload, /restartToUpdate/);
+  assert.match(frontendEntry, /restart to update/);
+  assert.match(frontendEntry, /makerspaceUpdateDismissed:/);
+  assert.match(frontendStyles, /\.desktop-update-banner/);
 });
 
 test('desktop package build emits the signed app OTA zip', () => {

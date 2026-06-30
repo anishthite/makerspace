@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { pages } from './pages.jsx';
@@ -13,6 +13,41 @@ const runtimeLoaders = {
   history: () => import('./runtime/history.js'),
   performance: () => import('./runtime/performance.js'),
 };
+
+const UPDATE_DISMISS_PREFIX = 'makerspaceUpdateDismissed:';
+
+function updateDismissKey(info = {}) {
+  return `${UPDATE_DISMISS_PREFIX}${info.releaseName || info.updateURL || info.releaseDate || 'latest'}`;
+}
+
+function DesktopUpdateBanner() {
+  const [update, setUpdate] = useState(null);
+
+  useEffect(() => {
+    const desktop = window.makerspaceDesktop;
+    if (!desktop?.onUpdateDownloaded && !desktop?.getPendingUpdate) return undefined;
+    const showUpdate = (info) => {
+      if (!info || localStorage.getItem(updateDismissKey(info)) === '1') return;
+      setUpdate(info || {});
+    };
+    const unsubscribe = desktop.onUpdateDownloaded?.(showUpdate);
+    desktop.getPendingUpdate?.().then(showUpdate).catch(() => {});
+    return unsubscribe;
+  }, []);
+
+  if (!update) return null;
+
+  const dismiss = () => {
+    localStorage.setItem(updateDismissKey(update), '1');
+    setUpdate(null);
+  };
+
+  return <div className="desktop-update-banner" role="status" aria-live="polite">
+    <span>restart to update</span>
+    <button type="button" onClick={() => window.makerspaceDesktop?.restartToUpdate?.()}>restart</button>
+    <button type="button" onClick={dismiss}>dismiss</button>
+  </div>;
+}
 
 function App({ page }) {
   const Page = pages[page] || pages.project;
@@ -29,7 +64,10 @@ function App({ page }) {
     };
   }, [page]);
 
-  return <Page />;
+  return <>
+    <DesktopUpdateBanner />
+    <Page />
+  </>;
 }
 
 applyAppearance();

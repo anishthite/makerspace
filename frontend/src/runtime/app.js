@@ -72,13 +72,12 @@ function toastHost() {
 function showAgentToast(title, detail = '', tone = 'success') {
   const node = document.createElement('button');
   node.type = 'button';
-  node.style.cssText = `pointer-events:auto;text-align:left;font:inherit;cursor:pointer;border:1px solid var(--rule);border-left:4px solid ${tone === 'error' ? 'var(--red)' : 'var(--green)'};background:var(--paper);color:var(--ink);box-shadow:var(--shadow-md);border-radius:14px;padding:10px 12px;display:grid;gap:3px;min-width:240px`;
+  node.className = `agent-toast${tone === 'error' ? ' error' : ''}`;
   const label = document.createElement('strong');
   label.textContent = title;
   node.append(label);
   if (detail) {
     const copy = document.createElement('small');
-    copy.style.color = 'var(--ink-3)';
     copy.textContent = detail;
     node.append(copy);
   }

@@ -5,7 +5,7 @@ import net from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { app, BrowserWindow, dialog, ipcMain } from 'electron';
+import { app, autoUpdater, BrowserWindow, dialog, ipcMain } from 'electron';
 
 import { cleanFolder, readLastFolder, writeLastFolder } from './last-folder.js';
 
@@ -16,6 +16,25 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '..');
 let serverProcess = null;
 let mainWindow = null;
+let pendingUpdate = null;
+
+function publicUpdateInfo(info = {}) {
+  return {
+    releaseName: String(info.releaseName || ''),
+    releaseDate: String(info.releaseDate || ''),
+    updateURL: String(info.updateURL || ''),
+  };
+}
+
+function sendPendingUpdate(window = mainWindow) {
+  if (!pendingUpdate || !window || window.isDestroyed()) return;
+  window.webContents.send('makerspace:update-downloaded', pendingUpdate);
+}
+
+function announceUpdateDownloaded(info) {
+  pendingUpdate = publicUpdateInfo(info);
+  BrowserWindow.getAllWindows().forEach(sendPendingUpdate);
+}
 
 function slugify(value) {
   return String(value || 'project')
@@ -120,6 +139,7 @@ function createWindow(port, token) {
     { urls: [`http://127.0.0.1:${port}/api/*`] },
     (details, callback) => callback({ requestHeaders: { ...details.requestHeaders, 'x-api-token': token } }),
   );
+  mainWindow.webContents.on('did-finish-load', () => sendPendingUpdate(mainWindow));
   mainWindow.loadURL(`http://127.0.0.1:${port}/`);
 }
 
@@ -130,6 +150,8 @@ function userDataDir() {
 ipcMain.handle('makerspace:get-last-folder', () => initialFolder || readLastFolder(userDataDir()));
 
 ipcMain.handle('makerspace:remember-folder', (_event, folder) => writeLastFolder(userDataDir(), folder));
+
+ipcMain.handle('makerspace:get-pending-update', () => pendingUpdate);
 
 ipcMain.handle('makerspace:choose-folder', async (_event, folder) => {
   const defaultPath = cleanFolder(folder) || initialFolder || readLastFolder(userDataDir());
@@ -142,12 +164,18 @@ ipcMain.handle('makerspace:choose-folder', async (_event, folder) => {
   return selected;
 });
 
+ipcMain.handle('makerspace:restart-to-update', () => {
+  autoUpdater.quitAndInstall();
+  return true;
+});
+
 if (app.isPackaged) {
   updateElectronApp({
     updateSource: {
       type: UpdateSourceType.ElectronPublicUpdateService,
       repo: 'anishthite/makerspace-downloads',
     },
+    onNotifyUser: announceUpdateDownloaded,
   });
 }
 

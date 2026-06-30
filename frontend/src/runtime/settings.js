@@ -128,8 +128,26 @@ async function loadCodexAuth() {
   return status;
 }
 
+function writeCodexTab(codexTab, body) {
+  try {
+    codexTab.document.open();
+    codexTab.document.write(`<!doctype html><title>Codex sign-in</title><body style="font:16px system-ui;padding:24px">${body}</body>`);
+    codexTab.document.close();
+  } catch {}
+}
+
 function openWebCodexTab() {
-  return globalThis.makerspaceDesktop ? null : globalThis.open?.('about:blank', '_blank') || null;
+  if (globalThis.makerspaceDesktop) return null;
+  const codexTab = globalThis.open?.('about:blank', '_blank') || null;
+  if (codexTab) writeCodexTab(codexTab, 'Opening Codex sign-in…');
+  return codexTab;
+}
+
+function navigateCodexTab(codexTab, url) {
+  if (!codexTab || !url) return;
+  const safeUrl = escapeHtml(url);
+  const scriptUrl = JSON.stringify(url).replaceAll('</', '<\\/');
+  writeCodexTab(codexTab, `Opening Codex sign-in… <a href="${safeUrl}">Open manually</a><script>window.opener=null;location.replace(${scriptUrl});</script>`);
 }
 
 function renderCodexDevice(login, codexTab = null) {
@@ -138,12 +156,7 @@ function renderCodexDevice(login, codexTab = null) {
     codexTab?.close?.();
     return;
   }
-  if (codexTab && device.verificationUri) {
-    try {
-      codexTab.opener = null;
-      codexTab.location.href = device.verificationUri;
-    } catch {}
-  }
+  navigateCodexTab(codexTab, device.verificationUri);
   codexDevice.classList.remove('hidden');
   codexDevice.innerHTML = `<a href="${escapeHtml(device.verificationUri)}" target="_blank" rel="noreferrer">OpenAI</a>: <code>${escapeHtml(device.userCode)}</code>`;
 }
@@ -166,13 +179,18 @@ function renderGitHubAuth(status) {
   if (!status.configured) {
     githubStatus.textContent = 'Missing GitHub OAuth env';
     githubLogin.disabled = true;
+    githubLogin.hidden = true;
     githubLogout.disabled = true;
+    githubLogout.hidden = true;
     return;
   }
 
+  const connected = Boolean(status.connected);
   githubLogin.disabled = false;
-  githubLogout.disabled = !status.connected;
-  githubStatus.textContent = status.connected
+  githubLogin.hidden = connected;
+  githubLogout.disabled = !connected;
+  githubLogout.hidden = !connected;
+  githubStatus.textContent = connected
     ? `Signed in · ${status.user?.login || 'GitHub'}`
     : 'Signed out';
 }
