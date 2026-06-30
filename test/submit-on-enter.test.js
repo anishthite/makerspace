@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { submitOnEnter } from '../public/submit-on-enter.js';
+import { submitOnEnter } from '../frontend/src/runtime/submit-on-enter.js';
 
 function bind() {
   const listeners = new Map();

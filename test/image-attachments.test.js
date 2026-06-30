@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { acceptedImageFiles, bindImageDropZone, clearImageInput, imageInputFiles, updateImageStatus } from '../public/image-attachments.js';
+import { acceptedImageFiles, bindImageDropZone, clearImageInput, imageInputFiles, updateImageStatus } from '../frontend/src/runtime/image-attachments.js';
 
 test('acceptedImageFiles keeps supported non-empty images only', () => {
   const png = { name: 'screen.png', type: 'image/png', size: 1 };

@@ -18,6 +18,8 @@ test('desktop sends local API token as a request header', () => {
 
 test('desktop package build keeps frontend on same-origin API', () => {
   assert.match(packageScript, /VITE_MAKERSPACE_API_BASE= npm run build/);
+  assert.match(packageScript, /frontend\/public\/logo-mark\.svg/);
+  assert.doesNotMatch(packageScript, /desktop src public dist/);
 });
 
 test('packaged desktop app checks public GitHub releases for updates', () => {

@@ -48,6 +48,8 @@ test('buildSetupScript clones a repo and auto-runs pi when requested', () => {
   assert.match(script, /if \[ ! -d '\/home\/daytona\/\.pi\/agent\/npm\/node_modules\/@earendil-works\/pi-coding-agent' \]; then\n  PI_VERSION=/);
   assert.match(script, /PI_SDK_SPEC='@earendil-works\/pi-coding-agent'/);
   assert.match(script, /npm install --prefix '\/home\/daytona\/\.pi\/agent\/npm' --no-audit --no-fund --ignore-scripts --legacy-peer-deps "\$PI_SDK_SPEC"/);
+  assert.match(script, /mkdir -p '\/srv\/micro-cloud' '\/srv\/workspace' '\/srv\/micro-cloud\/pi-sessions'/);
+  assert.match(script, /chown -R 'daytona:daytona' '\/srv\/micro-cloud' '\/srv\/workspace' '\/home\/daytona\/\.pi\/agent'/);
   assert.match(script, /Description=pi bridge/);
   assert.match(script, /systemctl enable --now pi-bridge\.service/);
   assert.match(script, /curl http:\/\/127\.0\.0\.1:4310\/healthz/);

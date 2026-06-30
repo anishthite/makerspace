@@ -3,22 +3,23 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 
-const html = readFileSync(new URL('../public/thread.html', import.meta.url), 'utf8');
-const js = readFileSync(new URL('../public/thread.js', import.meta.url), 'utf8');
-const css = readFileSync(new URL('../public/styles.css', import.meta.url), 'utf8');
+const pages = readFileSync(new URL('../frontend/src/pages.jsx', import.meta.url), 'utf8');
+const threadHtml = readFileSync(new URL('../frontend/thread.html', import.meta.url), 'utf8');
+const js = readFileSync(new URL('../frontend/src/runtime/thread.js', import.meta.url), 'utf8');
+const css = readFileSync(new URL('../frontend/public/styles.css', import.meta.url), 'utf8');
 
 test('thread tool trace is wired to the inline trace timeline', () => {
-  assert.match(html, /id="timeline"/);
-  assert.match(html, /id="agent-trace"/);
-  assert.match(html, /id="trace-timeline"/);
+  assert.match(pages, /id="timeline"/);
+  assert.match(pages, /id="agent-trace"/);
+  assert.match(pages, /id="trace-timeline"/);
   assert.match(js, /const traceTimeline = document\.querySelector\('#trace-timeline'\)/);
   assert.match(js, /traceTimeline\.append\(article\)/);
   assert.doesNotMatch(js, /timeline\.append\(article\);\n\s*node = article\.querySelector\('\.tool-card'\)/);
 });
 
 test('conversation runtime markers live in the timeline and toggle the inline trace', () => {
-  assert.doesNotMatch(html, /id="run-summary"/);
-  assert.match(html, /class="agent-activity agent-trace-inline"/);
+  assert.doesNotMatch(pages, /id="run-summary"/);
+  assert.match(pages, /className="agent-activity agent-trace-inline"/);
   assert.match(js, /function appendRunSummaryMarker/);
   assert.match(js, /article\.className = 'timeline-item run-summary-item'/);
   assert.match(js, /button\.addEventListener\('click', \(\) => toggleAgentActivity\(article\)\)/);
@@ -52,7 +53,7 @@ test('answer summary events refresh thread state and history', () => {
 });
 
 test('agent trace shows thinking steps and answer summaries', () => {
-  assert.match(html, /<span>agent trace<\/span><strong>events<\/strong>/);
+  assert.match(pages, /<span>agent trace<\/span><strong>events<\/strong>/);
   assert.match(js, /const thinkingCards = new Map\(\)/);
   assert.match(js, /function renderTimelineThinkingEvent/);
   assert.match(js, /thinking steps/);
@@ -103,7 +104,7 @@ test('inline trace uses a subtle marker without overlay behavior', () => {
   assert.match(css, /\.run-summary-detail/);
   assert.match(css, /\.agent-trace-inline/);
   assert.doesNotMatch(css, /agent-overlay-open/);
-  assert.doesNotMatch(html, /agent-trace-drawer/);
+  assert.doesNotMatch(pages, /agent-trace-drawer/);
   assert.doesNotMatch(js, /closeAgentActivityOnOutsideClick/);
   assert.doesNotMatch(js, /document\.addEventListener\('click', closeAgentActivityOnOutsideClick/);
   assert.match(js, /agentActivityClose\?\.addEventListener\('click', \(\) => setAgentActivityOpen\(false\)\)/);
@@ -111,7 +112,7 @@ test('inline trace uses a subtle marker without overlay behavior', () => {
 });
 
 test('thread page uses the cheap desktop scroll path', () => {
-  assert.match(html, /<body class="thread-page">/);
+  assert.match(threadHtml, /<body class="thread-page" data-react-page="thread">/);
   assert.match(css, /body\.thread-page[\s\S]+background-image: none/);
   assert.match(css, /\.thread-page \.flow-topbar \{ backdrop-filter: none; \}/);
   assert.match(css, /content-visibility: auto/);

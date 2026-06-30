@@ -2,13 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const html = readFileSync(new URL('../public/workspace.html', import.meta.url), 'utf8');
-const js = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
+const pages = readFileSync(new URL('../frontend/src/pages.jsx', import.meta.url), 'utf8');
+const js = readFileSync(new URL('../frontend/src/runtime/app.js', import.meta.url), 'utf8');
 const runState = readFileSync(new URL('../src/server/run-state.js', import.meta.url), 'utf8');
 const threads = readFileSync(new URL('../src/server/threads.js', import.meta.url), 'utf8');
 
 test('home agents summary shows total active runtime', () => {
-  assert.match(html, /\/app\.js\?v=agent-finish-toasts-1/);
+  assert.match(pages, /export function WorkspacePage\(\)/);
   assert.match(js, /function formatRunningTotal\(starts, endValue = Date\.now\(\)\)/);
   assert.match(js, /totalMs \+= Math\.max\(0, end - start\)/);
   assert.match(js, /running\$\{total \? ` for \$\{total\} total` : ''\}/);
@@ -30,8 +30,8 @@ test('running rows show activity instead of the workspace folder', () => {
 });
 
 test('home history and finished clear controls are near agent refresh', () => {
-  assert.doesNotMatch(html, /main-screen-variations|>concepts<\/a>/);
-  assert.match(html, /<a class="textbtn" href="\/history\.html">history<\/a>\s*<button id="refresh-threads"/);
+  assert.doesNotMatch(pages, /main-screen-variations|>concepts<\/a>/);
+  assert.match(pages, /href="\/history\.html">history<\/Button><Button id="refresh-threads"/);
   assert.match(js, /id="clear-finished-threads" class="textbtn lane-clear"/);
   assert.match(js, /for \(const name of names\) \{\s*await fetchJson\(`\/api\/threads\/\$\{encodeURIComponent\(name\)\}\/archive`/);
   assert.match(js, /cache: 'no-store'/);
@@ -62,6 +62,7 @@ test('recently finished success indicators can be dismissed locally', () => {
 });
 
 test('workspace toasts when running agents finish', () => {
+  assert.match(pages, /agent-toast agent-toast-inline/);
   assert.match(js, /function showAgentToast\(title, detail = '', tone = 'success'\)/);
   assert.match(js, /function notifyFinishedThreads\(threads\)/);
   assert.match(js, /const wasActive = isActiveThread\(\{ runStatus: knownThreadStatuses\.get\(name\) \}\);/);

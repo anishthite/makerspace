@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { excalidrawArtifactPaths, normalizeExcalidrawArtifactPath } from '../public/excalidraw-artifacts.js';
+import { excalidrawArtifactPaths, normalizeExcalidrawArtifactPath } from '../frontend/src/runtime/excalidraw-artifacts.js';
 
 test('excalidrawArtifactPaths finds unique safe relative drawings', () => {
   assert.deepEqual(

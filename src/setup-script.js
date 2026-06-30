@@ -604,8 +604,9 @@ export function buildSetupScript(session, config) {
   const bridgePort = String(config.bridgePort || 4310);
   const remoteUser = config.remoteUser || 'daytona';
   const remoteHomeDir = config.remoteHomeDir || `/home/${remoteUser}`;
-  const bridgePackageDir = `${remoteHomeDir}/.pi/agent/npm`;
-  const piDefaultsPackageDir = config.remotePiDefaultsPackageDir || `${remoteHomeDir}/.pi/agent/makerspace-pi-defaults`;
+  const authDir = `${remoteHomeDir}/.pi/agent`;
+  const bridgePackageDir = `${authDir}/npm`;
+  const piDefaultsPackageDir = config.remotePiDefaultsPackageDir || `${authDir}/makerspace-pi-defaults`;
   const aptPackages = ['git', 'curl', 'ca-certificates'];
   const aptCommands = ['git', 'curl'];
 
@@ -719,7 +720,7 @@ export function buildSetupScript(session, config) {
     `Bridge logs: journalctl -u pi-bridge -n 120 --no-pager || tail -n 120 ${controlDir}/pi-bridge.log`,
     `Log tail: tail -n 120 ${logPath}`,
     'TXT',
-    `if id ${shellQuote(remoteUser)} >/dev/null 2>&1; then chown -R ${shellQuote(`${remoteUser}:${remoteUser}`)} ${shellQuote(controlDir)} ${shellQuote(workspaceDir)}; fi`,
+    `if id ${shellQuote(remoteUser)} >/dev/null 2>&1; then chown -R ${shellQuote(`${remoteUser}:${remoteUser}`)} ${shellQuote(controlDir)} ${shellQuote(workspaceDir)} ${shellQuote(authDir)}; fi`,
     'if [ "$installed_bridge_sdk" -eq 1 ]; then',
     `  if id ${shellQuote(remoteUser)} >/dev/null 2>&1; then chown -R ${shellQuote(`${remoteUser}:${remoteUser}`)} ${shellQuote(bridgePackageDir)}; fi`,
     'fi',

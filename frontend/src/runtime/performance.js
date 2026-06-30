@@ -1,7 +1,7 @@
 import './appearance.js?v=palette-2';
 
 const BROWSER_SESSION_KEY = 'makerspaceBrowserSession';
-const API_BASE = String(import.meta.env.VITE_MAKERSPACE_API_BASE || '').trim().replace(/\/+$/, '');
+const API_BASE = String(import.meta.env?.VITE_MAKERSPACE_API_BASE || '').trim().replace(/\/+$/, '');
 
 const statusNode = document.querySelector('#performance-status');
 const statsNode = document.querySelector('#performance-stats');

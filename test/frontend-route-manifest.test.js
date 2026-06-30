@@ -24,6 +24,7 @@ test('frontend is the Vite source of truth', () => {
   assert.match(read('vite.config.js'), /publicDir: resolve\(frontendRoot, 'public'\)/);
   assert.equal(existsSync(new URL('scripts/sync-react-legacy.js', root)), false);
   assert.equal(existsSync(new URL('frontend/src/generated/page-html.js', root)), false);
+  assert.equal(existsSync(new URL('public', root)), false);
 });
 
 test('React core routes are explicit Vite MPA entries', () => {
@@ -51,5 +52,6 @@ test('compatibility storage keys and deploy aliases are preserved', () => {
 
   assert.ok(manifest.aliases.some((alias) => alias.route === '/desktop' && alias.target === '/desktop.html'));
   assert.ok(manifest.aliases.some((alias) => alias.route === '/thread' && alias.target === '/thread.html'));
-  assert.match(read('src/server.js'), /distDir[\s\S]+index\.html[\s\S]+public/);
+  assert.match(read('src/server.js'), /const publicDir = process\.env\.MAKERSPACE_STATIC_DIR \|\| distDir;/);
+  assert.doesNotMatch(read('src/server.js'), /rootDir, 'public'/);
 });

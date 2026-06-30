@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { extractHtmlOutput, htmlPreviewDocument, looksLikeHtmlOutput } from '../public/html-preview.js';
+import { extractHtmlOutput, htmlPreviewDocument, looksLikeHtmlOutput } from '../frontend/src/runtime/html-preview.js';
 
 test('looksLikeHtmlOutput accepts full html documents', () => {
   assert.equal(looksLikeHtmlOutput('<!doctype html><html><body><h1>Hello</h1></body></html>'), true);

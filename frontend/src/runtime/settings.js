@@ -1,7 +1,7 @@
 import { applyAppearance, getAppearance, saveAppearance } from './appearance.js?v=palette-2';
 
 const BROWSER_SESSION_KEY = 'makerspaceBrowserSession';
-const API_BASE = String(import.meta.env.VITE_MAKERSPACE_API_BASE || '').trim().replace(/\/+$/, '');
+const API_BASE = String(import.meta.env?.VITE_MAKERSPACE_API_BASE || '').trim().replace(/\/+$/, '');
 const codexLogin = document.querySelector('#codex-login');
 const codexStatus = document.querySelector('#codex-status');
 const codexDevice = document.querySelector('#codex-device');

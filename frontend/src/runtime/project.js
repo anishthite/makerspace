@@ -3,7 +3,7 @@ import './appearance.js?v=palette-2';
 const BROWSER_SESSION_KEY = 'makerspaceBrowserSession';
 const PROJECT_KEY = 'makerspaceSelectedProject';
 const RECENT_PROJECTS_KEY = 'makerspaceRecentProjects';
-const API_BASE = String(import.meta.env.VITE_MAKERSPACE_API_BASE || '').trim().replace(/\/+$/, '');
+const API_BASE = String(import.meta.env?.VITE_MAKERSPACE_API_BASE || '').trim().replace(/\/+$/, '');
 
 const codexAuthPill = document.querySelector('#codex-auth-pill');
 const codexAuthLabel = document.querySelector('#codex-auth-label');

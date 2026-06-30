@@ -2,19 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const html = readFileSync(new URL('../public/thread.html', import.meta.url), 'utf8');
-const js = readFileSync(new URL('../public/thread.js', import.meta.url), 'utf8');
-
-const archiveButtonMarkup = '<button id="archive-thread" class="primary-btn thread-done-btn" type="button" hidden>mark as done</button>';
+const pages = readFileSync(new URL('../frontend/src/pages.jsx', import.meta.url), 'utf8');
+const js = readFileSync(new URL('../frontend/src/runtime/thread.js', import.meta.url), 'utf8');
 
 test('thread view exposes a top-right mark-as-done control in the header', () => {
-  assert.ok(html.includes(archiveButtonMarkup));
-  assert.equal(html.indexOf(archiveButtonMarkup), html.lastIndexOf(archiveButtonMarkup));
-  assert.ok(html.indexOf('<div class="header-actions">') < html.indexOf(archiveButtonMarkup));
-  assert.ok(html.indexOf('<span id="thread-status" class="status-pill">connecting</span>') < html.indexOf(archiveButtonMarkup));
-  assert.ok(html.indexOf(archiveButtonMarkup) < html.indexOf('</header>'));
-  assert.ok(html.indexOf(archiveButtonMarkup) < html.indexOf('<form id="prompt-form" class="flow-composer">'));
-  assert.match(html, /<script type="module" src="\/thread\.js\?v=[^"]+"><\/script>/);
+  assert.match(pages, /<div className="header-actions"><StatusPill id="thread-status">connecting<\/StatusPill><Button id="archive-thread"[^>]+className="thread-done-btn"[^>]+>mark as done<\/Button><\/div>/);
+  assert.equal(pages.match(/id="archive-thread"/g)?.length, 1);
+  assert.ok(pages.indexOf('className="header-actions"') < pages.indexOf('id="archive-thread"'));
+  assert.ok(pages.indexOf('StatusPill id="thread-status"') < pages.indexOf('id="archive-thread"'));
+  assert.ok(pages.indexOf('id="archive-thread"') < pages.indexOf('id="prompt-form"'));
 });
 
 test('archive control uses the existing finished-thread archive route', () => {

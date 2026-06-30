@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { implementationNoteFromToolEvent, implementationNotesFromToolEvent } from '../public/implementation-notes.js';
+import { implementationNoteFromToolEvent, implementationNotesFromToolEvent } from '../frontend/src/runtime/implementation-notes.js';
 
 const noteHtml = `<!doctype html><html><head><title>Spec — demo note</title></head><body>
 <h1>Demo note</h1>
 <h2>Summary</h2><div class="kv"><b>Goal</b><div>Add the smallest useful thing.</div></div>
 <h2>Files</h2><table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
-<tr><td><code>public/thread.js</code></td><td>touch</td><td>Render note cards.</td></tr>
+<tr><td><code>frontend/src/runtime/thread.js</code></td><td>touch</td><td>Render note cards.</td></tr>
 <tr><td><code>test/thread-note-events.test.js</code></td><td>new</td><td>Cover extraction.</td></tr>
 </table></body></html>`;
 
@@ -23,7 +23,7 @@ test('implementationNoteFromToolEvent summarizes note writes', () => {
   assert.equal(note.summary, 'Add the smallest useful thing.');
   assert.match(note.html, /<h1>Demo note<\/h1>/);
   assert.deepEqual(note.files, [
-    { path: 'public/thread.js', kind: 'touch', delta: 'Render note cards.' },
+    { path: 'frontend/src/runtime/thread.js', kind: 'touch', delta: 'Render note cards.' },
     { path: 'test/thread-note-events.test.js', kind: 'new', delta: 'Cover extraction.' },
   ]);
 });

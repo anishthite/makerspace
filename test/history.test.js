@@ -3,10 +3,10 @@ import test from 'node:test';
 
 import { readFileSync } from 'node:fs';
 
-import { canUnarchiveHistoryRow, filterHistoryRows, filterSessionsByProject, historyKind, historyStats, normalizeHistoryRow } from '../public/history.js';
+import { canUnarchiveHistoryRow, filterHistoryRows, filterSessionsByProject, historyKind, historyStats, normalizeHistoryRow } from '../frontend/src/runtime/history.js';
 
-const historyJs = readFileSync(new URL('../public/history.js', import.meta.url), 'utf8');
-const historyHtml = readFileSync(new URL('../public/history.html', import.meta.url), 'utf8');
+const historyJs = readFileSync(new URL('../frontend/src/runtime/history.js', import.meta.url), 'utf8');
+const historyHtml = readFileSync(new URL('../frontend/history.html', import.meta.url), 'utf8');
 
 test('historyStats counts threads, sessions, active, archived, and failed rows', () => {
   const sessions = [
@@ -47,7 +47,8 @@ test('history rows expose restore only for archived thread agents', () => {
   assert.equal(canUnarchiveHistoryRow({ href: '/thread.html?name=done' }), false);
   assert.match(historyJs, /data-unarchive-thread/);
   assert.match(historyJs, /\/api\/threads\/\$\{encodeURIComponent\(name\)\}\/unarchive/);
-  assert.match(historyHtml, /history\.js\?v=palette-\d+/);
+  assert.match(historyHtml, /data-react-page="history"/);
+  assert.match(historyHtml, /\/src\/entry\.jsx/);
 });
 
 test('history filters sessions to the selected project', () => {

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { getAppearance, normalizeAppearance, saveAppearance } from '../public/appearance.js';
+import { getAppearance, normalizeAppearance, saveAppearance } from '../frontend/src/runtime/appearance.js';
 
 test('normalizes appearance preferences', () => {
   assert.deepEqual(normalizeAppearance({ theme: 'dark', font: 'mono', palette: 'graphite' }), { theme: 'dark', font: 'mono', palette: 'graphite' });

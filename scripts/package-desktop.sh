@@ -10,7 +10,7 @@ APP_RESOURCES="$APP_DIR/Contents/Resources/app"
 DMG_ROOT="$OUT_DIR/dmg-root"
 DMG_PATH="$OUT_DIR/makerspace.dmg"
 ICON_NAME="${ICON_NAME:-makerspace}"
-ICON_SOURCE="${ICON_SOURCE:-$ROOT/public/logo-mark.svg}"
+ICON_SOURCE="${ICON_SOURCE:-$ROOT/frontend/public/logo-mark.svg}"
 SIGN_IDENTITY="${SIGN_IDENTITY:-}"
 TEAM_ID="${TEAM_ID:-}"
 NOTARY_PROFILE="${NOTARY_PROFILE:-}"
@@ -129,7 +129,7 @@ rm -f "$APP_DIR/Contents/Resources/default_app.asar"
 rm -rf "$APP_RESOURCES"
 mkdir -p "$APP_RESOURCES"
 
-for item in package.json package-lock.json desktop src public dist packages image node_modules; do
+for item in package.json package-lock.json desktop src dist packages image node_modules; do
   if [[ -e "$ROOT/$item" ]]; then
     cp -R "$ROOT/$item" "$APP_RESOURCES/$item"
   fi

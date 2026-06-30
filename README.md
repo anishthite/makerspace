@@ -83,7 +83,7 @@ npm run build # emits the React/Vite static frontend into dist/
 npm start
 ```
 
-`frontend/` is the normal Vite app. Root `src/` is the Node backend/API runtime for Daytona, local provider, sessions, SSE, and settings. Without `dist/`, the server falls back to root `public/` only as a legacy local fallback.
+`frontend/` is the normal Vite app. Root `src/` is the Node backend/API runtime for Daytona, local provider, sessions, SSE, and settings. Build `dist/` before starting the backend.
 
 For local-folder mode, skip Daytona and run Pi directly on a folder:
 
@@ -106,7 +106,7 @@ npm run desktop:dev -- ~/code/site
 npm run desktop:dev -- ~/code/api
 ```
 
-The desktop dev shell starts the same backend, serves built `dist/` when present, falls back to root `public/` otherwise, binds to `127.0.0.1`, and stores local state in a per-project folder when a folder argument is provided.
+The desktop dev shell starts the same backend, serves built `dist/`, binds to `127.0.0.1`, and stores local state in a per-project folder when a folder argument is provided.
 
 Package, release, and install the macOS app from the installed Electron binary:
 

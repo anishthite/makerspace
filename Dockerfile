@@ -10,7 +10,6 @@ COPY package.json package-lock.json ./
 RUN npm ci --include=dev --no-audit --no-fund
 
 COPY src ./src
-COPY public ./public
 COPY frontend ./frontend
 COPY scripts ./scripts
 COPY packages ./packages
