@@ -249,5 +249,21 @@ export function createAuthStore(config = {}) {
         return value;
       });
     },
+
+    async writeUserSecret(userId, key, value) {
+      const text = String(value || '');
+      const record = { valueEncrypted: encryptSecret(config, text), updatedAt: nowIso() };
+      await this.writeUserKv(userId, `secret:${key}`, record);
+      return record;
+    },
+
+    async readUserSecret(userId, key) {
+      const record = await this.readUserKv(userId, `secret:${key}`, null);
+      if (!record?.valueEncrypted) return null;
+      return {
+        value: decryptSecret(config, record.valueEncrypted),
+        updatedAt: record.updatedAt || null,
+      };
+    },
   };
 }

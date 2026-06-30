@@ -40,6 +40,7 @@ export function applyAppearance(input = getAppearance()) {
   const root = globalThis.document?.documentElement;
   if (root) {
     root.dataset.theme = appearance.theme;
+    root.classList?.toggle?.('dark', appearance.theme === 'dark');
     root.dataset.font = appearance.font;
     root.dataset.palette = appearance.palette;
     if (globalThis.makerspaceDesktop) root.dataset.desktop = 'true';

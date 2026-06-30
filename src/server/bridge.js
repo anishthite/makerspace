@@ -8,7 +8,8 @@ import { getStoredSession, listStoredSessions, removeStoredSession, upsertSessio
 import { normalizeBridgeClientId, normalizeSubmittedAtMs, sleep, trimTrailingSlash } from './utils.js';
 
 export function createBridgeService({ config, provider, auth, runState }) {
-  const { readLocalPiAuth, readLocalPiSettings } = auth;
+  const readPiAuthForSession = auth.readPiAuthForSession || auth.readLocalPiAuth || (async () => null);
+  const { readLocalPiSettings } = auth;
   const {
     ensureRunState,
     setRunState,
@@ -413,7 +414,7 @@ export function createBridgeService({ config, provider, auth, runState }) {
 
     void (async () => {
       try {
-        const piAuthText = await readLocalPiAuth();
+        const piAuthText = await readPiAuthForSession(session);
         const remote = await provider.createSession(session, imageSettings);
         const bridgeUrl = trimTrailingSlash(remote.bridgeUrl || remote.httpsUrl || '');
         const updated = await upsertSession(config.sessionFile, {
@@ -467,7 +468,7 @@ export function createBridgeService({ config, provider, auth, runState }) {
 
     void (async () => {
       try {
-        const piAuthText = await readLocalPiAuth();
+        const piAuthText = await readPiAuthForSession(session);
         const remote = await provider.createSession(session, imageSettings);
         const bridgeUrl = trimTrailingSlash(remote.bridgeUrl || remote.httpsUrl || '');
         const latest = (await getStoredSession(config.sessionFile, session.name)) || session;
@@ -542,7 +543,7 @@ export function createBridgeService({ config, provider, auth, runState }) {
 
     resetRunState(claimed.name, 'launching');
     appendRunOutput(claimed.name, '[system] Using a prepared idle bridge sandbox.\n', 'launching');
-    await pushBridgeAuth(claimed, await readLocalPiAuth());
+    await pushBridgeAuth(claimed, await readPiAuthForSession(claimed));
     await startBridgeRun(claimed);
     const running = await upsertSession(config.sessionFile, {
       ...claimed,
@@ -662,7 +663,7 @@ export function createBridgeService({ config, provider, auth, runState }) {
           appendRunOutput(stored.name, '[system] Using the default image.\n', 'launching');
         }
 
-        const piAuthText = await readLocalPiAuth();
+        const piAuthText = await readPiAuthForSession(prepared);
         const remote = await provider.createSession(repoAuthHeader ? { ...prepared, repoAuthHeader } : prepared, imageSettings);
         const bridgeUrl = trimTrailingSlash(remote.bridgeUrl || remote.httpsUrl || '');
         const latest = (await getStoredSession(config.sessionFile, prepared.name)) || prepared;
@@ -707,7 +708,7 @@ export function createBridgeService({ config, provider, auth, runState }) {
 
     appendRunOutput(session.name, '[system] Waking the idle main agent sandbox...\n', 'launching');
     const imageSettings = await readSavedSettings(config.settingsFile);
-    const piAuthText = await readLocalPiAuth();
+    const piAuthText = await readPiAuthForSession(session);
     const remote = await provider.createSession(session, imageSettings);
     const bridgeUrl = trimTrailingSlash(remote.bridgeUrl || remote.httpsUrl || session.bridgeUrl || '');
     const updated = await upsertSession(config.sessionFile, {

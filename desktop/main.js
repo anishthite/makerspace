@@ -88,7 +88,7 @@ async function startBackend() {
       ...(name ? { MAKERSPACE_PROJECT: name } : {}),
       ...(homeDir ? { MAKERSPACE_HOME: homeDir } : {}),
     },
-    stdio: 'inherit',
+    stdio: ['ignore', 'inherit', 'inherit', 'ipc'],
   });
 
   serverProcess.on('exit', () => {

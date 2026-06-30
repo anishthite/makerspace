@@ -6,7 +6,7 @@ import { getStoredSession, listStoredSessions, upsertSession } from '../store.js
 import { fallbackThreadTitle, generateFinalAnswerSummary, generateThreadTitle } from '../thread-title.js';
 import { sleep } from './utils.js';
 
-export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAccessSession }) {
+export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAccessSession, authStorageForSession = null }) {
   const activeRuns = new Map();
   const liveLocalRuns = new Set();
   const finalAnswerSummaryRuns = new Set();
@@ -512,6 +512,7 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
           loadPiSdk,
           loadPiAi,
           modelRef,
+          authStorage: authStorageForSession ? await authStorageForSession(session) : null,
           signal: AbortSignal.timeout(threadSummaryTimeoutMs()),
         });
         if (!summary) return;
@@ -584,6 +585,7 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
           loadPiSdk,
           loadPiAi,
           modelRef,
+          authStorage: authStorageForSession ? await authStorageForSession(session) : null,
           signal: AbortSignal.timeout(threadTitleTimeoutMs()),
         });
         if (!title) return;

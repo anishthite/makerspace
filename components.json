@@ -1,12 +1,12 @@
 {
   "$schema": "https://ui.shadcn.com/schema.json",
-  "style": "default",
+  "style": "radix-vega",
   "rsc": false,
   "tsx": false,
   "tailwind": {
     "config": "",
     "css": "frontend/src/styles/fluid-ui.css",
-    "baseColor": "slate",
+    "baseColor": "neutral",
     "cssVariables": true,
     "prefix": ""
   },
@@ -17,8 +17,11 @@
     "utils": "#lib/utils",
     "hooks": "#hooks"
   },
+  "iconLibrary": "phosphor",
+  "rtl": false,
+  "menuColor": "inverted-translucent",
+  "menuAccent": "subtle",
   "registries": {
     "@fluid": "https://www.fluidfunctionalism.com/r/{name}.json"
-  },
-  "iconLibrary": "lucide"
+  }
 }

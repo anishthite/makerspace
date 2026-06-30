@@ -169,18 +169,18 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
       }
 
       if (request.method === 'GET' && pathname === '/api/auth/openai-codex') {
-        sendJson(response, 200, await codexAuthStatus());
+        sendJson(response, 200, await codexAuthStatus(user));
         return;
       }
 
       if (request.method === 'POST' && pathname === '/api/auth/openai-codex/login') {
-        sendJson(response, 202, await startCodexDeviceLogin());
+        sendJson(response, 202, await startCodexDeviceLogin(user));
         return;
       }
 
       if (request.method === 'GET' && pathname.startsWith('/api/auth/openai-codex/login/')) {
         const id = pathname.split('/').pop();
-        const job = getAuthLogin(id);
+        const job = getAuthLogin(id, user);
         if (!job) {
           sendJson(response, 404, { error: 'Login not found' });
           return;

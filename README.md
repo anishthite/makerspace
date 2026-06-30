@@ -30,7 +30,9 @@ That is deliberate. The goal is one prompt in, one real sandbox-backed run out.
 4. the agent page reads `GET /api/threads/:name`, mirrors output from `GET /api/sessions/:name/stream`, and sends follow-up prompts to `POST /api/threads/:name/messages`
 5. after each run completes, the same bridge sandbox returns to `ready` so the next prompt can reuse the repo workspace
 
-For deployment, put the built React/Vite static UI (`npm run build` → `dist/`) on Vercel and this Node control backend on a server with Daytona credentials. Set the frontend env `VITE_MAKERSPACE_API_BASE=https://api.example.com` in Vercel; the browser no longer accepts `?api=` or `?token=` bootstrap links. The backend keeps Daytona and model-provider credentials server-side.
+For deployment, put the built React/Vite static UI (`npm run build` → `dist/`) on Vercel and this Node control backend on a server with Daytona credentials. Set the frontend env `VITE_MAKERSPACE_API_BASE=https://api.example.com` in Vercel; the browser no longer accepts `?api=` or `?token=` bootstrap links. The backend keeps Daytona credentials server-side.
+
+Hosted users sign in with GitHub for their Makerspace account, then Settings → Codex stores their own ChatGPT Plus/Pro Codex OAuth for Pi. Do not set `OPENAI_API_KEY` in Vercel or DigitalOcean for hosted Codex runs.
 
 DigitalOcean App Platform can build the root `Dockerfile` for the control backend. Keep the source directory at `/`, use the Dockerfile build strategy, and set the public HTTP port to `8080`. `image/Dockerfile` is still the separate Daytona sandbox image. Set backend env `MAKERSPACE_ALLOWED_ORIGIN=https://your-vercel-app.vercel.app` so cross-origin GitHub-auth cookies work.
 

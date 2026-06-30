@@ -118,11 +118,19 @@ function saveAppearanceControls() {
   });
 }
 
+function codexStatusText(status) {
+  if (status.disabled === 'sign-in-required') return 'Sign in with GitHub first';
+  if (!status.configured) return 'Signed out';
+  const source = status.source === 'user' ? 'your Codex' : status.source;
+  const expires = Number(status.expiresAt || 0);
+  const suffix = Number.isFinite(expires) && expires > 0 ? ` · expires ${new Date(expires).toLocaleDateString()}` : '';
+  return `Signed in${source ? ` · ${source}` : ''}${suffix}`;
+}
+
 async function loadCodexAuth() {
   const status = await fetchJson('/api/auth/openai-codex');
-  codexStatus.textContent = status.configured
-    ? `Signed in${status.source ? ` · ${status.source}` : ''}`
-    : 'Signed out';
+  codexLogin.disabled = status.disabled === 'sign-in-required';
+  codexStatus.textContent = codexStatusText(status);
   return status;
 }
 

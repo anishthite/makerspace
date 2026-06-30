@@ -46,6 +46,9 @@ let defaultThinkingLevel = 'xhigh';
 let runtimeTickTimer = null;
 let finishedThreadNames = [];
 let seenFinishedThreads = readSeenFinishedThreads();
+let knownThreadStatuses = new Map();
+let loadedThreadSnapshot = false;
+const notifiedFinishToasts = new Set();
 function escapeHtml(value) {
   return String(value ?? '')
     .replaceAll('&', '&amp;')
@@ -53,6 +56,35 @@ function escapeHtml(value) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
+}
+
+function toastHost() {
+  let host = document.querySelector('#agent-toast-stack');
+  if (host) return host;
+  host = document.createElement('div');
+  host.id = 'agent-toast-stack';
+  host.setAttribute('aria-live', 'polite');
+  host.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:1000;display:grid;gap:8px;max-width:min(360px,calc(100vw - 32px));pointer-events:none';
+  document.body.append(host);
+  return host;
+}
+
+function showAgentToast(title, detail = '', tone = 'success') {
+  const node = document.createElement('button');
+  node.type = 'button';
+  node.style.cssText = `pointer-events:auto;text-align:left;font:inherit;cursor:pointer;border:1px solid var(--rule);border-left:4px solid ${tone === 'error' ? 'var(--red)' : 'var(--green)'};background:var(--paper);color:var(--ink);box-shadow:var(--shadow-md);border-radius:14px;padding:10px 12px;display:grid;gap:3px;min-width:240px`;
+  const label = document.createElement('strong');
+  label.textContent = title;
+  node.append(label);
+  if (detail) {
+    const copy = document.createElement('small');
+    copy.style.color = 'var(--ink-3)';
+    copy.textContent = detail;
+    node.append(copy);
+  }
+  node.addEventListener('click', () => node.remove());
+  toastHost().append(node);
+  setTimeout(() => node.remove(), 8000);
 }
 
 function readSeenFinishedThreads() {
@@ -463,6 +495,25 @@ function canArchiveThread(thread) {
   return ARCHIVEABLE_THREAD_STATUSES.includes(effectiveThreadStatus(thread));
 }
 
+function notifyFinishedThreads(threads) {
+  const nextStatuses = new Map();
+  for (const thread of threads) {
+    const name = String(thread?.name || '');
+    const rawStatus = effectiveThreadStatus(thread) || 'unknown';
+    if (name) nextStatuses.set(name, rawStatus);
+    const wasActive = isActiveThread({ runStatus: knownThreadStatuses.get(name) });
+    if (!loadedThreadSnapshot || !name || !wasActive || isActiveThread(thread) || !canArchiveThread(thread)) continue;
+    const key = finishedIndicatorKey(thread, rawStatus);
+    if (notifiedFinishToasts.has(key)) continue;
+    notifiedFinishToasts.add(key);
+    const title = rawStatus === 'failed' ? 'Agent failed' : 'Agent finished';
+    const detail = [thread.title || thread.name, finishedOutcome(thread, rawStatus)].filter(Boolean).join(' · ');
+    showAgentToast(title, detail, rawStatus === 'failed' ? 'error' : 'success');
+  }
+  knownThreadStatuses = nextStatuses;
+  loadedThreadSnapshot = true;
+}
+
 function runtimeStart(thread) {
   return thread.createdAt || thread.updatedAt || '';
 }
@@ -603,9 +654,11 @@ function renderThreads(threads) {
 
 async function loadThreads() {
   const payload = await fetchJson('/api/threads');
+  const threads = (payload.threads || []).filter(sameSelectedProject);
   renderProvider(payload.provider);
   renderPiDefaults(payload.defaults);
-  renderThreads((payload.threads || []).filter(sameSelectedProject));
+  notifyFinishedThreads(threads);
+  renderThreads(threads);
   return payload;
 }
 
@@ -775,3 +828,7 @@ threadsList.addEventListener('keydown', (event) => {
 });
 
 reloadControlData();
+setInterval(() => {
+  if (document.visibilityState !== 'visible') return;
+  loadThreads().catch(() => {});
+}, 10000);

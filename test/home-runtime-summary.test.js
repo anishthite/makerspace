@@ -8,7 +8,7 @@ const runState = readFileSync(new URL('../src/server/run-state.js', import.meta.
 const threads = readFileSync(new URL('../src/server/threads.js', import.meta.url), 'utf8');
 
 test('home agents summary shows total active runtime', () => {
-  assert.match(html, /\/app\.js\?v=finished-indicator-1/);
+  assert.match(html, /\/app\.js\?v=agent-finish-toasts-1/);
   assert.match(js, /function formatRunningTotal\(starts, endValue = Date\.now\(\)\)/);
   assert.match(js, /totalMs \+= Math\.max\(0, end - start\)/);
   assert.match(js, /running\$\{total \? ` for \$\{total\} total` : ''\}/);
@@ -59,6 +59,14 @@ test('recently finished success indicators can be dismissed locally', () => {
   assert.ok(js.includes('data-finished-indicator="${escapeHtml(indicatorKey)}"'));
   assert.ok(js.includes('data-finished-thread="${escapeHtml(indicatorKey)}"'));
   assert.match(js, /threadsList\.addEventListener\('keydown'/);
+});
+
+test('workspace toasts when running agents finish', () => {
+  assert.match(js, /function showAgentToast\(title, detail = '', tone = 'success'\)/);
+  assert.match(js, /function notifyFinishedThreads\(threads\)/);
+  assert.match(js, /const wasActive = isActiveThread\(\{ runStatus: knownThreadStatuses\.get\(name\) \}\);/);
+  assert.match(js, /showAgentToast\(title, detail, rawStatus === 'failed' \? 'error' : 'success'\);/);
+  assert.match(js, /setInterval\(\(\) => \{\s*if \(document\.visibilityState !== 'visible'\) return;\s*loadThreads\(\)\.catch\(\(\) => \{\}\);\s*\}, 10000\);/);
 });
 
 test('new runs clear stale terminal runtime fields', () => {

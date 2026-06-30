@@ -107,8 +107,8 @@ async function generateShortText(options, settings) {
     options.loadPiSdk(),
     options.loadPiAi(),
   ]);
-  const authStorage = AuthStorage.create();
-  const modelRegistry = ModelRegistry.create(authStorage);
+  const authStorage = options.authStorage || AuthStorage.create();
+  const modelRegistry = options.modelRegistry || ModelRegistry.create(authStorage);
   const model = resolveThreadTitleModel(modelRegistry, modelRef);
   if (!model) throw new Error(`${settings.label} model not found: ${modelRef}`);
 

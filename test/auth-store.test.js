@@ -31,6 +31,10 @@ test('auth store persists users, sessions, encrypted OAuth tokens, and user KV',
 
     await store.writeUserKv(user.id, 'pi-profile-state', { syncToRemote: false });
     assert.deepEqual(await store.readUserKv(user.id, 'pi-profile-state'), { syncToRemote: false });
+
+    await store.writeUserSecret(user.id, 'openai-codex-auth', '{"access":"codex-secret"}');
+    assert.equal((await store.readUserSecret(user.id, 'openai-codex-auth')).value, '{"access":"codex-secret"}');
+    assert.ok(!(await readFile(path.join(root, 'auth.json'), 'utf8')).includes('codex-secret'));
   } finally {
     await rm(root, { recursive: true, force: true });
   }

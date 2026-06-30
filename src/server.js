@@ -26,6 +26,7 @@ const runState = createRunState({
   loadPiSdk: auth.loadPiSdk,
   loadPiAi: auth.loadPiAi,
   canAccessSession: auth.canAccessSession,
+  authStorageForSession: auth.authStorageForSession,
 });
 const bridge = createBridgeService({ config, provider, auth, runState });
 const threads = createThreadService({ config, provider, http: httpHelpers, auth, runState, bridge });
@@ -42,6 +43,13 @@ const server = http.createServer(createRequestHandler({
 
 if (config.hostDispatchEnabled) {
   await preloadHostPiRunner(config);
+}
+
+if (process.send) {
+  process.on('disconnect', () => {
+    server.close(() => process.exit(0));
+    setTimeout(() => process.exit(0), 1000).unref();
+  });
 }
 
 server.listen(config.port, config.host || undefined, () => {

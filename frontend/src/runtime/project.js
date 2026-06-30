@@ -227,7 +227,7 @@ function resetRepoSelection(message) {
   selectedRepo = null;
   repoSourceInput.value = '';
   repoPicker.value = '';
-  if (message) repoHint.textContent = message;
+  if (message !== undefined) repoHint.textContent = message;
 }
 
 async function loadLastFolder() {
@@ -248,7 +248,7 @@ function renderProvider(provider) {
   repoRefresh.hidden = local;
   chooseFolder.hidden = !globalThis.makerspaceDesktop?.chooseFolder;
   if (local) {
-    resetRepoSelection(globalThis.makerspaceDesktop?.chooseFolder ? 'Choose a local folder or paste a path.' : 'Paste a local folder path.');
+    resetRepoSelection(globalThis.makerspaceDesktop?.chooseFolder ? '' : 'Paste a local folder path.');
     void loadLastFolder();
   }
 }

@@ -17,6 +17,35 @@ import {
 import { resolvePiSdkPackageDir } from '../pi-sdk-package.js';
 import { pruneBrowserSessions } from '../resource-utils.js';
 
+const CODEX_AUTH_PROVIDER = 'openai-codex';
+const CODEX_USER_SECRET_KEY = 'openai-codex-auth';
+
+function normalizeCodexCredential(raw) {
+  let parsed;
+  try {
+    parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+  } catch {
+    return null;
+  }
+  const source = parsed?.[CODEX_AUTH_PROVIDER] || parsed;
+  if (!source || typeof source !== 'object' || source.type !== 'oauth') return null;
+  const access = typeof source.access === 'string' ? source.access : '';
+  const refresh = typeof source.refresh === 'string' ? source.refresh : '';
+  const expires = typeof source.expires === 'number' ? source.expires : Number(source.expires);
+  if (!access || !refresh || !Number.isFinite(expires)) return null;
+  return {
+    type: 'oauth',
+    access,
+    refresh,
+    expires,
+    ...(typeof source.accountId === 'string' ? { accountId: source.accountId } : {}),
+  };
+}
+
+function codexAuthText(credential) {
+  return `${JSON.stringify({ [CODEX_AUTH_PROVIDER]: credential }, null, 2)}\n`;
+}
+
 export function createAuthService({ config, http }) {
   const { sendJson, requestToken, originFor, clientError } = http;
   const BROWSER_SESSION_HEADER = 'x-makerspace-session';
@@ -335,21 +364,38 @@ export function createAuthService({ config, http }) {
     };
   }
 
-  async function codexAuthStatus() {
-    if (authRequired()) return { configured: false, source: '', disabled: 'multi-user' };
-    const { AuthStorage } = await loadPiSdk();
-    const authStorage = AuthStorage.create();
-    return authStorage.getAuthStatus('openai-codex');
+  async function readUserCodexCredential(user) {
+    if (!user?.id) return null;
+    const stored = await authStore.readUserSecret(user.id, CODEX_USER_SECRET_KEY);
+    const credential = normalizeCodexCredential(stored?.value || '');
+    return credential ? { credential, updatedAt: stored.updatedAt || null } : null;
   }
 
-  async function startCodexDeviceLogin() {
-    if (authRequired()) throw clientError('Codex device login is disabled in multi-user mode.', 403);
+  async function codexAuthStatus(user = null) {
+    if (authRequired()) {
+      const stored = await readUserCodexCredential(user);
+      return {
+        configured: Boolean(stored),
+        source: stored ? 'user' : '',
+        expiresAt: stored?.credential?.expires || null,
+        updatedAt: stored?.updatedAt || null,
+        ...(user?.id ? {} : { disabled: 'sign-in-required' }),
+      };
+    }
     const { AuthStorage } = await loadPiSdk();
     const authStorage = AuthStorage.create();
+    return authStorage.getAuthStatus(CODEX_AUTH_PROVIDER);
+  }
+
+  async function startCodexDeviceLogin(user = null) {
+    if (authRequired() && !user?.id) throw clientError('Sign in with GitHub before Codex.', 401);
+    const { AuthStorage } = await loadPiSdk();
+    const authStorage = authRequired() ? AuthStorage.inMemory() : AuthStorage.create();
     const id = randomUUID();
     const controller = new AbortController();
     const job = {
       id,
+      ownerUserId: user?.id || '',
       status: 'starting',
       device: null,
       error: null,
@@ -362,7 +408,7 @@ export function createAuthService({ config, http }) {
       job.rejectDevice = reject;
     });
 
-    authStorage.login('openai-codex', {
+    authStorage.login(CODEX_AUTH_PROVIDER, {
       signal: controller.signal,
       onSelect: async (prompt) => prompt.options.find((option) => /device/i.test(option.label))?.id,
       onAuth: () => {},
@@ -381,7 +427,11 @@ export function createAuthService({ config, http }) {
       onProgress: (message) => {
         job.progress = message;
       },
-    }).then(() => {
+    }).then(async () => {
+      const credential = normalizeCodexCredential(authStorage.get(CODEX_AUTH_PROVIDER));
+      if (authRequired() && credential) {
+        await authStore.writeUserSecret(user.id, CODEX_USER_SECRET_KEY, JSON.stringify(credential));
+      }
       job.status = 'complete';
       job.completedAt = new Date().toISOString();
     }).catch((error) => {
@@ -494,6 +544,20 @@ export function createAuthService({ config, http }) {
     }
   }
 
+  async function readPiAuthForSession(session = {}) {
+    if (!authRequired()) return readLocalPiAuth();
+    if (!session?.ownerUserId) return null;
+    const stored = await readUserCodexCredential({ id: session.ownerUserId });
+    return stored ? codexAuthText(stored.credential) : null;
+  }
+
+  async function authStorageForSession(session = {}) {
+    if (!authRequired()) return null;
+    const { AuthStorage } = await loadPiSdk();
+    const stored = await readUserCodexCredential({ id: session.ownerUserId });
+    return AuthStorage.inMemory(stored ? { [CODEX_AUTH_PROVIDER]: stored.credential } : {});
+  }
+
   async function readLocalPiSettings() {
     if (authRequired()) return null;
     try {
@@ -565,8 +629,11 @@ export function createAuthService({ config, http }) {
     return { body: publicMe(null, false), headers: { 'set-cookie': clearAuthCookieHeader(request) } };
   }
 
-  function getAuthLogin(id) {
-    return authLogins.get(id);
+  function getAuthLogin(id, user = null) {
+    const job = authLogins.get(id);
+    if (!job) return null;
+    if (job.ownerUserId && job.ownerUserId !== user?.id) return null;
+    return job;
   }
 
   return {
@@ -599,6 +666,8 @@ export function createAuthService({ config, http }) {
     canAccessSession,
     requireSessionAccess,
     readLocalPiAuth,
+    readPiAuthForSession,
+    authStorageForSession,
     readLocalPiSettings,
     authStore,
   };
