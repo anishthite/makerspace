@@ -815,7 +815,7 @@ html[data-desktop="true"] .flow-topbar,
   background: transparent;
 }
 .agent-activity-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.run-summary-card { width: fit-content; }
+.run-summary-card { width: fit-content; max-width: min(520px, 100%); }
 .run-summary {
   display: inline-flex;
   align-items: center;
@@ -843,6 +843,14 @@ html[data-desktop="true"] .flow-topbar,
 .run-summary:hover,
 .run-summary:focus-visible,
 .run-summary[aria-expanded="true"] { color: var(--blue); background: transparent; }
+.run-summary-detail {
+  max-width: min(520px, calc(100vw - 88px));
+  margin: 2px 0 0 18px;
+  color: var(--ink-4);
+  font: 12px/1.35 var(--mono);
+  overflow-wrap: anywhere;
+  text-transform: lowercase;
+}
 .conversation-main .timeline-flow,
 .agent-activity .timeline-flow { padding-bottom: 24px; }
 .now-card { padding: clamp(14px, 2vw, 20px); }
@@ -1035,6 +1043,47 @@ select:focus { border-color: var(--blue); box-shadow: none; outline: none; }
 .toggle-card small { display: block; color: var(--ink-3); }
 .toggle-card select { width: min(260px, 48vw); }
 .toggle-card input[type="checkbox"] { width: auto; min-width: 18px; height: 18px; accent-color: var(--blue); }
+.toggle-card.appearance-toggle { padding: 14px; border-color: var(--rule-2); }
+.toggle-card.appearance-toggle > span { display: grid; gap: 3px; }
+.toggle-card.appearance-toggle [data-slot="switch"],
+.toggle-card.appearance-toggle input[type="checkbox"]:not(.sr-only) {
+  position: relative;
+  width: 46px;
+  min-width: 46px;
+  height: 26px;
+  border: 1px solid var(--rule-2);
+  border-radius: 999px;
+  background: var(--paper);
+  padding: 0;
+  appearance: none;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease;
+}
+.toggle-card.appearance-toggle [data-slot="switch-thumb"],
+.toggle-card.appearance-toggle input[type="checkbox"]:not(.sr-only)::after {
+  content: "";
+  display: block;
+  width: 20px;
+  height: 20px;
+  margin: 2px;
+  border-radius: 999px;
+  background: var(--ink-3);
+  transition: transform .15s ease, background .15s ease;
+}
+.toggle-card.appearance-toggle [data-slot="switch"][data-state="checked"],
+.toggle-card.appearance-toggle [data-slot="switch"][data-checked],
+.toggle-card.appearance-toggle input[type="checkbox"]:not(.sr-only):checked {
+  border-color: var(--blue);
+  background: var(--blue);
+}
+.toggle-card.appearance-toggle [data-slot="switch"][data-state="checked"] [data-slot="switch-thumb"],
+.toggle-card.appearance-toggle [data-slot="switch"][data-checked] [data-slot="switch-thumb"],
+.toggle-card.appearance-toggle input[type="checkbox"]:not(.sr-only):checked::after {
+  transform: translateX(20px);
+  background: var(--paper);
+}
+.toggle-card.appearance-toggle [data-slot="switch"]:focus-visible,
+.toggle-card.appearance-toggle input[type="checkbox"]:not(.sr-only):focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .profile-resource-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
 .resource-list { display: grid; gap: 6px; max-height: 260px; overflow: auto; border: 1px solid var(--rule); background: var(--paper); padding: 8px; }
 .resource-item { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: start; padding: 6px; border: 1px solid var(--rule); background: var(--paper-2); }
@@ -1086,7 +1135,6 @@ select:focus { border-color: var(--blue); box-shadow: none; outline: none; }
   .performance-grid { grid-template-columns: 1fr; }
   .history-hero { align-items: stretch; flex-direction: column; }
   .history-search { width: 100%; }
-  .run-btn { width: 100%; }
   .inbox-item,
   .action-thread { grid-template-columns: auto minmax(0, 1fr); }
   .inbox-side,
@@ -1105,7 +1153,8 @@ select:focus { border-color: var(--blue); box-shadow: none; outline: none; }
   .timeline-flow { padding-left: 20px; }
   .timeline-dot { left: -16px; }
   .flow-composer { grid-template-columns: 1fr; }
-  .flow-composer .primary-btn { width: 100%; }
+  .flow-composer .primary-btn,
+  .run-btn { width: 100%; }
   .history-card-title { flex-direction: column; }
   .history-badges { justify-content: flex-start; }
   .project-target { grid-template-columns: 1fr; gap: 8px; padding: 8px; }

@@ -27,6 +27,9 @@ test('conversation runtime markers live in the timeline and toggle the inline tr
   assert.doesNotMatch(js, /activeRunSummaryMarker = appendRunSummaryMarker[\s\S]{0,240}activeAssistantBody = appendMessage\('assistant'/);
   assert.match(js, /syncRunSummaryExpanded\(open\)/);
   assert.match(js, /formatElapsedMinutes/);
+  assert.match(js, /data-run-summary-detail/);
+  assert.match(js, /function syncRunSummaryToolDetail/);
+  assert.match(js, /setRunSummaryDetail\(detail \|\| display\.action \|\| display\.label/);
 });
 
 test('run summary duration includes seconds', () => {
@@ -97,6 +100,7 @@ test('follow-up responses and reopened active runs hydrate message history', () 
 
 test('inline trace uses a subtle marker without overlay behavior', () => {
   assert.match(css, /\.run-summary::before/);
+  assert.match(css, /\.run-summary-detail/);
   assert.match(css, /\.agent-trace-inline/);
   assert.doesNotMatch(css, /agent-overlay-open/);
   assert.doesNotMatch(html, /agent-trace-drawer/);

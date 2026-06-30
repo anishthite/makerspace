@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
+import { createRequire } from 'node:module';
 import net from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,6 +8,9 @@ import { fileURLToPath } from 'node:url';
 import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 
 import { cleanFolder, readLastFolder, writeLastFolder } from './last-folder.js';
+
+const require = createRequire(import.meta.url);
+const { updateElectronApp, UpdateSourceType } = require('update-electron-app');
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '..');
@@ -137,6 +141,15 @@ ipcMain.handle('makerspace:choose-folder', async (_event, folder) => {
   if (selected) writeLastFolder(userDataDir(), selected);
   return selected;
 });
+
+if (app.isPackaged) {
+  updateElectronApp({
+    updateSource: {
+      type: UpdateSourceType.ElectronPublicUpdateService,
+      repo: 'anishthite/makerspace-downloads',
+    },
+  });
+}
 
 app.whenReady().then(async () => {
   const { port, token } = await startBackend();

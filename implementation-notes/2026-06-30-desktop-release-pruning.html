@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Desktop release pruning</title>
+<meta name="task" content="Prune the packaged desktop release so the DMG is smaller and installable.">
+<meta name="date-started" content="2026-06-30">
+<meta name="date-updated" content="2026-06-30">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="makerspace, desktop, electron, release, pruning, dmg">
+<meta name="related" content="2026-06-30-desktop-ota-updates.html,2026-06-29-notarized-desktop-release-script.html,2026-06-26-desktop-app-packaging.html,2026-06-26-packaged-pi-sdk-path.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-med{color:#b85c00}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Desktop release pruning</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-30 · status <b class="status-shipped">shipped</b> · blast <span class="blast-med">medium</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Ship a smaller <code>Makerspace.app</code>, DMG, and OTA ZIP without changing the desktop runtime.</div><b>Source</b><div><code>scripts/package-desktop.sh</code> currently copies full production <code>node_modules</code>.</div><b>Surface</b><div><code>npm run desktop:package</code>, <code>npm run desktop:release</code>, GitHub Release assets.</div><b>Schema</b><div>No data schema change.</div><b>Open Qs</b><div>0.</div></div>
+<h2>Algorithm</h2>
+<ol><li>Copy the app as before.</li><li>Rewrite the packaged <code>package.json</code> to keep only backend/runtime dependencies.</li><li>Delete the packaged <code>package-lock.json</code> before <code>npm prune</code> so old root dependencies do not stay pinned.</li><li>Remove source maps, type declarations, markdown, docs, examples, and test folders from packaged <code>node_modules</code>.</li></ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>scripts/package-desktop.sh</code></td><td>touch</td><td>Prune packaged dependencies and documentation-only files before signing.</td></tr><tr><td><code>test/desktop-auth-token.test.js</code></td><td>touch</td><td>Pin the package pruning hooks.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Keep <code>@daytona/sdk</code>, <code>@earendil-works/pi-coding-agent</code>, and <code>update-electron-app</code> in the packaged root. These are the only external packages imported by the backend/desktop runtime.</td></tr><tr><td>D-002</td><td>Delete <code>package-lock.json</code> only inside <code>Resources/app</code>. Runtime does not read it and <code>npm prune</code> otherwise keeps lockfile root dependencies.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>Prune copied <code>node_modules</code> over adopting Electron Builder. One shell script already owns packaging.</td></tr><tr><td>T-002</td><td>Remove maps/types/docs over deleting transitive packages by hand. Keeps dependency graph intact.</td></tr></table>
+<h2>Assumptions</h2>
+<ul><li>A-001 · Runtime code does not import <code>.map</code>, <code>.d.ts</code>, docs, examples, or package tests. If wrong: restore that cleanup pattern.</li></ul>
+<h2>Verification</h2>
+<table><tr><th>ID</th><th>Command · Result</th></tr><tr><td>V-001</td><td><code>bash -n scripts/package-desktop.sh &amp;&amp; node --test test/desktop-auth-token.test.js</code> · 6/6 pass.</td></tr><tr><td>V-002</td><td><code>npm run desktop:release</code> · Apple notarization accepted submission <code>3abd0844-f353-4909-b574-6a006891e334</code>.</td></tr><tr><td>V-003</td><td><code>du -sh output/desktop-package/*</code> · <code>Makerspace.app</code> 411M, <code>makerspace.dmg</code> 219M, <code>makerspace-mac-arm64.zip</code> 160M.</td></tr><tr><td>V-004</td><td><code>ELECTRON_RUN_AS_NODE=1 ... import(resolvePiSdkPackageDir() + '/dist/index.js')</code> · packaged Pi SDK and <code>@daytona/sdk</code> import.</td></tr><tr><td>V-005</td><td><code>npm run desktop:install -- output/desktop-package/makerspace.dmg</code> · installed <code>/Applications/Makerspace.app</code>.</td></tr><tr><td>V-006</td><td><code>spctl -a -vv /Applications/Makerspace.app</code> · accepted from <code>Developer ID Application: Mahesh Thite (2EJKM9WA68)</code>.</td></tr><tr><td>V-007</td><td><code>ELECTRON_RUN_AS_NODE=1 /Applications/Makerspace.app/... import(resolvePiSdkPackageDir() + '/dist/index.js')</code> · installed runtime imports the Pi SDK.</td></tr><tr><td>V-008</td><td><code>gh release upload v0.0.2 ... --clobber</code> · uploaded 212,800,781-byte DMG and 155,813,604-byte ZIP.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Remove the pruning block and restore full dependency packaging.</p>
+<h2>Definition of done</h2>
+<ul><li><code>bash -n scripts/package-desktop.sh</code> passes.</li><li>Focused package script tests pass.</li><li><code>npm run desktop:package</code> emits a smaller app, DMG, and OTA ZIP.</li><li>Packaged backend resolves the bundled Pi SDK.</li></ul>
+</body>
+</html>

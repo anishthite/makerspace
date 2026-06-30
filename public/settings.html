@@ -29,17 +29,6 @@
       <h1>Settings</h1>
     </header>
 
-    <section id="codex" class="panel stack-lg">
-      <div class="panel-header">
-        <div>
-          <h2>Codex</h2>
-        </div>
-        <button id="codex-login" type="button">Sign in</button>
-      </div>
-      <p id="codex-status" class="muted">Checking…</p>
-      <div id="codex-device" class="notice hidden"></div>
-    </section>
-
     <section id="github" class="panel stack-lg">
       <div class="panel-header">
         <div>
@@ -53,16 +42,15 @@
       <p id="github-status" class="muted">Checking…</p>
     </section>
 
-    <section class="panel stack-lg">
-      <div class="connection-card full-width">
-        <div class="connection-head">
-          <div>
-            <h3>Backend</h3>
-            <p class="muted">Configured at deploy time.</p>
-          </div>
-          <p id="connection-summary" class="connection-summary">same-origin · deployment config</p>
+    <section id="codex" class="panel stack-lg">
+      <div class="panel-header">
+        <div>
+          <h2>Codex</h2>
         </div>
+        <button id="codex-login" type="button">Sign in</button>
       </div>
+      <p id="codex-status" class="muted">Checking…</p>
+      <div id="codex-device" class="notice hidden"></div>
     </section>
 
     <section class="panel stack-lg">
@@ -72,8 +60,8 @@
         </div>
       </div>
       <div class="toggle-list">
-        <label class="toggle-card">
-          <span>Dark mode <small>Default.</small></span>
+        <label class="toggle-card appearance-toggle">
+          <span>Dark mode <small>Uses the dark theme.</small></span>
           <input id="dark-mode" type="checkbox">
         </label>
         <label class="toggle-card">
@@ -87,8 +75,8 @@
             <option value="lcl-reactor">LCL Reactor — amber sync</option>
           </select>
         </label>
-        <label class="toggle-card">
-          <span>Monospace font <small>Default.</small></span>
+        <label class="toggle-card appearance-toggle">
+          <span>Monospace font <small>Uses monospace app text.</small></span>
           <input id="mono-font" type="checkbox">
         </label>
       </div>

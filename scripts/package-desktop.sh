@@ -15,6 +15,8 @@ SIGN_IDENTITY="${SIGN_IDENTITY:-}"
 TEAM_ID="${TEAM_ID:-}"
 NOTARY_PROFILE="${NOTARY_PROFILE:-}"
 VERSION="$(cd "$ROOT" && node -p "require('./package.json').version")"
+ARCH="${ARCH:-$(cd "$ROOT" && node -p "process.arch")}"
+OTA_ZIP_PATH="$OUT_DIR/makerspace-mac-$ARCH.zip"
 ELECTRON_APP="$(cd "$ROOT" && node -e "const path = require('node:path'); console.log(path.join(path.dirname(require.resolve('electron')), 'dist', 'Electron.app'))")"
 
 if [[ ! -d "$ELECTRON_APP" ]]; then
@@ -109,6 +111,17 @@ notarize_dmg() {
   spctl -a -t open --context context:primary-signature -v "$DMG_PATH"
 }
 
+create_ota_zip() {
+  if ! command -v ditto >/dev/null 2>&1; then
+    echo "warning: ditto missing; skipped OTA update ZIP" >&2
+    return 0
+  fi
+
+  rm -f "$OTA_ZIP_PATH"
+  ditto -c -k --sequesterRsrc --keepParent "$APP_DIR" "$OTA_ZIP_PATH"
+  echo "wrote $OTA_ZIP_PATH"
+}
+
 rm -rf "$OUT_DIR"
 mkdir -p "$OUT_DIR"
 cp -R "$ELECTRON_APP" "$APP_DIR"
@@ -125,13 +138,29 @@ done
 node - "$APP_RESOURCES/package.json" <<'NODE'
 const fs = require('node:fs');
 const packagePath = process.argv[2];
+const runtimeDependencies = new Set([
+  '@daytona/sdk',
+  '@earendil-works/pi-coding-agent',
+  'update-electron-app',
+]);
 const pkg = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
 pkg.main = 'desktop/main.js';
+// ponytail: keep only deps imported by desktop/src; add here when runtime imports a new package.
+pkg.dependencies = Object.fromEntries(Object.entries(pkg.dependencies || {}).filter(([name]) => runtimeDependencies.has(name)));
+delete pkg.devDependencies;
 fs.writeFileSync(packagePath, `${JSON.stringify(pkg, null, 2)}\n`);
 NODE
 
+rm -f "$APP_RESOURCES/package-lock.json"
 if command -v npm >/dev/null 2>&1; then
-  (cd "$APP_RESOURCES" && npm prune --omit=dev --ignore-scripts >/dev/null)
+  (cd "$APP_RESOURCES" && npm prune --omit=dev --ignore-scripts --package-lock=false --no-audit --no-fund >/dev/null)
+fi
+rm -f "$APP_RESOURCES/package-lock.json"
+
+if [[ -d "$APP_RESOURCES/node_modules" ]]; then
+  find "$APP_RESOURCES/node_modules" -type f \( -name '*.map' -o -name '*.md' -o -name '*.markdown' -o -name '*.tsbuildinfo' \) -delete
+  find "$APP_RESOURCES/node_modules" -type f \( -name '*.d.ts' -o -name '*.d.mts' -o -name '*.d.cts' \) -delete
+  find "$APP_RESOURCES/node_modules" -type d \( -name test -o -name tests -o -name __tests__ -o -name docs -o -name examples \) -prune -exec rm -rf {} +
 fi
 
 if [[ ! -f "$APP_RESOURCES/node_modules/@earendil-works/pi-coding-agent/dist/index.js" ]]; then
@@ -171,6 +200,7 @@ if [[ -f "$ICON_SOURCE" ]]; then
 fi
 
 sign_app
+create_ota_zip
 
 if command -v hdiutil >/dev/null 2>&1; then
   mkdir -p "$DMG_ROOT"

@@ -108,15 +108,16 @@ npm run desktop:dev -- ~/code/api
 
 The desktop dev shell starts the same backend, serves built `dist/` when present, falls back to root `public/` otherwise, binds to `127.0.0.1`, and stores local state in a per-project folder when a folder argument is provided.
 
-Package and install the macOS app/DMG from the installed Electron binary:
+Package, release, and install the macOS app from the installed Electron binary:
 
 ```bash
 npm run desktop:package
+npm run desktop:release
 npm run desktop:install
 ```
 
 The installer copies `output/desktop-package/Makerspace.app` into `/Applications`. Pass a path when needed: `npm run desktop:install -- output/desktop-package/makerspace.dmg`.
-The DMG lands at `output/desktop-package/makerspace.dmg`; publish that file as a GitHub Release asset named `makerspace.dmg` in the public `anishthite/makerspace-downloads` repo. The `/desktop` landing page downloads from `https://github.com/anishthite/makerspace-downloads/releases/latest/download/makerspace.dmg`, so do not commit the 270MB binary to this source repo.
+The DMG lands at `output/desktop-package/makerspace.dmg`; publish it as `makerspace.dmg` in the public `anishthite/makerspace-downloads` repo. The release script also writes `output/desktop-package/makerspace-mac-$ARCH.zip`; attach that ZIP to the same SemVer GitHub Release (`v0.0.2`, etc.) for OTA updates. Users need one manual install of a build containing the updater before later releases self-update. The `/desktop` landing page downloads from `https://github.com/anishthite/makerspace-downloads/releases/latest/download/makerspace.dmg`, so do not commit the 270MB binary to this source repo.
 
 Optional env vars:
 

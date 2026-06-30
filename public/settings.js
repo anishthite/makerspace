@@ -2,7 +2,6 @@ import { applyAppearance, getAppearance, saveAppearance } from './appearance.js?
 
 const BROWSER_SESSION_KEY = 'makerspaceBrowserSession';
 const API_BASE = '';
-const connectionSummary = document.querySelector('#connection-summary');
 const codexLogin = document.querySelector('#codex-login');
 const codexStatus = document.querySelector('#codex-status');
 const codexDevice = document.querySelector('#codex-device');
@@ -87,12 +86,7 @@ async function fetchJson(path, options = {}) {
   return payload;
 }
 
-function updateConnectionSummary() {
-  connectionSummary.textContent = `${getApiBase() || 'same-origin'} · deployment config`;
-}
-
 async function persistConnectionInputs(reload = false) {
-  updateConnectionSummary();
   if (reload) await reloadSettingsData();
 }
 
@@ -232,7 +226,6 @@ async function reloadSettingsData() {
 
 getBrowserSessionId();
 loadAppearanceControls();
-updateConnectionSummary();
 darkModeInput.addEventListener('change', saveAppearanceControls);
 darkPaletteInput.addEventListener('change', saveAppearanceControls);
 monoFontInput.addEventListener('change', saveAppearanceControls);

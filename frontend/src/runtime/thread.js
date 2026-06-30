@@ -396,9 +396,24 @@ function runSummaryCopy(startMs, endMs = 0, status = '') {
   return `${active ? 'working' : 'worked'} for ${formatElapsedMinutes((endMs || Date.now()) - startMs)}`;
 }
 
+function runSummaryDetailCopy(marker) {
+  return marker?.detail && !marker.endMs && isActiveStatus(marker.status || runSummaryStatus) ? marker.detail : '';
+}
+
 function updateRunSummaryMarker(marker) {
   if (!marker?.button) return;
   marker.button.textContent = runSummaryCopy(marker.startMs, marker.endMs, marker.status);
+  const detail = marker.button.parentElement?.querySelector('[data-run-summary-detail]');
+  if (!detail) return;
+  const copy = runSummaryDetailCopy(marker);
+  detail.textContent = copy;
+  detail.hidden = !copy;
+}
+
+function setRunSummaryDetail(text = '') {
+  if (!activeRunSummaryMarker) return;
+  activeRunSummaryMarker.detail = clamp(String(text || '').replace(/\s+/g, ' ').trim(), 180);
+  updateRunSummaryMarker(activeRunSummaryMarker);
 }
 
 function appendRunSummaryMarker({ startMs = 0, endMs = 0, status = '', runId = '' } = {}) {
@@ -410,10 +425,11 @@ function appendRunSummaryMarker({ startMs = 0, endMs = 0, status = '', runId = '
     <div class="timeline-dot" aria-hidden="true"></div>
     <div class="run-summary-card">
       <button class="run-summary muted" type="button" aria-controls="agent-trace" aria-expanded="${isAgentActivityOpen()}" title="show full trace"></button>
+      <p class="run-summary-detail muted" data-run-summary-detail hidden></p>
     </div>
   `;
   const button = article.querySelector('.run-summary');
-  const marker = { button, startMs, endMs, status, runId: String(runId || '') };
+  const marker = { button, startMs, endMs, status, runId: String(runId || ''), detail: '' };
   button.addEventListener('click', () => toggleAgentActivity(article));
   updateRunSummaryMarker(marker);
   timeline.append(article);
@@ -557,6 +573,19 @@ function toolDisplay(event = {}) {
   };
 }
 
+function syncRunSummaryToolDetail(event = {}, detail = '') {
+  if (event.type !== 'tool') {
+    if (event.done || event.runStatus === 'completed' || event.runStatus === 'failed') setRunSummaryDetail('');
+    return;
+  }
+  if (event.phase === 'end' || event.isError) {
+    setRunSummaryDetail('');
+    return;
+  }
+  const display = toolDisplay(event);
+  setRunSummaryDetail(detail || display.action || display.label || event.toolName || 'tool');
+}
+
 function activityCopy(event) {
   if (event.type === 'log') return ['Working', ''];
 
@@ -607,6 +636,7 @@ function isActiveEvent(event) {
 function setNow(event) {
   syncRunTiming(event);
   const [headline, detail] = activityCopy(event);
+  syncRunSummaryToolDetail(event, detail);
   thinkingTitle.textContent = threadDisplayTitle();
   thinkingTitle.classList.toggle('is-active', isActiveEvent(event));
   thinkingDetail.textContent = detail ? `${headline} · ${detail}` : headline;

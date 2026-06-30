@@ -123,16 +123,16 @@ export function Switch({ id, label, help, className, defaultChecked = false, ...
     };
   }, []);
 
-  const toggle = () => {
+  const setInputChecked = (nextChecked) => {
     if (!inputRef.current) return;
-    inputRef.current.checked = !inputRef.current.checked;
+    inputRef.current.checked = Boolean(nextChecked);
     inputRef.current.dispatchEvent(new Event('change', { bubbles: true }));
   };
 
   return <label className={cn('toggle-card', className)}>
     <span>{label}{help && <small>{help}</small>}</span>
     <input ref={inputRef} id={id} className="sr-only" type="checkbox" defaultChecked={defaultChecked} tabIndex="-1" aria-hidden="true" {...props} />
-    <ShadSwitch checked={checked} onCheckedChange={toggle} />
+    <ShadSwitch checked={checked} onCheckedChange={setInputChecked} aria-label={label} />
   </label>;
 }
 
