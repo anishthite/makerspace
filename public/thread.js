@@ -384,8 +384,10 @@ function timestampMs(value) {
 
 function formatElapsedMinutes(ms) {
   const seconds = Math.max(0, Math.round(Number(ms) / 1000));
-  if (seconds < 60) return '<1 min';
-  return `${Math.max(1, Math.round(seconds / 60))} min`;
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  if (!minutes) return `${remainingSeconds}s`;
+  return remainingSeconds ? `${minutes} min ${remainingSeconds}s` : `${minutes} min`;
 }
 
 function runSummaryCopy(startMs, endMs = 0, status = '') {
