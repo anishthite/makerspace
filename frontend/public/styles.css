@@ -1004,8 +1004,8 @@ html[data-desktop="true"] .flow-topbar,
 }
 html[data-desktop="true"] .flow-composer,
 .thread-page .flow-composer { backdrop-filter: none; }
-.composer-field { display: grid; gap: 8px; min-width: 0; }
-.flow-composer textarea { min-height: 58px; max-height: 200px; border-color: var(--rule-2); background: var(--paper); }
+.composer-field { display: contents; }
+.flow-composer textarea { grid-column: 1 / -1; min-height: 58px; max-height: 200px; border-color: var(--rule-2); background: var(--paper); }
 .flow-composer .target-input input,
 .flow-composer .target-input select { padding: 9px 0; font-size: 13px; }
 .flow-composer .thinking-slider input[type="range"] { padding: 0; }
