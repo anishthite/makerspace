@@ -20,6 +20,9 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
     githubRepoPayload,
     codexAuthStatus,
     startCodexDeviceLogin,
+    claudeCodeAuthStatus,
+    startClaudeCodeLogin,
+    submitClaudeCodeLoginCode,
     getAuthLogin,
     publicAuthLogin,
     requireSessionAccess,
@@ -179,6 +182,34 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
       }
 
       if (request.method === 'GET' && pathname.startsWith('/api/auth/openai-codex/login/')) {
+        const id = pathname.split('/').pop();
+        const job = getAuthLogin(id, user);
+        if (!job) {
+          sendJson(response, 404, { error: 'Login not found' });
+          return;
+        }
+        sendJson(response, 200, publicAuthLogin(job));
+        return;
+      }
+
+      if (request.method === 'GET' && pathname === '/api/auth/claude-code') {
+        sendJson(response, 200, await claudeCodeAuthStatus(user));
+        return;
+      }
+
+      if (request.method === 'POST' && pathname === '/api/auth/claude-code/login') {
+        sendJson(response, 202, await startClaudeCodeLogin(user));
+        return;
+      }
+
+      if (request.method === 'POST' && pathname.startsWith('/api/auth/claude-code/login/') && pathname.endsWith('/code')) {
+        const id = pathname.split('/').at(-2);
+        const body = await readJsonBody(request);
+        sendJson(response, 200, submitClaudeCodeLoginCode(id, user, body));
+        return;
+      }
+
+      if (request.method === 'GET' && pathname.startsWith('/api/auth/claude-code/login/')) {
         const id = pathname.split('/').pop();
         const job = getAuthLogin(id, user);
         if (!job) {

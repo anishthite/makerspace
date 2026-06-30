@@ -53,6 +53,26 @@
       <div id="codex-device" class="notice hidden"></div>
     </section>
 
+    <section id="claude-code" class="panel stack-lg">
+      <div class="panel-header">
+        <div>
+          <h2>Claude Code</h2>
+        </div>
+        <button id="claude-code-login" type="button">Sign in</button>
+      </div>
+      <p id="claude-code-status" class="muted">Checking…</p>
+      <div id="claude-code-auth" class="notice hidden"></div>
+      <form id="claude-code-code-form" class="stack-lg hidden">
+        <label class="full-width">
+          <span>Redirect URL or code</span>
+          <input id="claude-code-code" name="code" placeholder="http://localhost:53692/callback?code=…" autocomplete="off">
+        </label>
+        <div class="form-actions">
+          <button id="claude-code-code-submit" type="submit">Finish sign in</button>
+        </div>
+      </form>
+    </section>
+
     <section class="panel stack-lg">
       <div class="panel-header">
         <div>

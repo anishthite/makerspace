@@ -19,15 +19,17 @@ import { pruneBrowserSessions } from '../resource-utils.js';
 
 const CODEX_AUTH_PROVIDER = 'openai-codex';
 const CODEX_USER_SECRET_KEY = 'openai-codex-auth';
+const CLAUDE_CODE_AUTH_PROVIDER = 'anthropic';
+const CLAUDE_CODE_USER_SECRET_KEY = 'claude-code-auth';
 
-function normalizeCodexCredential(raw) {
+function normalizeOAuthCredential(raw, provider = '') {
   let parsed;
   try {
     parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
   } catch {
     return null;
   }
-  const source = parsed?.[CODEX_AUTH_PROVIDER] || parsed;
+  const source = provider && parsed?.[provider] ? parsed[provider] : parsed;
   if (!source || typeof source !== 'object' || source.type !== 'oauth') return null;
   const access = typeof source.access === 'string' ? source.access : '';
   const refresh = typeof source.refresh === 'string' ? source.refresh : '';
@@ -42,8 +44,9 @@ function normalizeCodexCredential(raw) {
   };
 }
 
-function codexAuthText(credential) {
-  return `${JSON.stringify({ [CODEX_AUTH_PROVIDER]: credential }, null, 2)}\n`;
+function piAuthText(credentialsByProvider = {}) {
+  const credentials = Object.fromEntries(Object.entries(credentialsByProvider).filter(([, credential]) => credential));
+  return Object.keys(credentials).length ? `${JSON.stringify(credentials, null, 2)}\n` : null;
 }
 
 export function createAuthService({ config, http }) {
@@ -364,41 +367,72 @@ export function createAuthService({ config, http }) {
     };
   }
 
-  async function readUserCodexCredential(user) {
+  function providerSecretKey(provider) {
+    if (provider === CODEX_AUTH_PROVIDER) return CODEX_USER_SECRET_KEY;
+    if (provider === CLAUDE_CODE_AUTH_PROVIDER) return CLAUDE_CODE_USER_SECRET_KEY;
+    throw new Error(`Unknown auth provider: ${provider}`);
+  }
+
+  function providerLabel(provider) {
+    return provider === CLAUDE_CODE_AUTH_PROVIDER ? 'Claude Code' : 'Codex';
+  }
+
+  async function readUserProviderCredential(user, provider) {
     if (!user?.id) return null;
-    const stored = await authStore.readUserSecret(user.id, CODEX_USER_SECRET_KEY);
-    const credential = normalizeCodexCredential(stored?.value || '');
+    const stored = await authStore.readUserSecret(user.id, providerSecretKey(provider));
+    const credential = normalizeOAuthCredential(stored?.value || '', provider);
     return credential ? { credential, updatedAt: stored.updatedAt || null } : null;
   }
 
-  async function readFreshUserCodexCredential(userId) {
-    const stored = await readUserCodexCredential({ id: userId });
+  async function readFreshUserProviderCredential(userId, provider) {
+    const stored = await readUserProviderCredential({ id: userId }, provider);
     if (!stored) return null;
     if (Date.now() + 30_000 < stored.credential.expires) return stored;
 
     const { AuthStorage } = await loadPiSdk();
-    const authStorage = AuthStorage.inMemory({ [CODEX_AUTH_PROVIDER]: stored.credential });
-    const apiKey = await authStorage.getApiKey(CODEX_AUTH_PROVIDER, { includeFallback: false });
-    const credential = normalizeCodexCredential(authStorage.get(CODEX_AUTH_PROVIDER));
-    if (!apiKey || !credential) throw new Error('Codex auth expired. Sign in again in Settings → Codex.');
-    await authStore.writeUserSecret(userId, CODEX_USER_SECRET_KEY, JSON.stringify(credential));
+    const authStorage = AuthStorage.inMemory({ [provider]: stored.credential });
+    const apiKey = await authStorage.getApiKey(provider, { includeFallback: false });
+    const credential = normalizeOAuthCredential(authStorage.get(provider), provider);
+    if (!apiKey || !credential) throw new Error(`${providerLabel(provider)} auth expired. Sign in again in Settings → ${providerLabel(provider)}.`);
+    await authStore.writeUserSecret(userId, providerSecretKey(provider), JSON.stringify(credential));
     return { credential, updatedAt: new Date().toISOString() };
   }
 
-  async function codexAuthStatus(user = null) {
-    if (authRequired()) {
-      const stored = await readUserCodexCredential(user);
-      return {
-        configured: Boolean(stored),
-        source: stored ? 'user' : '',
-        expiresAt: stored?.credential?.expires || null,
-        updatedAt: stored?.updatedAt || null,
-        ...(user?.id ? {} : { disabled: 'sign-in-required' }),
-      };
-    }
+  async function readUserCodexCredential(user) {
+    return readUserProviderCredential(user, CODEX_AUTH_PROVIDER);
+  }
+
+  async function readFreshUserCodexCredential(userId) {
+    return readFreshUserProviderCredential(userId, CODEX_AUTH_PROVIDER);
+  }
+
+  async function readFreshUserClaudeCodeCredential(userId) {
+    return readFreshUserProviderCredential(userId, CLAUDE_CODE_AUTH_PROVIDER);
+  }
+
+  async function hostedProviderAuthStatus(user, provider) {
+    const stored = await readUserProviderCredential(user, provider);
+    return {
+      configured: Boolean(stored),
+      source: stored ? 'user' : '',
+      expiresAt: stored?.credential?.expires || null,
+      updatedAt: stored?.updatedAt || null,
+      ...(user?.id ? {} : { disabled: 'sign-in-required' }),
+    };
+  }
+
+  async function localProviderAuthStatus(provider) {
     const { AuthStorage } = await loadPiSdk();
     const authStorage = AuthStorage.create();
-    return authStorage.getAuthStatus(CODEX_AUTH_PROVIDER);
+    return authStorage.getAuthStatus(provider);
+  }
+
+  async function codexAuthStatus(user = null) {
+    return authRequired() ? hostedProviderAuthStatus(user, CODEX_AUTH_PROVIDER) : localProviderAuthStatus(CODEX_AUTH_PROVIDER);
+  }
+
+  async function claudeCodeAuthStatus(user = null) {
+    return authRequired() ? hostedProviderAuthStatus(user, CLAUDE_CODE_AUTH_PROVIDER) : localProviderAuthStatus(CLAUDE_CODE_AUTH_PROVIDER);
   }
 
   async function startCodexDeviceLogin(user = null) {
@@ -442,7 +476,7 @@ export function createAuthService({ config, http }) {
         job.progress = message;
       },
     }).then(async () => {
-      const credential = normalizeCodexCredential(authStorage.get(CODEX_AUTH_PROVIDER));
+      const credential = normalizeOAuthCredential(authStorage.get(CODEX_AUTH_PROVIDER), CODEX_AUTH_PROVIDER);
       if (authRequired() && credential) {
         await authStore.writeUserSecret(user.id, CODEX_USER_SECRET_KEY, JSON.stringify(credential));
       }
@@ -458,11 +492,101 @@ export function createAuthService({ config, http }) {
     return publicAuthLogin(job);
   }
 
+  async function startClaudeCodeLogin(user = null) {
+    if (authRequired() && !user?.id) throw clientError('Sign in with GitHub before Claude Code.', 401);
+    const { AuthStorage } = await loadPiSdk();
+    const authStorage = authRequired() ? AuthStorage.inMemory() : AuthStorage.create();
+    const id = randomUUID();
+    const job = {
+      id,
+      provider: CLAUDE_CODE_AUTH_PROVIDER,
+      ownerUserId: user?.id || '',
+      status: 'starting',
+      auth: null,
+      device: null,
+      manual: false,
+      error: null,
+    };
+    authLogins.set(id, job);
+
+    const authReady = new Promise((resolve, reject) => {
+      job.resolveAuthReady = resolve;
+      job.rejectAuthReady = reject;
+    });
+    const maybeReady = () => {
+      if (job.auth && job.resolveManual && job.resolveAuthReady) {
+        job.resolveAuthReady();
+        job.resolveAuthReady = null;
+      }
+    };
+
+    authStorage.login(CLAUDE_CODE_AUTH_PROVIDER, {
+      onAuth: (info) => {
+        job.status = 'waiting';
+        job.auth = info;
+        maybeReady();
+      },
+      onPrompt: async (prompt) => {
+        if (prompt.allowEmpty) return '';
+        throw new Error(prompt.message || 'Login needs input.');
+      },
+      onManualCodeInput: async () => {
+        job.manual = true;
+        return new Promise((resolve, reject) => {
+          job.resolveManual = (input) => {
+            job.status = 'exchanging';
+            resolve(input);
+          };
+          job.rejectManual = reject;
+          maybeReady();
+        });
+      },
+      onProgress: (message) => {
+        job.progress = message;
+      },
+    }).then(async () => {
+      const credential = normalizeOAuthCredential(authStorage.get(CLAUDE_CODE_AUTH_PROVIDER), CLAUDE_CODE_AUTH_PROVIDER);
+      if (authRequired() && credential) {
+        await authStore.writeUserSecret(user.id, CLAUDE_CODE_USER_SECRET_KEY, JSON.stringify(credential));
+      }
+      job.resolveManual = null;
+      job.status = 'complete';
+      job.completedAt = new Date().toISOString();
+    }).catch((error) => {
+      job.status = 'failed';
+      job.error = error.message;
+      job.rejectAuthReady?.(error);
+      job.rejectManual?.(error);
+    });
+
+    await authReady;
+    return publicAuthLogin(job);
+  }
+
+  function submitClaudeCodeLoginCode(id, user = null, body = {}) {
+    const job = getAuthLogin(id, user);
+    if (!job || job.provider !== CLAUDE_CODE_AUTH_PROVIDER) throw clientError('Login not found', 404);
+    if (job.status === 'complete' || job.status === 'failed') return publicAuthLogin(job);
+
+    const code = String(body.code || body.authorizationCode || body.redirectUrl || '').trim();
+    if (!code) throw clientError('Paste the Claude Code redirect URL or authorization code.');
+    if (!job.resolveManual) throw clientError('Claude Code login is not ready for a pasted code yet.', 409);
+
+    const resolveManual = job.resolveManual;
+    job.resolveManual = null;
+    job.status = 'exchanging';
+    job.progress = 'Exchanging authorization code for tokens...';
+    resolveManual(code);
+    return publicAuthLogin(job);
+  }
+
   function publicAuthLogin(job) {
     return {
       id: job.id,
       status: job.status,
       device: job.device,
+      auth: job.auth || null,
+      manual: Boolean(job.manual && job.status !== 'complete'),
       progress: job.progress || null,
       error: job.error,
     };
@@ -558,18 +682,25 @@ export function createAuthService({ config, http }) {
     }
   }
 
+  async function readFreshUserPiCredentials(userId) {
+    const codex = await readFreshUserCodexCredential(userId);
+    const claudeCode = await readFreshUserClaudeCodeCredential(userId);
+    return {
+      ...(codex ? { [CODEX_AUTH_PROVIDER]: codex.credential } : {}),
+      ...(claudeCode ? { [CLAUDE_CODE_AUTH_PROVIDER]: claudeCode.credential } : {}),
+    };
+  }
+
   async function readPiAuthForSession(session = {}) {
     if (!authRequired()) return readLocalPiAuth();
     if (!session?.ownerUserId) return null;
-    const stored = await readFreshUserCodexCredential(session.ownerUserId);
-    return stored ? codexAuthText(stored.credential) : null;
+    return piAuthText(await readFreshUserPiCredentials(session.ownerUserId));
   }
 
   async function authStorageForSession(session = {}) {
     if (!authRequired()) return null;
     const { AuthStorage } = await loadPiSdk();
-    const stored = await readFreshUserCodexCredential(session.ownerUserId);
-    return AuthStorage.inMemory(stored ? { [CODEX_AUTH_PROVIDER]: stored.credential } : {});
+    return AuthStorage.inMemory(session?.ownerUserId ? await readFreshUserPiCredentials(session.ownerUserId) : {});
   }
 
   async function readLocalPiSettings() {
@@ -656,6 +787,9 @@ export function createAuthService({ config, http }) {
     loadPiDefaults,
     codexAuthStatus,
     startCodexDeviceLogin,
+    claudeCodeAuthStatus,
+    startClaudeCodeLogin,
+    submitClaudeCodeLoginCode,
     publicAuthLogin,
     getAuthLogin,
     isGitHubAuthConfigured,
