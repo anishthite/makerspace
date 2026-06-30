@@ -371,6 +371,20 @@ export function createAuthService({ config, http }) {
     return credential ? { credential, updatedAt: stored.updatedAt || null } : null;
   }
 
+  async function readFreshUserCodexCredential(userId) {
+    const stored = await readUserCodexCredential({ id: userId });
+    if (!stored) return null;
+    if (Date.now() + 30_000 < stored.credential.expires) return stored;
+
+    const { AuthStorage } = await loadPiSdk();
+    const authStorage = AuthStorage.inMemory({ [CODEX_AUTH_PROVIDER]: stored.credential });
+    const apiKey = await authStorage.getApiKey(CODEX_AUTH_PROVIDER, { includeFallback: false });
+    const credential = normalizeCodexCredential(authStorage.get(CODEX_AUTH_PROVIDER));
+    if (!apiKey || !credential) throw new Error('Codex auth expired. Sign in again in Settings → Codex.');
+    await authStore.writeUserSecret(userId, CODEX_USER_SECRET_KEY, JSON.stringify(credential));
+    return { credential, updatedAt: new Date().toISOString() };
+  }
+
   async function codexAuthStatus(user = null) {
     if (authRequired()) {
       const stored = await readUserCodexCredential(user);
@@ -547,14 +561,14 @@ export function createAuthService({ config, http }) {
   async function readPiAuthForSession(session = {}) {
     if (!authRequired()) return readLocalPiAuth();
     if (!session?.ownerUserId) return null;
-    const stored = await readUserCodexCredential({ id: session.ownerUserId });
+    const stored = await readFreshUserCodexCredential(session.ownerUserId);
     return stored ? codexAuthText(stored.credential) : null;
   }
 
   async function authStorageForSession(session = {}) {
     if (!authRequired()) return null;
     const { AuthStorage } = await loadPiSdk();
-    const stored = await readUserCodexCredential({ id: session.ownerUserId });
+    const stored = await readFreshUserCodexCredential(session.ownerUserId);
     return AuthStorage.inMemory(stored ? { [CODEX_AUTH_PROVIDER]: stored.credential } : {});
   }
 
