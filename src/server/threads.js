@@ -68,10 +68,10 @@ export function createThreadService({ config, provider, http, auth, runState, br
     return bufferText(await provider.readRemoteFile(session, remotePath), artifactPath);
   }
 
-  async function threadArtifactPayload(name, artifactPath, viewerSessionId = '', trusted = false) {
+  async function threadArtifactPayload(name, artifactPath, viewerSessionId = '', trusted = false, user = null) {
     const session = await getThreadSession(name);
-    if (!canAccessSession(session, viewerSessionId, trusted)) {
-      throw clientError(`Main agent ${name} belongs to a different browser session.`, 403);
+    if (!canAccessSession(session, viewerSessionId, trusted, user)) {
+      throw clientError(`Main agent ${name} belongs to a different user.`, 403);
     }
 
     const safePath = safeExcalidrawArtifactPath(artifactPath);
@@ -86,20 +86,20 @@ export function createThreadService({ config, provider, http, auth, runState, br
     return { path: safePath, data };
   }
 
-  async function listThreadsPayload(viewerSessionId = '', trusted = false) {
+  async function listThreadsPayload(viewerSessionId = '', trusted = false, user = null) {
     const sessions = await listStoredSessions(config.sessionFile);
     return {
       provider: provider.info(),
       defaults: await loadPiDefaults(),
       threads: sessions
-        .filter((session) => session.threadBridge && !session.archivedAt && canAccessSession(session, viewerSessionId, trusted))
+        .filter((session) => session.threadBridge && !session.archivedAt && canAccessSession(session, viewerSessionId, trusted, user))
         .map((session) => decorateLiveSession(session)),
     };
   }
 
-  async function listThreadPerformancePayload(viewerSessionId = '', trusted = false) {
+  async function listThreadPerformancePayload(viewerSessionId = '', trusted = false, user = null) {
     const sessions = (await listStoredSessions(config.sessionFile))
-      .filter((session) => session.threadBridge && canAccessSession(session, viewerSessionId, trusted));
+      .filter((session) => session.threadBridge && canAccessSession(session, viewerSessionId, trusted, user));
     const eventsByName = Object.fromEntries(sessions.map((session) => [session.name, activeRuns.get(session.name)?.events || []]));
     return {
       provider: provider.info(),
@@ -121,10 +121,10 @@ export function createThreadService({ config, provider, http, auth, runState, br
     };
   }
 
-  async function threadDiffPayload(name, viewerSessionId = '', trusted = false) {
+  async function threadDiffPayload(name, viewerSessionId = '', trusted = false, user = null) {
     const session = await getThreadSession(name);
-    if (!canAccessSession(session, viewerSessionId, trusted)) {
-      throw clientError(`Main agent ${name} belongs to a different browser session.`, 403);
+    if (!canAccessSession(session, viewerSessionId, trusted, user)) {
+      throw clientError(`Main agent ${name} belongs to a different user.`, 403);
     }
     return trackedChangesPayloadForThread(session);
   }
@@ -137,10 +137,10 @@ export function createThreadService({ config, provider, http, auth, runState, br
     return session;
   }
 
-  async function archiveThreadSession(name, viewerSessionId = '', trusted = false) {
+  async function archiveThreadSession(name, viewerSessionId = '', trusted = false, user = null) {
     const existing = await getThreadSession(name);
-    if (!canAccessSession(existing, viewerSessionId, trusted)) {
-      throw clientError(`Main agent ${name} belongs to a different browser session.`, 403);
+    if (!canAccessSession(existing, viewerSessionId, trusted, user)) {
+      throw clientError(`Main agent ${name} belongs to a different user.`, 403);
     }
 
     const live = decorateLiveSession(existing);
@@ -153,25 +153,28 @@ export function createThreadService({ config, provider, http, auth, runState, br
     return archived || existing;
   }
 
-  async function unarchiveThreadSession(name, viewerSessionId = '', trusted = false) {
+  async function unarchiveThreadSession(name, viewerSessionId = '', trusted = false, user = null) {
     const existing = await getThreadSession(name);
-    if (!canAccessSession(existing, viewerSessionId, trusted)) {
-      throw clientError(`Main agent ${name} belongs to a different browser session.`, 403);
+    if (!canAccessSession(existing, viewerSessionId, trusted, user)) {
+      throw clientError(`Main agent ${name} belongs to a different user.`, 403);
     }
 
     return (await unarchiveStoredSession(config.sessionFile, name)) || existing;
   }
 
-  async function createThreadSession(body, browserSession = null, browserSessionIdValue = '') {
+  async function createThreadSession(body, browserSession = null, browserSessionIdValue = '', user = null) {
     const submittedAtMs = normalizeSubmittedAtMs(body.submittedAtMs);
     const normalized = normalizeThreadRequest(body, config);
+    if (config.authRequired && normalized.localMode && !config.allowHostedLocalProvider) {
+      throw clientError('Local folder workspaces are disabled for hosted multi-user runs.', 403);
+    }
     const bridgeRunId = normalized.bridgeMode ? randomUUID() : '';
     const session = withUserThreadMessage(withFallbackThreadTitle(await enrichGitHubRepoSession({
       ...normalized,
       ...(bridgeRunId ? { bridgeRunId } : {}),
-      ...(browserSessionIdValue ? { githubOwnerSessionId: browserSessionIdValue } : {}),
+      ...(user?.id ? { ownerUserId: user.id } : browserSessionIdValue ? { githubOwnerSessionId: browserSessionIdValue } : {}),
       submittedAtMs,
-    }, browserSession)), normalized.initialPrompt || normalized.taskPrompt, submittedAtMs, bridgeRunId || String(submittedAtMs));
+    }, browserSession, user)), normalized.initialPrompt || normalized.taskPrompt, submittedAtMs, bridgeRunId || String(submittedAtMs));
     const existing = await getStoredSession(config.sessionFile, session.name);
     if (existing) {
       throw new Error(`A main agent named ${session.name} already exists.`);
@@ -185,13 +188,13 @@ export function createThreadService({ config, provider, http, auth, runState, br
     return thread;
   }
 
-  async function promptThreadSession(name, body, viewerSessionId = '', trusted = false) {
+  async function promptThreadSession(name, body, viewerSessionId = '', trusted = false, user = null) {
     const prompt = String(body.prompt || '').trim();
     if (!prompt) throw new Error('Prompt is required.');
 
     const existing = await getThreadSession(name);
-    if (!canAccessSession(existing, viewerSessionId, trusted)) {
-      throw clientError(`Main agent ${name} belongs to a different browser session.`, 403);
+    if (!canAccessSession(existing, viewerSessionId, trusted, user)) {
+      throw clientError(`Main agent ${name} belongs to a different user.`, 403);
     }
     if (existing.localMode) {
       if (liveLocalRuns.has(name)) throw new Error(`Main agent ${name} is already running.`);

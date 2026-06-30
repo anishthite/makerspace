@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Makerspace design variation gallery</title>
+  <style>
+    * { box-sizing: border-box; }
+    :root { color-scheme: dark; --bg: #080a0f; --panel: #10141d; --panel-2: #141a24; --ink: #eef2f7; --muted: #9aa6b8; --line: rgba(255,255,255,.13); --accent: #a7ff83; }
+    body { margin: 0; background: radial-gradient(circle at 10% 0%, rgba(167,255,131,.13), transparent 28rem), radial-gradient(circle at 86% 8%, rgba(88,166,255,.15), transparent 30rem), var(--bg); color: var(--ink); font: 14px/1.45 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    a { color: inherit; }
+    .page { width: min(1480px, calc(100% - 32px)); margin: 0 auto; padding: 28px 0 56px; }
+    header { display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: end; margin-bottom: 18px; }
+    .eyebrow { color: var(--accent); font: 850 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .08em; text-transform: uppercase; }
+    h1 { max-width: 920px; margin: 8px 0 10px; font-size: clamp(42px, 7vw, 104px); line-height: .8; letter-spacing: -.085em; }
+    p { margin: 0; color: var(--muted); }
+    .open { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+    .open a, .card a, .alias a { border: 1px solid var(--line); border-radius: 999px; padding: 8px 10px; background: rgba(255,255,255,.055); color: #dbe4f0; text-decoration: none; font: 800 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .note { margin: 0 0 18px; border: 1px solid rgba(167,255,131,.28); border-radius: 18px; padding: 13px 15px; background: rgba(167,255,131,.08); color: #d7f7c9; }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+    .card { overflow: hidden; border: 1px solid var(--line); border-radius: 24px; background: rgba(16,20,29,.86); box-shadow: 0 26px 90px rgba(0,0,0,.28); }
+    .card-head { display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: start; padding: 15px; border-bottom: 1px solid var(--line); background: linear-gradient(180deg, rgba(255,255,255,.045), transparent); }
+    h2 { margin: 0 0 5px; font-size: 22px; line-height: 1; letter-spacing: -.045em; }
+    .card p { max-width: 680px; font-size: 13px; }
+    iframe { display: block; width: 100%; height: 680px; border: 0; background: #fff; }
+    .alias { display: flex; gap: 8px; flex-wrap: wrap; padding: 12px 15px 15px; border-top: 1px solid var(--line); background: rgba(255,255,255,.025); }
+    .alias span { color: var(--muted); font: 800 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; padding: 8px 0; }
+    @media (max-width: 980px) { header, .grid { grid-template-columns: 1fr; } .open { justify-content: flex-start; } iframe { height: 560px; } }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div>
+        <div class="eyebrow">Makerspace review sheet</div>
+        <h1>All the design variations, one scroll.</h1>
+        <p>Embedded from the existing static artifacts. Open the full page when an iframe feels cramped.</p>
+      </div>
+      <nav class="open" aria-label="Quick links">
+        <a href="better-designs.html">latest directions</a>
+        <a href="theme-variations.html">new pack</a>
+        <a href="theme-lineage.html">lineage</a>
+      </nav>
+    </header>
+
+    <p class="note">Start with <b>Three designs that try harder</b>, then use the theme sheets for color/system details.</p>
+
+    <section class="grid" aria-label="Design variation previews">
+      <article class="card">
+        <div class="card-head"><div><h2>Three designs that try harder</h2><p>Latest full-product directions: Forge Desk, Paper Trail, and Mission Control.</p></div><a href="better-designs.html">open</a></div>
+        <iframe title="Better design directions" src="better-designs.html" loading="lazy"></iframe>
+      </article>
+
+      <article class="card">
+        <div class="card-head"><div><h2>New standout pack</h2><p>Newest 02E–02L and 10E–10H candidates, marked as the place to start.</p></div><a href="theme-variations.html">open</a></div>
+        <iframe title="New standout theme variations" src="theme-variations.html" loading="lazy"></iframe>
+        <div class="alias"><span>aliases</span><a href="theme-new-variations-2026-06-29.html">dated copy</a><a href="theme-standout-variations.html">standout copy</a></div>
+      </article>
+
+      <article class="card">
+        <div class="card-head"><div><h2>Variation set 1</h2><p>More branches of 01, 02, 05, and 10 before the standout pass.</p></div><a href="theme-variations-set-1.html">open</a></div>
+        <iframe title="Theme variation set one" src="theme-variations-set-1.html" loading="lazy"></iframe>
+      </article>
+
+      <article class="card">
+        <div class="card-head"><div><h2>Original 10 theme directions</h2><p>The first wide theme pass for comparing the base visual lanes.</p></div><a href="theme-mockups.html">open</a></div>
+        <iframe title="Original theme mockups" src="theme-mockups.html" loading="lazy"></iframe>
+      </article>
+
+      <article class="card">
+        <div class="card-head"><div><h2>Lineage tree</h2><p>Selection map showing how the liked branches led to the new candidates.</p></div><a href="theme-lineage.html">open</a></div>
+        <iframe title="Design lineage tree" src="theme-lineage.html" loading="lazy"></iframe>
+      </article>
+
+      <article class="card">
+        <div class="card-head"><div><h2>Board layout samples</h2><p>Older layout system sheet; useful for structure ideas, not the current leading direction.</p></div><a href="design-samples.html">open</a></div>
+        <iframe title="Board design samples" src="design-samples.html" loading="lazy"></iframe>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

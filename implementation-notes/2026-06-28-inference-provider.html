@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Inference.net Pi provider</title>
+<meta name="task" content="Add Inference.net as a Makerspace Pi default provider.">
+<meta name="date-started" content="2026-06-28">
+<meta name="date-updated" content="2026-06-28">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="makerspace, pi, provider, inference, remote">
+<meta name="related" content="2026-06-26-pi-defaults-package.html,2026-06-24-model-options-datalist.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-med{color:#b85c00}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Inference.net Pi provider</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-28 · status <b class="status-shipped">shipped</b> · blast <span class="blast-med">medium</span></p>
+
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Make <code>inference/nvidia/nemotron3-super</code> available from the Makerspace Pi defaults package without storing secrets.</div><b>Source</b><div>User supplied an OpenAI-compatible Inference.net sample and asked to add it to Makerspace Pi.</div><b>Surface</b><div><code>packages/makerspace-pi-defaults</code>, model/env defaults, local/host SDK sessions, remote bridge session creation.</div><b>Secrets</b><div>Use <code>INFERENCE_API_KEY</code>; never commit the pasted key.</div><b>Open Qs</b><div>0; assume one model is enough until more are requested.</div></div>
+
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>packages/makerspace-pi-defaults/extensions/makerspace-defaults.ts</code></td><td>touch</td><td>Register Inference.net as an OpenAI-compatible provider.</td></tr><tr><td><code>src/config.js</code>, <code>README.md</code>, <code>packages/makerspace-pi-defaults/README.md</code></td><td>touch</td><td>Forward/document <code>INFERENCE_API_KEY</code> for remote bridge runs.</td></tr><tr><td><code>src/pi-defaults-package.js</code>, <code>src/host-pi-runner.js</code>, <code>src/setup-script.js</code></td><td>touch</td><td>Resolve selected models after extension provider registration, including slashful model ids.</td></tr><tr><td><code>src/server/auth.js</code>, <code>image/Dockerfile</code></td><td>touch</td><td>Expose the Inference model in Makerspace/default Pi model options.</td></tr><tr><td><code>test/*.test.js</code></td><td>touch</td><td>Cover provider registration and bridge SDK wiring strings.</td></tr></table>
+
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Use <code>pi.registerProvider</code> in the existing defaults extension; this avoids mutating user <code>models.json</code>.</td></tr><tr><td>D-002</td><td>Provider id is <code>inference</code>; model id stays <code>nvidia/nemotron3-super</code> to match the API.</td></tr><tr><td>D-003</td><td>Set conservative OpenAI compat flags: <code>max_tokens</code>, no <code>store</code>, no reasoning effort, no streaming usage.</td></tr></table>
+
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>One known model over dynamic model discovery. No extra network call or startup failure mode.</td></tr><tr><td>T-002</td><td>Env-var auth over persisted key. The supplied key must be rotated and never baked into the repo/image.</td></tr></table>
+
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>node --check</code> on touched JS and focused tests</td><td>Passed.</td></tr><tr><td><code>node --test test/pi-defaults-package.test.js test/setup-script.test.js test/config.test.js</code></td><td>Passed 11/11.</td></tr><tr><td>Real SDK loader smoke for <code>inference/nvidia/nemotron3-super</code></td><td>Passed; model registered via defaults package.</td></tr></table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Revert the provider registration, env forwarding, and model-resolution wiring; no stored data migration.</p>
+
+<h2>Definition of done</h2>
+<ul><li>Defaults extension registers <code>inference/nvidia/nemotron3-super</code>.</li><li>Remote bridge forwards <code>INFERENCE_API_KEY</code> and can resolve slashful model ids.</li><li>Focused tests pass.</li></ul>
+</body>
+</html>

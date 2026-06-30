@@ -17,7 +17,6 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
     isGitHubAuthConfigured,
     startGitHubLogin,
     completeGitHubLogin,
-    clearBrowserSession,
     githubRepoPayload,
     codexAuthStatus,
     startCodexDeviceLogin,
@@ -25,6 +24,10 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
     publicAuthLogin,
     requireSessionAccess,
     loadPiDefaults,
+    currentUser,
+    publicMe,
+    requireUser,
+    logout,
   } = auth;
   const {
     activeRuns,
@@ -72,6 +75,23 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
 
       const viewerSessionId = browserSessionId(request);
       const trusted = hasTrustedControlToken(request, url);
+      const publicApiRoute = pathname === '/api/me'
+        || pathname === '/api/auth/github'
+        || pathname === '/api/auth/github/login'
+        || pathname === '/api/auth/github/callback'
+        || pathname === '/api/auth/github/logout'
+        || pathname === '/api/auth/logout';
+      let user = await currentUser(request);
+      if (pathname.startsWith('/api/') && !publicApiRoute) {
+        const context = await requireUser(request, response, url);
+        if (!context) return;
+        user = context.user;
+      }
+
+      if (request.method === 'GET' && pathname === '/api/me') {
+        sendJson(response, 200, publicMe(user, trusted));
+        return;
+      }
 
       if (request.method === 'GET' && pathname === '/api/report') {
         sendJson(response, 200, { provider: provider.info(), report });
@@ -79,7 +99,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
       }
 
       if (request.method === 'GET' && (pathname === '/api/performance' || pathname === '/api/threads/performance')) {
-        sendJson(response, 200, await listThreadPerformancePayload(viewerSessionId, trusted));
+        sendJson(response, 200, await listThreadPerformancePayload(viewerSessionId, trusted, user));
         return;
       }
 
@@ -89,25 +109,25 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
       }
 
       if (request.method === 'GET' && pathname === '/api/pi-profile') {
-        sendJson(response, 200, await readPiProfile(config));
+        sendJson(response, 200, await readPiProfile(config, trusted ? null : user));
         return;
       }
 
       if (request.method === 'POST' && pathname === '/api/pi-profile') {
         const body = await readJsonBody(request);
-        sendJson(response, 200, await savePiProfile(config, body));
+        sendJson(response, 200, await savePiProfile(config, body, trusted ? null : user));
         return;
       }
 
       if (request.method === 'GET' && pathname === '/api/recent-projects') {
-        sendJson(response, 200, { projects: await listRecentProjects(config.recentProjectsFile) });
+        sendJson(response, 200, { projects: await listRecentProjects(config.recentProjectsFile, user?.id || '') });
         return;
       }
 
       if (request.method === 'GET' && pathname === '/api/auth/github') {
         const sessionId = requireBrowserSessionId(request, response);
         if (!sessionId) return;
-        sendJson(response, 200, publicGitHubAuth(readBrowserSession(sessionId)));
+        sendJson(response, 200, await publicGitHubAuth(user || readBrowserSession(sessionId)));
         return;
       }
 
@@ -129,21 +149,22 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
           sendText(response, result.statusCode, result.text);
           return;
         }
-        sendText(response, 302, '', 'text/plain; charset=utf-8', { location: result.location });
+        sendText(response, 302, '', 'text/plain; charset=utf-8', { location: result.location, ...(result.headers || {}) });
         return;
       }
 
-      if (request.method === 'POST' && pathname === '/api/auth/github/logout') {
+      if (request.method === 'POST' && (pathname === '/api/auth/github/logout' || pathname === '/api/auth/logout')) {
         const sessionId = requireBrowserSessionId(request, response);
         if (!sessionId) return;
-        sendJson(response, 200, publicGitHubAuth(clearBrowserSession(sessionId)));
+        const result = await logout(request, sessionId);
+        sendText(response, 200, `${JSON.stringify(result.body, null, 2)}\n`, 'application/json; charset=utf-8', result.headers);
         return;
       }
 
       if (request.method === 'GET' && pathname === '/api/github/repos') {
         const sessionId = requireBrowserSessionId(request, response);
         if (!sessionId) return;
-        sendJson(response, 200, await githubRepoPayload(sessionId, readBrowserSession(sessionId)));
+        sendJson(response, 200, await githubRepoPayload(sessionId, readBrowserSession(sessionId), user));
         return;
       }
 
@@ -169,6 +190,10 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
       }
 
       if (request.method === 'POST' && pathname === '/api/settings') {
+        if (config.authRequired && !trusted) {
+          sendJson(response, 403, { error: 'Backend settings require CONTROL_API_TOKEN.' });
+          return;
+        }
         const body = await readJsonBody(request);
         sendJson(response, 200, await saveAppSettings(config, body));
         return;
@@ -176,13 +201,13 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
 
       if (request.method === 'POST' && pathname === '/api/recent-projects') {
         const body = await readJsonBody(request);
-        sendJson(response, 200, { projects: await saveRecentProject(config.recentProjectsFile, body.project || body) });
+        sendJson(response, 200, { projects: await saveRecentProject(config.recentProjectsFile, body.project || body, user?.id || '') });
         return;
       }
 
       if (request.method === 'POST' && pathname === '/api/bridge-intents') {
         const body = await readJsonBody(request);
-        const prepared = await prepareIntentBridgeSession(body);
+        const prepared = await prepareIntentBridgeSession(body, user);
         sendJson(response, 202, {
           provider: provider.info(),
           clientId: prepared.clientId,
@@ -192,7 +217,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
       }
 
       if (request.method === 'GET' && pathname === '/api/threads') {
-        sendJson(response, 200, await listThreadsPayload(viewerSessionId, trusted));
+        sendJson(response, 200, await listThreadsPayload(viewerSessionId, trusted, user));
         return;
       }
 
@@ -209,7 +234,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
           browserSession = readBrowserSession(sessionId);
         }
 
-        const thread = await createThreadSession(body, browserSession, sessionId);
+        const thread = await createThreadSession(body, browserSession, sessionId, user);
         sendJson(response, 202, {
           provider: provider.info(),
           thread: decorateLiveSession(thread),
@@ -220,7 +245,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
       const archiveThreadMatch = pathname.match(/^\/api\/threads\/([^/]+)\/archive$/);
       if (request.method === 'POST' && archiveThreadMatch) {
         const name = decodeURIComponent(archiveThreadMatch[1]);
-        const thread = await archiveThreadSession(name, viewerSessionId, trusted);
+        const thread = await archiveThreadSession(name, viewerSessionId, trusted, user);
         sendJson(response, 200, {
           provider: provider.info(),
           thread: decorateLiveSession(thread),
@@ -231,7 +256,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
       const unarchiveThreadMatch = pathname.match(/^\/api\/threads\/([^/]+)\/unarchive$/);
       if (request.method === 'POST' && unarchiveThreadMatch) {
         const name = decodeURIComponent(unarchiveThreadMatch[1]);
-        const thread = await unarchiveThreadSession(name, viewerSessionId, trusted);
+        const thread = await unarchiveThreadSession(name, viewerSessionId, trusted, user);
         sendJson(response, 200, {
           provider: provider.info(),
           thread: decorateLiveSession(thread),
@@ -242,14 +267,14 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
       const threadDiffMatch = pathname.match(/^\/api\/threads\/([^/]+)\/diff$/);
       if (request.method === 'GET' && threadDiffMatch) {
         const name = decodeURIComponent(threadDiffMatch[1]);
-        sendJson(response, 200, await threadDiffPayload(name, viewerSessionId, trusted));
+        sendJson(response, 200, await threadDiffPayload(name, viewerSessionId, trusted, user));
         return;
       }
 
       const threadArtifactMatch = pathname.match(/^\/api\/threads\/([^/]+)\/artifacts$/);
       if (request.method === 'GET' && threadArtifactMatch) {
         const name = decodeURIComponent(threadArtifactMatch[1]);
-        sendJson(response, 200, await threadArtifactPayload(name, url.searchParams.get('path'), viewerSessionId, trusted));
+        sendJson(response, 200, await threadArtifactPayload(name, url.searchParams.get('path'), viewerSessionId, trusted, user));
         return;
       }
 
@@ -257,7 +282,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
       if (request.method === 'GET' && threadMatch) {
         const name = decodeURIComponent(threadMatch[1]);
         const thread = await getThreadSession(name);
-        if (requireSessionAccess(request, response, thread, url)) return;
+        if (requireSessionAccess(request, response, thread, url, user)) return;
         sendJson(response, 200, {
           provider: provider.info(),
           defaults: await loadPiDefaults(),
@@ -270,7 +295,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
       if (request.method === 'POST' && threadMessageMatch) {
         const name = decodeURIComponent(threadMessageMatch[1]);
         const body = await readJsonBody(request);
-        const thread = await promptThreadSession(name, body, viewerSessionId, trusted);
+        const thread = await promptThreadSession(name, body, viewerSessionId, trusted, user);
         sendJson(response, 202, {
           provider: provider.info(),
           thread: decorateLiveSession(thread),
@@ -279,13 +304,13 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
       }
 
       if (request.method === 'GET' && pathname === '/api/sessions') {
-        sendJson(response, 200, await listSessionsPayload(viewerSessionId, trusted));
+        sendJson(response, 200, await listSessionsPayload(viewerSessionId, trusted, user));
         return;
       }
 
       if (request.method === 'POST' && pathname === '/api/chat') {
         const body = await readJsonBody(request);
-        const session = await createChatSession(body);
+        const session = await createChatSession(body, user);
         sendJson(response, 202, {
           provider: provider.info(),
           session: decorateLiveSession(session),
@@ -295,7 +320,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
 
       if (request.method === 'POST' && pathname === '/api/sessions') {
         const body = await readJsonBody(request);
-        const session = await createManualSession(body);
+        const session = await createManualSession(body, user);
         sendJson(response, 202, {
           provider: provider.info(),
           session: decorateLiveSession(session),
@@ -312,7 +337,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
           sendJson(response, 404, { error: `No stored session named ${name}.` });
           return;
         }
-        if (requireSessionAccess(request, response, session, url)) return;
+        if (requireSessionAccess(request, response, session, url, user)) return;
 
         const after = Number(url.searchParams.get('after'));
         const lastId = Number.isFinite(after) && after > 0 ? after : 0;
@@ -377,7 +402,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
           sendJson(response, 404, { error: `No stored session named ${name}.` });
           return;
         }
-        if (requireSessionAccess(request, response, session, url)) return;
+        if (requireSessionAccess(request, response, session, url, user)) return;
 
         const run = await syncRunOutput(session);
         const offset = Number(url.searchParams.get('offset'));
@@ -407,7 +432,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
           sendJson(response, 404, { error: `No stored session named ${name}.` });
           return;
         }
-        if (requireSessionAccess(request, response, existing, url)) return;
+        if (requireSessionAccess(request, response, existing, url, user)) return;
 
         const body = await readJsonBody(request);
         const visibility = body.visibility === 'public' ? 'public' : 'private';

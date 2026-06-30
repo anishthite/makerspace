@@ -1,3 +1,5 @@
+@import url('https://cdn.jsdelivr.net/npm/hack-font@3/build/web/hack.css');
+
 :root {
   color-scheme: dark;
   --bg: #141922;
@@ -19,7 +21,7 @@
   --shadow-xl: 0 24px 70px rgba(0, 0, 0, .24);
   --shadow-md: 0 10px 30px rgba(0, 0, 0, .20);
   --inset-highlight: rgba(255, 255, 255, .09);
-  --mono: 'JetBrains Mono', 'SF Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --mono: 'Hack', 'JetBrains Mono', 'SF Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
   --sans: var(--mono);
   --ease-out: cubic-bezier(.23, 1, .32, 1);
 }
@@ -110,6 +112,28 @@ html[data-theme="dark"][data-palette="nerv-os"] {
   --shadow-xl: 0 24px 70px rgba(0, 0, 0, .30);
   --shadow-md: 0 10px 30px rgba(0, 0, 0, .26);
   --inset-highlight: rgba(245, 155, 45, .10);
+}
+
+html[data-theme="dark"][data-palette="lcl-reactor"] {
+  --bg: #09060D;
+  --paper: #15101A;
+  --paper-2: #362C42;
+  --ink: #DED2BF;
+  --ink-2: #CBBBA8;
+  --ink-3: #A99889;
+  --ink-4: #8A7A72;
+  --blue: #FF9F1C;
+  --blue-soft: #2A1A12;
+  --teal: #66FFE6;
+  --green: #9DFF2E;
+  --yellow: #FFC04D;
+  --red: #FF665C;
+  --rule: rgba(255, 159, 28, .18);
+  --rule-2: rgba(255, 159, 28, .34);
+  --shadow: 0 2px 14px rgba(0, 0, 0, .36);
+  --shadow-xl: 0 24px 70px rgba(0, 0, 0, .32);
+  --shadow-md: 0 10px 30px rgba(0, 0, 0, .28);
+  --inset-highlight: rgba(102, 255, 230, .10);
 }
 
 html[data-theme="light"] {
@@ -521,6 +545,8 @@ button.primary {
 }
 .inbox-item:last-child { border-bottom: 0; }
 .inbox-item .status-dot { width: 9px; height: 9px; }
+.action-thread .status-dot[data-finished-indicator] { cursor: pointer; position: relative; z-index: 2; }
+.action-thread .status-dot.is-seen { visibility: hidden; box-shadow: none; }
 .inbox-item:nth-child(3n + 2),
 .history-card:nth-child(3n + 2),
 .timeline-item:nth-child(3n + 2) { --pulse-delay: -.18s; }

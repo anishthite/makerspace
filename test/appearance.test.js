@@ -6,6 +6,7 @@ import { getAppearance, normalizeAppearance, saveAppearance } from '../public/ap
 test('normalizes appearance preferences', () => {
   assert.deepEqual(normalizeAppearance({ theme: 'dark', font: 'mono', palette: 'graphite' }), { theme: 'dark', font: 'mono', palette: 'graphite' });
   assert.deepEqual(normalizeAppearance({ theme: 'light', font: 'sans', palette: 'nerv-os' }), { theme: 'light', font: 'sans', palette: 'nerv-os' });
+  assert.deepEqual(normalizeAppearance({ theme: 'dark', font: 'mono', palette: 'lcl-reactor' }), { theme: 'dark', font: 'mono', palette: 'lcl-reactor' });
   assert.deepEqual(normalizeAppearance({ theme: 'system', font: 'serif', palette: 'neon' }), { theme: 'dark', font: 'mono', palette: 'slate' });
 });
 
@@ -31,12 +32,12 @@ test('saves and applies appearance preferences', (t) => {
 
   assert.deepEqual(getAppearance(), { theme: 'dark', font: 'mono', palette: 'slate' });
 
-  saveAppearance({ theme: 'light', font: 'sans', palette: 'nerv-os' });
-  assert.deepEqual(getAppearance(), { theme: 'light', font: 'sans', palette: 'nerv-os' });
+  saveAppearance({ theme: 'light', font: 'sans', palette: 'lcl-reactor' });
+  assert.deepEqual(getAppearance(), { theme: 'light', font: 'sans', palette: 'lcl-reactor' });
   assert.equal(store.get('makerspaceTheme'), 'light');
   assert.equal(store.get('makerspaceFont'), 'sans');
-  assert.equal(store.get('makerspaceDarkPalette'), 'nerv-os');
-  assert.deepEqual(globalThis.document.documentElement.dataset, { theme: 'light', font: 'sans', palette: 'nerv-os' });
+  assert.equal(store.get('makerspaceDarkPalette'), 'lcl-reactor');
+  assert.deepEqual(globalThis.document.documentElement.dataset, { theme: 'light', font: 'sans', palette: 'lcl-reactor' });
 
   saveAppearance({ theme: 'dark', font: 'mono', palette: 'slate' });
   assert.equal(store.has('makerspaceTheme'), false);

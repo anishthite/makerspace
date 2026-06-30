@@ -295,6 +295,7 @@ function renderExcalidrawArtifacts(node, text) {
 
 async function fetchJson(path, options = {}) {
   const response = await fetch(apiUrl(path), {
+    credentials: 'include',
     ...options,
     headers: { ...authHeaders(), ...(options.headers || {}) },
   });
@@ -1328,7 +1329,7 @@ async function loadOutput() {
 
 function streamRun() {
   if (activeStream) activeStream.close();
-  activeStream = new EventSource(streamUrl(`/api/sessions/${encodeURIComponent(name)}/stream`, lastEventId));
+  activeStream = new EventSource(streamUrl(`/api/sessions/${encodeURIComponent(name)}/stream`, lastEventId), { withCredentials: true });
 
   activeStream.onopen = () => {
     setNow({ type: 'status', runStatus: 'running', warning: 'streaming live updates' });

@@ -30,9 +30,14 @@ PI_HOST_DISPATCH=0
 WARM_BRIDGE_POOL_SIZE=0
 IDLE_BRIDGE_TTL_MS=3600000
 CONTROL_API_TOKEN=replace-with-a-long-random-token
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+MAKERSPACE_AUTH_REQUIRED=true
+MAKERSPACE_AUTH_SECRET=replace-with-another-long-random-secret
+MAKERSPACE_ALLOWED_ORIGIN=https://your-vercel-app.vercel.app
 ```
 
-If you want bridge sandboxes to receive existing Pi auth, copy the service user's `~/.pi/agent/auth.json` into `/opt/makerspace/.pi/agent/auth.json` with mode `600`.
+In multi-user mode, do not copy personal `~/.pi/agent/auth.json`; model keys should come from backend env forwarding or per-user secret handling.
 
 Replace `api.example.com` in `/etc/caddy/Caddyfile` with your real API domain, then start:
 
@@ -42,4 +47,4 @@ sudo systemctl enable --now makerspace
 sudo systemctl reload caddy
 ```
 
-Vercel UI: deploy this repo as a static app. In the homepage, set **Control backend URL** to `https://api.example.com` and **Control API token** to the `CONTROL_API_TOKEN` value.
+Vercel UI: deploy this repo as a static app. In the homepage, set **Control backend URL** to `https://api.example.com`; users sign in with GitHub, while `CONTROL_API_TOKEN` remains an admin bypass.

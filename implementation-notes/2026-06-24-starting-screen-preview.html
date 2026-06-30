@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Starting screen preview</title>
+<meta name="task" content="Create static HTML starting-screen variations for choosing a better homepage direction.">
+<meta name="date-started" content="2026-06-24">
+<meta name="date-updated" content="2026-06-24">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="makerspace,ui,home,starting-screen,preview,concepts">
+<meta name="related" content="2026-06-24-main-screen-variations.html,2026-06-23-home-screen-design-polish.html,2026-06-23-ui-design-samples.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}.blast-low{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Starting screen preview</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-24 · status <b class="status-shipped">shipped</b> · blast <span class="blast-low">low</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Create one reviewable static HTML page with several better starting-screen directions.</div>
+  <b>Surface</b><div><code>public/starting-screen-preview.html</code>.</div>
+  <b>Runtime</b><div>Static HTML/CSS only; no app API calls.</div>
+  <b>Recommendation</b><div><code>Command First</code> as the smallest, clearest live-app direction.</div>
+  <b>Mobile</b><div>Responsive CSS included for layout comparison.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>UI layout</h2>
+<ol>
+  <li><b>Command First</b>: oversized prompt, repo row, quiet recent strip.</li>
+  <li><b>Mission Brief</b>: paper-like launch brief with stronger brand personality.</li>
+  <li><b>Workbench</b>: three-column thread, launch, readiness layout for power users.</li>
+  <li><b>Inbox Start</b>: command bar plus agent-work inbox for returning users.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>public/starting-screen-preview.html</code></td><td>new</td><td>Add self-contained static comparison page with four homepage directions.</td></tr>
+  <tr><td><code>implementation-notes/2026-06-24-starting-screen-preview.html</code></td><td>new</td><td>Record the preview scope and recommendation.</td></tr>
+  <tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Add this task to the notes index.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Ship one static preview file. The user needs visual choice, not live app wiring.</td></tr>
+  <tr><td>D-002</td><td>Recommend <code>Command First</code>. It keeps the existing flow and removes the least user focus.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td><code>public/starting-screen-preview.html</code> over mutating <code>/</code>. The live homepage stays safe while the direction is chosen.</td></tr>
+  <tr><td>T-002</td><td>Four compact directions over another multi-file gallery. One file is easier to open and compare.</td></tr>
+</table>
+
+<h2>Assumptions</h2>
+<ul>
+  <li>A-001 · User wants static visual variations first. If wrong: wire the chosen direction into <code>public/index.html</code>.</li>
+</ul>
+
+<h2>Verification</h2>
+<table>
+  <tr><th>Check</th><th>Result</th></tr>
+  <tr><td><code>npm run build</code></td><td>Passed; copied <code>public/starting-screen-preview.html</code> to ignored <code>dist/</code>.</td></tr>
+  <tr><td><code>grep</code></td><td>Confirmed <code>Command First</code>, <code>Mission Brief</code>, <code>Workbench</code>, and <code>Inbox Start</code> exist.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Delete <code>public/starting-screen-preview.html</code>, this notes file, and the index row; no runtime code changes.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>Preview page includes at least three distinct starting-screen variations.</li>
+  <li>Each variation has a clear use case and visible mock screen.</li>
+  <li><code>npm run build</code> passes.</li>
+</ul>
+</body>
+</html>

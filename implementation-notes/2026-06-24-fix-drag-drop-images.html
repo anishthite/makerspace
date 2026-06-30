@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — fix drag-drop images</title>
+<meta name="task" content="Make dropped prompt images attach reliably in supported browsers.">
+<meta name="date-started" content="2026-06-24">
+<meta name="date-updated" content="2026-06-24">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="makerspace,ui,images,drag-drop,bugfix">
+<meta name="related" content="2026-06-24-drag-drop-images.html,2026-06-24-image-prompts.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code, pre { font-family: ui-monospace, Menlo, monospace; }
+  code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  ul, ol { margin: .3rem 0 .8rem 1.2rem; padding: 0; }
+  li { margin: .15rem 0; }
+  .blast-low { color: #2a7a2a; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>Fix drag-drop images</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-24 · status <b>shipped</b> · blast <span class="blast-low">low</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Attach dropped image files even when <code>DataTransfer()</code> is unavailable.</div>
+  <b>Source</b><div>Browser <code>drop</code> events and existing <code>input[type=file]</code> selections.</div>
+  <b>Surface</b><div><code>/</code>, <code>/thread.html</code>, <code>public/image-attachments.js</code>.</div>
+  <b>Schema</b><div>None.</div>
+  <b>Mobile</b><div>Untouched; file picker remains available.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>Algorithm</h2>
+<ol>
+  <li>Always bind drag listeners so drops do not navigate away.</li>
+  <li>Use native <code>DataTransfer()</code> when available to keep <code>input.files</code> accurate.</li>
+  <li>Store dropped files beside the input when <code>DataTransfer()</code> cannot be constructed.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>public/image-attachments.js</code></td><td>touch</td><td>Add a fallback dropped-file store and helper for submit code.</td></tr>
+  <tr><td><code>public/app.js</code>, <code>public/thread.js</code></td><td>touch</td><td>Read images through the shared helper and clear fallback drops after submit.</td></tr>
+  <tr><td><code>test/image-attachments.test.js</code></td><td>touch</td><td>Pin drop binding without a <code>DataTransfer</code> constructor.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Keep the fallback inside <code>image-attachments.js</code>. Submit callers stay one helper call.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td><code>WeakMap</code> dropped-file state over a custom attachment model. It changes the fewest call sites.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Remove the fallback helper usage to return to <code>input.files</code>-only attachments.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>Dropped images attach without <code>new DataTransfer()</code>.</li>
+  <li>Home and thread submits read dropped files.</li>
+  <li><code>npm test</code> passes.</li>
+</ul>
+</body>
+</html>

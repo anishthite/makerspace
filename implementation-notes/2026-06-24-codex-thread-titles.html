@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Codex thread titles</title>
+<meta name="task" content="Generate readable thread display titles with a cheap Codex side call.">
+<meta name="date-started" content="2026-06-24">
+<meta name="date-updated" content="2026-06-24">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="makerspace,threads,codex,titles,server">
+<meta name="related" content="2026-06-18-codex-settings-auth.html,2026-06-17-repo-thread-ui.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code, pre { font-family: ui-monospace, Menlo, monospace; }
+  code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  ul, ol { margin: .3rem 0 .8rem 1.2rem; padding: 0; }
+  li { margin: .15rem 0; }
+  .blast-low { color: #2a7a2a; } .blast-med { color: #b85c00; } .blast-high { color: #b00020; font-weight: 600; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<h1>Codex thread titles</h1>
+<p class="meta">
+  <code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-24 · status <b>shipped</b> · blast <span class="blast-med">medium</span>
+</p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Show human-readable thread titles while keeping <code>name</code> as the stable route/session slug.</div>
+  <b>Source</b><div><code>taskPrompt</code>, repo label, and <code>openai-codex/gpt-5.4-mini</code> via local Pi auth.</div>
+  <b>Surface</b><div><code>POST /api/threads</code>, <code>GET /api/threads</code>, <code>GET /api/threads/:name</code>, and thread SSE session payloads.</div>
+  <b>Schema</b><div>Add optional session fields <code>title</code>, <code>titleStatus</code>, <code>titleModel</code>, and <code>titleUpdatedAt</code>.</div>
+  <b>Mobile</b><div>Untouched.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>Algorithm</h2>
+<ol>
+  <li>Persist an immediate fallback title from the first prompt words before sandbox work starts.</li>
+  <li>Fire one background <code>completeSimple</code> call with <code>reasoning=minimal</code>, <code>maxTokens=32</code>, and no tools.</li>
+  <li>Sanitize one line, strip quotes/prefixes, cap at 64 chars, and update only <code>title*</code> fields.</li>
+  <li>Leave the fallback title when Codex auth, model lookup, timeout, or generation fails.</li>
+</ol>
+
+<h2>UI layout</h2>
+<ol>
+  <li><b>Thread list</b>: render <code>thread.title || thread.name</code> as the primary label.</li>
+  <li><b>Thread page</b>: render <code>thread.title || thread.name</code> in the topbar and keep debug data unchanged.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>src/thread-title.js</code></td><td>new</td><td>Generate, clean, and fallback thread titles.</td></tr>
+  <tr><td><code>src/config.js</code></td><td>touch</td><td>Add <code>THREAD_TITLE_MODEL</code> and timeout config.</td></tr>
+  <tr><td><code>src/server.js</code></td><td>touch</td><td>Schedule background title generation after thread persistence.</td></tr>
+  <tr><td><code>public/app.js</code></td><td>touch</td><td>Render display titles in the inbox.</td></tr>
+  <tr><td><code>public/thread.js</code></td><td>touch</td><td>Render display titles and consume silent <code>title</code> events.</td></tr>
+  <tr><td><code>test/thread-title.test.js</code></td><td>new</td><td>Check title cleanup, fallback, and model parsing.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Keep <code>name</code> immutable and add <code>title</code>. Routes, sandbox names, and existing records stay stable.</td></tr>
+  <tr><td>D-002</td><td>Use <code>openai-codex/gpt-5.4-mini</code> by default. It is the cheapest built-in Codex model in this install.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td>Background generation over blocking <code>POST /api/threads</code>. Thread launch latency stays unchanged.</td></tr>
+  <tr><td>T-002</td><td>One helper module over wiring a full agent session. A single completion needs no tools or project context.</td></tr>
+</table>
+
+<h2>Assumptions</h2>
+<ul>
+  <li>A-001 · Pi Codex auth is present on the server host. If wrong: fallback titles remain.</li>
+</ul>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Remove the helper import/calls and ignore optional <code>title*</code> session fields.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>New threads persist a fallback <code>title</code> immediately.</li>
+  <li>Background Codex success replaces fallback without changing <code>name</code>.</li>
+  <li>Home and thread pages prefer <code>title</code> but still work with old sessions.</li>
+  <li><code>npm test</code> passes.</li>
+</ul>
+
+</body>
+</html>

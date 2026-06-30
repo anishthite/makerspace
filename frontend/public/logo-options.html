@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Makerspace logo options</title>
+<style>
+  @import url('https://cdn.jsdelivr.net/npm/hack-font@3/build/web/hack.css');
+  :root { color-scheme: light; --bg:#FAF8F3; --paper:#fff; --ink:#241A12; --muted:#78635A; --blue:#1F5E9C; --rule:rgba(31,94,156,.18); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 Inter, system-ui, -apple-system, sans-serif; }
+  main { width: min(1120px, calc(100% - 32px)); margin: 0 auto; padding: 34px 0 54px; }
+  h1 { margin: 0 0 6px; font-size: clamp(34px, 6vw, 72px); line-height: .9; letter-spacing: -.07em; }
+  p { margin: 0 0 24px; color: var(--muted); }
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .card { border: 1px solid var(--rule); border-radius: 6px; background: var(--paper); padding: 14px; box-shadow: 0 2px 8px rgba(31,94,156,.08); }
+  .card img { display: block; width: 100%; height: auto; border: 1px solid var(--rule); border-radius: 4px; background: var(--bg); }
+  .label { margin-top: 10px; color: var(--blue); font: 700 12px/1.2 Hack, 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; }
+  .card.selected { border-color: var(--blue); box-shadow: 0 0 0 2px rgba(31,94,156,.12), 0 2px 8px rgba(31,94,156,.08); }
+  .selected .label::after { content: ' · selected'; color: var(--teal); }
+  @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Makerspace logo options</h1>
+  <p>Four simple SVG directions using the existing warm paper, blue, teal, and monospace system.</p>
+  <section class="grid" aria-label="Logo options">
+    <article class="card selected" aria-current="true"><img src="logos/makerspace-forge.svg" alt="Makerspace Forge logo"><div class="label">01 · Forge</div></article>
+    <article class="card"><img src="logos/makerspace-thread.svg" alt="Makerspace Thread logo"><div class="label">02 · Thread</div></article>
+    <article class="card"><img src="logos/makerspace-sandbox.svg" alt="Makerspace Sandbox logo"><div class="label">03 · Sandbox</div></article>
+    <article class="card"><img src="logos/makerspace-orbit.svg" alt="Makerspace Orbit logo"><div class="label">04 · Orbit</div></article>
+  </section>
+</main>
+</body>
+</html>

@@ -7,6 +7,7 @@ import { buildSetupScript } from '../setup-script.js';
 const APP_LABEL_KEY = 'makerspace';
 const APP_LABEL_VALUE = '1';
 const SESSION_LABEL_KEY = 'makerspaceSession';
+const OWNER_LABEL_KEY = 'makerspaceOwner';
 const DEFAULT_SETUP_PATH = '/tmp/makerspace-setup.sh';
 
 function shellQuote(value) {
@@ -241,10 +242,12 @@ export function createDaytonaProvider(config, options = {}) {
       labels: {
         [APP_LABEL_KEY]: APP_LABEL_VALUE,
         [SESSION_LABEL_KEY]: session.name,
+        ...(session.ownerUserId ? { [OWNER_LABEL_KEY]: session.ownerUserId } : {}),
       },
       envVars: {
         ...envVars,
         MAKERSPACE_SESSION_NAME: session.name,
+        ...(session.ownerUserId ? { MAKERSPACE_OWNER_USER_ID: session.ownerUserId } : {}),
       },
       user: config.remoteUser || 'daytona',
       public: false,

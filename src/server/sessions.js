@@ -93,9 +93,8 @@ export function createSessionService({ config, provider, auth, runState, bridge 
         if (preparedSession.bridgeMode) {
           appendRunOutput(session.name, '[system] Waiting for the bridge...\n', 'launching');
           await waitForBridge(updated);
-          if (piAuthText) {
-            await pushBridgeAuth(updated, piAuthText);
-            appendRunOutput(session.name, '[system] Loaded local main agent auth into the bridge.\n', 'launching');
+          if (await pushBridgeAuth(updated, piAuthText)) {
+            appendRunOutput(session.name, '[system] Loaded Pi auth/profile into the bridge.\n', 'launching');
           }
           appendRunOutput(session.name, '[system] Bridge ready. Starting main agent...\n\n', 'launching');
           await startBridgeRun(updated);
@@ -269,14 +268,15 @@ export function createSessionService({ config, provider, auth, runState, bridge 
     return run;
   }
 
-  async function createChatSession(body) {
+  async function createChatSession(body, user = null) {
     if (!config.hostDispatchEnabled) {
-      const warmSession = await claimReusableBridgeSession(body);
+      const warmSession = await claimReusableBridgeSession(body, user);
       if (warmSession) return warmSession;
     }
 
     const session = {
       ...normalizeChatRequest(body, config),
+      ...(user?.id ? { ownerUserId: user.id } : {}),
       submittedAtMs: normalizeSubmittedAtMs(body.submittedAtMs),
     };
     const existing = await getStoredSession(config.sessionFile, session.name);
@@ -291,8 +291,11 @@ export function createSessionService({ config, provider, auth, runState, bridge 
       : startSessionLaunch(session, imageSettings);
   }
 
-  async function createManualSession(body) {
-    const session = normalizeCreateRequest(body, config);
+  async function createManualSession(body, user = null) {
+    const session = {
+      ...normalizeCreateRequest(body, config),
+      ...(user?.id ? { ownerUserId: user.id } : {}),
+    };
     const existing = await getStoredSession(config.sessionFile, session.name);
 
     if (existing) {

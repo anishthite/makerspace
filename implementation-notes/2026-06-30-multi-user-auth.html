@@ -1,0 +1,36 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Spec — multi-user auth</title><meta name="task" content="Add GitHub sign-in, user-scoped sessions/workspaces, and Makerspace Pi profile isolation."><meta name="date-started" content="2026-06-30"><meta name="date-updated" content="2026-06-30"><meta name="status" content="shipped"><meta name="blast-radius" content="high"><meta name="tags" content="makerspace, auth, multi-user, github, d1, pi-profile"><meta name="related" content="2026-06-18-github-auth-session-hardening.html, 2026-06-18-github-oauth-repo-picker.html, 2026-06-26-d1-state-store.html, 2026-06-26-pi-profile-settings.html"><style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:920px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code,pre{font-family:ui-monospace,Menlo,monospace}code{background:#f1f1f1;padding:1px 3px;border-radius:3px}pre{background:#f6f8fa;padding:.75rem;overflow:auto}.kv{display:grid;grid-template-columns:120px 1fr;gap:4px 10px}.meta{color:#555}.blast-high{color:#b00020;font-weight:600}.done{color:#2a7a2a}</style></head><body>
+<h1>Multi-user auth</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-30 · status <b>shipped</b> · blast <span class="blast-high">high</span></p>
+
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Let users sign in with GitHub and see only their sessions, repos, recents, and Pi profile state.</div><b>Auth</b><div>Use signed <code>HttpOnly</code> cookies plus existing <code>CONTROL_API_TOKEN</code> as admin bypass.</div><b>State</b><div>Store users, auth sessions, OAuth tokens, and user KV in D1 KV/file fallback; store workspace sessions with <code>ownerUserId</code>.</div><b>Git</b><div>Clone private repos with a per-user GitHub token and strip raw clone auth before persistence.</div><b>Pi</b><div>Read/write Makerspace package profile state, not personal <code>~/.pi/agent</code>, for hosted user flows.</div><b>Blast</b><div>Auth routing, session visibility, remote sandbox launch, profile sync, static frontend.</div></div>
+
+<h2>API contract</h2>
+<pre>GET /api/me
+{ authenticated: boolean, authRequired: boolean, user?: { id, login, avatarUrl }, admin: boolean }</pre>
+<pre>POST /api/auth/github/login
+{ loginUrl: string }</pre>
+<pre>POST /api/auth/logout
+{ authenticated: false }</pre>
+
+<h2>Algorithm</h2>
+<ol><li>Authenticate each API request from <code>CONTROL_API_TOKEN</code> or the signed auth cookie.</li><li>Require GitHub login when <code>MAKERSPACE_AUTH_REQUIRED</code>/<code>MAKERSPACE_MULTI_USER</code> is true or hosted GitHub OAuth is configured.</li><li>Attach <code>ownerUserId</code> to new sessions and filter all user-visible session routes through the same predicate.</li><li>Resolve GitHub repo auth from the signed-in user's encrypted OAuth token during launch only.</li><li>Build Pi profile sync payloads from user DB state plus <code>packages/makerspace-pi-defaults</code>.</li></ol>
+
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>src/auth-store.js</code></td><td>new</td><td>Persist users, auth sessions, OAuth tokens, and per-user KV with D1/file fallback.</td></tr><tr><td><code>src/server/auth.js</code></td><td>touch</td><td>Add cookie auth, GitHub sign-in, per-user repo tokens, and access checks.</td></tr><tr><td><code>src/server/routes.js</code>, <code>src/server/threads.js</code>, <code>src/server/sessions.js</code>, <code>src/server/run-state.js</code></td><td>touch</td><td>Thread/session APIs accept user context and enforce owner scoping.</td></tr><tr><td><code>src/pi-profile.js</code>, <code>src/host-pi-runner.js</code>, <code>src/server/bridge.js</code></td><td>touch</td><td>Use per-user Makerspace profile state and stop pushing host <code>~/.pi</code> auth in multi-user mode.</td></tr><tr><td><code>public/*.js</code>, <code>public/*.html</code>, <code>frontend/</code></td><td>touch</td><td>Add sign-in/status UI and credentialed fetch/SSE paths.</td></tr><tr><td><code>test/*.test.js</code></td><td>touch/new</td><td>Cover auth state, route scoping, clone header secrecy, and profile isolation.</td></tr></table>
+
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>GitHub OAuth is the only user sign-in. It already exists for repo access and avoids password storage.</td></tr><tr><td>D-002</td><td><code>CONTROL_API_TOKEN</code> remains an admin bypass. Existing remote scripts and desktop flows keep a recovery path.</td></tr><tr><td>D-003</td><td>D1/file auth state uses keyed records instead of a new ORM. Existing app state already runs through this layer.</td></tr><tr><td>D-004</td><td>User Pi profiles store overrides in DB and default to <code>packages/makerspace-pi-defaults/context/AGENTS.md</code>. Personal dotfiles stay out of hosted runs.</td></tr></table>
+
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>Signed cookies over bearer tokens in localStorage. Session theft blast is lower and logout is server-side.</td></tr><tr><td>T-002</td><td>Per-user GitHub tokens over shared deploy keys. Repo ownership and private clone permissions match the signer.</td></tr><tr><td>T-003</td><td>Admin-only global settings over per-user infra settings. Image/registry/Dockerfile config controls shared backend resources.</td></tr></table>
+
+<h2>Assumptions</h2>
+<ul><li>A-001 · Hosted deployments configure <code>GITHUB_CLIENT_ID</code>, <code>GITHUB_CLIENT_SECRET</code>, and a stable <code>MAKERSPACE_AUTH_SECRET</code>; if wrong: sessions expire on restart or login is disabled.</li><li>A-002 · Same-origin hosting is acceptable by default; cross-origin static UI can set <code>MAKERSPACE_ALLOWED_ORIGIN</code> and use credentialed requests.</li></ul>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-high">high</span>. Revert auth-route changes and ignore <code>ownerUserId</code>; existing session rows remain JSON-readable but visibility semantics return to browser-session/global behavior.</p>
+
+<h2>Definition of done</h2>
+<ul><li class="done">GitHub sign-in creates a durable user session.</li><li class="done">User A cannot list/read/stream/archive User B's sessions without <code>CONTROL_API_TOKEN</code>.</li><li class="done">Private repo clone auth is generated per launch and not persisted in session output.</li><li class="done">Pi profile reads/writes avoid personal <code>~/.pi/agent</code>.</li><li class="done"><code>npm test</code> and <code>npm run build</code> pass.</li></ul>
+</body></html>

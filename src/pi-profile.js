@@ -2,6 +2,7 @@ import { access, mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promi
 import { homedir } from 'node:os';
 import path from 'node:path';
 
+import { createAuthStore } from './auth-store.js';
 import { d1StateRequested, readD1Kv, writeD1Kv } from './d1-state.js';
 
 const TEXT_EXTENSIONS = new Set(['.cjs', '.css', '.html', '.js', '.json', '.jsonc', '.md', '.mjs', '.sh', '.ts', '.txt', '.yaml', '.yml']);
@@ -9,8 +10,12 @@ const MAX_SYNC_FILE_BYTES = 200_000;
 const MAX_SYNC_TOTAL_BYTES = 2_000_000;
 const MAX_SYNC_FILES = 300;
 
-function defaultAgentDir() {
-  return process.env.PI_CODING_AGENT_DIR || path.join(homedir(), '.pi', 'agent');
+function defaultAgentDir(config = {}) {
+  return config.piDefaultsPackageDir || path.join(config.rootDir || process.cwd(), 'packages', 'makerspace-pi-defaults');
+}
+
+function agentsPathFor(agentDir, config = {}) {
+  return config.agentDir ? path.join(agentDir, 'AGENTS.md') : path.join(agentDir, 'context', 'AGENTS.md');
 }
 
 function defaultProfileFile(config = {}) {
@@ -106,7 +111,7 @@ async function discoverSkillRoots(root) {
 }
 
 async function discoverSkills(agentDir, state, config = {}) {
-  const roots = [path.join(agentDir, 'skills'), config.agentsSkillsDir || path.join(homedir(), '.agents', 'skills')];
+  const roots = [path.join(agentDir, 'skills')];
   const unique = new Set();
   const skills = [];
 
@@ -194,14 +199,24 @@ async function discoverPrompts(agentDir, state) {
   return prompts.sort(byNameThenPath);
 }
 
-export async function readPiProfile(config = {}) {
-  const agentDir = path.resolve(config.piAgentDir || config.agentDir || defaultAgentDir());
-  const rawState = d1StateRequested() ? await readD1Kv('pi-profile-state', {}) : await readJson(defaultProfileFile(config));
+async function readProfileState(config = {}, user = null) {
+  if (user?.id) return createAuthStore(config).readUserKv(user.id, 'pi-profile-state', {});
+  return d1StateRequested() ? readD1Kv('pi-profile-state', {}) : readJson(defaultProfileFile(config));
+}
+
+async function readProfileAgentsText(config = {}, user = null, fallback = '') {
+  if (user?.id) return String(await createAuthStore(config).readUserKv(user.id, 'pi-profile-agents-text', fallback));
+  return d1StateRequested() ? readD1Kv('pi-profile-agents-text', fallback).then(String) : fallback;
+}
+
+export async function readPiProfile(config = {}, user = null) {
+  const agentDir = path.resolve(config.agentDir || defaultAgentDir(config));
+  const rawState = await readProfileState(config, user);
   const state = normalizeState(rawState);
-  const agentsPath = path.join(agentDir, 'AGENTS.md');
+  const agentsPath = agentsPathFor(agentDir, config);
   const diskAgentsText = await readText(agentsPath);
   const [agentsText, skills, extensions, prompts] = await Promise.all([
-    d1StateRequested() ? readD1Kv('pi-profile-agents-text', diskAgentsText).then(String) : diskAgentsText,
+    readProfileAgentsText(config, user, diskAgentsText),
     discoverSkills(agentDir, state, config),
     discoverExtensions(agentDir, state),
     discoverPrompts(agentDir, state),
@@ -209,7 +224,7 @@ export async function readPiProfile(config = {}) {
 
   return {
     agentDir,
-    agentsPath,
+    agentsPath: user?.id ? `db:user:${user.id}:AGENTS.md` : agentsPath,
     agentsText,
     syncToRemote: state.syncToRemote,
     resources: { skills, extensions, prompts },
@@ -220,12 +235,9 @@ function selectedIds(resources = []) {
   return resources.filter((resource) => resource.enabled !== false).map((resource) => resource.id);
 }
 
-export async function savePiProfile(config = {}, input = {}) {
-  const agentDir = path.resolve(config.piAgentDir || config.agentDir || defaultAgentDir());
-  if (typeof input.agentsText === 'string') {
-    await mkdir(agentDir, { recursive: true });
-    await writeFile(path.join(agentDir, 'AGENTS.md'), input.agentsText, 'utf8');
-  }
+export async function savePiProfile(config = {}, input = {}, user = null) {
+  const agentDir = path.resolve(config.agentDir || defaultAgentDir(config));
+  const agentsPath = agentsPathFor(agentDir, config);
 
   const state = normalizeState({
     syncToRemote: input.syncToRemote !== false,
@@ -235,6 +247,18 @@ export async function savePiProfile(config = {}, input = {}) {
       prompts: Array.isArray(input.enabledPrompts) ? input.enabledPrompts : null,
     },
   });
+
+  if (user?.id) {
+    const store = createAuthStore(config);
+    await store.writeUserKv(user.id, 'pi-profile-state', state);
+    if (typeof input.agentsText === 'string') await store.writeUserKv(user.id, 'pi-profile-agents-text', input.agentsText);
+    return readPiProfile(config, user);
+  }
+
+  if (typeof input.agentsText === 'string') {
+    await mkdir(path.dirname(agentsPath), { recursive: true });
+    await writeFile(agentsPath, input.agentsText, 'utf8');
+  }
 
   if (d1StateRequested()) {
     await writeD1Kv('pi-profile-state', state);
@@ -324,8 +348,8 @@ async function addTextTree(files, sourceDir, targetDir, budget) {
   }
 }
 
-export async function buildPiProfileSyncPayload(config = {}) {
-  const profile = await readPiProfile(config);
+export async function buildPiProfileSyncPayload(config = {}, user = null) {
+  const profile = await readPiProfile(config, user);
   if (profile.syncToRemote === false) return null;
 
   const files = [];

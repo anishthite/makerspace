@@ -11,12 +11,12 @@ test-results/
 .pi/
 .playwright-cli/
 
-src/
-test/
-deploy/
-desktop/
-image/
-implementation-notes/
+/src/
+/test/
+/deploy/
+/desktop/
+/image/
+/implementation-notes/
 
 *.excalidraw
 *.png

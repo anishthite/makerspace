@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Makerspace — Implementation Note Display Options</title>
+  <style>
+    @import url('https://cdn.jsdelivr.net/npm/hack-font@3/build/web/hack.css');
+    :root {
+      color-scheme: light;
+      --bg: #f8f5ee;
+      --paper: #fffefa;
+      --paper-2: #efe8d8;
+      --ink: #211813;
+      --ink-2: #4b3a2d;
+      --muted: #756458;
+      --faint: #a89686;
+      --blue: #1f5e9c;
+      --blue-soft: #dcebf6;
+      --green: #23845a;
+      --green-soft: #e8f5ed;
+      --amber: #b7791f;
+      --rule: rgba(31, 94, 156, .16);
+      --rule-strong: rgba(31, 94, 156, .32);
+      --shadow: 0 18px 54px rgba(31, 94, 156, .10), 0 2px 8px rgba(31, 94, 156, .07);
+      --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --mono: Hack, "JetBrains Mono", "SF Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { background: var(--bg); color: var(--ink); scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 14% 0%, rgba(31, 94, 156, .10), transparent 30%),
+        radial-gradient(circle at 88% 2%, rgba(35, 132, 90, .10), transparent 26%),
+        linear-gradient(180deg, #fcf9f2, var(--bg));
+      font: 400 16px/1.5 var(--sans);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { margin-bottom: 12px; font-size: clamp(44px, 8vw, 96px); line-height: .84; letter-spacing: -.09em; }
+    h2 { margin-bottom: 8px; font-size: clamp(30px, 5vw, 54px); line-height: .9; letter-spacing: -.07em; }
+    h3 { margin-bottom: 6px; font-size: 20px; line-height: 1.05; letter-spacing: -.04em; }
+    p { color: var(--muted); }
+    code { font-family: var(--mono); }
+
+    .page { width: min(1440px, calc(100% - 32px)); margin: 0 auto; padding: 32px 0 88px; }
+    .hero { display: grid; grid-template-columns: minmax(0, 1fr) 370px; gap: 24px; align-items: end; margin-bottom: 24px; }
+    .hero p:not(.eyebrow) { max-width: 720px; font-size: 18px; }
+    .eyebrow, .chip, .nav, .badge, .time, .meta, .path, .tag, .count, .file-kind { font-family: var(--mono); }
+    .eyebrow { margin-bottom: 10px; color: var(--blue); font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: lowercase; }
+    .note { border: 1px solid var(--rule); border-radius: 3px; padding: 16px; background: color-mix(in srgb, var(--paper) 94%, white); box-shadow: var(--shadow); color: var(--muted); font-size: 13px; }
+    .note b { color: var(--ink); }
+    .nav { position: sticky; top: 0; z-index: 20; display: flex; flex-wrap: wrap; gap: 8px; margin: 0 -16px 32px; padding: 10px 16px; border-block: 1px solid var(--rule); background: color-mix(in srgb, var(--bg) 90%, white); backdrop-filter: blur(12px); font-size: 11px; text-transform: lowercase; }
+    .nav a { border: 1px solid var(--rule); border-radius: 2px; padding: 7px 10px; background: var(--paper); color: var(--muted); }
+    .nav a:hover { border-color: var(--blue); color: var(--blue); }
+
+    .option { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 18px; align-items: start; margin-bottom: 38px; }
+    .option-panel, .screen, .card, .row-note, .reader-list, .reader-main, .timeline-box, .board-column, .table-wrap {
+      border: 1px solid var(--rule);
+      border-radius: 3px;
+      background: color-mix(in srgb, var(--paper) 94%, white);
+      box-shadow: var(--shadow);
+    }
+    .option-panel { position: sticky; top: 66px; padding: 18px; }
+    .rank { display: inline-grid; place-items: center; width: 34px; height: 34px; margin-bottom: 12px; border: 1px solid var(--blue); border-radius: 2px; background: var(--blue); color: var(--bg); font: 800 13px/1 var(--mono); }
+    .option-panel ul { margin: 14px 0 0 18px; padding: 0; color: var(--muted); }
+    .pick { display: inline-flex; margin-top: 12px; border: 1px solid var(--rule-strong); border-radius: 999px; padding: 6px 9px; background: var(--green-soft); color: var(--green); font: 800 11px/1 var(--mono); text-transform: lowercase; }
+    .screen { min-height: 560px; overflow: hidden; background: linear-gradient(180deg, color-mix(in srgb, var(--paper) 92%, var(--blue-soft)), var(--bg)); }
+    .screen-inner { min-height: 560px; padding: 20px; }
+    .screen-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 16px; }
+    .screen-title { display: grid; gap: 3px; }
+    .screen-title strong { font-size: 24px; letter-spacing: -.055em; }
+    .meta { color: var(--faint); font-size: 11px; text-transform: lowercase; }
+    .badge, .chip, .tag { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--rule); border-radius: 999px; padding: 5px 8px; background: var(--paper-2); color: var(--muted); font-size: 11px; text-transform: lowercase; }
+    .badge.good { border-color: color-mix(in srgb, var(--green) 42%, var(--rule)); background: var(--green-soft); color: var(--green); }
+    .count { color: var(--blue); font-weight: 900; font-size: 18px; }
+    .path { color: var(--muted); overflow-wrap: anywhere; font-size: 12px; }
+    .time { color: var(--faint); font-size: 11px; white-space: nowrap; text-transform: lowercase; }
+    .title { color: var(--ink); font-weight: 900; letter-spacing: -.035em; }
+    .muted { color: var(--muted); }
+
+    /* 1 */
+    .table-wrap { overflow: hidden; }
+    .note-table { width: 100%; border-collapse: collapse; }
+    .note-table th, .note-table td { padding: 12px 14px; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; }
+    .note-table th { color: var(--faint); background: var(--paper-2); font: 800 10px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+    .note-table tr:last-child td { border-bottom: 0; }
+    .note-table tr.active { background: var(--green-soft); }
+    .note-table .title { display: block; margin-bottom: 3px; }
+    .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+    /* 2 */
+    .reader { display: grid; grid-template-columns: 310px minmax(0, 1fr); gap: 12px; min-height: 520px; }
+    .reader-list { display: grid; align-content: start; gap: 8px; padding: 10px; box-shadow: none; }
+    .reader-item { border: 1px solid var(--rule); border-radius: 2px; padding: 11px; background: var(--paper); }
+    .reader-item.active { border-color: var(--blue); background: var(--blue-soft); }
+    .reader-item .title { display: block; margin-bottom: 5px; }
+    .reader-main { display: grid; grid-template-rows: auto 1fr; overflow: hidden; box-shadow: none; }
+    .reader-main-head { display: flex; align-items: start; justify-content: space-between; gap: 16px; padding: 18px; border-bottom: 1px solid var(--rule); }
+    .summary-grid { display: grid; grid-template-columns: 110px 1fr; gap: 8px 14px; padding: 18px; }
+    .summary-grid b { color: var(--muted); font: 800 11px/1.2 var(--mono); text-transform: lowercase; }
+    .files { display: grid; gap: 8px; margin: 0 18px 18px; }
+    .file-row { display: grid; grid-template-columns: 1fr auto; gap: 12px; border: 1px solid var(--rule); border-radius: 2px; padding: 10px; background: var(--paper); }
+    .file-kind { color: var(--green); font-size: 11px; text-transform: lowercase; }
+
+    /* 3 */
+    .timeline-box { position: relative; padding: 18px 18px 18px 58px; box-shadow: none; }
+    .timeline-box::before { content: ''; position: absolute; left: 35px; top: 18px; bottom: 18px; width: 2px; background: linear-gradient(var(--rule-strong), var(--rule), transparent); }
+    .event { position: relative; display: grid; gap: 6px; margin-bottom: 14px; border: 1px solid var(--rule); border-radius: 2px; padding: 12px; background: var(--paper); }
+    .event::before { content: ''; position: absolute; left: -30px; top: 16px; width: 12px; height: 12px; border: 3px solid var(--paper); border-radius: 999px; background: var(--blue); box-shadow: 0 0 0 1px var(--rule-strong); }
+    .event.note-event { border-color: color-mix(in srgb, var(--green) 38%, var(--rule)); background: var(--green-soft); }
+    .event.note-event::before { background: var(--green); }
+    .event:last-child { margin-bottom: 0; }
+    .event-head { display: flex; justify-content: space-between; gap: 10px; }
+
+    /* 4 */
+    .cards-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .card { display: grid; gap: 10px; padding: 14px; box-shadow: none; }
+    .card.featured { border-color: color-mix(in srgb, var(--green) 48%, var(--rule)); background: var(--green-soft); }
+    .card-head { display: flex; justify-content: space-between; gap: 12px; align-items: start; }
+    .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+    .mini-files { display: grid; gap: 6px; }
+    .mini-file { border-top: 1px solid var(--rule); padding-top: 7px; font-size: 12px; }
+    .cta { width: fit-content; border: 1px solid var(--blue); border-radius: 2px; padding: 7px 9px; background: var(--blue); color: var(--bg); font: 800 11px/1 var(--mono); text-transform: lowercase; }
+
+    /* 5 */
+    .board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .board-column { display: grid; align-content: start; gap: 8px; min-height: 468px; padding: 12px; box-shadow: none; background: color-mix(in srgb, var(--paper-2) 54%, var(--paper)); }
+    .column-head { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 4px; color: var(--muted); font: 800 11px/1 var(--mono); text-transform: lowercase; }
+    .board-card { display: grid; gap: 7px; border: 1px solid var(--rule); border-radius: 2px; padding: 10px; background: var(--paper); }
+    .board-card.hot { border-color: color-mix(in srgb, var(--green) 44%, var(--rule)); background: var(--green-soft); }
+
+    @media (max-width: 1000px) {
+      .hero, .option, .reader, .board { grid-template-columns: 1fr; }
+      .option-panel { position: static; }
+      .cards-grid { grid-template-columns: 1fr; }
+      .note-table th:nth-child(2), .note-table td:nth-child(2) { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">implementation notes · display options</p>
+        <h1>Five ways to make notes less ugly.</h1>
+        <p>Same four notes, five layouts. No app behavior changed here — this is a static pick-sheet.</p>
+      </div>
+      <aside class="note"><b>My lazy default:</b> pick option 2 if notes should be read, option 1 if they only need to be spotted. The current green blocks are doing neither cleanly.</aside>
+    </section>
+
+    <nav class="nav" aria-label="display options">
+      <a href="#ledger">1 · ledger</a>
+      <a href="#reader">2 · split reader</a>
+      <a href="#timeline">3 · timeline</a>
+      <a href="#cards">4 · change cards</a>
+      <a href="#board">5 · board</a>
+    </nav>
+
+    <section id="ledger" class="option">
+      <aside class="option-panel">
+        <span class="rank">01</span>
+        <h2>Ledger rows</h2>
+        <p>Turns notes into a real index: title first, path second, metadata aligned.</p>
+        <span class="pick">best for scanning</span>
+        <ul><li>Keeps the current compactness.</li><li>Stops long paths from eating the row.</li><li>Cheapest to ship.</li></ul>
+      </aside>
+      <div class="screen"><div class="screen-inner">
+        <div class="screen-head"><div class="screen-title"><strong>Implementation notes</strong><span class="meta">4 live notes · newest first</span></div><span class="count">4</span></div>
+        <div class="table-wrap">
+          <table class="note-table">
+            <thead><tr><th>Note</th><th>Path</th><th>Meta</th><th>Action</th></tr></thead>
+            <tbody>
+              <tr class="active"><td><span class="title">Sandbox Provider Math</span><span class="muted">Provider sizing and host math.</span></td><td><code class="path">implementation-notes/2026-06-16-sandbox-provider-math.html</code></td><td><span class="time">10:52 pm</span></td><td><span class="badge good">touched</span></td></tr>
+              <tr><td><span class="title">Appearance Toggles</span><span class="muted">Local theme and font switches.</span></td><td><code class="path">implementation-notes/2026-06-24-appearance-toggles.html</code></td><td><span class="time">10:51 pm</span></td><td><span class="badge">touched</span></td></tr>
+              <tr><td><span class="title">Home Input Top Threads Row</span><span class="muted">Launch form above horizontal lanes.</span></td><td><code class="path">implementation-notes/2026-06-25-home-input-top-threads-row.html</code></td><td><span class="time">10:51 pm</span></td><td><span class="badge">touched</span></td></tr>
+              <tr><td><span class="title">Toned Down Ops Home</span><span class="muted">Remove hero noise from ops home.</span></td><td><code class="path">implementation-notes/2026-06-24-toned-down-ops-home.html</code></td><td><span class="time">10:51 pm</span></td><td><span class="badge">touched</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div></div>
+    </section>
+
+    <section id="reader" class="option">
+      <aside class="option-panel">
+        <span class="rank">02</span>
+        <h2>Split reader</h2>
+        <p>List on the left, readable selected note on the right. The path stops being the main object.</p>
+        <span class="pick">recommended</span>
+        <ul><li>Best if users actually read notes.</li><li>Can keep live updates in the list.</li><li>Preview pane handles long note content.</li></ul>
+      </aside>
+      <div class="screen"><div class="screen-inner">
+        <div class="screen-head"><div class="screen-title"><strong>Implementation notes</strong><span class="meta">selected · Sandbox Provider Math</span></div><span class="badge good">open latest</span></div>
+        <div class="reader">
+          <div class="reader-list">
+            <div class="reader-item active"><span class="title">Sandbox Provider Math</span><code class="path">2026-06-16-sandbox-provider-math.html</code><div class="time">10:52 pm · touched</div></div>
+            <div class="reader-item"><span class="title">Appearance Toggles</span><code class="path">2026-06-24-appearance-toggles.html</code><div class="time">10:51 pm · touched</div></div>
+            <div class="reader-item"><span class="title">Home Input Top Threads Row</span><code class="path">2026-06-25-home-input-top-threads-row.html</code><div class="time">10:51 pm · touched</div></div>
+            <div class="reader-item"><span class="title">Toned Down Ops Home</span><code class="path">2026-06-24-toned-down-ops-home.html</code><div class="time">10:51 pm · touched</div></div>
+          </div>
+          <article class="reader-main">
+            <div class="reader-main-head"><div><h3>Sandbox Provider Math</h3><code class="path">implementation-notes/2026-06-16-sandbox-provider-math.html</code></div><span class="badge good">touched</span></div>
+            <div>
+              <div class="summary-grid">
+                <b>Goal</b><span>Document provider sizing rules and sandbox startup math.</span>
+                <b>Surface</b><span><code>src/provider.js</code>, <code>src/server.js</code>, docs.</span>
+                <b>Blast</b><span>Low · notes only.</span>
+                <b>Status</b><span>Ready for review.</span>
+              </div>
+              <div class="files">
+                <div class="file-row"><code class="path">src/provider.js</code><span class="file-kind">touch</span></div>
+                <div class="file-row"><code class="path">test/provider.test.js</code><span class="file-kind">touch</span></div>
+                <div class="file-row"><code class="path">implementation-notes/INDEX.html</code><span class="file-kind">touch</span></div>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div></div>
+    </section>
+
+    <section id="timeline" class="option">
+      <aside class="option-panel">
+        <span class="rank">03</span>
+        <h2>Session timeline</h2>
+        <p>Puts note writes back into the work stream, but makes note events visually distinct.</p>
+        <ul><li>Good for causality.</li><li>Less good for browsing old notes.</li><li>Works when the thread is the primary surface.</li></ul>
+      </aside>
+      <div class="screen"><div class="screen-inner">
+        <div class="screen-head"><div class="screen-title"><strong>Activity</strong><span class="meta">notes mixed with agent work</span></div><span class="badge">live</span></div>
+        <div class="timeline-box">
+          <article class="event"><div class="event-head"><strong class="title">main agent</strong><span class="time">10:49 pm</span></div><p class="muted">Updated thread layout styles.</p></article>
+          <article class="event note-event"><div class="event-head"><strong class="title">Implementation note · Toned Down Ops Home</strong><span class="time">10:51 pm</span></div><code class="path">implementation-notes/2026-06-24-toned-down-ops-home.html</code><div class="actions"><span class="tag">goal</span><span class="tag">files 4</span><span class="tag">low blast</span></div></article>
+          <article class="event note-event"><div class="event-head"><strong class="title">Implementation note · Home Input Top Threads Row</strong><span class="time">10:51 pm</span></div><code class="path">implementation-notes/2026-06-25-home-input-top-threads-row.html</code><div class="actions"><span class="tag">layout</span><span class="tag">files 3</span><span class="tag">ready</span></div></article>
+          <article class="event"><div class="event-head"><strong class="title">tool · edit</strong><span class="time">10:52 pm</span></div><p class="muted">Applied CSS row spacing changes.</p></article>
+          <article class="event note-event"><div class="event-head"><strong class="title">Implementation note · Sandbox Provider Math</strong><span class="time">10:52 pm</span></div><code class="path">implementation-notes/2026-06-16-sandbox-provider-math.html</code><div class="actions"><span class="tag">provider</span><span class="tag">decision</span><span class="tag">touched</span></div></article>
+        </div>
+      </div></div>
+    </section>
+
+    <section id="cards" class="option">
+      <aside class="option-panel">
+        <span class="rank">04</span>
+        <h2>Change cards</h2>
+        <p>Each note becomes a small change summary: goal, file count, decisions, open questions.</p>
+        <ul><li>Best for review handoff.</li><li>More visual weight than rows.</li><li>Useful when notes are the artifact.</li></ul>
+      </aside>
+      <div class="screen"><div class="screen-inner">
+        <div class="screen-head"><div class="screen-title"><strong>Implementation notes</strong><span class="meta">review cards</span></div><span class="count">4</span></div>
+        <div class="cards-grid">
+          <article class="card featured"><div class="card-head"><h3>Sandbox Provider Math</h3><span class="time">10:52 pm</span></div><p>Provider sizing rules and sandbox startup math.</p><div class="chips"><span class="tag">files 3</span><span class="tag">decisions 2</span><span class="tag">low blast</span></div><div class="mini-files"><div class="mini-file"><code class="path">src/provider.js</code></div><div class="mini-file"><code class="path">test/provider.test.js</code></div></div><a class="cta" href="#reader">open note</a></article>
+          <article class="card"><div class="card-head"><h3>Appearance Toggles</h3><span class="time">10:51 pm</span></div><p>Browser-local dark mode and monospace font toggles.</p><div class="chips"><span class="tag">ui</span><span class="tag">settings</span><span class="tag">shipped</span></div><a class="cta" href="#reader">open note</a></article>
+          <article class="card"><div class="card-head"><h3>Home Input Top Threads Row</h3><span class="time">10:51 pm</span></div><p>Launch input above horizontal thread lanes.</p><div class="chips"><span class="tag">home</span><span class="tag">layout</span><span class="tag">low blast</span></div><a class="cta" href="#reader">open note</a></article>
+          <article class="card"><div class="card-head"><h3>Toned Down Ops Home</h3><span class="time">10:51 pm</span></div><p>Keep the ops layout while removing hero noise.</p><div class="chips"><span class="tag">copy</span><span class="tag">home</span><span class="tag">in progress</span></div><a class="cta" href="#reader">open note</a></article>
+        </div>
+      </div></div>
+    </section>
+
+    <section id="board" class="option">
+      <aside class="option-panel">
+        <span class="rank">05</span>
+        <h2>Grouped board</h2>
+        <p>Groups notes by the area they explain. Good when several notes pile up in one run.</p>
+        <ul><li>Shows clusters fast.</li><li>Worst for chronological ordering.</li><li>Best with tags already parsed from notes.</li></ul>
+      </aside>
+      <div class="screen"><div class="screen-inner">
+        <div class="screen-head"><div class="screen-title"><strong>Implementation notes</strong><span class="meta">grouped by surface</span></div><span class="badge">4 notes</span></div>
+        <div class="board">
+          <section class="board-column"><div class="column-head"><span>thread ui</span><span>1</span></div><article class="board-card hot"><strong class="title">Sandbox Provider Math</strong><code class="path">2026-06-16-sandbox-provider-math.html</code><div class="chips"><span class="tag">provider</span><span class="tag">10:52 pm</span></div></article></section>
+          <section class="board-column"><div class="column-head"><span>home</span><span>2</span></div><article class="board-card"><strong class="title">Home Input Top Threads Row</strong><code class="path">2026-06-25-home-input-top-threads-row.html</code><div class="chips"><span class="tag">layout</span><span class="tag">10:51 pm</span></div></article><article class="board-card"><strong class="title">Toned Down Ops Home</strong><code class="path">2026-06-24-toned-down-ops-home.html</code><div class="chips"><span class="tag">copy</span><span class="tag">10:51 pm</span></div></article></section>
+          <section class="board-column"><div class="column-head"><span>settings</span><span>1</span></div><article class="board-card"><strong class="title">Appearance Toggles</strong><code class="path">2026-06-24-appearance-toggles.html</code><div class="chips"><span class="tag">theme</span><span class="tag">10:51 pm</span></div></article></section>
+        </div>
+      </div></div>
+    </section>
+  </main>
+</body>
+</html>

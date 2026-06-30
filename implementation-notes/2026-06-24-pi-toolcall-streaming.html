@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — pi toolcall streaming</title>
+<meta name="task" content="Stream Pi tool-call planning and richer tool results into the Makerspace thread UI.">
+<meta name="date-started" content="2026-06-24">
+<meta name="date-updated" content="2026-06-24">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="makerspace,pi-sdk,streaming,tools,thread">
+<meta name="related" content="2026-06-24-live-thinking-stream.html,2026-06-24-streaming-status-spinner.html,2026-06-24-thread-activity-visibility.html,2026-06-16-pi-sdk-bridge.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .blast-low { color: #2a7a2a; }
+</style>
+</head>
+<body>
+<h1>pi toolcall streaming</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-24 · status <b>shipped</b> · blast <span class="blast-low">low</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Show Pi tool-call planning deltas and final tool output while runs are live.</div>
+  <b>Source</b><div><code>AgentSession.subscribe()</code> emits <code>message_update.toolcall_*</code> and <code>tool_execution_*</code>.</div>
+  <b>Surface</b><div><code>tool</code> SSE events consumed by <code>/thread.html</code>.</div>
+  <b>Schema</b><div>No persistence schema change; event payloads gain <code>phase=planning|planned</code>, <code>args</code>, and <code>output</code>.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>src/host-pi-runner.js</code></td><td>touch</td><td>Forward SDK <code>toolcall_delta</code>/<code>toolcall_end</code> events before execution starts.</td></tr>
+  <tr><td><code>src/setup-script.js</code></td><td>touch</td><td>Make the remote bridge emit the same richer tool event envelope.</td></tr>
+  <tr><td><code>public/thread.js</code></td><td>touch</td><td>Render planning phases and update tool labels as streamed args reveal intent.</td></tr>
+  <tr><td><code>test/setup-script.test.js</code></td><td>touch</td><td>Assert the generated bridge streams tool-call planning and tool output.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Reuse <code>tool</code> SSE events. The UI, performance summary, and bridge relay already understand that event family.</td></tr>
+  <tr><td>D-002</td><td>Add <code>planning</code>/<code>planned</code> phases. They expose model intent without inventing a second timeline card type.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td>Raw argument deltas over custom pretty-printing. It streams immediately and costs no parser.</td></tr>
+  <tr><td>T-002</td><td><code>11KiB</code> setup-script guard over <code>10KiB</code>. The bridge payload now carries live planning events.</td></tr>
+</table>
+
+<h2>Validation</h2>
+<table>
+  <tr><th>ID</th><th>Command · Result</th></tr>
+  <tr><td>V-001</td><td><code>node --check src/host-pi-runner.js &amp;&amp; node --check src/setup-script.js &amp;&amp; node --check public/thread.js</code> · pass.</td></tr>
+  <tr><td>V-002</td><td><code>npm test</code> · 55/55 pass.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Remove the added <code>toolcall_*</code> mapping and the UI falls back to execution-only tool cards.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>SDK host-dispatch and remote bridge both emit planning tool events.</li>
+  <li>Thread UI shows planning copy and keeps latest tool labels current.</li>
+  <li><code>npm test</code> passes.</li>
+</ul>
+</body>
+</html>

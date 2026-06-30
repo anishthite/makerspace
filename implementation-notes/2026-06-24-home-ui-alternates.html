@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Home UI alternates</title>
+<meta name="task" content="Add selectable B2B SaaS-inspired main page UI alternates.">
+<meta name="date-started" content="2026-06-24">
+<meta name="date-updated" content="2026-06-24">
+<meta name="status" content="in-progress">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="makerspace,ui,home,b2b-saas,alternates">
+<meta name="related" content="2026-06-24-main-screen-variations.html,2026-06-24-b2b-saas-action-center.html,2026-06-23-home-screen-design-polish.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}.blast-med{color:#b85c00}</style>
+</head>
+<body>
+<h1>Home UI alternates</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-24 · status <b class="status-in-progress">in-progress</b> · blast <span class="blast-med">medium</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Add three selectable main-page layouts: <code>focus</code>, <code>ops</code>, and <code>inbox</code>.</div>
+  <b>Source</b><div>B2B SaaS research: calm design, command palettes, progressive disclosure, useful empty states.</div>
+  <b>Surface</b><div><code>/</code>, <code>public/index.html</code>, <code>public/app.js</code>, <code>public/styles.css</code>.</div>
+  <b>Data</b><div>Reuse existing auth, repo, launch, and thread-list DOM.</div>
+  <b>Mobile</b><div>Collapse every layout to one column.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>UI layout</h2>
+<ol>
+  <li><b>Focus</b>: centered calm launch card for first-run clarity.</li>
+  <li><b>Ops</b>: two-column dashboard with command input beside agent lanes.</li>
+  <li><b>Inbox</b>: command-bar-like start surface above triage lanes.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>public/index.html</code></td><td>touch</td><td>Add layout switcher, hero copy hooks, and links to full static concepts.</td></tr>
+  <tr><td><code>public/app.js</code></td><td>touch</td><td>Persist selected home layout and update variant-specific hero copy.</td></tr>
+  <tr><td><code>public/styles.css</code></td><td>touch</td><td>Style three home layouts using the existing form and thread lanes.</td></tr>
+  <tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Add this task to the notes index.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Reuse one live DOM. Duplicating forms would risk divergent submit behavior.</td></tr>
+  <tr><td>D-002</td><td>Persist the selected layout in <code>localStorage</code>. Users can compare without a settings schema.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td>CSS layout variants over separate routed prototypes. The main page stays wired.</td></tr>
+</table>
+
+<h2>Assumptions</h2>
+<ul>
+  <li>A-001 · User wants compare-and-use alternates on the live main page. If wrong: keep one chosen layout and remove the switcher.</li>
+</ul>
+
+<h2>Verification</h2>
+<table>
+  <tr><th>Check</th><th>Result</th></tr>
+  <tr><td><code>node --check public/app.js</code></td><td>Passed.</td></tr>
+  <tr><td><code>npm run build</code></td><td>Passed.</td></tr>
+  <tr><td><code>grep</code></td><td>Confirmed <code>data-home-ui-choice</code>, <code>HOME_UI_COPY</code>, and variant CSS hooks exist.</td></tr>
+  <tr><td><code>npm test</code></td><td>Blocked by existing <code>test/setup-script.test.js</code> size assertion: generated setup script exceeds <code>10 * 1024</code> bytes.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Revert the three frontend files and this index row.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>Three layout buttons visibly change the main page.</li>
+  <li>The selected layout survives reload.</li>
+  <li>Existing thread submit and repo controls keep their IDs and names.</li>
+  <li><code>node --check public/app.js</code>, <code>npm run build</code>, and <code>npm test</code> pass or have documented blockers.</li>
+</ul>
+</body>
+</html>

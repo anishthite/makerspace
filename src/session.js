@@ -211,7 +211,7 @@ export function normalizeThreadRequest(body, config) {
 }
 
 export function decorateSession(session, config) {
-  const { bridgeToken, previewToken, repoAuthHeader, githubOwnerSessionId, images, raw, ...publicSession } = session;
+  const { bridgeToken, previewToken, repoAuthHeader, githubOwnerSessionId, ownerUserId, images, raw, ...publicSession } = session;
   const sshDest = session.sshDest || null;
   const httpsUrl = session.httpsUrl || session.bridgeUrl || null;
   const bridgeUrl = session.bridgeUrl || (session.bridgeMode ? httpsUrl : null);

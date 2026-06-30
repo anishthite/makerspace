@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Auth Pills Settings Links</title>
+<meta name="task" content="Make top-bar Codex and GitHub auth pills borderless links to their settings sections">
+<meta name="date-started" content="2026-06-25">
+<meta name="date-updated" content="2026-06-25">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="makerspace, ui, topbar, settings, auth">
+<meta name="related" content="2026-06-17-codex-ui-login.html,2026-06-18-github-auth-session-hardening.html,2026-06-25-settings-token-query-auth.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code { font-family: ui-monospace, Menlo, monospace; background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  ul, ol { margin: .3rem 0 .8rem 1.2rem; padding: 0; }
+  li { margin: .15rem 0; }
+  .blast-low { color: #2a7a2a; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>Auth Pills Settings Links</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-25 · status <b>shipped</b> · blast <span class="blast-low">low</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Make top-bar <code>Codex</code> and <code>GitHub</code> pills borderless links to editable settings.</div>
+  <b>Source</b><div>Existing auth status renderers keep pill labels and state.</div>
+  <b>Surface</b><div><code>/</code>, <code>/workspace.html</code>, <code>/settings.html#codex</code>, <code>/settings.html#github</code>.</div>
+  <b>Schema</b><div>None.</div>
+  <b>Mobile</b><div>Uses existing responsive header wrapping.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>UI layout</h2>
+<ol>
+  <li><b>Top bar</b>: show <code>.auth-pill</code> as a borderless status link.</li>
+  <li><b>Settings</b>: land fragments on the existing <code>Codex</code> and <code>GitHub</code> panels.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>public/index.html</code></td><td>touch</td><td>Change auth pills from inert spans to settings anchors.</td></tr>
+  <tr><td><code>public/workspace.html</code></td><td>touch</td><td>Change workspace auth pills from inert spans to settings anchors.</td></tr>
+  <tr><td><code>public/settings.html</code></td><td>touch</td><td>Add fragment targets to auth sections.</td></tr>
+  <tr><td><code>public/styles.css</code></td><td>touch</td><td>Hide the top-bar auth pill border.</td></tr>
+  <tr><td><code>test/project-selector-static.test.js</code></td><td>touch</td><td>Assert auth links and settings anchors exist.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Use plain anchors. Native navigation covers click behavior without JavaScript.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Revert the HTML anchor swaps, section ids, CSS override, and static assertions.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li><code>Codex</code> and <code>GitHub</code> top-bar controls have no visible border.</li>
+  <li>Clicking either control opens the matching settings section.</li>
+  <li><code>npm test</code> passes.</li>
+</ul>
+</body>
+</html>

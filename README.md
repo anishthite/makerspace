@@ -10,13 +10,14 @@ A tiny control plane for talking to `pi` inside fresh Daytona sandboxes.
 - streams live Pi output back to the browser over server-sent events
 - supports host-dispatch mode: Pi runs on the control backend while read/bash/edit/write tools execute inside the Daytona sandbox
 - keeps image settings, registry push settings, and model-provider API-key forwarding on the settings panel
+- supports GitHub sign-in with user-scoped sessions, recent projects, repo listing, and private-repo clone auth
 
 ## What it does not do
 
 - no fake local mode
 - no embedded terminal
 - no local repo upload or bidirectional file sync
-- no auth or multi-user support beyond `CONTROL_API_TOKEN`
+- no email/password auth; GitHub OAuth is the sign-in path
 - no registry secret manager beyond local plain-text settings
 
 That is deliberate. The goal is one prompt in, one real sandbox-backed run out.
@@ -29,9 +30,9 @@ That is deliberate. The goal is one prompt in, one real sandbox-backed run out.
 4. the agent page reads `GET /api/threads/:name`, mirrors output from `GET /api/sessions/:name/stream`, and sends follow-up prompts to `POST /api/threads/:name/messages`
 5. after each run completes, the same bridge sandbox returns to `ready` so the next prompt can reuse the repo workspace
 
-For deployment, put the static UI on Vercel and this Node control backend on a server with Daytona credentials. The UI has “Control backend URL” and “Control API token” fields; set them to the backend HTTPS URL and `CONTROL_API_TOKEN`. The backend keeps Daytona and model-provider credentials server-side.
+For deployment, put the built React/Vite static UI (`npm run build` → `dist/`) on Vercel and this Node control backend on a server with Daytona credentials. The UI has “Control backend URL” and “Control API token” fields; set them to the backend HTTPS URL and `CONTROL_API_TOKEN`. The backend keeps Daytona and model-provider credentials server-side.
 
-DigitalOcean App Platform can build the root `Dockerfile` for the control backend. Keep the source directory at `/`, use the Dockerfile build strategy, and set the public HTTP port to `8080`. `image/Dockerfile` is still the separate Daytona sandbox image.
+DigitalOcean App Platform can build the root `Dockerfile` for the control backend. Keep the source directory at `/`, use the Dockerfile build strategy, and set the public HTTP port to `8080`. `image/Dockerfile` is still the separate Daytona sandbox image. Set the Vercel app's backend URL in `/settings.html`, or open `/settings.html?api=https://api.example.com&token=<CONTROL_API_TOKEN>` once to save it in the browser.
 
 To repeat the cold intent-prep measurement without relying on an existing warm bridge, start the server with an empty `SESSION_DATA_PATH`, then run:
 
@@ -76,8 +77,11 @@ Then:
 
 ```bash
 npm install
+npm run build # emits the React/Vite static frontend into dist/
 npm start
 ```
+
+`frontend/` is the normal Vite app. Root `src/` is the Node backend/API runtime for Daytona, local provider, sessions, SSE, and settings. Without `dist/`, the server falls back to root `public/` only as a legacy local fallback.
 
 For local-folder mode, skip Daytona and run Pi directly on a folder:
 
@@ -100,7 +104,7 @@ npm run desktop:dev -- ~/code/site
 npm run desktop:dev -- ~/code/api
 ```
 
-The desktop dev shell starts the same `public/` UI, binds the backend to `127.0.0.1`, and stores local state in a per-project folder when a folder argument is provided.
+The desktop dev shell starts the same backend, serves built `dist/` when present, falls back to root `public/` otherwise, binds to `127.0.0.1`, and stores local state in a per-project folder when a folder argument is provided.
 
 Package and install the macOS app/DMG from the installed Electron binary:
 
@@ -110,7 +114,7 @@ npm run desktop:install
 ```
 
 The installer copies `output/desktop-package/Makerspace.app` into `/Applications`. Pass a path when needed: `npm run desktop:install -- output/desktop-package/makerspace.dmg`.
-The DMG lands at `output/desktop-package/makerspace.dmg`; copy it to `public/downloads/makerspace.dmg` only when you want the landing page to serve that build.
+The DMG lands at `output/desktop-package/makerspace.dmg`; publish that file as a GitHub Release asset named `makerspace.dmg`. The `/desktop` landing page downloads from `https://github.com/anishthite/makerspace/releases/latest/download/makerspace.dmg`, so do not commit the 270MB binary to the repo.
 
 Optional env vars:
 
@@ -119,6 +123,11 @@ PORT=8787
 MAKERSPACE_PROJECT=site
 MAKERSPACE_HOME=~/.makerspace/site
 CONTROL_API_TOKEN=
+MAKERSPACE_AUTH_REQUIRED= # set true to require GitHub sign-in even outside hosted mode
+MAKERSPACE_AUTH_SECRET= # stable secret for signed auth cookies and encrypted OAuth tokens
+MAKERSPACE_ALLOWED_ORIGIN= # set to the static frontend origin for cross-origin cookie auth
+MAKERSPACE_AUTH_SAMESITE= # defaults to None when MAKERSPACE_ALLOWED_ORIGIN is set, otherwise Lax
+AUTH_DATA_PATH=./data/auth.json
 MAKERSPACE_STATE_STORE=file # set d1 for hosted Cloudflare D1 persistence
 CLOUDFLARE_ACCOUNT_ID=
 CLOUDFLARE_D1_DATABASE_ID=
@@ -163,13 +172,18 @@ Makerspace ships a starter Pi package at `packages/makerspace-pi-defaults`. Loca
 
 The package contains a prompt-injecting extension, the `inference/nvidia/nemotron3-super` provider registration, starter skills, and prompts. Set `INFERENCE_API_KEY` to use Inference.net. Publish the same package later for online installs with `pi install npm:@makerspace/pi-defaults@0.1.0`.
 
-The settings page also exposes your current Pi profile: `~/.pi/agent/AGENTS.md`, discovered skills, extensions, and prompts. Saving the profile writes `AGENTS.md` and stores Makerspace-only resource selection in `PI_PROFILE_DATA_PATH`. Remote bridge runs sync selected profile files per run; personal files are not baked into public images.
+The settings page exposes the Makerspace Pi profile from `packages/makerspace-pi-defaults/context/AGENTS.md` plus package skills, extensions, and prompts. In multi-user mode, profile edits are stored per user in the app state store; remote bridge runs sync selected profile files per run without reading personal `~/.pi/agent` files.
 
 ## API
 
 - `GET /healthz`
 - `GET /api/report`
 - `GET /api/performance`
+- `GET /api/me`
+- `GET /api/auth/github`
+- `POST /api/auth/github/login`
+- `GET /api/auth/github/callback`
+- `POST /api/auth/logout`
 - `GET /api/settings`
 - `POST /api/settings`
 - `GET /api/recent-projects`
@@ -186,7 +200,7 @@ The settings page also exposes your current Pi profile: `~/.pi/agent/AGENTS.md`,
 - `GET /api/sessions/:name/output`
 - `POST /api/sessions/:name/share`
 
-Set `CONTROL_API_TOKEN` on public control backends. API clients send it as `Authorization: Bearer <token>`; SSE streams may pass `?token=<token>` because browser `EventSource` cannot set custom headers.
+For single-user/token mode, set `CONTROL_API_TOKEN`; API clients send it as `Authorization: Bearer <token>`, and SSE streams may pass `?token=<token>`. In multi-user mode, GitHub sign-in sets a signed cookie; keep `CONTROL_API_TOKEN` as an admin bypass only.
 
 ### Create agent body
 
@@ -268,4 +282,4 @@ The chat transport after boot is still:
 
 1. add direct terminal attach if the Daytona preview/CLI workflow is not enough
 2. add repo upload/sync for local-only repos
-3. add a proper secret manager if this becomes multi-user
+3. add quotas/billing and a proper hosted secret manager before opening usage broadly

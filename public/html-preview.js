@@ -19,9 +19,10 @@ const FRAGMENT_THEMES = {
 
 function fragmentStyle(theme = 'dark') {
   return `<style>
+  @import url('https://cdn.jsdelivr.net/npm/hack-font@3/build/web/hack.css');
   ${FRAGMENT_THEMES[theme === 'dark' ? 'dark' : 'light']}
   html, body { background: transparent; }
-  body { color: var(--ink); font: 15px/1.6 "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
+  body { color: var(--ink); font: 15px/1.6 Hack, "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
   main, section, article { display: block; max-width: 100%; }
   h1, h2, h3 { margin: 0 0 .5em; line-height: 1.15; letter-spacing: -.025em; }
   h1 { color: var(--blue); font-size: 28px; }
@@ -37,7 +38,7 @@ function fragmentStyle(theme = 'dark') {
   table { width: 100%; border-collapse: collapse; }
   th, td { border: 1px solid var(--rule); padding: 10px 12px; text-align: left; }
   th { color: var(--blue); }
-  code, pre { font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
+  code, pre { font-family: Hack, "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
   pre { padding: 14px; border: 1px solid var(--rule); background: var(--pre); }
 </style>`;
 }

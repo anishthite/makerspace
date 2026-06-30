@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Thread message variations</title>
+<meta name="task" content="Create static HTML thread-message variations for picking a redesign direction.">
+<meta name="date-started" content="2026-06-24">
+<meta name="date-updated" content="2026-06-24">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="makerspace,ui,thread,messages,concepts,samples">
+<meta name="related" content="2026-06-24-main-screen-variations.html,2026-06-24-first-party-log-events.html,2026-06-23-single-flow-thread-ui.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.status-shipped{color:#2a7a2a}.blast-low{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Thread message variations</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-24 · status <b class="status-shipped">shipped</b> · blast <span class="blast-low">low</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Create four reviewable static HTML directions for showing messages inside a thread.</div>
+  <b>Surface</b><div><code>public/thread-message-variations/</code>.</div>
+  <b>Runtime</b><div>Static HTML/CSS only; no app API calls.</div>
+  <b>Observation</b><div>Current local thread reload can show only <code>Status</code>, <code>Ready</code>, and the composer.</div>
+  <b>Mobile</b><div>Responsive CSS included for page-level comparison.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>UI layout</h2>
+<ol>
+  <li><b>Turn Cards</b>: group user ask, Pi answer, and work chips into one durable card per prompt.</li>
+  <li><b>Split Stream</b>: keep conversation left and tool/status feed right.</li>
+  <li><b>Notebook</b>: render the run as an engineering notebook with numbered entries.</li>
+  <li><b>Pulse Deck</b>: make the current answer a large hero card with activity cards around it.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>public/thread-message-variations/index.html</code></td><td>new</td><td>Add comparison hub with embedded previews and links.</td></tr>
+  <tr><td><code>public/thread-message-variations/turns.html</code></td><td>new</td><td>Add prompt-grouped turn-card mock.</td></tr>
+  <tr><td><code>public/thread-message-variations/split.html</code></td><td>new</td><td>Add split conversation/activity mock.</td></tr>
+  <tr><td><code>public/thread-message-variations/notebook.html</code></td><td>new</td><td>Add notebook-style run history mock.</td></tr>
+  <tr><td><code>public/thread-message-variations/pulse.html</code></td><td>new</td><td>Add hero-card activity deck mock.</td></tr>
+  <tr><td><code>public/thread-message-variations/styles.css</code></td><td>new</td><td>Share tokens, layouts, and responsive mockup styling.</td></tr>
+  <tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Add this task to the notes index.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Ship static mock pages. The user needs taste comparison before app wiring.</td></tr>
+  <tr><td>D-002</td><td>Make <code>Turn Cards</code> the recommended direction. It fixes prompt/answer persistence with the least product change.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td><code>public/thread-message-variations/</code> over mutating <code>/thread.html</code>. The live thread UI stays safe while the direction is chosen.</td></tr>
+  <tr><td>T-002</td><td>Four concepts over exhaustive variants. More pages dilute selection.</td></tr>
+</table>
+
+<h2>Verification</h2>
+<table>
+  <tr><th>Check</th><th>Result</th></tr>
+  <tr><td><code>npm run build</code></td><td>Passed; copied <code>public/thread-message-variations/</code> to ignored <code>dist/</code>.</td></tr>
+  <tr><td>Playwright smoke</td><td><code>output/playwright/thread-message-variations-index-snapshot.txt</code> shows all four previews.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Delete <code>public/thread-message-variations/</code> and this notes row; no runtime code changes.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>Four variation pages are reachable from <code>/thread-message-variations/index.html</code>.</li>
+  <li>Each variation presents a distinct in-thread message layout.</li>
+  <li><code>npm run build</code> passes.</li>
+</ul>
+</body>
+</html>

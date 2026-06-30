@@ -321,18 +321,24 @@ function restoreThreadSessionFile(config, session, cwd) {
   return filePath;
 }
 
-async function createMakerspaceResourceOptions(config, sdk, cwd) {
+function makerspaceRuntimeAgentDir(config, session = {}) {
+  if (!config.authRequired) return undefined;
+  return path.join(config.localDataDir || path.join(config.rootDir || process.cwd(), 'data'), 'pi-agents', safeSessionFileName(session.ownerUserId || 'anonymous'));
+}
+
+async function createMakerspaceResourceOptions(config, sdk, cwd, session = {}) {
   return createPiResourceOptions(sdk, {
     cwd,
+    agentDir: makerspaceRuntimeAgentDir(config, session),
     packageDir: resolvePiDefaultsPackageDir(config),
-    piProfile: await readPiProfile(config),
+    piProfile: await readPiProfile(config, session.ownerUserId ? { id: session.ownerUserId } : null),
   });
 }
 
 async function createHostPiSession(config, session, remoteReadyPromise, provider) {
   const sdk = await loadSdk(config);
   const customTools = await createRemoteToolDefinitions(config, remoteReadyPromise, provider);
-  const resourceOptions = await createMakerspaceResourceOptions(config, sdk, config.rootDir);
+  const resourceOptions = await createMakerspaceResourceOptions(config, sdk, config.rootDir, session);
   const { options } = await resolvePiOptions(config, session, resourceOptions);
   const sessionFile = restoreThreadSessionFile(config, session, config.rootDir);
   return sdk.createAgentSession({
@@ -347,7 +353,7 @@ async function createHostPiSession(config, session, remoteReadyPromise, provider
 
 async function createLocalPiSession(config, session) {
   const sdk = await loadSdk(config);
-  const resourceOptions = await createMakerspaceResourceOptions(config, sdk, session.repoPath);
+  const resourceOptions = await createMakerspaceResourceOptions(config, sdk, session.repoPath, session);
   const { options } = await resolvePiOptions(config, session, resourceOptions);
   const sessionFile = restoreThreadSessionFile(config, session, session.repoPath);
   return sdk.createAgentSession({

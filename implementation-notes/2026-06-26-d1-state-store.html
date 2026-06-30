@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — D1 state store</title>
+<meta name="task" content="Add Cloudflare D1 as the remote Makerspace state store with file fallback.">
+<meta name="date-started" content="2026-06-26">
+<meta name="date-updated" content="2026-06-26">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="makerspace,state,d1,cloudflare,persistence,deploy">
+<meta name="related" content="2026-06-25-disk-backed-recent-projects.html,2026-06-25-corrupt-session-store.html,2026-06-26-remote-local-runtime-diagram.html,2026-06-26-pi-profile-settings.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code, pre { font-family: ui-monospace, Menlo, monospace; }
+  code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  pre { background: #f6f6f6; padding: .55rem .7rem; border-radius: 4px; overflow-x: auto; font-size: 12.5px; line-height: 1.4; }
+  ul { margin: .3rem 0 .8rem 1.2rem; padding: 0; }
+  li { margin: .15rem 0; }
+  .blast-med { color: #b85c00; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>D1 state store</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-26 · status <b>shipped</b> · blast <span class="blast-med">medium</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Use Cloudflare D1 for hosted sessions/settings/recents/profile text while preserving local file fallback.</div>
+  <b>Source</b><div>User chose D1 for the remote DB store.</div>
+  <b>Surface</b><div><code>src/store.js</code>, <code>src/settings.js</code>, <code>src/recent-projects.js</code>, <code>src/pi-profile.js</code>, <code>src/image-builder.js</code>.</div>
+  <b>Schema</b><div><code>makerspace_sessions</code> and <code>makerspace_kv</code> created lazily through the D1 REST API.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>API contract</h2>
+<h3>Env</h3>
+<pre>MAKERSPACE_STATE_STORE=d1
+CLOUDFLARE_ACCOUNT_ID=...
+CLOUDFLARE_D1_DATABASE_ID=...
+CLOUDFLARE_API_TOKEN=...</pre>
+<h3>D1 tables</h3>
+<pre>makerspace_sessions(name text primary key, data text, created_at text, updated_at text)
+makerspace_kv(key text primary key, value text, updated_at text)</pre>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>src/d1-state.js</code></td><td>new</td><td>Provide the tiny D1 REST client, schema bootstrap, session rows, and KV rows.</td></tr>
+  <tr><td><code>src/store.js</code></td><td>touch</td><td>Route session CRUD to D1 when <code>MAKERSPACE_STATE_STORE=d1</code>.</td></tr>
+  <tr><td><code>src/settings.js</code></td><td>touch</td><td>Persist image settings and Dockerfile text in D1 KV when enabled.</td></tr>
+  <tr><td><code>src/recent-projects.js</code></td><td>touch</td><td>Persist recent projects in D1 KV when enabled.</td></tr>
+  <tr><td><code>src/pi-profile.js</code></td><td>touch</td><td>Persist profile selections and <code>AGENTS.md</code> text in D1 KV when enabled.</td></tr>
+  <tr><td><code>src/image-builder.js</code></td><td>touch</td><td>Use D1 Dockerfile text in the temporary image build context.</td></tr>
+  <tr><td><code>src/config.js</code></td><td>touch</td><td>Expose the selected state-store mode in config.</td></tr>
+  <tr><td><code>public/history.js</code></td><td>touch</td><td>Guard optional storage method access in Node browserless tests.</td></tr>
+  <tr><td><code>test/d1-state.test.js</code></td><td>new</td><td>Cover D1 schema bootstrap, session CRUD, and KV storage with fake fetch.</td></tr>
+  <tr><td><code>README.md</code></td><td>touch</td><td>Document hosted D1 env vars.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Use the D1 REST API through <code>fetch</code>. Avoid a new SDK dependency for three SQL operations.</td></tr>
+  <tr><td>D-002</td><td>Keep sessions as JSON blobs. Existing code already owns the session shape and needs no migration table spread.</td></tr>
+  <tr><td>D-003</td><td>Use one KV table for settings, recents, Dockerfile, and profile text. These values are singleton documents.</td></tr>
+  <tr><td>D-004</td><td>Create remote D1 database <code>makerspace-state</code>. Hosted deploys only need env wiring now.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td>D1 over Postgres. User requested D1 for now.</td></tr>
+  <tr><td>T-002</td><td>Lazy schema creation over migrations. Two idempotent tables do not need a migration framework.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Unset <code>MAKERSPACE_STATE_STORE</code> to return to JSON files without deleting D1 data.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li><code>npm test</code> passes.</li>
+  <li>D1 mode stores sessions/settings/recents/profile text without local JSON writes.</li>
+  <li>Remote D1 database <code>makerspace-state</code> has <code>makerspace_sessions</code> and <code>makerspace_kv</code>.</li>
+  <li>File mode keeps existing behavior.</li>
+</ul>
+</body>
+</html>

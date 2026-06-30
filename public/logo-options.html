@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Makerspace logo options</title>
 <style>
+  @import url('https://cdn.jsdelivr.net/npm/hack-font@3/build/web/hack.css');
   :root { color-scheme: light; --bg:#FAF8F3; --paper:#fff; --ink:#241A12; --muted:#78635A; --blue:#1F5E9C; --rule:rgba(31,94,156,.18); }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 Inter, system-ui, -apple-system, sans-serif; }
@@ -14,7 +15,7 @@
   .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
   .card { border: 1px solid var(--rule); border-radius: 6px; background: var(--paper); padding: 14px; box-shadow: 0 2px 8px rgba(31,94,156,.08); }
   .card img { display: block; width: 100%; height: auto; border: 1px solid var(--rule); border-radius: 4px; background: var(--bg); }
-  .label { margin-top: 10px; color: var(--blue); font: 700 12px/1.2 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; }
+  .label { margin-top: 10px; color: var(--blue); font: 700 12px/1.2 Hack, 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; }
   .card.selected { border-color: var(--blue); box-shadow: 0 0 0 2px rgba(31,94,156,.12), 0 2px 8px rgba(31,94,156,.08); }
   .selected .label::after { content: ' · selected'; color: var(--teal); }
   @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }

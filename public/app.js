@@ -6,6 +6,7 @@ const BROWSER_SESSION_KEY = 'makerspaceBrowserSession';
 const MODEL_REF_KEY = 'makerspaceModelRef';
 const THINKING_LEVEL_KEY = 'makerspaceThinkingLevel';
 const PROJECT_KEY = 'makerspaceSelectedProject';
+const SEEN_FINISHED_THREADS_KEY = 'makerspaceSeenFinishedThreads';
 const THINKING_LEVELS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh'];
 const ARCHIVEABLE_THREAD_STATUSES = ['completed', 'ready', 'failed'];
 const params = new URLSearchParams(location.search);
@@ -51,6 +52,7 @@ let localProvider = false;
 let defaultThinkingLevel = 'xhigh';
 let runtimeTickTimer = null;
 let finishedThreadNames = [];
+let seenFinishedThreads = readSeenFinishedThreads();
 function escapeHtml(value) {
   return String(value ?? '')
     .replaceAll('&', '&amp;')
@@ -58,6 +60,21 @@ function escapeHtml(value) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
+}
+
+function readSeenFinishedThreads() {
+  try {
+    const value = JSON.parse(localStorage.getItem(SEEN_FINISHED_THREADS_KEY) || '[]');
+    return new Set(Array.isArray(value) ? value : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function rememberSeenFinishedThread(key) {
+  if (!key) return;
+  seenFinishedThreads.add(key);
+  localStorage.setItem(SEEN_FINISHED_THREADS_KEY, JSON.stringify([...seenFinishedThreads].slice(-300)));
 }
 
 function getBrowserSessionId() {
@@ -135,6 +152,8 @@ function apiUrl(path) {
 
 async function fetchJson(path, options = {}) {
   const response = await fetch(apiUrl(path), {
+    credentials: 'include',
+    cache: 'no-store',
     ...options,
     headers: { ...authHeaders(), ...(options.headers || {}) },
   });
@@ -399,6 +418,25 @@ function formatElapsed(startValue, endValue = Date.now(), showSeconds = false) {
   return formatDurationSeconds(Math.floor(Math.max(0, end - start) / 1000), showSeconds);
 }
 
+function finishedAt(thread) {
+  const runEndedAtMs = Number(thread?.runEndedAtMs);
+  if (Number.isFinite(runEndedAtMs) && runEndedAtMs > 0) return new Date(runEndedAtMs).toISOString();
+  return thread?.endedAt || thread?.completedAt || thread?.updatedAt || thread?.createdAt || '';
+}
+
+function finishedAtMs(thread) {
+  const parsed = Date.parse(finishedAt(thread));
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function finishedIndicatorKey(thread, rawStatus) {
+  return `${thread?.name || ''}|${rawStatus || ''}|${finishedAtMs(thread) || ''}`;
+}
+
+function canDismissFinishedIndicator(rawStatus, active) {
+  return !active && ['completed', 'ready'].includes(rawStatus);
+}
+
 function formatFinishedAgo(value) {
   const elapsed = formatElapsed(value).replace(/m\b/g, ' min');
   return elapsed ? `finished ${elapsed} ago` : '';
@@ -476,23 +514,29 @@ function renderThreadCard(thread) {
   const repo = repoLabel(thread);
   const branch = thread.branch ? ` · ${thread.branch}` : '';
   const active = isActiveThread(thread);
-  const finished = active ? '' : formatFinishedAgo(thread.updatedAt || thread.createdAt);
+  const finishedValue = finishedAt(thread);
+  const finished = active ? '' : formatFinishedAgo(finishedValue);
   const detail = active ? runningActivity(thread, rawStatus) : `${repo}${branch}`;
   const outcome = active ? '' : finishedOutcome(thread, rawStatus);
   const start = runtimeStart(thread);
-  const runtimeEnd = active ? Date.now() : thread.updatedAt || start;
+  const runtimeEnd = active ? Date.now() : finishedValue || start;
   const runtime = formatElapsed(start, runtimeEnd, active);
   const inactiveTimes = !active ? [finished, runtime ? `ran ${runtime}` : ''].filter(Boolean) : [];
   const inactiveMeta = inactiveTimes.length ? `<span class="finished-meta">${inactiveTimes.map((text) => `<time>${escapeHtml(text)}</time>`).join('')}</span>` : '';
   const activeRuntime = active && runtime ? `<time class="runtime-label" data-runtime-start="${escapeHtml(start)}">running ${escapeHtml(runtime)}</time>` : '';
+  const indicatorKey = canDismissFinishedIndicator(rawStatus, active) ? finishedIndicatorKey(thread, rawStatus) : '';
+  const indicatorSeen = indicatorKey && seenFinishedThreads.has(indicatorKey);
+  const indicatorAttrs = indicatorKey && !indicatorSeen
+    ? `role="button" tabindex="0" aria-label="hide finished indicator" title="hide finished indicator" data-finished-indicator="${escapeHtml(indicatorKey)}"`
+    : 'aria-hidden="true"';
   const displayTitle = thread.title || thread.name;
   const archiveButton = canArchiveThread(thread)
     ? `<button class="textbtn archive-thread" type="button" data-archive-thread="${escapeHtml(thread.name)}">mark as done</button>`
     : '';
   return `
     <div class="inbox-item action-thread ${badgeClass}">
-      <span class="status-dot" aria-hidden="true"></span>
-      <a class="inbox-main" href="${escapeHtml(threadUrl(thread.name))}">
+      <span class="status-dot${indicatorSeen ? ' is-seen' : ''}" ${indicatorAttrs}></span>
+      <a class="inbox-main" href="${escapeHtml(threadUrl(thread.name))}"${indicatorKey ? ` data-finished-thread="${escapeHtml(indicatorKey)}"` : ''}>
         <strong>${escapeHtml(displayTitle)}</strong>
         <small>${escapeHtml(detail)}</small>
       </a>
@@ -527,6 +571,17 @@ function syncRuntimeTick() {
   }
 }
 
+function dismissFinishedIndicator(indicator) {
+  rememberSeenFinishedThread(indicator.dataset.finishedIndicator);
+  indicator.classList.add('is-seen');
+  indicator.removeAttribute('role');
+  indicator.removeAttribute('tabindex');
+  indicator.removeAttribute('aria-label');
+  indicator.removeAttribute('title');
+  indicator.removeAttribute('data-finished-indicator');
+  indicator.setAttribute('aria-hidden', 'true');
+}
+
 function renderThreads(threads) {
   const lanes = [
     { key: 'running', title: 'Running', empty: 'No agents running.' },
@@ -534,6 +589,7 @@ function renderThreads(threads) {
   ];
   const grouped = Object.fromEntries(lanes.map((lane) => [lane.key, []]));
   for (const thread of threads) grouped[threadLane(thread)].push(thread);
+  grouped.done.sort((left, right) => finishedAtMs(right) - finishedAtMs(left));
 
   const runningStarts = grouped.running.filter(isActiveThread).map(runtimeStart).filter(Boolean);
   finishedThreadNames = grouped.done.filter(canArchiveThread).map((thread) => thread.name);
@@ -677,6 +733,16 @@ refreshThreads.addEventListener('click', async () => {
 });
 
 threadsList.addEventListener('click', async (event) => {
+  const indicator = event.target.closest('[data-finished-indicator]');
+  if (indicator) {
+    event.preventDefault();
+    dismissFinishedIndicator(indicator);
+    return;
+  }
+
+  const finishedLink = event.target.closest('[data-finished-thread]');
+  if (finishedLink) rememberSeenFinishedThread(finishedLink.dataset.finishedThread);
+
   const clearButton = event.target.closest('#clear-finished-threads');
   if (clearButton) {
     const names = [...finishedThreadNames];
@@ -708,6 +774,14 @@ threadsList.addEventListener('click', async (event) => {
     button.textContent = 'mark as done';
     threadStatus.textContent = error.message;
   }
+});
+
+threadsList.addEventListener('keydown', (event) => {
+  if (event.key !== 'Enter' && event.key !== ' ') return;
+  const indicator = event.target.closest('[data-finished-indicator]');
+  if (!indicator) return;
+  event.preventDefault();
+  dismissFinishedIndicator(indicator);
 });
 
 reloadControlData();

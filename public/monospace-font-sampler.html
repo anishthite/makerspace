@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Anonymous+Pro:wght@400;700&family=Azeret+Mono:wght@400;600;700&family=Cousine:wght@400;700&family=Courier+Prime:wght@400;700&family=DM+Mono:wght@400;500&family=Fira+Code:wght@400;600;700&family=Fragment+Mono&family=Geist+Mono:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=Inconsolata:wght@400;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Martian+Mono:wght@400;600;700&family=Noto+Sans+Mono:wght@400;600;700&family=PT+Mono&family=Red+Hat+Mono:wght@400;600;700&family=Roboto+Mono:wght@400;500;700&family=Source+Code+Pro:wght@400;600;700&family=Space+Mono:wght@400;700&family=Spline+Sans+Mono:wght@400;600;700&family=Ubuntu+Mono:wght@400;700&family=Victor+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hack-font@3/build/web/hack.css">
   <style>
     :root {
       --bg: #FAF8F3;
@@ -23,7 +24,7 @@
       --rule-2: rgba(31, 94, 156, .28);
       --shadow: 0 2px 8px rgba(31, 94, 156, .08);
       --sans: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      --app-mono: "JetBrains Mono", "SF Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      --app-mono: Hack, "JetBrains Mono", "SF Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     }
 
     * { box-sizing: border-box; }
@@ -121,14 +122,14 @@
       </div>
       <aside class="recommendation">
         <p class="eyebrow">recommendation</p>
-        <h2>Keep JetBrains Mono.</h2>
-        <p>It is already in the app, reads cleanly at tiny label sizes, and has enough personality without turning every screen into a code editor poster.</p>
+        <h2>Use Hack.</h2>
+        <p>It is now the app monospace default: crisp, boring, and readable at tiny label sizes.</p>
         <div class="badges">
           <span class="badge pick">recommended</span>
           <span class="badge">best all-around</span>
           <span class="badge">already loaded</span>
         </div>
-        <code class="snippet">--mono: "JetBrains Mono", "SF Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;</code>
+        <code class="snippet">--mono: Hack, "JetBrains Mono", "SF Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;</code>
       </aside>
     </header>
 
@@ -148,8 +149,8 @@
       </div>
 
       <div class="grid">
-        <article class="card pick" style="--sample-font: 'JetBrains Mono', ui-monospace, monospace;">
-          <div class="card-head"><div><h3>JetBrains Mono</h3><p class="meta">current app stack</p></div><span class="score">1</span></div>
+        <article class="card pick" style="--sample-font: Hack, ui-monospace, monospace;">
+          <div class="card-head"><div><h3>Hack</h3><p class="meta">current app stack</p></div><span class="score">1</span></div>
           <div class="sample sample-big">Aa 0123 {M}</div>
           <p class="sample sample-line">model: codex-mini · repo/path/file.js · queued 00:14</p>
           <pre class="sample sample-code">const run = await makerspace.spin({
@@ -432,7 +433,7 @@ status: ready · elapsed: 00:14</pre><div class="sample-label">zero request fall
         </div>
       </div>
       <div class="notes">
-        <div class="note"><b>ship</b> Keep <code>JetBrains Mono</code> for now.</div>
+        <div class="note"><b>ship</b> Use <code>Hack</code> for now.</div>
         <div class="note"><b>alternate</b> Use <code>IBM Plex Mono</code> if we want a warmer, less IDE-ish tone.</div>
         <div class="note"><b>avoid</b> Avoid display-heavy options for tiny status labels.</div>
         <div class="note"><b>skip</b> Paid faces like Berkeley Mono need a license before they are real options.</div>

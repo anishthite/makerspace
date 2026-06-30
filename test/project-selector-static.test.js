@@ -13,6 +13,7 @@ test('project selector offers desktop local folders', () => {
   const app = read('public/app.js');
 
   assert.match(index, /project-choose-folder/);
+  assert.match(index, /\/project\.js\?v=agent-refresh-1/);
   assert.match(index, /choose local folder/i);
   assert.match(index, /target-input project-target repo-input[\s\S]*project-choose-folder/);
   assert.doesNotMatch(index, /project-provider-banner/);
@@ -20,6 +21,10 @@ test('project selector offers desktop local folders', () => {
   assert.match(project, /makerspaceSelectedProject/);
   assert.match(project, /\/api\/recent-projects/);
   assert.match(project, /project-running-badge/);
+  assert.match(project, /cache: 'no-store'/);
+  assert.match(project, /function refreshProjectThreads\(\)/);
+  assert.match(project, /await refreshProjectThreads\(\);\n    await loadGitHubRepos\(\);/);
+  assert.match(project, /function effectiveThreadStatus\(thread\)/);
   assert.match(project, /runningAgentCount/);
   assert.match(index, /href="\/settings\.html#codex"/);
   assert.match(index, /href="\/settings\.html#github"/);

@@ -142,22 +142,26 @@ export function createBridgeService({ config, provider, auth, runState }) {
     }
   }
 
-  function isClientOwnedBridge(session, clientId) {
-    return Boolean(clientId && session?.bridgeOwnerId === clientId);
+  function isUserOwnedBridge(session, user = null) {
+    return !session?.ownerUserId || (user?.id && session.ownerUserId === user.id);
   }
 
-  function isLaunchingIntentBridge(session, clientId) {
+  function isClientOwnedBridge(session, clientId, user = null) {
+    return Boolean(clientId && session?.bridgeOwnerId === clientId && isUserOwnedBridge(session, user));
+  }
+
+  function isLaunchingIntentBridge(session, clientId, user = null) {
     return Boolean(
       session?.intentBridge &&
-        isClientOwnedBridge(session, clientId) &&
+        isClientOwnedBridge(session, clientId, user) &&
         !session.bridgeClaimed &&
         session.status === 'launching' &&
         session.runStatus !== 'failed',
     );
   }
 
-  function isReusableIntentBridge(session, clientId) {
-    return isIdleReusableBridge(session) && isClientOwnedBridge(session, clientId);
+  function isReusableIntentBridge(session, clientId, user = null) {
+    return isIdleReusableBridge(session) && isClientOwnedBridge(session, clientId, user);
   }
 
   function scheduleBridgeRelease(sessionName) {
@@ -290,7 +294,7 @@ export function createBridgeService({ config, provider, auth, runState }) {
 
   async function pushBridgeAuth(session, authText) {
     const settingsText = await readLocalPiSettings();
-    const piProfile = await buildPiProfileSyncPayload(config);
+    const piProfile = await buildPiProfileSyncPayload(config, session?.ownerUserId ? { id: session.ownerUserId } : null);
     if (!authText && !settingsText && !piProfile?.files?.length) return false;
 
     await fetchBridgeJson(session, '/auth', {
@@ -349,10 +353,11 @@ export function createBridgeService({ config, provider, auth, runState }) {
     return makeBridgeSession('warm', { warmBridge: true });
   }
 
-  function makeIntentBridgeSession(clientId) {
+  function makeIntentBridgeSession(clientId, user = null) {
     return makeBridgeSession('intent', {
       intentBridge: true,
       bridgeOwnerId: clientId,
+      ...(user?.id ? { ownerUserId: user.id } : {}),
       preparedAt: new Date().toISOString(),
     });
   }
@@ -421,9 +426,8 @@ export function createBridgeService({ config, provider, auth, runState }) {
         });
         appendRunOutput(session.name, `[system] Warm sandbox ready: ${updated.name}.\n`, 'launching');
         await waitForBridge(updated);
-        if (piAuthText) {
-          await pushBridgeAuth(updated, piAuthText);
-          appendRunOutput(session.name, '[system] Loaded local main agent auth into the warm bridge.\n', 'launching');
+        if (await pushBridgeAuth(updated, piAuthText)) {
+          appendRunOutput(session.name, '[system] Loaded Pi auth/profile into the warm bridge.\n', 'launching');
         }
         await upsertSession(config.sessionFile, {
           ...updated,
@@ -445,8 +449,8 @@ export function createBridgeService({ config, provider, auth, runState }) {
     })();
   }
 
-  async function startIntentBridgeLaunch(clientId, imageSettings) {
-    const session = makeIntentBridgeSession(clientId);
+  async function startIntentBridgeLaunch(clientId, imageSettings, user = null) {
+    const session = makeIntentBridgeSession(clientId, user);
     const now = new Date().toISOString();
     const stored = await upsertSession(config.sessionFile, {
       ...session,
@@ -477,9 +481,8 @@ export function createBridgeService({ config, provider, auth, runState }) {
         });
         appendRunOutput(session.name, `[system] On-demand sandbox ready: ${updated.name}.\n`, 'launching');
         await waitForBridge(updated);
-        if (piAuthText) {
-          await pushBridgeAuth(updated, piAuthText);
-          appendRunOutput(session.name, '[system] Loaded local main agent auth into the on-demand bridge.\n', 'launching');
+        if (await pushBridgeAuth(updated, piAuthText)) {
+          appendRunOutput(session.name, '[system] Loaded Pi auth/profile into the on-demand bridge.\n', 'launching');
         }
 
         const current = (await getStoredSession(config.sessionFile, session.name)) || updated;
@@ -509,7 +512,7 @@ export function createBridgeService({ config, provider, auth, runState }) {
 
     const imageSettings = await readSavedSettings(config.settingsFile);
     const sessions = await listStoredSessions(config.sessionFile);
-    const ready = sessions.filter((session) => session.warmBridge && !session.bridgeClaimed && session.status === 'ready').length;
+    const ready = sessions.filter((session) => session.warmBridge && !session.ownerUserId && !session.bridgeClaimed && session.status === 'ready').length;
     const needed = Math.max(0, config.warmBridgePoolSize - ready - warmLaunches.size);
 
     for (let index = 0; index < needed; index += 1) {
@@ -517,7 +520,7 @@ export function createBridgeService({ config, provider, auth, runState }) {
     }
   }
 
-  async function claimReadyBridgeSession(reusable, normalized, submittedAtMs) {
+  async function claimReadyBridgeSession(reusable, normalized, submittedAtMs, user = null) {
     const claimed = await upsertSession(config.sessionFile, {
       ...reusable,
       ...activeRunResetPatch(),
@@ -530,6 +533,7 @@ export function createBridgeService({ config, provider, auth, runState }) {
       bridgeClaimed: true,
       warmClaimed: Boolean(reusable.warmBridge),
       bridgeOwnerId: reusable.bridgeOwnerId || normalized.clientId || null,
+      ...(user?.id ? { ownerUserId: user.id } : {}),
       firstLlmLatencyMs: null,
       status: 'launching',
       runStatus: 'launching',
@@ -538,6 +542,7 @@ export function createBridgeService({ config, provider, auth, runState }) {
 
     resetRunState(claimed.name, 'launching');
     appendRunOutput(claimed.name, '[system] Using a prepared idle bridge sandbox.\n', 'launching');
+    await pushBridgeAuth(claimed, await readLocalPiAuth());
     await startBridgeRun(claimed);
     const running = await upsertSession(config.sessionFile, {
       ...claimed,
@@ -552,7 +557,7 @@ export function createBridgeService({ config, provider, auth, runState }) {
     return running;
   }
 
-  async function claimLaunchingIntentBridgeSession(reusable, normalized, submittedAtMs) {
+  async function claimLaunchingIntentBridgeSession(reusable, normalized, submittedAtMs, user = null) {
     const claimed = await upsertSession(config.sessionFile, {
       ...reusable,
       ...activeRunResetPatch(),
@@ -563,6 +568,7 @@ export function createBridgeService({ config, provider, auth, runState }) {
       images: normalized.images || [],
       bridgeRunId: randomUUID(),
       bridgeClaimed: true,
+      ...(user?.id ? { ownerUserId: user.id } : {}),
       firstLlmLatencyMs: null,
       status: 'launching',
       runStatus: 'launching',
@@ -574,43 +580,43 @@ export function createBridgeService({ config, provider, auth, runState }) {
     return claimed;
   }
 
-  async function claimReusableBridgeSession(body) {
+  async function claimReusableBridgeSession(body, user = null) {
     const normalized = normalizeChatRequest(body, config);
-    const sessions = await listStoredSessions(config.sessionFile);
+    const sessions = (await listStoredSessions(config.sessionFile)).filter((session) => isUserOwnedBridge(session, user));
     const submittedAtMs = normalizeSubmittedAtMs(body.submittedAtMs);
     const ownedReady = normalized.clientId
-      ? sessions.find((session) => isReusableIntentBridge(session, normalized.clientId))
+      ? sessions.find((session) => isReusableIntentBridge(session, normalized.clientId, user))
       : null;
 
     if (ownedReady) {
-      return claimReadyBridgeSession(ownedReady, normalized, submittedAtMs);
+      return claimReadyBridgeSession(ownedReady, normalized, submittedAtMs, user);
     }
 
     const launching = normalized.clientId
-      ? sessions.find((session) => isLaunchingIntentBridge(session, normalized.clientId))
+      ? sessions.find((session) => isLaunchingIntentBridge(session, normalized.clientId, user))
       : null;
 
     if (launching) {
-      return claimLaunchingIntentBridgeSession(launching, normalized, submittedAtMs);
+      return claimLaunchingIntentBridgeSession(launching, normalized, submittedAtMs, user);
     }
 
-    const unownedReady = sessions.find((session) => isIdleReusableBridge(session) && !session.bridgeOwnerId);
-    const reusable = unownedReady || sessions.find(isIdleReusableBridge);
+    const unownedReady = sessions.find((session) => isIdleReusableBridge(session) && !session.bridgeOwnerId && !session.ownerUserId);
+    const reusable = unownedReady || sessions.find((session) => isIdleReusableBridge(session) && isUserOwnedBridge(session, user));
 
     if (reusable) {
-      return claimReadyBridgeSession(reusable, normalized, submittedAtMs);
+      return claimReadyBridgeSession(reusable, normalized, submittedAtMs, user);
     }
 
     void ensureWarmBridgePool();
     return null;
   }
 
-  async function prepareIntentBridgeSession(body = {}) {
+  async function prepareIntentBridgeSession(body = {}, user = null) {
     const clientId = normalizeBridgeClientId(body.clientId);
     const sessions = await listStoredSessions(config.sessionFile);
     const existing = sessions.find((session) => {
-      if (!session?.intentBridge || !isClientOwnedBridge(session, clientId) || session.runStatus === 'failed') return false;
-      if (isReusableIntentBridge(session, clientId) || isLaunchingIntentBridge(session, clientId)) return true;
+      if (!session?.intentBridge || !isClientOwnedBridge(session, clientId, user) || session.runStatus === 'failed') return false;
+      if (isReusableIntentBridge(session, clientId, user) || isLaunchingIntentBridge(session, clientId, user)) return true;
       return session.bridgeClaimed && (session.status === 'launching' || session.status === 'running');
     });
 
@@ -619,7 +625,7 @@ export function createBridgeService({ config, provider, auth, runState }) {
     }
 
     const imageSettings = await readSavedSettings(config.settingsFile);
-    const session = await startIntentBridgeLaunch(clientId, imageSettings);
+    const session = await startIntentBridgeLaunch(clientId, imageSettings, user);
     return { clientId, session };
   }
 
@@ -670,9 +676,8 @@ export function createBridgeService({ config, provider, auth, runState }) {
         });
         appendRunOutput(prepared.name, `[system] Main agent sandbox ready: ${updated.name}.\n`, 'launching');
         await waitForBridge(updated);
-        if (piAuthText) {
-          await pushBridgeAuth(updated, piAuthText);
-          appendRunOutput(prepared.name, '[system] Loaded local main agent auth into the main agent bridge.\n', 'launching');
+        if (await pushBridgeAuth(updated, piAuthText)) {
+          appendRunOutput(prepared.name, '[system] Loaded Pi auth/profile into the main agent bridge.\n', 'launching');
         }
 
         const current = (await getStoredSession(config.sessionFile, prepared.name)) || updated;
@@ -715,9 +720,7 @@ export function createBridgeService({ config, provider, auth, runState }) {
     });
 
     await waitForBridge(updated);
-    if (piAuthText) {
-      await pushBridgeAuth(updated, piAuthText);
-    }
+    await pushBridgeAuth(updated, piAuthText);
     return updated;
   }
 

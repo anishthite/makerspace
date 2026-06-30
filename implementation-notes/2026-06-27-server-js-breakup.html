@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — server.js breakup</title>
+<meta name="task" content="Split the large server.js file into focused server modules without behavior changes.">
+<meta name="date-started" content="2026-06-27">
+<meta name="date-updated" content="2026-06-27">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="makerspace, server, refactor, routes, bridge, sse">
+<meta name="related" content="2026-06-26-server-resource-plan.html,2026-06-25-bridge-workflow-continuation.html,2026-06-25-local-thread-restart.html,2026-06-25-tracked-agent-changes.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code { font-family: ui-monospace, Menlo, monospace; background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  ul { margin: .3rem 0 .8rem 1.2rem; padding: 0; }
+  li { margin: .15rem 0; }
+  .blast-med { color: #b85c00; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>server.js breakup</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-27 · status <b>shipped</b> · blast <span class="blast-med">medium</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Split <code>src/server.js</code> into focused modules while preserving every route and runtime path.</div>
+  <b>Source</b><div>User request plus workflows <code>run-mqwi8qwv-1</code>, <code>run-mqwivvfx-2</code>, <code>run-mqwj0x97-3</code>.</div>
+  <b>Surface</b><div><code>src/server.js</code>, new <code>src/server/*.js</code>, <code>src/thread-title.js</code>, route/runtime tests.</div>
+  <b>API</b><div>No endpoint, payload, auth, or SSE contract change.</div>
+  <b>Runtime</b><div>Bridge, local, host-dispatch, GitHub auth, Codex auth, and static serving must stay identical.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>implementation-notes/2026-06-27-server-js-breakup.html</code></td><td>new</td><td>Record extraction seams and checks.</td></tr>
+  <tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Add this refactor entry.</td></tr>
+  <tr><td><code>src/server.js</code></td><td>touch</td><td>Become boot-only after module extraction.</td></tr>
+  <tr><td><code>src/server/http.js</code></td><td>new</td><td>Hold response, JSON-body, origin, static-file, and API-token helpers.</td></tr>
+  <tr><td><code>src/server/auth.js</code></td><td>new</td><td>Hold browser-session, GitHub auth, Codex auth, and Pi defaults helpers.</td></tr>
+  <tr><td><code>src/server/run-state.js</code></td><td>new</td><td>Hold active-run state, tracked changes, decorations, polish queue, and SSE subscribers.</td></tr>
+  <tr><td><code>src/server/bridge.js</code></td><td>new</td><td>Hold bridge HTTP, warm/intent bridge, and cloud bridge launch flows.</td></tr>
+  <tr><td><code>src/server/threads.js</code></td><td>new</td><td>Hold thread list/create/prompt/archive/diff and local thread flows.</td></tr>
+  <tr><td><code>src/server/sessions.js</code></td><td>new</td><td>Hold legacy chat/session and host-dispatch launch flows.</td></tr>
+  <tr><td><code>src/server/routes.js</code></td><td>new</td><td>Hold the HTTP route dispatcher.</td></tr>
+  <tr><td><code>src/server/utils.js</code></td><td>new</td><td>Hold tiny shared timestamp/client-id/string helpers.</td></tr>
+  <tr><td><code>src/thread-title.js</code></td><td>touch</td><td>Share the title and answer-summary short-text generation path.</td></tr>
+  <tr><td><code>test/home-runtime-summary.test.js</code></td><td>touch</td><td>Point server-runtime structure checks at the extracted files.</td></tr>
+  <tr><td><code>test/history.test.js</code></td><td>touch</td><td>Accept the current history asset cache version.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Extract by existing function clusters. Moving stable seams lowers behavior risk.</td></tr>
+  <tr><td>D-002</td><td>Keep Node <code>http.createServer</code>. A router dependency adds migration risk for no user-visible gain.</td></tr>
+  <tr><td>D-003</td><td>Use explicit dependency objects between modules. This avoids singleton drift and keeps tests able to stub config/provider later.</td></tr>
+  <tr><td>D-004</td><td>Defer broad logic rewrites. The first pass is movement plus tiny dedupe only where repetition blocks clean extraction.</td></tr>
+  <tr><td>D-005</td><td>Keep route-only imports in <code>routes.js</code>. The dispatcher owns settings/report/profile/recents endpoints without creating extra service files.</td></tr>
+  <tr><td>D-006</td><td>Add <code>resetRunState</code> in <code>run-state.js</code>. One helper removes repeated reset literals without changing launch flows.</td></tr>
+  <tr><td>D-007</td><td>Apply safe review cleanups only. Duplicate same-origin guards, repeated viewer/trusted lookups, dead auth timestamps, renamed logout helper, and bridge-session literals are removed.</td></tr>
+  <tr><td>D-008</td><td>Add <code>generateShortText</code> in <code>thread-title.js</code>. Title and final-summary generation use the same SDK/auth/completion path.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td>Six server modules over one module per route. Route-level files would multiply imports and hide shared lifecycle state.</td></tr>
+  <tr><td>T-002</td><td>Service functions over classes. There is one runtime instance, so classes would be ceremony.</td></tr>
+  <tr><td>T-003</td><td>Focused regression tests over new snapshot tests. Existing route tests already exercise the public contract.</td></tr>
+  <tr><td>T-004</td><td>Small bridge helpers over one generic launcher. Failure persistence and claimed-run start are shared while each launch flow keeps its status text.</td></tr>
+  <tr><td>T-005</td><td>Keep <code>/api/performance</code> alias. Possible external callers beat deleting one harmless route condition.</td></tr>
+  <tr><td>T-006</td><td>One private short-text helper over two copied exported flows. The public title/summary functions keep their signatures.</td></tr>
+</table>
+
+<h2>Assumptions</h2>
+<ul>
+  <li>A-001 · Existing tests cover the critical public behavior; manual smoke is only needed if full tests expose a gap.</li>
+  <li>A-002 · Current dirty workspace changes are intentional user work; this task avoids reverting unrelated files.</li>
+</ul>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Revert the extraction commit to restore the single-file server without data migration.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li><code>src/server.js</code> only wires config/provider/runtime modules and starts listening.</li>
+  <li>No route path, status code, payload field, auth rule, or SSE event shape changes.</li>
+  <li>No new dependency, framework, or speculative abstraction.</li>
+  <li>Focused route tests and <code>npm test</code> pass.</li>
+</ul>
+</body>
+</html>

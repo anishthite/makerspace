@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Final answer summary</title>
+<meta name="task" content="Summarize finished agent answers before showing them on home rows.">
+<meta name="date-started" content="2026-06-25">
+<meta name="date-updated" content="2026-06-25">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="makerspace,ui,home,agents,summary,llm">
+<meta name="related" content="2026-06-25-finished-answer-preview.html,2026-06-25-tool-call-action-line.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Final answer summary</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-25 · status <b class="status-shipped">shipped</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Show a one-line LLM summary on recently finished home agents instead of raw final-answer excerpts.</div><b>Source</b><div>Generate after the assistant message is persisted.</div><b>Surface</b><div><code>/workspace.html</code> home agent rows.</div><b>Schema</b><div>Add optional <code>finalAnswerSummary*</code> session fields.</div><b>Open Qs</b><div>0; use the existing light title model unless <code>THREAD_SUMMARY_MODEL</code> overrides it.</div></div>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>src/thread-title.js</code></td><td>touch</td><td>Add final-answer summary prompt, cleaner, and minimal completion helper.</td></tr><tr><td><code>src/server.js</code></td><td>touch</td><td>Schedule summary generation after terminal assistant output is stored.</td></tr><tr><td><code>src/config.js</code></td><td>touch</td><td>Add optional summary model and timeout env knobs.</td></tr><tr><td><code>public/app.js</code></td><td>touch</td><td>Render stored summaries and stop reading raw assistant HTML for home subtitles.</td></tr><tr><td><code>public/thread.js</code></td><td>touch</td><td>Refresh thread state from summary events without adding timeline noise.</td></tr><tr><td><code>public/workspace.html</code></td><td>touch</td><td>Bust the app module cache.</td></tr><tr><td><code>test/</code></td><td>touch</td><td>Pin summary helpers, home-row wiring, and summary-event handling.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Generate server-side after terminal output persists. The browser should not call model providers.</td></tr><tr><td>D-002</td><td>Use <code>THREAD_SUMMARY_MODEL</code> with fallback to <code>THREAD_TITLE_MODEL</code>. Existing light-model config stays the default path.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>No raw fallback over old excerpt fallback. Avoids flashing <code>&lt;html&gt;</code> on finished rows.</td></tr></table>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>node --check src/thread-title.js &amp;&amp; node --check src/server.js &amp;&amp; node --check public/app.js &amp;&amp; node --check public/thread.js &amp;&amp; node --test test/thread-title.test.js test/home-runtime-summary.test.js test/thread-trace-tray.test.js</code></td><td>Passed 23/23.</td></tr><tr><td><code>node --test test/thread-trace-tray.test.js test/thread-archive-control.test.js</code></td><td>Passed 9/9.</td></tr><tr><td><code>npm test</code></td><td>Passed 97/97.</td></tr><tr><td><code>npm run build</code></td><td>Passed.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Revert the summary fields and UI reads; existing stored assistant messages are unchanged.</p>
+<h2>Definition of done</h2>
+<ul><li>Finished rows render <code>summary:</code> only from <code>finalAnswerSummary</code>.</li><li>Completed runs schedule a minimal summary completion.</li><li>New runs clear stale summary fields.</li><li>Focused tests and build pass.</li></ul>
+</body>
+</html>

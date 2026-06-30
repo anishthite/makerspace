@@ -1,13 +1,15 @@
-import { randomUUID } from 'node:crypto';
+import { createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+import { createAuthStore, hashAuthSessionId } from '../auth-store.js';
 import {
   buildGitHubAuthorizeUrl,
   buildGitHubCloneAuthHeader,
   exchangeGitHubCode,
+  fetchGitHubRepo,
   fetchGitHubUser,
   githubAuthConfigured,
   listGitHubRepos,
@@ -20,9 +22,101 @@ export function createAuthService({ config, http }) {
   const BROWSER_SESSION_HEADER = 'x-makerspace-session';
   const authLogins = new Map();
   const githubLogins = new Map();
+  const authStore = createAuthStore(config);
   let browserSessions = new Map();
   let sdkPromise = null;
   let piAiPromise = null;
+
+  function authRequired() {
+    return Boolean(config.authRequired);
+  }
+
+  function cookieName() {
+    return config.authCookieName || 'makerspace_auth';
+  }
+
+  function authSecret() {
+    return String(
+      config.authSecret ||
+      process.env.MAKERSPACE_AUTH_SECRET ||
+      process.env.AUTH_SECRET ||
+      config.controlApiToken ||
+      config.githubClientSecret ||
+      'makerspace-dev-auth-secret',
+    );
+  }
+
+  function signValue(value) {
+    return createHmac('sha256', authSecret()).update(String(value || '')).digest('base64url');
+  }
+
+  function signedValue(value) {
+    return `${value}.${signValue(value)}`;
+  }
+
+  function verifySignedValue(value) {
+    const text = String(value || '');
+    const dot = text.lastIndexOf('.');
+    if (dot <= 0) return '';
+    const raw = text.slice(0, dot);
+    const signature = text.slice(dot + 1);
+    const expected = signValue(raw);
+    const left = Buffer.from(signature);
+    const right = Buffer.from(expected);
+    if (left.length !== right.length || !timingSafeEqual(left, right)) return '';
+    return raw;
+  }
+
+  function parseCookies(request) {
+    const header = String(request.headers.cookie || '');
+    const cookies = new Map();
+    for (const part of header.split(';')) {
+      const eq = part.indexOf('=');
+      if (eq < 0) continue;
+      const name = part.slice(0, eq).trim();
+      const value = part.slice(eq + 1).trim();
+      if (name) cookies.set(name, decodeURIComponent(value));
+    }
+    return cookies;
+  }
+
+  function authCookieToken(request) {
+    return verifySignedValue(parseCookies(request).get(cookieName()) || '');
+  }
+
+  function cookieSecureFlag(request) {
+    const proto = String(request.headers['x-forwarded-proto'] || '').split(',')[0].trim().toLowerCase();
+    const host = String(request.headers.host || '').toLowerCase();
+    if (host.startsWith('localhost:') || host.startsWith('127.0.0.1:')) return false;
+    return proto === 'https' || Boolean(request.headers['x-forwarded-host']);
+  }
+
+  function cookieSameSite() {
+    return String(config.authCookieSameSite || (config.allowedOrigin ? 'None' : 'Lax')).trim() || 'Lax';
+  }
+
+  function authCookieHeader(request, token) {
+    const maxAge = Math.max(1, Number(config.authSessionDays || 30)) * 24 * 60 * 60;
+    return [
+      `${cookieName()}=${encodeURIComponent(signedValue(token))}`,
+      'Path=/',
+      'HttpOnly',
+      `SameSite=${cookieSameSite()}`,
+      `Max-Age=${maxAge}`,
+      ...(cookieSecureFlag(request) || cookieSameSite().toLowerCase() === 'none' ? ['Secure'] : []),
+    ].join('; ');
+  }
+
+  function clearAuthCookieHeader(request) {
+    return [
+      `${cookieName()}=`,
+      'Path=/',
+      'HttpOnly',
+      `SameSite=${cookieSameSite()}`,
+      'Max-Age=0',
+      ...(cookieSecureFlag(request) || cookieSameSite().toLowerCase() === 'none' ? ['Secure'] : []),
+    ].join('; ');
+  }
 
   function githubCallbackUrl(request) {
     return `${originFor(request)}/api/auth/github/callback`;
@@ -39,7 +133,7 @@ export function createAuthService({ config, http }) {
       }
 
       const url = new URL(text);
-      return url.origin === originFor(request) ? url.toString() : fallback;
+      return url.origin === originFor(request) || config.allowedOrigin && url.origin === config.allowedOrigin ? url.toString() : fallback;
     } catch {
       return fallback;
     }
@@ -73,7 +167,7 @@ export function createAuthService({ config, http }) {
   }
 
   function requireTrustedBrowserRequest(request, response) {
-    if (config.controlApiToken) return false;
+    if (config.controlApiToken || authRequired()) return false;
 
     const fetchSite = String(request.headers['sec-fetch-site'] || '').trim();
     if (fetchSite === 'same-origin') return false;
@@ -118,11 +212,56 @@ export function createAuthService({ config, http }) {
   }
 
   function requireApiToken(request, response, url) {
-    if (!config.controlApiToken || !url.pathname.startsWith('/api/')) return false;
+    if (!config.controlApiToken || authRequired() || !url.pathname.startsWith('/api/')) return false;
     if (url.pathname === '/api/auth/github/callback') return false;
     if (requestToken(request, url) === config.controlApiToken) return false;
     sendJson(response, 401, { error: 'Unauthorized' });
     return true;
+  }
+
+  function hasTrustedControlToken(request, url) {
+    return Boolean(config.controlApiToken && requestToken(request, url) === config.controlApiToken);
+  }
+
+  async function currentUser(request) {
+    const token = authCookieToken(request);
+    if (!token) return null;
+    const session = await authStore.getAuthSession(hashAuthSessionId(token));
+    if (!session?.userId) return null;
+    const user = await authStore.getUser(session.userId);
+    return user ? { ...user, authSessionHash: session.idHash } : null;
+  }
+
+  function publicUser(user) {
+    if (!user) return null;
+    return {
+      id: user.id,
+      login: user.login,
+      name: user.name || null,
+      avatarUrl: user.avatarUrl || null,
+    };
+  }
+
+  function publicMe(user, trusted = false) {
+    return {
+      authenticated: Boolean(user),
+      authRequired: authRequired(),
+      admin: Boolean(trusted),
+      user: publicUser(user),
+      githubConfigured: githubAuthConfigured(config),
+    };
+  }
+
+  async function requireUser(request, response, url) {
+    const trusted = hasTrustedControlToken(request, url);
+    const user = await currentUser(request);
+    if (trusted || user || !authRequired()) return { trusted, user, authRequired: authRequired() };
+    sendJson(response, 401, {
+      error: githubAuthConfigured(config) ? 'Sign in with GitHub to continue.' : 'Sign-in is required but GitHub OAuth is not configured.',
+      authRequired: true,
+      githubConfigured: githubAuthConfigured(config),
+    });
+    return null;
   }
 
   async function loadPiSdk() {
@@ -144,6 +283,7 @@ export function createAuthService({ config, http }) {
   }
 
   async function readPiSettingsFile() {
+    if (authRequired()) return {};
     try {
       const settingsPath = path.join(homedir(), '.pi', 'agent', 'settings.json');
       return JSON.parse(await readFile(settingsPath, 'utf8'));
@@ -196,12 +336,14 @@ export function createAuthService({ config, http }) {
   }
 
   async function codexAuthStatus() {
+    if (authRequired()) return { configured: false, source: '', disabled: 'multi-user' };
     const { AuthStorage } = await loadPiSdk();
     const authStorage = AuthStorage.create();
     return authStorage.getAuthStatus('openai-codex');
   }
 
   async function startCodexDeviceLogin() {
+    if (authRequired()) throw clientError('Codex device login is disabled in multi-user mode.', 403);
     const { AuthStorage } = await loadPiSdk();
     const authStorage = AuthStorage.create();
     const id = randomUUID();
@@ -262,7 +404,21 @@ export function createAuthService({ config, http }) {
     };
   }
 
-  function publicGitHubAuth(session) {
+  async function githubTokenForUser(user) {
+    if (!user?.id) return '';
+    return (await authStore.getOAuthToken(user.id, 'github'))?.accessToken || '';
+  }
+
+  async function publicGitHubAuth(sessionOrUser) {
+    const maybeUser = sessionOrUser?.id ? sessionOrUser : null;
+    if (maybeUser) {
+      return {
+        configured: githubAuthConfigured(config),
+        connected: Boolean(await githubTokenForUser(maybeUser)),
+        user: publicUser(maybeUser),
+      };
+    }
+    const session = sessionOrUser;
     return {
       configured: githubAuthConfigured(config),
       connected: Boolean(session?.githubToken),
@@ -270,28 +426,37 @@ export function createAuthService({ config, http }) {
     };
   }
 
-  async function githubRepoPayload(sessionId, session) {
-    if (!session?.githubToken) {
-      throw clientError('GitHub is not connected in this browser.', 401);
+  async function githubRepoPayload(sessionId, session, user = null) {
+    const token = user ? await githubTokenForUser(user) : session?.githubToken;
+    if (!token) {
+      throw clientError(user ? 'Sign in with GitHub again.' : 'GitHub is not connected in this browser.', 401);
     }
 
-    const repos = await listGitHubRepos(session.githubToken);
-    writeBrowserSession(sessionId, { githubRepos: repos });
+    const repos = await listGitHubRepos(token);
+    if (user?.id) await authStore.writeUserKv(user.id, 'githubRepos', repos);
+    else writeBrowserSession(sessionId, { githubRepos: repos });
 
     return {
-      ...publicGitHubAuth(session),
+      ...(await publicGitHubAuth(user || session)),
       repos,
     };
   }
 
-  async function enrichGitHubRepoSession(session, browserSession) {
+  async function enrichGitHubRepoSession(session, browserSession, user = null) {
     if (session.repoSource !== 'github') return session;
 
-    if (!browserSession?.githubToken) {
+    const token = user ? await githubTokenForUser(user) : browserSession?.githubToken;
+    if (!token) {
       throw clientError('Reconnect GitHub and pick the repo again.', 401);
     }
 
-    const repo = (browserSession.githubRepos || []).find((entry) => entry.cloneUrl === session.repoUrl);
+    let repo = null;
+    if (user?.id) {
+      repo = await fetchGitHubRepo(token, session.repoUrl);
+    } else {
+      repo = (browserSession.githubRepos || []).find((entry) => entry.cloneUrl === session.repoUrl);
+    }
+
     if (!repo) {
       throw clientError('Pick the GitHub repo again from the repo list before creating the main agent.', 400);
     }
@@ -301,25 +466,25 @@ export function createAuthService({ config, http }) {
       branch: session.branch || repo.defaultBranch || '',
       repoProvider: 'github',
       repoVisibility: repo.private ? 'private' : 'public',
-      repoAuthHeader: repo.private ? buildGitHubCloneAuthHeader(browserSession.githubToken) : '',
+      repoAuthHeader: repo.private ? buildGitHubCloneAuthHeader(token) : '',
     };
   }
 
-  function hasTrustedControlToken(request, url) {
-    return Boolean(config.controlApiToken && requestToken(request, url) === config.controlApiToken);
+  function canAccessSession(session, viewerSessionId = '', trusted = false, user = null) {
+    if (trusted) return true;
+    if (session?.ownerUserId) return Boolean(user?.id && session.ownerUserId === user.id);
+    if (authRequired()) return false;
+    return !session?.githubOwnerSessionId || (viewerSessionId && session.githubOwnerSessionId === viewerSessionId);
   }
 
-  function canAccessSession(session, viewerSessionId, trusted = false) {
-    return trusted || !session?.githubOwnerSessionId || (viewerSessionId && session.githubOwnerSessionId === viewerSessionId);
-  }
-
-  function requireSessionAccess(request, response, session, url) {
-    if (canAccessSession(session, browserSessionId(request), hasTrustedControlToken(request, url))) return false;
-    sendJson(response, 403, { error: `${session.name} belongs to a different browser session.` });
+  function requireSessionAccess(request, response, session, url, user = null) {
+    if (canAccessSession(session, browserSessionId(request), hasTrustedControlToken(request, url), user)) return false;
+    sendJson(response, 403, { error: `${session.name} belongs to a different user.` });
     return true;
   }
 
   async function readLocalPiAuth() {
+    if (authRequired()) return null;
     try {
       const text = await readFile(path.join(homedir(), '.pi', 'agent', 'auth.json'), 'utf8');
       return text.trim() ? text : null;
@@ -330,6 +495,7 @@ export function createAuthService({ config, http }) {
   }
 
   async function readLocalPiSettings() {
+    if (authRequired()) return null;
     try {
       const text = await readFile(path.join(homedir(), '.pi', 'agent', 'settings.json'), 'utf8');
       return text.trim() ? text : null;
@@ -366,17 +532,37 @@ export function createAuthService({ config, http }) {
 
     try {
       const token = await exchangeGitHubCode(config, code, githubCallbackUrl(request));
-      const user = await fetchGitHubUser(token);
-      writeBrowserSession(login.sessionId, { githubToken: token, githubUser: user, githubRepos: [] });
+      const githubUser = await fetchGitHubUser(token);
+      const user = await authStore.upsertUser({
+        id: `github-${githubUser.id}`,
+        githubId: githubUser.id,
+        login: githubUser.login,
+        name: githubUser.name,
+        avatarUrl: githubUser.avatarUrl,
+      });
+      await authStore.upsertOAuthToken({ userId: user.id, provider: 'github', accessToken: token, scopes: ['repo', 'read:user'] });
+      writeBrowserSession(login.sessionId, { githubToken: token, githubUser, githubRepos: [] });
+
+      const sessionToken = randomBytes(32).toString('base64url');
+      const expiresAt = new Date(Date.now() + Math.max(1, Number(config.authSessionDays || 30)) * 24 * 60 * 60 * 1000).toISOString();
+      await authStore.createAuthSession({ idHash: hashAuthSessionId(sessionToken), userId: user.id, expiresAt });
+
       const redirectTo = new URL(login.returnTo);
       redirectTo.searchParams.set('github', 'connected');
-      return { location: redirectTo.toString() };
+      return { location: redirectTo.toString(), headers: { 'set-cookie': authCookieHeader(request, sessionToken) } };
     } catch (error) {
       const redirectTo = new URL(login.returnTo);
       redirectTo.searchParams.set('github', 'error');
       redirectTo.searchParams.set('message', error.message);
       return { location: redirectTo.toString() };
     }
+  }
+
+  async function logout(request, sessionId = '') {
+    const token = authCookieToken(request);
+    if (token) await authStore.deleteAuthSession(hashAuthSessionId(token));
+    if (sessionId) clearBrowserSession(sessionId);
+    return { body: publicMe(null, false), headers: { 'set-cookie': clearAuthCookieHeader(request) } };
   }
 
   function getAuthLogin(id) {
@@ -405,9 +591,15 @@ export function createAuthService({ config, http }) {
     clearBrowserSession,
     requireApiToken,
     hasTrustedControlToken,
+    authRequired,
+    currentUser,
+    publicMe,
+    requireUser,
+    logout,
     canAccessSession,
     requireSessionAccess,
     readLocalPiAuth,
     readLocalPiSettings,
+    authStore,
   };
 }

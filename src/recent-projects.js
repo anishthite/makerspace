@@ -57,6 +57,20 @@ function projectKey(project) {
   return `${project.kind}:${value}`;
 }
 
+function safeOwnerSegment(ownerUserId) {
+  return String(ownerUserId || '').replace(/[^A-Za-z0-9._-]/g, '-') || '';
+}
+
+function projectsFile(filePath, ownerUserId = '') {
+  const owner = safeOwnerSegment(ownerUserId);
+  return owner ? `${filePath}.${owner}.json` : filePath;
+}
+
+function projectsKey(ownerUserId = '') {
+  const owner = safeOwnerSegment(ownerUserId);
+  return owner ? `recent-projects:${owner}` : 'recent-projects';
+}
+
 async function writeProjects(filePath, projects) {
   const tempPath = `${filePath}.${process.pid}.${randomUUID()}.tmp`;
   await writeFile(tempPath, `${JSON.stringify(projects, null, 2)}\n`, 'utf8');
@@ -77,31 +91,32 @@ async function ensureProjectsFile(filePath) {
   }
 }
 
-export async function listRecentProjects(filePath) {
+export async function listRecentProjects(filePath, ownerUserId = '') {
   if (d1StateRequested()) {
-    const rows = await readD1Kv('recent-projects', []);
+    const rows = await readD1Kv(projectsKey(ownerUserId), []);
     if (!Array.isArray(rows)) throw new Error('Recent projects store must be a JSON array.');
     return rows.map(normalizeProject).filter(Boolean).slice(0, MAX_RECENT_PROJECTS);
   }
 
-  await ensureProjectsFile(filePath);
-  const rows = JSON.parse((await readFile(filePath, 'utf8')).trim() || '[]');
+  const ownedFilePath = projectsFile(filePath, ownerUserId);
+  await ensureProjectsFile(ownedFilePath);
+  const rows = JSON.parse((await readFile(ownedFilePath, 'utf8')).trim() || '[]');
   if (!Array.isArray(rows)) throw new Error('Recent projects store must be a JSON array.');
   return rows.map(normalizeProject).filter(Boolean).slice(0, MAX_RECENT_PROJECTS);
 }
 
-export async function saveRecentProject(filePath, input) {
+export async function saveRecentProject(filePath, input, ownerUserId = '') {
   const project = normalizeProject(input);
   if (!project) throw new Error('Recent project value is required.');
 
   const operation = async () => {
-    const projects = await listRecentProjects(filePath);
+    const projects = await listRecentProjects(filePath, ownerUserId);
     const key = projectKey(project);
     const next = [project, ...projects.filter((entry) => projectKey(entry) !== key)].slice(0, MAX_RECENT_PROJECTS);
     if (d1StateRequested()) {
-      await writeD1Kv('recent-projects', next);
+      await writeD1Kv(projectsKey(ownerUserId), next);
     } else {
-      await writeProjects(filePath, next);
+      await writeProjects(projectsFile(filePath, ownerUserId), next);
     }
     return next;
   };

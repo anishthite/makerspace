@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — First-party log events</title>
+<meta name="task" content="Show system logs as first-party timeline events instead of raw transcript/log blobs.">
+<meta name="date-started" content="2026-06-24">
+<meta name="date-updated" content="2026-06-24">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="makerspace,ui,thread,logs,events">
+<meta name="related" content="2026-06-23-single-flow-thread-ui.html,2026-06-16-launch-log-timestamps.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-med{color:#b85c00}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>First-party log events</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-24 · status <b class="status-shipped">shipped</b> · blast <span class="blast-med">medium</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Render system logs as timeline events with titles, timestamps, and messages.</div>
+  <b>Source</b><div><code>[system]</code> output chunks and legacy timestamped system dumps.</div>
+  <b>Surface</b><div><code>/api/sessions/:name/output</code>, <code>/api/sessions/:name/stream</code>, <code>/thread.html</code>.</div>
+  <b>Schema</b><div>Add event <code>{ type: "log", source: "system", message, chunk }</code>.</div>
+  <b>Mobile</b><div>Uses existing timeline cards.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>UI layout</h2>
+<ol>
+  <li><b>System log</b>: one timeline card per system line, titled <code>System</code>.</li>
+  <li><b>Assistant text</b>: stream into the assistant message card unchanged.</li>
+  <li><b>Legacy dump</b>: parse timestamped system lines into timeline cards and keep leftover lines in one log card.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>src/log-format.js</code></td><td>touch</td><td>Split output into assistant chunks and system log events.</td></tr>
+  <tr><td><code>src/server.js</code></td><td>touch</td><td>Record system output as <code>log</code> events while preserving <code>run.output</code>.</td></tr>
+  <tr><td><code>public/thread.js</code></td><td>touch</td><td>Render <code>log</code> events before generic chunk handling.</td></tr>
+  <tr><td><code>public/styles.css</code></td><td>touch</td><td>Give log cards first-party timeline styling.</td></tr>
+  <tr><td><code>test/log-format.test.js</code></td><td>touch</td><td>Assert system lines become log events and normal chunks stay chunks.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Promote <code>[system]</code> lines on the server. The UI no longer treats current system logs as assistant transcript text.</td></tr>
+  <tr><td>D-002</td><td>Keep <code>chunk</code> on log events. Existing output history remains reconstructable.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td><code>log</code> events over a separate log panel. One timeline keeps ordering obvious.</td></tr>
+</table>
+
+<h2>Verification</h2>
+<table>
+  <tr><th>Check</th><th>Result</th></tr>
+  <tr><td><code>node --check public/thread.js</code></td><td>Passed.</td></tr>
+  <tr><td><code>npm test</code></td><td>Passed 30/30.</td></tr>
+  <tr><td><code>npm run build</code></td><td>Passed.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Revert the five touched files to restore raw chunk rendering.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>New system output appears as <code>log</code> events.</li>
+  <li>Old timestamped dumps render as timeline events.</li>
+  <li><code>npm test</code> passes.</li>
+</ul>
+</body>
+</html>

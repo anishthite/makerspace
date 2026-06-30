@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — bridge workflow continuation</title>
+<meta name="task" content="Keep SDK-bridge Pi runs alive long enough for background Workflow completion messages to trigger their follow-up turn.">
+<meta name="date-started" content="2026-06-25">
+<meta name="date-updated" content="2026-06-25">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="makerspace,pi-sdk,bridge,workflow,streaming,continuation">
+<meta name="related" content="2026-06-16-pi-sdk-bridge.html,2026-06-24-workflow-agent-rail.html,2026-06-24-pi-toolcall-streaming.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 900px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code, pre { font-family: ui-monospace, Menlo, monospace; }
+  code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  pre { background: #f6f6f6; padding: .55rem .7rem; border-radius: 4px; overflow-x: auto; font-size: 12.5px; line-height: 1.4; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .blast-med { color: #b85c00; }
+</style>
+</head>
+<body>
+<h1>bridge workflow continuation</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-25 · status <b>shipped</b> · blast <span class="blast-med">medium</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Let background Workflow results appear in the thread and trigger their automatic follow-up turn.</div>
+  <b>Source</b><div>A Workflow run reports <code>Workflow started...</code> but the bridge closes the SDK session before the background completion calls <code>pi.sendMessage(..., triggerTurn: true)</code>.</div>
+  <b>Surface</b><div><code>src/setup-script.js</code>, <code>test/setup-script.test.js</code>, <code>implementation-notes/INDEX.html</code>.</div>
+  <b>Runtime</b><div>Generated VM bridge only; browser/server SSE envelope stays unchanged.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>Algorithm</h2>
+<ol>
+  <li>Detect background tools from <code>tool_execution_end</code> result details or the Workflow start text.</li>
+  <li>Publish visible custom messages from <code>message_end</code> when extensions emit displayable custom content.</li>
+  <li>After the initial prompt resolves, keep the SDK session subscribed until a post-background <code>agent_end</code> happens or a bounded idle timeout expires.</li>
+  <li>Publish bridge <code>completed</code> only after the continuation window closes.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>src/setup-script.js</code></td><td>touch</td><td>Delay bridge completion for background Workflow continuation and stream custom display messages.</td></tr>
+  <tr><td><code>test/setup-script.test.js</code></td><td>touch</td><td>Assert the generated bridge contains the continuation guard and custom-message publishing.</td></tr>
+  <tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Add this task to the notes index.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Patch the bridge lifecycle instead of the Workflow extension. The extension already emits a follow-up when kept alive.</td></tr>
+  <tr><td>D-002</td><td>Use a bounded wait. The bridge should not hold a thread forever if a background run stalls.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td><code>idle/agent events</code> over Workflow-manager imports. The generated bridge should not depend on one extension's private API.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Remove the continuation wait and custom-message publishing if long-lived bridge runs block normal follow-up prompts.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>The generated bridge can keep a run open for background Workflow completion.</li>
+  <li>The Workflow result custom message is visible in the thread stream.</li>
+  <li><code>npm test -- test/setup-script.test.js</code> passes.</li>
+  <li><code>npm test</code> passes.</li>
+</ul>
+</body>
+</html>

@@ -26,6 +26,26 @@ async function makeProfileFixture() {
   return { root, agentDir, agentsSkillsDir, piProfileFile };
 }
 
+test('readPiProfile defaults to Makerspace package profile instead of personal Pi dir', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'makerspace-package-profile-'));
+  const packageDir = path.join(root, 'packages', 'makerspace-pi-defaults');
+  const personalDir = path.join(root, 'personal-pi');
+  await mkdir(path.join(packageDir, 'context'), { recursive: true });
+  await mkdir(personalDir, { recursive: true });
+  await writeFile(path.join(packageDir, 'context', 'AGENTS.md'), '# Makerspace Pi\n');
+  await writeFile(path.join(personalDir, 'AGENTS.md'), '# Personal Pi\n');
+  const previous = process.env.PI_CODING_AGENT_DIR;
+  process.env.PI_CODING_AGENT_DIR = personalDir;
+  try {
+    const profile = await readPiProfile({ rootDir: root, piDefaultsPackageDir: packageDir, piProfileFile: path.join(root, 'profile.json') });
+    assert.equal(profile.agentsText, '# Makerspace Pi\n');
+    assert.equal(profile.agentsPath, path.join(packageDir, 'context', 'AGENTS.md'));
+  } finally {
+    if (previous === undefined) delete process.env.PI_CODING_AGENT_DIR;
+    else process.env.PI_CODING_AGENT_DIR = previous;
+  }
+});
+
 test('readPiProfile discovers current Pi resources', async () => {
   const fixture = await makeProfileFixture();
   const profile = await readPiProfile(fixture);

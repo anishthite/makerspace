@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Makerspace — Board Design System Layouts</title>
+  <style>
+    @import url('https://cdn.jsdelivr.net/npm/hack-font@3/build/web/hack.css');
+    :root {
+      --bg: #FAF8F3;
+      --paper: #FFFFFF;
+      --paper-2: #EFEAD9;
+      --ink: #241A12;
+      --ink-2: #4B3A2D;
+      --ink-3: #78635A;
+      --ink-4: #A89484;
+      --blue: #1F5E9C;
+      --blue-soft: #DDEBF6;
+      --teal: #0F766E;
+      --rule: rgba(31, 94, 156, .14);
+      --rule-2: rgba(31, 94, 156, .26);
+      --shadow: 0 2px 8px rgba(31, 94, 156, .08);
+      --sans: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --mono: Hack, "JetBrains Mono", "SF Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      --ease-out: cubic-bezier(.23, 1, .32, 1);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--bg); color: var(--ink); }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background-color: var(--bg);
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.14, 0 0 0 0 0.10, 0 0 0 0 0.07, 0 0 0 0.025 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+      font: 400 16px/1.55 var(--sans);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+    a { color: inherit; text-decoration: none; }
+    button, input, textarea { font: inherit; }
+    button { cursor: pointer; border: 0; }
+    button:active { transform: translateY(1px); }
+    input, textarea { outline: none; }
+
+    .page { max-width: 1400px; margin: 0 auto; padding: 32px 48px 96px; }
+    .hero { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 28px; align-items: end; margin-bottom: 18px; }
+    .eyebrow, .chip, .btn, .label, .count, .nav a, .token-card dt, .status, .kbd { font-family: var(--mono); }
+    .eyebrow { margin: 0 0 10px; color: var(--blue); font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: lowercase; }
+    h1, h2, h3, h4, p { margin-top: 0; }
+    h1 { max-width: 900px; margin-bottom: 12px; font-size: clamp(42px, 7vw, 84px); line-height: .9; letter-spacing: -.07em; }
+    h2 { margin-bottom: 10px; font-size: clamp(30px, 5vw, 56px); line-height: .92; letter-spacing: -.06em; }
+    h3 { margin-bottom: 10px; font-size: 20px; line-height: 1.05; letter-spacing: -.035em; }
+    p { color: var(--ink-2); }
+    .muted { color: var(--ink-3); }
+
+    .token-card, .artboard, .panel, .card, .field, .searchbox, .composer, .window, .node, .column, .mailbox > *, .pane, .timeline-main {
+      border: 1px solid var(--rule);
+      border-radius: 2px;
+      background: var(--paper);
+      box-shadow: var(--shadow);
+    }
+    .token-card { padding: 14px 16px; }
+    .token-card h3 { margin: 0 0 10px; font-size: 14px; font-family: var(--mono); letter-spacing: .08em; text-transform: lowercase; color: var(--blue); }
+    .token-card dl { display: grid; grid-template-columns: 84px 1fr; gap: 8px 12px; margin: 0; }
+    .token-card dt { color: var(--ink-3); font-size: 11px; text-transform: lowercase; }
+    .token-card dd { margin: 0; color: var(--ink-2); }
+    .swatches { display: inline-flex; gap: 6px; vertical-align: middle; }
+    .swatches i { width: 22px; height: 22px; border: 1px solid var(--rule-2); border-radius: 1px; background: var(--bg); }
+    .swatches i:nth-child(2) { background: var(--paper); }
+    .swatches i:nth-child(3) { background: var(--ink); }
+    .swatches i:nth-child(4) { background: var(--blue); }
+    .swatches i:nth-child(5) { background: var(--teal); }
+
+    .nav { position: sticky; top: 0; z-index: 20; display: flex; gap: 8px; overflow-x: auto; margin: 0 -48px 28px; padding: 10px 48px; border-block: 1px solid var(--rule); background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(10px); }
+    .nav a { flex: none; border: 1px solid var(--rule); border-radius: 2px; padding: 7px 10px; background: var(--paper); color: var(--ink-3); font-size: 11px; }
+    .nav a:hover { border-color: var(--blue); color: var(--blue); }
+
+    .concept { padding: 44px 0 18px; }
+    .concept-head { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px; align-items: end; margin-bottom: 14px; }
+    .concept-note { border-left: 1px solid var(--blue); padding-left: 14px; color: var(--ink-3); }
+    .artboard { min-height: 650px; overflow: hidden; background: linear-gradient(180deg, color-mix(in srgb, var(--paper) 75%, var(--bg)), var(--bg)); }
+    .mock { min-height: 650px; padding: 18px; }
+
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--blue); border-radius: 2px; padding: 10px 13px; background: var(--blue); color: var(--bg); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: lowercase; box-shadow: var(--shadow); transition: transform 120ms var(--ease-out), background 120ms ease, border-color 120ms ease; }
+    .btn.secondary { background: var(--paper); color: var(--blue); }
+    .btn:hover { background: color-mix(in srgb, var(--blue) 92%, black); border-color: color-mix(in srgb, var(--blue) 92%, black); }
+    .btn.secondary:hover { background: var(--blue-soft); }
+    .chip, .status, .kbd { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--rule); border-radius: 2px; padding: 5px 8px; background: var(--paper-2); color: var(--ink-3); font-size: 11px; letter-spacing: .02em; text-transform: lowercase; }
+    .status.active { background: var(--blue); color: var(--bg); border-color: var(--blue); }
+    .dot { width: 8px; height: 8px; border-radius: 999px; background: #22c55e; box-shadow: 0 0 0 4px color-mix(in srgb, #22c55e 14%, transparent); }
+    .field { display: grid; gap: 7px; padding: 12px; background: var(--paper); }
+    .label { color: var(--ink-3); font-size: 11px; letter-spacing: .04em; text-transform: lowercase; }
+    .input, .area { width: 100%; border: 1px solid var(--rule); border-radius: 2px; padding: 11px 12px; background: var(--paper); color: var(--ink); }
+    .area { min-height: 92px; resize: none; }
+    .input:focus, .area:focus { border-color: var(--blue); box-shadow: var(--shadow); }
+    .card, .panel { padding: 14px; }
+    .card.soft, .panel.soft, .column { background: var(--paper-2); }
+    .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .stack { display: grid; gap: 10px; }
+    .mono { font-family: var(--mono); }
+
+    /* 1 command palette */
+    .palette .mock { display: grid; grid-template-rows: auto 1fr auto; gap: 18px; }
+    .topline { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .command-center { display: grid; place-items: center; }
+    .command-wrap { width: min(920px, 100%); }
+    .searchbox { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; height: 64px; padding: 0 20px; border-color: var(--rule); }
+    .searchbox:focus-within { border-color: var(--blue); box-shadow: var(--shadow); }
+    .searchbox .mark { color: var(--blue); font: 700 22px/1 var(--mono); }
+    .searchbox input { border: 0; background: transparent; color: var(--ink); font-size: clamp(18px, 3vw, 30px); letter-spacing: -.045em; }
+    .result-grid { display: grid; grid-template-columns: 1fr 280px; gap: 10px; margin-top: 10px; }
+    .result-item { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; border: 1px solid var(--rule); border-radius: 2px; padding: 12px; background: var(--paper); }
+    .result-item:hover { border-color: var(--blue); background: var(--blue-soft); }
+
+    /* 2 kanban */
+    .kanban .mock { display: grid; grid-template-rows: auto auto 1fr; gap: 14px; }
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .stat { border: 1px solid var(--rule); border-radius: 2px; padding: 12px; background: var(--paper); box-shadow: var(--shadow); }
+    .stat b { display: block; font-size: 28px; line-height: 1; letter-spacing: -.04em; }
+    .columns { display: grid; grid-template-columns: repeat(5, minmax(180px, 1fr)); gap: 10px; overflow-x: auto; }
+    .column { min-width: 180px; padding: 10px; }
+    .column h4 { display: flex; justify-content: space-between; margin: 0 0 10px; color: var(--ink-3); font: 700 11px/1 var(--mono); text-transform: lowercase; }
+    .task { margin-bottom: 8px; border: 1px solid var(--rule); border-radius: 2px; padding: 10px; background: var(--paper); }
+
+    /* 3 IDE cockpit */
+    .ide .mock { display: grid; grid-template-columns: 220px minmax(0, 1fr) 280px; grid-template-rows: 42px 1fr 104px; gap: 1px; padding: 0; background: var(--rule); }
+    .ide-top, .ide-side, .ide-main, .ide-inspector, .ide-composer { background: var(--paper); }
+    .ide-top { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; }
+    .ide-side, .ide-inspector, .ide-main { padding: 14px; }
+    .tree { display: grid; gap: 7px; color: var(--ink-3); font: 12px/1.35 var(--mono); }
+    .tree b { color: var(--ink); }
+    .chatline { margin-bottom: 10px; border: 1px solid var(--rule); border-radius: 2px; padding: 12px; background: var(--paper); }
+    .chatline.user { margin-left: 10%; border-color: var(--blue); background: var(--blue-soft); }
+    .ide-composer { grid-column: 2 / 4; display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 12px; }
+
+    /* 4 dossier */
+    .dossier .mock { display: grid; grid-template-columns: 230px 1fr; gap: 14px; }
+    .folders { display: grid; gap: 8px; align-content: start; padding-top: 50px; }
+    .folder { border: 1px solid var(--rule); border-right-color: var(--blue); border-radius: 2px; padding: 12px; background: var(--paper); box-shadow: var(--shadow); font: 700 11px/1 var(--mono); color: var(--ink-3); text-transform: lowercase; }
+    .casefile { position: relative; border: 1px solid var(--rule); border-top: 1px solid var(--blue); border-radius: 2px; padding: 22px; background: var(--paper); box-shadow: var(--shadow); }
+    .stamp { position: absolute; top: 24px; right: 24px; transform: rotate(7deg); border: 2px solid var(--blue); color: var(--blue); padding: 8px 10px; font: 700 16px/1 var(--mono); text-transform: lowercase; }
+    .casefile h3 { max-width: 620px; font-size: clamp(34px, 6vw, 64px); line-height: .9; letter-spacing: -.065em; }
+    .brief-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 24px; }
+    .brief { border: 1px solid var(--rule); border-radius: 2px; padding: 12px; background: var(--paper-2); }
+
+    /* 5 inbox */
+    .mailbox { display: grid; grid-template-columns: 190px 320px minmax(0, 1fr); padding: 0; background: var(--rule); gap: 1px; }
+    .mailnav, .maillist, .mailread { border: 0; box-shadow: none; border-radius: 0; background: var(--paper); }
+    .mailnav { padding: 16px; }
+    .mailnav a { display: block; margin-bottom: 7px; border: 1px solid transparent; border-radius: 2px; padding: 8px; color: var(--ink-3); }
+    .mailnav a.active { border-color: var(--blue); color: var(--blue); background: var(--blue-soft); }
+    .maillist { padding: 10px; }
+    .mailitem { margin-bottom: 8px; border: 1px solid var(--rule); border-radius: 2px; padding: 10px; background: var(--paper); }
+    .mailitem.active { border-color: var(--blue); background: var(--blue-soft); }
+    .mailread { display: grid; grid-template-rows: auto 1fr auto; }
+    .readtop { padding: 18px; border-bottom: 1px solid var(--rule); }
+    .readtop h3 { font-size: 34px; }
+    .readbody { display: grid; gap: 10px; align-content: start; padding: 18px; }
+    .bubble { border: 1px solid var(--rule); border-radius: 2px; padding: 12px; background: var(--paper); }
+    .reply { display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 12px; border-top: 1px solid var(--rule); }
+
+    /* 6 map */
+    .map .mock { display: grid; grid-template-columns: 1fr 280px; gap: 14px; }
+    .canvas { position: relative; min-height: 614px; border: 1px solid var(--rule); border-radius: 2px; background: linear-gradient(90deg, var(--rule) 1px, transparent 1px) 0 0/32px 32px, linear-gradient(0deg, var(--rule) 1px, transparent 1px) 0 0/32px 32px, var(--paper); overflow: hidden; }
+    .wires { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .82; }
+    .node { position: absolute; display: grid; place-items: center; width: 126px; height: 92px; text-align: center; }
+    .node b { display: block; color: var(--blue); }
+    .n-repo { left: 8%; top: 12%; } .n-sandbox { left: 40%; top: 8%; } .n-bridge { right: 10%; top: 36%; } .n-pi { left: 35%; bottom: 13%; } .n-output { left: 7%; bottom: 18%; }
+    .map-rail { display: grid; gap: 10px; align-content: start; }
+
+    /* 7 pair programmer */
+    .pair .mock { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 12px; }
+    .pane { display: grid; grid-template-rows: auto 1fr auto; min-height: 612px; overflow: hidden; }
+    .pane-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border-bottom: 1px solid var(--rule); }
+    .messages, .benchbody { padding: 14px; }
+    .msg { max-width: 88%; margin-bottom: 10px; border: 1px solid var(--rule); border-radius: 2px; padding: 11px; background: var(--paper); }
+    .msg.me { margin-left: auto; border-color: var(--blue); background: var(--blue); color: var(--bg); }
+    .check { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; border: 1px solid var(--rule); border-radius: 2px; padding: 10px; background: var(--paper); }
+    .composer { display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 12px; border-width: 1px 0 0; box-shadow: none; }
+
+    /* 8 timeline */
+    .timeline .mock { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 14px; }
+    .timeline-main { position: relative; padding: 18px 18px 92px 70px; background: var(--paper); }
+    .timeline-main::before { content: ''; position: absolute; left: 52px; top: 0; bottom: 0; border-left: 1px solid rgba(200, 0, 16, .18); }
+    .timeline-main h3 { font-size: 42px; }
+    .event { position: relative; display: grid; grid-template-columns: 100px 1fr; gap: 16px; padding-bottom: 18px; }
+    .event::before { content: ''; position: absolute; left: -18px; top: 6px; bottom: -4px; width: 1px; background: var(--rule-2); }
+    .event::after { content: ''; position: absolute; left: -23px; top: 6px; width: 11px; height: 11px; background: var(--blue); border-radius: 999px; }
+    .event time { color: var(--ink-3); font: 12px/1.4 var(--mono); }
+    .event-card { border: 1px solid var(--rule); border-radius: 2px; padding: 11px; background: var(--paper-2); }
+    .sticky-compose { position: absolute; left: 70px; right: 18px; bottom: 18px; display: grid; grid-template-columns: 1fr auto; gap: 10px; border: 1px solid var(--rule); border-radius: 2px; padding: 10px; background: var(--paper); box-shadow: var(--shadow); }
+
+    /* 9 desktop */
+    .desktop .mock { position: relative; padding: 0; min-height: 650px; background: linear-gradient(90deg, var(--rule) 1px, transparent 1px) 0 0/40px 40px, linear-gradient(0deg, var(--rule) 1px, transparent 1px) 0 0/40px 40px, var(--bg); }
+    .menubar { height: 36px; display: flex; justify-content: space-between; align-items: center; padding: 0 12px; border-bottom: 1px solid var(--rule); background: var(--paper); font: 12px/1 var(--mono); color: var(--ink-3); }
+    .window { position: absolute; overflow: hidden; }
+    .win-head { display: flex; align-items: center; gap: 8px; padding: 9px 10px; border-bottom: 1px solid var(--rule); font: 11px/1 var(--mono); color: var(--ink-3); }
+    .lights { display: flex; gap: 5px; }
+    .lights i { width: 9px; height: 9px; border: 1px solid var(--rule-2); border-radius: 1px; background: var(--paper-2); }
+    .win-body { padding: 12px; }
+    .w1 { left: 42px; top: 72px; width: 48%; min-height: 300px; }
+    .w2 { right: 42px; top: 124px; width: 38%; min-height: 220px; }
+    .w3 { left: 25%; bottom: 72px; width: 50%; min-height: 166px; }
+    .dock { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); display: flex; gap: 8px; border: 1px solid var(--rule); border-radius: 2px; padding: 8px; background: var(--paper); box-shadow: var(--shadow); }
+    .dock span { display: grid; place-items: center; width: 38px; height: 38px; border: 1px solid var(--rule); border-radius: 2px; background: var(--paper-2); color: var(--blue); font-weight: 700; }
+
+    /* 10 autopilot */
+    .autopilot .mock { display: grid; grid-template-rows: auto 1fr auto; gap: 22px; }
+    .auto-top { display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--rule); border-top-color: var(--blue); border-radius: 2px; padding: 12px 14px; background: var(--paper); box-shadow: var(--shadow); }
+    .launch-center { display: grid; place-items: center; text-align: center; }
+    .launch-card { width: min(820px, 100%); }
+    .launch-card h3 { margin-bottom: 14px; font-size: clamp(44px, 8vw, 94px); line-height: .86; letter-spacing: -.08em; }
+    .big-run { display: grid; place-items: center; width: 174px; height: 174px; margin: 24px auto; border: 1px solid var(--blue); border-radius: 2px; background: var(--blue); color: var(--bg); box-shadow: var(--shadow); font: 700 24px/1 var(--mono); text-transform: lowercase; }
+    .auto-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .auto-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+
+    @media (max-width: 980px) {
+      .page { padding: 24px 18px 72px; }
+      .nav { margin-inline: -18px; padding-inline: 18px; }
+      .hero, .concept-head, .result-grid, .dossier .mock, .mailbox, .map .mock, .pair .mock, .timeline .mock { grid-template-columns: 1fr; }
+      .stats, .brief-grid, .auto-fields, .auto-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .ide .mock { grid-template-columns: 1fr; grid-template-rows: auto auto auto auto auto; }
+      .ide-composer { grid-column: auto; }
+      .columns { grid-template-columns: repeat(5, 210px); }
+      .w1, .w2, .w3 { position: static; width: auto; min-height: auto; margin: 14px; }
+      .dock { position: static; transform: none; justify-content: center; margin: 14px; }
+      .artboard, .mock, .desktop .mock { min-height: auto; }
+      .canvas { min-height: 520px; }
+    }
+    @media (max-width: 640px) {
+      .stats, .brief-grid, .auto-fields, .auto-strip { grid-template-columns: 1fr; }
+      .event { grid-template-columns: 1fr; gap: 6px; }
+      .sticky-compose, .composer, .reply { grid-template-columns: 1fr; }
+      .token-card dl { grid-template-columns: 1fr; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition-duration: .001ms !important; scroll-behavior: auto !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">board design system port</p>
+        <h1>Makerspace layouts in the Board skin.</h1>
+        <p>Same visual rules as <code>~/workspace/board</code>: cream engineering paper, walnut ink, blueprint-blue hairlines, teal readouts, Inter + Hack, sharp 2px chrome, tiny warm shadows.</p>
+      </div>
+      <aside class="token-card">
+        <h3>board tokens</h3>
+        <dl>
+          <dt>palette</dt><dd><span class="swatches"><i></i><i></i><i></i><i></i><i></i></span></dd>
+          <dt>shape</dt><dd>2px chrome, rectangular notes/cards, no pill cosplay except status dots.</dd>
+          <dt>material</dt><dd>white panels on cream paper, faint blue rules, paper grain.</dd>
+          <dt>motion</dt><dd>120ms border/transform; no decorative animation.</dd>
+        </dl>
+      </aside>
+    </header>
+
+    <nav class="nav" aria-label="Layout concepts">
+      <a href="#palette">1 palette</a><a href="#kanban">2 kanban</a><a href="#ide">3 cockpit</a><a href="#dossier">4 dossier</a><a href="#inbox">5 inbox</a><a href="#map">6 map</a><a href="#pair">7 pair</a><a href="#timeline">8 timeline</a><a href="#desktop">9 desktop</a><a href="#autopilot">10 autopilot</a>
+    </nav>
+
+    <section id="palette" class="concept palette">
+      <div class="concept-head"><div><p class="eyebrow">01 · command-first</p><h2>Command Palette App</h2><p class="concept-copy muted">One giant search/command box. Fastest path from repo + intent to running agent.</p></div><p class="concept-note">Best if Makerspace should feel like Raycast for cloud agents.</p></div>
+      <div class="artboard"><div class="mock palette-mock"><div class="topline"><b>Makerspace</b><span class="chip"><span class="dot"></span>3 warm sandboxes</span></div><div class="command-center"><div class="command-wrap"><div class="searchbox"><span class="mark">⌘</span><input value="Run github.com/acme/app — simplify the billing UI" readonly><span class="kbd">enter</span></div><div class="result-grid"><div class="stack"><div class="result-item"><span class="kbd">1</span><div><b>Create new Pi agent</b><br><small>repo detected · prompt ready</small></div><span class="status active">default</span></div><div class="result-item"><span class="kbd">2</span><div><b>Open recent: settings-auth</b><br><small>ready for follow-up</small></div><span class="status">agent</span></div><div class="result-item"><span class="kbd">3</span><div><b>Search GitHub repos</b><br><small>acme/app, acme/web, acme/docs</small></div><span class="status">picker</span></div></div><aside class="card"><h3>Preview</h3><p>Branch main. Snapshot ready. First output usually under 1s.</p><button class="btn" type="button">run command</button></aside></div></div></div><div class="row"><span class="chip">⌘K commands</span><span class="chip">esc clears</span></div></div></div>
+    </section>
+
+    <section id="kanban" class="concept kanban">
+      <div class="concept-head"><div><p class="eyebrow">02 · board</p><h2>Agent Kanban Board</h2><p class="muted">Agents are work cards moving through lifecycle columns.</p></div><p class="concept-note">Best if users run many agents at once and need status scanning.</p></div>
+      <div class="artboard"><div class="mock"><div class="row"><h3>Agent board</h3><button class="btn" type="button">+ new agent</button></div><div class="stats"><div class="stat"><span class="label">running</span><b>4</b></div><div class="stat"><span class="label">needs you</span><b>2</b></div><div class="stat"><span class="label">done today</span><b>11</b></div><div class="stat"><span class="label">failed</span><b>0</b></div></div><div class="columns"><div class="column"><h4>draft <span>2</span></h4><div class="task"><b>Homepage cleanup</b><small>repo picked · no prompt</small></div><div class="task"><b>New landing page</b><small>blank workspace</small></div></div><div class="column"><h4>warming <span>1</span></h4><div class="task"><b>Auth smoke</b><small>creating sandbox</small></div></div><div class="column"><h4>running <span>3</span></h4><div class="task"><b>Billing UI</b><small>reading files</small></div><div class="task"><b>Settings polish</b><small>editing CSS</small></div><div class="task"><b>Docs pass</b><small>writing README</small></div></div><div class="column"><h4>needs you <span>2</span></h4><div class="task"><b>Migration plan</b><small>pick schema option</small></div><div class="task"><b>GitHub auth</b><small>token expired</small></div></div><div class="column"><h4>done <span>5</span></h4><div class="task"><b>Button fix</b><small>tests passed</small></div><div class="task"><b>Empty repo clone</b><small>shipped</small></div></div></div></div></div>
+    </section>
+
+    <section id="ide" class="concept ide">
+      <div class="concept-head"><div><p class="eyebrow">03 · cockpit</p><h2>IDE Cockpit</h2><p class="muted">Repos and agents left, transcript center, sandbox inspector right, composer bottom.</p></div><p class="concept-note">Best for power users who keep one agent open for a while.</p></div>
+      <div class="artboard"><div class="mock"><div class="ide-top"><span class="mono">makerspace://billing-ui</span><span class="chip"><span class="dot"></span>bridge live</span></div><aside class="ide-side"><b>Explorer</b><div class="tree"><span>▾ agents</span><b>  billing-ui</b><span>  settings-auth</span><span>▾ repos</span><span>  acme/app</span><span>▾ changed</span><span>  public/styles.css</span></div></aside><main class="ide-main"><div class="chatline user"><b>You</b><p>Simplify the billing settings UI.</p></div><div class="chatline"><b>Pi</b><p>I found three nested cards doing one job. Removing wrapper and keeping native inputs.</p></div><div class="chatline"><b>Pi</b><p>Build passed. One CSS file touched.</p></div></main><aside class="ide-inspector"><div class="card"><h3>Run</h3><p>status: running<br>branch: main<br>snapshot: tiny-v2</p></div><br><div class="card"><h3>Checks</h3><p>node --test queued<br>npm build waiting</p></div></aside><form class="ide-composer"><input class="input" value="Tell Pi what to do next…" readonly><button class="btn" type="button">send</button></form></div></div>
+    </section>
+
+    <section id="dossier" class="concept dossier">
+      <div class="concept-head"><div><p class="eyebrow">04 · case file</p><h2>Mission Dossier</h2><p class="muted">Each agent becomes a brief, evidence folder, operation log, and final report.</p></div><p class="concept-note">Best if agent work needs review and handoff.</p></div>
+      <div class="artboard"><div class="mock"><aside class="folders"><div class="folder">active case</div><div class="folder">evidence</div><div class="folder">reports</div><div class="folder">archive</div></aside><main class="casefile"><div class="stamp">running</div><p class="eyebrow">case ms-1027</p><h3>Operation Billing Cleanup</h3><div class="brief-grid"><section class="brief"><h4>Brief</h4><p>Repo acme/app. Remove UI bloat. Keep behavior identical.</p></section><section class="brief"><h4>Orders</h4><p>Read before editing. Leave one runnable check. No new deps.</p></section><section class="brief"><h4>Evidence</h4><p>3 files read · 1 file edited · 0 tests failed.</p></section><section class="brief"><h4>Next</h4><p>Review diff, then approve final report.</p></section></div><p style="margin-top:22px"><button class="btn" type="button">open operation log</button></p></main></div></div>
+    </section>
+
+    <section id="inbox" class="concept inbox">
+      <div class="concept-head"><div><p class="eyebrow">05 · mailbox</p><h2>Inbox for Agents</h2><p class="muted">Agents act like collaborators sending status messages.</p></div><p class="concept-note">Best if users return later and need to triage waiting agents.</p></div>
+      <div class="artboard"><div class="mock mailbox"><nav class="mailnav"><h3>Makerspace</h3><a class="active">Inbox 14</a><a>Running 4</a><a>Waiting 2</a><a>Done 31</a><button class="btn" type="button">compose run</button></nav><section class="maillist"><div class="mailitem active"><b>Pi needs your choice</b><br><small>Migration plan · 2m ago</small></div><div class="mailitem"><b>Billing UI complete</b><br><small>Tests passed · 8m ago</small></div><div class="mailitem"><b>Sandbox warming</b><br><small>Settings auth · 13m ago</small></div></section><main class="mailread"><div class="readtop"><span class="status active">needs you</span><h3>Pick the simpler migration path</h3><small>From Pi · agent migration-plan</small></div><div class="readbody"><div class="bubble"><b>Pi</b><p>Option A is a single nullable column. Option B is a new table. A is enough unless you need history.</p></div><div class="bubble"><b>Suggested reply</b><p>Use Option A. Add the column and one test.</p></div></div><form class="reply"><input class="input" value="Reply to Pi…" readonly><button class="btn" type="button">send</button></form></main></div></div>
+    </section>
+
+    <section id="map" class="concept map">
+      <div class="concept-head"><div><p class="eyebrow">06 · graph</p><h2>Workspace Map</h2><p class="muted">Repo, sandbox, bridge, Pi, and output become connected nodes.</p></div><p class="concept-note">Best if infrastructure visibility is part of the product.</p></div>
+      <div class="artboard"><div class="mock"><main class="canvas"><svg class="wires" viewBox="0 0 900 600" preserveAspectRatio="none" aria-hidden="true"><path d="M130 110 C270 60 330 80 430 105 S640 190 745 265" stroke="#1F5E9C" stroke-width="2" fill="none"/><path d="M440 130 C440 260 410 340 370 470" stroke="#0F766E" stroke-width="2" fill="none"/><path d="M365 500 C250 500 190 450 130 430" stroke="#1F5E9C" stroke-width="2" fill="none"/><path d="M745 300 C650 395 540 430 410 485" stroke="#1F5E9C" stroke-width="2" fill="none"/></svg><div class="node n-repo"><div><b>Repo</b><small>acme/app</small></div></div><div class="node n-sandbox"><div><b>Sandbox</b><small>ready</small></div></div><div class="node n-bridge"><div><b>Bridge</b><small>4310 live</small></div></div><div class="node n-pi"><div><b>Pi</b><small>running</small></div></div><div class="node n-output"><div><b>Output</b><small>streaming</small></div></div></main><aside class="map-rail"><div class="card"><h3>Selected node</h3><p>Pi run · tool call 4 · editing public/styles.css</p></div><div class="card"><h3>Controls</h3><p>Pause stream, open logs, restart bridge, copy session URL.</p></div><button class="btn" type="button">prompt node</button></aside></div></div>
+    </section>
+
+    <section id="pair" class="concept pair">
+      <div class="concept-head"><div><p class="eyebrow">07 · split workbench</p><h2>Split-Screen Pair Programmer</h2><p class="muted">Conversation beside Pi’s live plan/files/tests workbench.</p></div><p class="concept-note">Best balance: friendly chat plus trust-building work visibility.</p></div>
+      <div class="artboard"><div class="mock"><section class="pane"><div class="pane-head"><b>Conversation</b><span class="chip">agent live</span></div><div class="messages"><div class="msg me">Clean up the settings screen. Keep it tiny.</div><div class="msg">I’ll inspect the markup first, then remove redundant layout.</div><div class="msg">Found duplicated connection copy. I’m collapsing it into one card.</div></div><form class="composer"><input class="input" value="Ask a follow-up…" readonly><button class="btn" type="button">send</button></form></section><section class="pane"><div class="pane-head"><b>Pi workbench</b><span class="status active">plan</span></div><div class="benchbody stack"><div class="check"><span class="dot"></span><div><b>Read current UI</b><small>public/settings.html, styles.css</small></div><span class="status">done</span></div><div class="check"><span class="dot"></span><div><b>Remove duplicate panel</b><small>smaller layout, same settings</small></div><span class="status active">active</span></div><div class="check"><span></span><div><b>Run build</b><small>copy static assets</small></div><span class="status">next</span></div></div><div class="composer"><button class="btn secondary" type="button">view diff</button><button class="btn" type="button">approve plan</button></div></section></div></div>
+    </section>
+
+    <section id="timeline" class="concept timeline">
+      <div class="concept-head"><div><p class="eyebrow">08 · audit trail</p><h2>Timeline-First UI</h2><p class="muted">Messages, tool calls, edits, tests, and decisions all land on one run timeline.</p></div><p class="concept-note">Best if users ask “what happened?” more than “what do I type?”.</p></div>
+      <div class="artboard"><div class="mock"><main class="timeline-main"><span class="chip"><span class="dot"></span>running</span><h3>Billing UI cleanup</h3><div class="event"><time>10:14</time><div class="event-card"><b>Agent created</b><p>Repo acme/app, branch main, prompt submitted.</p></div></div><div class="event"><time>10:15</time><div class="event-card"><b>Workspace ready</b><p>Sandbox warm, bridge health OK.</p></div></div><div class="event"><time>10:16</time><div class="event-card"><b>Pi read files</b><p>public/settings.html, public/styles.css, README.md.</p></div></div><div class="event"><time>10:18</time><div class="event-card"><b>Edit proposed</b><p>Collapse nested settings panels and keep existing API calls.</p></div></div><form class="sticky-compose"><input class="input" value="Send the next instruction…" readonly><button class="btn" type="button">send</button></form></main><aside class="stack"><div class="card"><h3>Agent facts</h3><p>ready for prompt<br>no failing checks<br>1 file edited</p></div><div class="card"><h3>Filters</h3><p>Show all events<br>Hide token chunks<br>Group tool calls</p></div><button class="btn secondary" type="button">export timeline</button></aside></div></div>
+    </section>
+
+    <section id="desktop" class="concept desktop">
+      <div class="concept-head"><div><p class="eyebrow">09 · window manager</p><h2>Desktop OS Metaphor</h2><p class="muted">Agents are windows; settings and logs are mini apps.</p></div><p class="concept-note">Most playful. Risky, but memorable.</p></div>
+      <div class="artboard"><div class="mock"><div class="menubar"><span>□ Makerspace OS</span><span>Tue 10:23 · 3 active agents</span></div><section class="window w1"><div class="win-head"><span class="lights"><i></i><i></i><i></i></span>New Agent</div><div class="win-body"><input class="input" value="github.com/acme/app" readonly style="margin-bottom:10px"><textarea class="area" readonly>Make the UI less noisy.</textarea><p><button class="btn" type="button">launch</button></p></div></section><section class="window w2"><div class="win-head"><span class="lights"><i></i><i></i><i></i></span>Run Monitor</div><div class="win-body stack"><div class="row"><b>billing-ui</b><span class="status active">running</span></div><div class="row"><b>auth-fix</b><span class="status">ready</span></div><div class="row"><b>docs</b><span class="status">done</span></div></div></section><section class="window w3"><div class="win-head"><span class="lights"><i></i><i></i><i></i></span>Pi Transcript</div><div class="win-body mono">pi&gt; reading files…<br>pi&gt; editing settings panel…<br>pi&gt; build queued…</div></section><nav class="dock"><span>⌘</span><span>π</span><span>▣</span><span>⚙</span><span>?</span></nav></div></div>
+    </section>
+
+    <section id="autopilot" class="concept autopilot">
+      <div class="concept-head"><div><p class="eyebrow">10 · single action</p><h2>One-Button Autopilot</h2><p class="muted">The anti-dashboard: one obvious action, then a focused progress screen.</p></div><p class="concept-note">Best if we want the least UI and highest product polish.</p></div>
+      <div class="artboard"><div class="mock"><div class="auto-top"><b>MAKERSPACE AUTOPILOT</b><span class="chip"><span class="dot"></span>ready</span></div><main class="launch-center"><div class="launch-card"><h3>Give Pi the work. Come back to the result.</h3><p>Choose a repo, write the mission, press run. Everything else is progressive disclosure.</p><button class="big-run" type="button">run</button><div class="auto-fields"><input class="input" value="github.com/acme/app" readonly><input class="input" value="Simplify billing UI" readonly></div></div></main><div class="auto-strip"><div class="card"><h3>1. Wake</h3><p>Sandbox starts only when needed.</p></div><div class="card"><h3>2. Work</h3><p>Pi reads, edits, and checks.</p></div><div class="card"><h3>3. Review</h3><p>Diff and transcript appear.</p></div><div class="card"><h3>4. Sleep</h3><p>Workspace parks itself.</p></div></div></div></div>
+    </section>
+  </div>
+</body>
+</html>

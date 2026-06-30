@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — image plus status row</title>
+<meta name="task" content="Move prompt image picking out of model controls and make attachment state visible between prompt and run controls.">
+<meta name="date-started" content="2026-06-25">
+<meta name="date-updated" content="2026-06-25">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="makerspace,ui,images,attachments,composer">
+<meta name="related" content="2026-06-25-image-upload-badge.html,2026-06-24-image-prompts.html,2026-06-24-model-thinking-input-controls.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  ul, ol { margin: .3rem 0 .8rem 1.2rem; padding: 0; }
+  li { margin: .15rem 0; }
+  .blast-low { color: #2a7a2a; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>Image plus status row</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-25 · status <b>shipped</b> · blast <span class="blast-low">low</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Use a plus-only image picker at the left edge of each composer and show attached-image copy before model/thinking controls.</div>
+  <b>Source</b><div>User asked for a plus image button and attachment text between prompt input and model/effort controls.</div>
+  <b>Surface</b><div><code>/</code>, <code>/thread.html</code>, <code>public/styles.css</code>.</div>
+  <b>Schema</b><div>None.</div>
+  <b>Mobile</b><div>Composer controls wrap; plus/status row stays before model controls.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>UI layout</h2>
+<ol>
+  <li><b>Attachment row</b>: put <code>+</code> and <code>#image-status</code> directly below the prompt textarea.</li>
+  <li><b>Run controls</b>: keep <code>#model-ref</code> and <code>#thinking-level</code> in the existing control section.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>public/index.html</code>, <code>public/thread.html</code></td><td>touch</td><td>Move image picker/status before model and thinking controls.</td></tr>
+  <tr><td><code>public/styles.css</code></td><td>touch</td><td>Style plus picker as the far-left compact control and status as the gap copy.</td></tr>
+  <tr><td><code>test/image-attachments.test.js</code></td><td>touch</td><td>Pin status copy for selected images.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Move existing file input, not add new upload logic. The behavior already works.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td><code>+</code> label text over an icon dependency. Native text gives the requested button with no asset.</td></tr>
+</table>
+
+<h2>Verification</h2>
+<table>
+  <tr><th>Artifact</th><th>Result</th></tr>
+  <tr><td><code>node --test test/image-attachments.test.js</code></td><td>Passed 2/2.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Restore the image label inside <code>.composer-controls</code> and remove the new row CSS.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>Image picker label is only <code>+</code>.</li>
+  <li>Image picker row appears before model/thinking controls.</li>
+  <li>Attached-image status stays visible beside the plus control.</li>
+  <li><code>node --test test/image-attachments.test.js</code> passes.</li>
+</ul>
+</body>
+</html>

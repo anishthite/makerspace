@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Main screen variations</title>
+<meta name="task" content="Create static HTML main-screen variations for picking a redesign direction.">
+<meta name="date-started" content="2026-06-24">
+<meta name="date-updated" content="2026-06-24">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="makerspace,ui,home,concepts,samples">
+<meta name="related" content="2026-06-23-home-screen-design-polish.html,2026-06-23-ui-layout-concepts.html,2026-06-23-ui-design-samples.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.status-shipped{color:#2a7a2a}.blast-low{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Main screen variations</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-24 · status <b class="status-shipped">shipped</b> · blast <span class="blast-low">low</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Create three reviewable static HTML directions for the Makerspace main screen.</div>
+  <b>Surface</b><div><code>public/main-screen-variations/</code>.</div>
+  <b>Runtime</b><div>Static HTML/CSS only; no app API calls.</div>
+  <b>Mobile</b><div>Responsive CSS included for page-level comparison.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>UI layout</h2>
+<ol>
+  <li><b>Focus Launch</b>: one calm prompt surface with quiet repo and recent-thread affordances.</li>
+  <li><b>Ops Desk</b>: three-column command desk for users juggling several threads.</li>
+  <li><b>Command Inbox</b>: command bar plus waiting/running/done triage cards.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>public/main-screen-variations/index.html</code></td><td>new</td><td>Add comparison hub with embedded previews and full-page links.</td></tr>
+  <tr><td><code>public/main-screen-variations/focus.html</code></td><td>new</td><td>Add minimal launch-centered home mock.</td></tr>
+  <tr><td><code>public/main-screen-variations/desk.html</code></td><td>new</td><td>Add dashboard-style home mock.</td></tr>
+  <tr><td><code>public/main-screen-variations/inbox.html</code></td><td>new</td><td>Add command inbox home mock.</td></tr>
+  <tr><td><code>public/main-screen-variations/styles.css</code></td><td>new</td><td>Share tokens and responsive mockup styling.</td></tr>
+  <tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Add this task to the notes index.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Ship static mock pages. The user needs taste comparison before app wiring.</td></tr>
+  <tr><td>D-002</td><td>Keep three directions. More concepts slow the choice.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td><code>public/main-screen-variations/</code> over mutating <code>/</code>. The live app stays safe while the direction is chosen.</td></tr>
+</table>
+
+<h2>Assumptions</h2>
+<ul>
+  <li>A-001 · User wants visual direction pages, not wired prototypes. If wrong: replace static pages with app-state prototypes.</li>
+</ul>
+
+<h2>Verification</h2>
+<table>
+  <tr><th>Check</th><th>Result</th></tr>
+  <tr><td><code>npm run build</code></td><td>Passed; copied <code>public/main-screen-variations/</code> to ignored <code>dist/</code>.</td></tr>
+  <tr><td><code>grep</code></td><td>Confirmed <code>Focus Launch</code>, <code>Ops Desk</code>, and <code>Command Inbox</code> pages exist.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Delete <code>public/main-screen-variations/</code> and this notes row; no runtime code changes.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>Three variation pages are reachable from <code>/main-screen-variations/</code>.</li>
+  <li>Each variation presents a distinct main-screen layout.</li>
+  <li><code>npm run build</code> passes.</li>
+</ul>
+</body>
+</html>

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Pi defaults package</title>
+<meta name="task" content="Bundle Makerspace Pi defaults as an installable package and load it in local and remote runs.">
+<meta name="date-started" content="2026-06-26">
+<meta name="date-updated" content="2026-06-26">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="makerspace, pi, package, skills, prompts, remote, dmg">
+<meta name="related" content="2026-06-24-desktop-dmg-landing.html,2026-06-24-local-desktop-app.html,2026-06-25-parallel-project-instances.html,2026-06-25-thread-resume-reconstruction.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code,pre{font-family:ui-monospace,Menlo,monospace}code{background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}pre{background:#f6f6f6;padding:.55rem .7rem;border-radius:4px;overflow-x:auto;font-size:12.5px;line-height:1.4}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-med{color:#b85c00}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Pi defaults package</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-26 · status <b class="status-shipped">shipped</b> · blast <span class="blast-med">medium</span></p>
+
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Bundle Makerspace instructions, skills, and prompts once and load them in local/host/remote Pi sessions.</div><b>Source</b><div>User asked for an easily installable and extendible DMG + online package path, modeled after OMP discovery.</div><b>Surface</b><div><code>packages/makerspace-pi-defaults</code>, SDK session creation, remote bridge session creation, image build context.</div><b>Schema</b><div>No session or API schema change.</div><b>Remote</b><div>Bridge loads a baked local package path when present; online npm publishing stays a later distribution step.</div><b>Open Qs</b><div>0; assume starter package is enough and npm publication happens after review.</div></div>
+
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>packages/makerspace-pi-defaults/</code></td><td>new</td><td>Add Pi package manifest, prompt-injecting extension, starter skill, starter prompt, and package README.</td></tr><tr><td><code>src/pi-defaults-package.js</code></td><td>new</td><td>Resolve package resource paths and build SDK resource loaders.</td></tr><tr><td><code>src/host-pi-runner.js</code></td><td>touch</td><td>Load defaults for host-dispatch and local-folder SDK sessions.</td></tr><tr><td><code>src/setup-script.js</code></td><td>touch</td><td>Load defaults in remote bridge SDK sessions when the package is baked into the sandbox.</td></tr><tr><td><code>src/image-builder.js</code>, <code>image/Dockerfile</code>, <code>image/ctx/.gitkeep</code></td><td>touch/new</td><td>Copy the package into custom image contexts and install it in the Daytona user agent directory.</td></tr><tr><td><code>README.md</code></td><td>touch</td><td>Document the package env knobs and remote behavior.</td></tr><tr><td><code>test/*.test.js</code></td><td>touch/new</td><td>Cover manifest/resources, image context copy, and bridge loader wiring.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr></table>
+
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Use a Pi package plus SDK <code>DefaultResourceLoader</code> additional paths. This avoids overwriting user dotfiles.</td></tr><tr><td>D-002</td><td>Make the package local-first. DMG and baked images can load the exact same directory before npm publication.</td></tr><tr><td>D-003</td><td>Inject instructions from an extension. Pi packages do not install <code>AGENTS.md</code> as a first-class resource.</td></tr></table>
+
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>Additional resource paths over mutating <code>settings.json</code>. User package settings remain theirs.</td></tr><tr><td>T-002</td><td>Baked local remote package over remote upload plumbing. The current remote happy path already supports custom images.</td></tr></table>
+
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>node --check src/pi-defaults-package.js src/image-builder.js src/host-pi-runner.js src/setup-script.js src/config.js test/pi-defaults-package.test.js test/setup-script.test.js</code></td><td>Passed.</td></tr><tr><td><code>node --test test/pi-defaults-package.test.js test/setup-script.test.js</code></td><td>Passed 7/7.</td></tr><tr><td><code>npm test</code></td><td>Passed 110/110.</td></tr><tr><td><code>node --test test/pi-defaults-package.test.js</code></td><td>Passed 4/4 after manifest publishability edit.</td></tr></table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Remove the package directory, resource-loader wiring, image copy path, docs, and tests; no stored session data changes.</p>
+
+<h2>Definition of done</h2>
+<ul><li>Local/host SDK sessions include the Makerspace defaults package when present.</li><li>Remote bridge SDK sessions include the baked package when present.</li><li>Custom image builds copy the package into the sandbox agent directory.</li><li>Focused tests and syntax checks pass.</li></ul>
+</body>
+</html>

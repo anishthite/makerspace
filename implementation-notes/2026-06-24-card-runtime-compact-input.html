@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — card runtime and compact input</title>
+<meta name="task" content="Show elapsed runtime on home thread cards, make the launch input smaller, and hide the repo picker tray.">
+<meta name="date-started" content="2026-06-24">
+<meta name="date-updated" content="2026-06-24">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="makerspace,ui,home,cards,input,repo-picker">
+<meta name="related" content="2026-06-24-home-launch-copy-trim.html,2026-06-24-b2b-saas-action-center.html,2026-06-24-remember-last-folder.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-in-progress{color:#b85c00}</style>
+</head>
+<body>
+<h1>Card runtime and compact input</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-24 · status <b>shipped</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Show elapsed time on home thread cards, shrink the main launch composer, and remove the visible repo picker tray.</div>
+  <b>Source</b><div>User asked for card runtime, smaller main input, and no <code>Sign in first</code>/<code>refresh</code>/<code>choose folder</code> row.</div>
+  <b>Surface</b><div><code>/</code> home screen only.</div>
+  <b>Data</b><div>Use existing <code>createdAt</code>/<code>updatedAt</code> fields; no API change.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+<h2>UI layout</h2>
+<ol>
+  <li>Each home card puts elapsed runtime in the top-right slot and the last-updated date below the repo line.</li>
+  <li>The launch card uses a narrower width and shorter textarea.</li>
+  <li>The repo picker tray stays hidden; users paste repo URLs or local folders directly.</li>
+</ol>
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>public/index.html</code></td><td>touch</td><td>Hide the repo picker tray from the main UI.</td></tr>
+  <tr><td><code>public/app.js</code></td><td>touch</td><td>Format elapsed runtime and stop auto-loading hidden GitHub repos.</td></tr>
+  <tr><td><code>public/styles.css</code></td><td>touch</td><td>Place runtime at card top-right and compact the launch composer.</td></tr>
+  <tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr>
+</table>
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Use <code>createdAt</code> for runtime. Existing session rows already carry it and the request is approximate display copy.</td></tr>
+  <tr><td>D-002</td><td>Hide rather than delete repo picker markup. Existing local-folder and repo-selection handlers stay harmless without null guards.</td></tr>
+</table>
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected</th><th>Reason</th></tr>
+  <tr><td>T-001</td><td>Static elapsed labels over ticking timers.</td><td>The thread list already refreshes; timers add moving code for a dashboard hint.</td></tr>
+</table>
+<h2>Verification</h2>
+<table>
+  <tr><th>Check</th><th>Result</th></tr>
+  <tr><td><code>node --check public/app.js &amp;&amp; npm run build</code></td><td>Passed.</td></tr>
+</table>
+<h2>Reversibility</h2>
+<p><b>R-001</b> Low blast; revert <code>public/index.html</code>, <code>public/app.js</code>, <code>public/styles.css</code>, and this index row.</p>
+<h2>Definition of done</h2>
+<ul>
+  <li>Home thread cards show elapsed time in the top-right area.</li>
+  <li>Main launch textarea is visibly smaller.</li>
+  <li>The repo picker tray is not visible and hidden repo loading is skipped.</li>
+  <li><code>node --check public/app.js</code> and <code>npm run build</code> pass.</li>
+</ul>
+</body>
+</html>

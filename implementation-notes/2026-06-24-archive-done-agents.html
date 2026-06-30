@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — archive done agents</title>
+<meta name="task" content="Let users archive completed Makerspace agents from the home action center.">
+<meta name="date-started" content="2026-06-24">
+<meta name="date-updated" content="2026-06-24">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="makerspace,threads,archive,ui,server">
+<meta name="related" content="2026-06-24-b2b-saas-action-center.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}h3{font-size:13px;margin:1rem 0 .3rem;color:#444;text-transform:uppercase;letter-spacing:.04em}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code,pre{font-family:ui-monospace,Menlo,monospace}code{background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}pre{background:#f6f6f6;padding:.55rem .7rem;border-radius:4px;overflow-x:auto;font-size:12.5px;line-height:1.4}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}.blast-low{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Archive done agents</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-24 · status <b class="status-shipped">shipped</b> · blast <span class="blast-low">low</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Let users hide completed agents from <code>/</code> without deleting their thread history.</div>
+  <b>Source</b><div>User asked to archive agents when they are done.</div>
+  <b>Surface</b><div><code>POST /api/threads/:name/archive</code>, <code>/api/threads</code>, <code>/</code>.</div>
+  <b>Schema</b><div>Add optional <code>archivedAt</code> timestamp to stored thread sessions.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>API contract</h2>
+<h3>Request</h3>
+<pre>POST /api/threads/:name/archive</pre>
+<h3>Response</h3>
+<pre>{
+  provider: ProviderInfo,
+  thread: Session
+}</pre>
+
+<h2>Algorithm</h2>
+<ol>
+  <li>Reject archive unless <code>threadBridge</code> exists, access passes, and <code>runStatus || status</code> is <code>completed</code>.</li>
+  <li>Set <code>archivedAt = now</code> and <code>updatedAt = now</code> via the existing store write queue.</li>
+  <li>Filter <code>archivedAt</code> threads out of the home <code>/api/threads</code> payload.</li>
+</ol>
+
+<h2>UI layout</h2>
+<ol>
+  <li>Add one <code>archive</code> button to completed thread cards.</li>
+  <li>Keep clicking the rest of the card as the thread link.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>src/server.js</code></td><td>touch</td><td>Add archive route and filter archived threads from the home list.</td></tr>
+  <tr><td><code>public/app.js</code></td><td>touch</td><td>Render archive buttons for completed cards and refresh after archiving.</td></tr>
+  <tr><td><code>public/styles.css</code></td><td>touch</td><td>Keep the archive button aligned inside thread cards.</td></tr>
+  <tr><td><code>test/store.test.js</code></td><td>touch</td><td>Cover <code>archivedAt</code> persistence without deleting the thread row.</td></tr>
+  <tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Add this task to the notes index.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Hide archived threads from <code>/api/threads</code> only. Direct thread URLs remain useful history.</td></tr>
+  <tr><td>D-002</td><td>Limit archiving to <code>completed</code>. The user said done, not failed or ready.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected</th><th>Reason</th></tr>
+  <tr><td>T-001</td><td><code>archivedAt</code> flag over deleting sessions.</td><td>Archive should be reversible at the data layer even without restore UI.</td></tr>
+</table>
+
+<h2>Verification</h2>
+<table>
+  <tr><th>Check</th><th>Result</th></tr>
+  <tr><td><code>node --check src/server.js && node --check src/store.js && node --check public/app.js</code></td><td>Passed.</td></tr>
+  <tr><td><code>node --test test/store.test.js</code></td><td>Passed.</td></tr>
+  <tr><td><code>npm run build</code></td><td>Passed.</td></tr>
+  <tr><td><code>npm test</code></td><td>Passed.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p><b>R-001</b> Low blast; remove the route/UI and clear <code>archivedAt</code> from affected rows if users need them visible again.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>Completed cards show an <code>archive</code> action.</li>
+  <li>Archiving removes the card from the home thread lanes.</li>
+  <li>Unfinished threads cannot be archived through the API.</li>
+  <li><code>npm run build</code> and a focused test pass.</li>
+</ul>
+</body>
+</html>

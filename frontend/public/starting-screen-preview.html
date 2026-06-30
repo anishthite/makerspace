@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Makerspace — Starting Screen Preview</title>
+  <style>
+    @import url('https://cdn.jsdelivr.net/npm/hack-font@3/build/web/hack.css');
+    :root {
+      color-scheme: light;
+      --bg: #f8f5ee;
+      --paper: #fffefa;
+      --paper-2: #efe8d8;
+      --ink: #211813;
+      --muted: #756458;
+      --faint: #a89686;
+      --blue: #1f5e9c;
+      --blue-soft: #dcebf6;
+      --teal: #0f766e;
+      --amber: #b7791f;
+      --red: #b42318;
+      --rule: rgba(31, 94, 156, .16);
+      --rule-strong: rgba(31, 94, 156, .32);
+      --shadow: 0 22px 70px rgba(31, 94, 156, .11), 0 2px 8px rgba(31, 94, 156, .08);
+      --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --mono: Hack, "JetBrains Mono", "SF Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      --ease-out: cubic-bezier(.23, 1, .32, 1);
+    }
+
+    * { box-sizing: border-box; }
+    html { min-height: 100%; background: var(--bg); color: var(--ink); scroll-behavior: smooth; }
+    body {
+      min-height: 100%;
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 12% 0%, rgba(31, 94, 156, .12), transparent 30%),
+        radial-gradient(circle at 86% 4%, rgba(15, 118, 110, .10), transparent 28%),
+        linear-gradient(180deg, #fcf9f2, var(--bg));
+      font: 400 16px/1.5 var(--sans);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    button, input, textarea, select { font: inherit; }
+    button { cursor: pointer; }
+    button:active { transform: scale(.98); }
+    textarea { resize: none; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { margin-bottom: 14px; font-size: clamp(48px, 8vw, 104px); line-height: .84; letter-spacing: -.09em; }
+    h2 { margin-bottom: 8px; font-size: clamp(32px, 5vw, 60px); line-height: .9; letter-spacing: -.07em; }
+    h3 { margin-bottom: 8px; font-size: 18px; line-height: 1.05; letter-spacing: -.04em; }
+    p { color: var(--muted); }
+
+    .eyebrow, .chip, .btn, .ghost, .label, .status, .rank, .nav, .note, .metric span { font-family: var(--mono); }
+    .eyebrow { margin: 0 0 10px; color: var(--blue); font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: lowercase; }
+    .small { font-size: 13px; }
+
+    .page { width: min(1320px, calc(100% - 32px)); margin: 0 auto; padding: 32px 0 80px; }
+    .hero { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px; align-items: end; margin-bottom: 26px; }
+    .hero p:not(.eyebrow) { max-width: 680px; font-size: 18px; }
+    .note, .panel, .screen, .field, .thread, .metric, .command, .brief-card, .route-card {
+      border: 1px solid var(--rule);
+      border-radius: 3px;
+      background: color-mix(in srgb, var(--paper) 94%, white);
+      box-shadow: var(--shadow);
+    }
+    .note { padding: 16px; color: var(--muted); font-size: 12px; }
+    .note b { color: var(--ink); }
+    .nav { position: sticky; top: 0; z-index: 10; display: flex; gap: 8px; flex-wrap: wrap; margin: 0 -16px 30px; padding: 10px 16px; border-block: 1px solid var(--rule); background: color-mix(in srgb, var(--bg) 90%, white); backdrop-filter: blur(12px); font-size: 11px; text-transform: lowercase; }
+    .nav a { border: 1px solid var(--rule); border-radius: 2px; padding: 7px 10px; background: var(--paper); color: var(--muted); }
+
+    .variation { display: grid; grid-template-columns: 330px minmax(0, 1fr); gap: 18px; align-items: start; margin-bottom: 36px; }
+    .panel { position: sticky; top: 66px; padding: 18px; }
+    .rank { display: inline-grid; place-items: center; width: 34px; height: 34px; margin-bottom: 12px; border: 1px solid var(--blue); border-radius: 2px; background: var(--blue); color: var(--bg); font-weight: 800; }
+    .panel ul { margin: 16px 0 0 18px; padding: 0; color: var(--muted); }
+    .pick { display: inline-flex; margin-top: 12px; border: 1px solid var(--rule-strong); border-radius: 999px; padding: 6px 9px; background: var(--blue-soft); color: var(--blue); font: 700 11px/1 var(--mono); text-transform: lowercase; }
+
+    .screen { min-height: 680px; overflow: hidden; background: linear-gradient(180deg, color-mix(in srgb, var(--paper) 92%, var(--blue-soft)), var(--bg)); }
+    .screen-inner { min-height: 680px; padding: 20px; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: clamp(28px, 5vh, 58px); }
+    .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 900; letter-spacing: -.04em; }
+    .brand-mark { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid var(--blue); border-radius: 2px; background: var(--blue); color: var(--bg); font: 900 17px/1 var(--mono); }
+    .top-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+    .chip, .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 1px solid var(--rule);
+      border-radius: 2px;
+      padding: 6px 8px;
+      background: var(--paper-2);
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: lowercase;
+    }
+    .dot { flex: none; width: 8px; height: 8px; border-radius: 999px; background: #22c55e; box-shadow: 0 0 0 4px rgba(34, 197, 94, .14); }
+    .dot.amber { background: var(--amber); box-shadow: 0 0 0 4px rgba(183, 121, 31, .16); }
+    .btn, .ghost {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--blue);
+      border-radius: 2px;
+      padding: 11px 14px;
+      background: var(--blue);
+      color: var(--bg);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .04em;
+      text-transform: lowercase;
+      transition: transform 140ms var(--ease-out), background 140ms ease, border-color 140ms ease;
+    }
+    .ghost { background: var(--paper); color: var(--blue); }
+    .field { display: grid; gap: 8px; padding: 12px; box-shadow: none; }
+    .label { color: var(--faint); font-size: 11px; text-transform: lowercase; }
+    .input, .area, .select { width: 100%; border: 1px solid var(--rule); border-radius: 2px; padding: 12px; background: var(--paper); color: var(--ink); outline: none; }
+    .area { min-height: 138px; font-size: 18px; line-height: 1.35; letter-spacing: -.03em; }
+    .input:focus, .area:focus, .select:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(31, 94, 156, .08); }
+
+    .v-command .center { width: min(860px, 100%); margin: 0 auto; }
+    .v-command .headline { margin-bottom: 18px; }
+    .v-command .composer { overflow: hidden; border: 1px solid var(--rule-strong); border-radius: 3px; background: var(--paper); box-shadow: var(--shadow); }
+    .v-command textarea { width: 100%; min-height: 230px; border: 0; padding: clamp(20px, 3vw, 34px); background: transparent; color: var(--ink); font-size: clamp(24px, 4vw, 40px); line-height: 1.16; letter-spacing: -.06em; outline: 0; }
+    .v-command .launch-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; padding: 12px; border-top: 1px solid var(--rule); background: var(--paper-2); }
+    .v-command .recent { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 18px; }
+
+    .thread { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 12px; box-shadow: none; }
+    .thread b, .thread small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .thread small { color: var(--muted); }
+
+    .v-brief .layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
+    .brief-card { position: relative; padding: clamp(22px, 4vw, 42px); }
+    .brief-card::before { content: ''; position: absolute; inset: 14px; border: 1px solid var(--rule); pointer-events: none; }
+    .stamp { position: absolute; right: 34px; top: 34px; transform: rotate(6deg); border: 2px solid var(--blue); padding: 8px 10px; color: var(--blue); font: 900 15px/1 var(--mono); text-transform: lowercase; }
+    .brief-card h3 { max-width: 640px; font-size: clamp(46px, 7vw, 86px); line-height: .85; letter-spacing: -.08em; }
+    .brief-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 24px; }
+    .brief-side { display: grid; gap: 10px; }
+    .route-card { padding: 14px; }
+
+    .v-workbench .workgrid { display: grid; grid-template-columns: 240px minmax(0, 1fr) 260px; gap: 12px; align-items: start; }
+    .v-workbench .panel-lite { border: 1px solid var(--rule); border-radius: 3px; padding: 14px; background: var(--paper); box-shadow: var(--shadow); }
+    .v-workbench .panel-lite h3 { margin-bottom: 12px; }
+    .v-workbench .stack { display: grid; gap: 8px; }
+    .v-workbench .launch { display: grid; gap: 10px; }
+    .metric { padding: 12px; box-shadow: none; }
+    .metric b { display: block; font-size: 34px; line-height: 1; letter-spacing: -.05em; }
+    .metric span { color: var(--faint); font-size: 11px; text-transform: lowercase; }
+
+    .v-inbox .command { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; width: min(980px, 100%); margin: 0 auto 16px; padding: 12px; }
+    .v-inbox .command-mark { color: var(--blue); font: 900 24px/1 var(--mono); }
+    .v-inbox .command input { border: 0; background: transparent; color: var(--ink); font-size: clamp(18px, 3vw, 28px); letter-spacing: -.04em; outline: 0; }
+    .v-inbox .inbox-grid { display: grid; grid-template-columns: 1fr 1.4fr 1fr; gap: 12px; }
+    .v-inbox .bucket { border: 1px solid var(--rule); border-radius: 3px; padding: 14px; background: var(--paper); box-shadow: var(--shadow); }
+    .v-inbox .feature h3 { font-size: clamp(40px, 6vw, 72px); line-height: .86; letter-spacing: -.08em; }
+    .reply { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; margin-top: 18px; }
+
+    @media (hover: hover) and (pointer: fine) {
+      .nav a:hover, .ghost:hover { border-color: var(--blue); background: var(--blue-soft); color: var(--blue); }
+      .btn:hover { background: color-mix(in srgb, var(--blue) 92%, black); }
+      .thread:hover { border-color: var(--rule-strong); background: var(--blue-soft); }
+    }
+
+    @media (max-width: 1060px) {
+      .hero, .variation, .v-brief .layout, .v-workbench .workgrid, .v-inbox .inbox-grid { grid-template-columns: 1fr; }
+      .panel { position: static; }
+      .v-command .recent, .brief-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 700px) {
+      .screen-inner { padding: 14px; }
+      .topbar, .v-command .launch-row, .reply, .v-inbox .command { grid-template-columns: 1fr; display: grid; }
+      .top-actions { justify-content: start; }
+      .screen { min-height: auto; }
+      .screen-inner { min-height: auto; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition-duration: .001ms !important; scroll-behavior: auto !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">starting screen preview</p>
+        <h1>Four calmer ways to start an agent.</h1>
+        <p>The live screen is already close; these are static HTML directions for choosing the next homepage shape before wiring anything.</p>
+      </div>
+      <aside class="note"><b>Recommendation:</b> ship Command First unless returning users need the inbox as the default mental model.</aside>
+    </header>
+
+    <nav class="nav" aria-label="Preview sections">
+      <a href="#command-first">command first</a>
+      <a href="#mission-brief">mission brief</a>
+      <a href="#workbench">workbench</a>
+      <a href="#inbox-start">inbox start</a>
+    </nav>
+
+    <article id="command-first" class="variation v-command">
+      <aside class="panel">
+        <span class="rank">01</span>
+        <p class="eyebrow">recommended</p>
+        <h2>Command First</h2>
+        <p>One huge prompt, one repo row, recent agents below. Best if the first action should be impossible to miss.</p>
+        <span class="pick">ship this first</span>
+        <ul><li>Least visual noise</li><li>Smallest live-app diff</li><li>Strong first-run clarity</li></ul>
+      </aside>
+      <section class="screen" aria-label="Command First mockup">
+        <div class="screen-inner">
+          <header class="topbar">
+            <a class="brand" href="#"><span class="brand-mark">M</span><span>makerspace</span></a>
+            <div class="top-actions"><span class="chip"><span class="dot"></span>codex</span><span class="chip"><span class="dot"></span>github</span><a class="ghost" href="#">settings</a></div>
+          </header>
+          <div class="center">
+            <div class="headline"><p class="eyebrow">new agent</p><h1>What should Pi make?</h1></div>
+            <form class="composer">
+              <textarea aria-label="Task">Polish the starting screen. Keep the diff small and run one check.</textarea>
+              <div class="launch-row">
+                <input class="input" aria-label="Repository" value="github.com/you/project">
+                <button class="btn" type="button">start agent</button>
+              </div>
+            </form>
+            <div class="recent" aria-label="Recent agents">
+              <a class="thread" href="#"><span class="dot"></span><span><b>homepage polish</b><small>ready · styles.css</small></span><span class="status">open</span></a>
+              <a class="thread" href="#"><span class="dot amber"></span><span><b>local app</b><small>running · desktop</small></span><span class="status">watch</span></a>
+              <a class="thread" href="#"><span class="dot"></span><span><b>settings auth</b><small>done · yesterday</small></span><span class="status">view</span></a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </article>
+
+    <article id="mission-brief" class="variation v-brief">
+      <aside class="panel">
+        <span class="rank">02</span>
+        <p class="eyebrow">more personality</p>
+        <h2>Mission Brief</h2>
+        <p>A paper-like brief makes the app feel intentional and a little premium without adding real complexity.</p>
+        <ul><li>Best brand feel</li><li>Great for onboarding</li><li>Slightly less direct</li></ul>
+      </aside>
+      <section class="screen" aria-label="Mission Brief mockup">
+        <div class="screen-inner">
+          <header class="topbar">
+            <a class="brand" href="#"><span class="brand-mark">M</span><span>makerspace</span></a>
+            <div class="top-actions"><span class="chip"><span class="dot"></span>ready</span><a class="ghost" href="#">agents</a><a class="ghost" href="#">settings</a></div>
+          </header>
+          <div class="layout">
+            <form class="brief-card">
+              <div class="stamp">ready</div>
+              <p class="eyebrow">brief pi</p>
+              <h3>Give the agent a clean mission.</h3>
+              <label class="field"><span class="label">mission</span><textarea class="area">Audit the homepage for clutter, propose a tighter version, and only change what matters.</textarea></label>
+              <div class="brief-grid">
+                <label class="field"><span class="label">repo</span><input class="input" value="github.com/you/project"></label>
+                <button class="btn" type="button">launch brief</button>
+              </div>
+            </form>
+            <aside class="brief-side">
+              <div class="route-card"><p class="eyebrow">shortcuts</p><p><b>Polish UI</b><br><span class="small">Design pass + one check.</span></p></div>
+              <div class="route-card"><p class="eyebrow">repo</p><select class="select"><option>you/project</option><option>you/site</option></select></div>
+              <div class="route-card"><p class="eyebrow">recent</p><p class="small">homepage polish<br>agent timeline<br>settings auth</p></div>
+            </aside>
+          </div>
+        </div>
+      </section>
+    </article>
+
+    <article id="workbench" class="variation v-workbench">
+      <aside class="panel">
+        <span class="rank">03</span>
+        <p class="eyebrow">power user</p>
+        <h2>Workbench</h2>
+        <p>Agents, command, and readiness in one glance. Useful when users routinely juggle multiple agents.</p>
+        <ul><li>Best status scanning</li><li>More dashboard-like</li><li>More chrome than needed for first run</li></ul>
+      </aside>
+      <section class="screen" aria-label="Workbench mockup">
+        <div class="screen-inner">
+          <header class="topbar">
+            <a class="brand" href="#"><span class="brand-mark">M</span><span>makerspace</span></a>
+            <div class="top-actions"><span class="chip"><span class="dot"></span>local bridge</span><span class="chip">3 warm</span><a class="ghost" href="#">settings</a></div>
+          </header>
+          <div class="workgrid">
+            <aside class="panel-lite">
+              <h3>Agents</h3>
+              <div class="stack">
+                <a class="thread" href="#"><span class="dot amber"></span><span><b>UI polish</b><small>running</small></span></a>
+                <a class="thread" href="#"><span class="dot"></span><span><b>Auth smoke</b><small>ready</small></span></a>
+                <a class="thread" href="#"><span class="dot"></span><span><b>README</b><small>done</small></span></a>
+              </div>
+            </aside>
+            <form class="panel-lite launch">
+              <p class="eyebrow">new run</p>
+              <h2>Start clean.</h2>
+              <label class="field"><span class="label">task</span><textarea class="area">Make the starting screen feel calmer. Preserve the current app flow.</textarea></label>
+              <label class="field"><span class="label">target</span><input class="input" value="/Users/you/project"></label>
+              <button class="btn" type="button">start agent</button>
+            </form>
+            <aside class="panel-lite stack">
+              <h3>Readiness</h3>
+              <div class="metric"><span>provider</span><b>local</b></div>
+              <div class="metric"><span>codex</span><b>in</b></div>
+              <div class="metric"><span>today</span><b>7</b><p class="small">completed agents</p></div>
+            </aside>
+          </div>
+        </div>
+      </section>
+    </article>
+
+    <article id="inbox-start" class="variation v-inbox">
+      <aside class="panel">
+        <span class="rank">04</span>
+        <p class="eyebrow">returning user</p>
+        <h2>Inbox Start</h2>
+        <p>Make the homepage an inbox for agent work, with a command bar for new runs.</p>
+        <ul><li>Best follow-up flow</li><li>Strong for async work</li><li>Weaker empty-state experience</li></ul>
+      </aside>
+      <section class="screen" aria-label="Inbox Start mockup">
+        <div class="screen-inner">
+          <header class="topbar">
+            <a class="brand" href="#"><span class="brand-mark">M</span><span>makerspace</span></a>
+            <div class="top-actions"><span class="chip"><span class="dot"></span>ready</span><a class="ghost" href="#">new</a><a class="ghost" href="#">settings</a></div>
+          </header>
+          <form class="command">
+            <span class="command-mark">⌘</span>
+            <input aria-label="Command" value="Run github.com/you/project — simplify the start screen">
+            <button class="btn" type="button">run</button>
+          </form>
+          <div class="inbox-grid">
+            <aside class="bucket">
+              <p class="eyebrow">needs you</p>
+              <div class="stack">
+                <a class="thread" href="#"><span class="dot amber"></span><span><b>Pick layout</b><small>UI concepts · now</small></span></a>
+                <a class="thread" href="#"><span class="dot amber"></span><span><b>Approve copy</b><small>README · 8m</small></span></a>
+              </div>
+            </aside>
+            <main class="bucket feature">
+              <p class="eyebrow">selected</p>
+              <h3>Starting screen polish</h3>
+              <p>Pi has a small static preview ready. Choose the direction, then wire only that one.</p>
+              <div class="reply"><input class="input" value="Use Command First."><button class="btn" type="button">reply</button></div>
+            </main>
+            <aside class="bucket">
+              <p class="eyebrow">running</p>
+              <div class="stack">
+                <a class="thread" href="#"><span class="dot amber"></span><span><b>desktop app</b><small>checking</small></span></a>
+                <a class="thread" href="#"><span class="dot"></span><span><b>settings</b><small>done</small></span></a>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </section>
+    </article>
+  </main>
+</body>
+</html>

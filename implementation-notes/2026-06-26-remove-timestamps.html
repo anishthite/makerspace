@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Remove timestamps</title>
+<meta name="task" content="Remove timestamp chrome from thread output and system log text.">
+<meta name="date-started" content="2026-06-26">
+<meta name="date-updated" content="2026-06-26">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="makerspace, ui, thread, logs, timestamps">
+<meta name="related" content="2026-06-16-launch-log-timestamps.html,2026-06-24-first-party-log-events.html,2026-06-26-agent-trace-thinking-summary.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Remove timestamps</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-26 · status <b class="status-shipped">shipped</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Remove visible time labels and timestamped system-log prefixes.</div><b>Source</b><div>User says timestamps are unnecessary.</div><b>Surface</b><div><code>/thread.html</code>, live/output events, log formatting tests.</div><b>Schema</b><div>Keep event/message timestamp fields for ordering and runtime math.</div><b>Open Qs</b><div>0.</div></div>
+<h2>UI layout</h2>
+<ol><li><b>Conversation</b>: show message bodies, run duration markers, and event copy without wall-clock labels.</li><li><b>Trace</b>: show thinking and summary cards without wall-clock labels.</li></ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>src/log-format.js</code></td><td>touch</td><td>Stop adding ISO prefixes to retained system log chunks.</td></tr><tr><td><code>public/thread.js</code></td><td>touch</td><td>Remove wall-clock rendering from conversation and trace cards.</td></tr><tr><td><code>public/thread.html</code></td><td>touch</td><td>Bust the thread script cache.</td></tr><tr><td><code>public/styles.css</code></td><td>touch</td><td>Remove timestamp-only timeline styles.</td></tr><tr><td><code>test/log-format.test.js</code></td><td>touch</td><td>Assert system logs stay unprefixed.</td></tr><tr><td><code>test/thread-trace-tray.test.js</code></td><td>touch</td><td>Pin the no-visible-time frontend behavior.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Remove display and text prefixes only. Stored timestamps still dedupe messages and compute run durations.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>Keep duration copy over removing all timing. Users still need progress context.</td></tr></table>
+<h2>Assumptions</h2>
+<ul><li>A-001 · User means wall-clock timestamps. If wrong: remove history date labels separately.</li></ul>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>node --check public/thread.js &amp;&amp; node --check src/log-format.js &amp;&amp; node --test test/log-format.test.js test/thread-trace-tray.test.js</code></td><td>Passed 11/11.</td></tr><tr><td><code>npm test</code></td><td>Passed 106/106.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Revert the frontend timestamp removals and <code>src/log-format.js</code> chunk format.</p>
+<h2>Definition of done</h2>
+<ul><li>Thread cards no longer show wall-clock time labels.</li><li>System log chunks retain plain <code>[system]</code> text.</li><li><code>node --check public/thread.js src/log-format.js</code> and focused tests pass.</li></ul>
+</body>
+</html>

@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Settings token query auth</title>
+<meta name="task" content="Let settings consume backend token query params before Codex sign-in">
+<meta name="date-started" content="2026-06-25">
+<meta name="date-updated" content="2026-06-25">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="makerspace,settings,auth,codex,token,bugfix">
+<meta name="related" content="2026-06-18-codex-settings-auth.html,2026-06-17-codex-ui-login.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.kv b{color:#444;font-weight:600}.blast-med{color:#b85c00}</style>
+</head>
+<body>
+<h1>Settings token query auth</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-25 · status <b>shipped</b> · blast <span class="blast-med">medium</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Stop <code>/settings.html?token=...</code> Codex sign-in from calling protected APIs without the token.</div><b>Surface</b><div><code>public/settings.js</code> browser bootstrap and one static test.</div><b>Schema</b><div>None.</div><b>Open Qs</b><div>0.</div></div>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>public/settings.js</code></td><td>touch</td><td>Persist <code>api</code> and <code>token</code> query params before the first settings fetch.</td></tr><tr><td><code>test/settings-auth-query.test.js</code></td><td>new</td><td>Check settings keeps URL-token bootstrap parity with other pages.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Copy the existing page-local query bootstrap. A shared helper would touch every page for one missing settings case.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Revert the settings bootstrap and static test; backend auth behavior stays unchanged.</p>
+<h2>Definition of done</h2>
+<ul><li><code>settings.js</code> saves <code>token</code> before <code>loadCodexAuth()</code>.</li><li><code>settings.js</code> strips consumed query params from the address bar.</li><li><code>node --test test/settings-auth-query.test.js</code> passes.</li></ul>
+</body>
+</html>

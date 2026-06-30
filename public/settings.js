@@ -115,6 +115,7 @@ function apiUrl(path) {
 
 async function fetchJson(path, options = {}) {
   const response = await fetch(apiUrl(path), {
+    credentials: 'include',
     ...options,
     headers: { ...authHeaders(), ...(options.headers || {}) },
   });
@@ -256,14 +257,10 @@ async function loadPiProfile() {
 }
 
 async function reloadSettingsData() {
-  try {
-    await Promise.all([loadCodexAuth(), loadGitHubAuth(), loadSettings(), loadPiProfile()]);
-  } catch (error) {
-    codexStatus.textContent = error.message;
-    githubStatus.textContent = error.message;
-    settingsStatus.textContent = error.message;
-    piProfileStatus.textContent = error.message;
-  }
+  await loadGitHubAuth().catch((error) => { githubStatus.textContent = error.message; });
+  await loadCodexAuth().catch((error) => { codexStatus.textContent = error.message; });
+  await loadSettings().catch((error) => { settingsStatus.textContent = error.message; });
+  await loadPiProfile().catch((error) => { piProfileStatus.textContent = error.message; });
 }
 
 apiBaseInput.value = getApiBase();
@@ -319,7 +316,7 @@ githubLogin.addEventListener('click', async () => {
 
 githubLogout.addEventListener('click', async () => {
   githubLogout.disabled = true;
-  githubStatus.textContent = 'Disconnecting…';
+  githubStatus.textContent = 'Signing out…';
   try {
     await fetchJson('/api/auth/github/logout', { method: 'POST' });
     await reloadSettingsData();

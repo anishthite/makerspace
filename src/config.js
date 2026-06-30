@@ -24,6 +24,10 @@ function splitList(value) {
     .filter(Boolean);
 }
 
+function truthy(value) {
+  return ['1', 'true', 'yes', 'on'].includes(String(value || '').trim().toLowerCase());
+}
+
 function projectNameFromEnv(localDataDir) {
   const explicit = String(process.env.MAKERSPACE_PROJECT || process.env.MAKERSPACE_NAME || '').trim();
   if (explicit) return explicit;
@@ -50,6 +54,15 @@ export function getConfig() {
     host: process.env.HOST || (provider === 'local' ? '127.0.0.1' : ''),
     port: Number(process.env.PORT || 8787),
     controlApiToken: process.env.CONTROL_API_TOKEN || '',
+    authRequired: process.env.MAKERSPACE_AUTH_REQUIRED || process.env.MAKERSPACE_MULTI_USER
+      ? truthy(process.env.MAKERSPACE_AUTH_REQUIRED || process.env.MAKERSPACE_MULTI_USER)
+      : Boolean(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET && provider !== 'local'),
+    authSecret: process.env.MAKERSPACE_AUTH_SECRET || process.env.AUTH_SECRET || '',
+    authCookieName: process.env.MAKERSPACE_AUTH_COOKIE || 'makerspace_auth',
+    authCookieSameSite: process.env.MAKERSPACE_AUTH_SAMESITE || '',
+    authSessionDays: Number(process.env.MAKERSPACE_AUTH_SESSION_DAYS || 30),
+    allowHostedLocalProvider: truthy(process.env.MAKERSPACE_ALLOW_HOSTED_LOCAL_PROVIDER),
+    allowedOrigin: process.env.MAKERSPACE_ALLOWED_ORIGIN || process.env.PUBLIC_APP_ORIGIN || '',
     stateStore: process.env.MAKERSPACE_STATE_STORE || process.env.STATE_STORE || 'file',
     daytonaApiKey: process.env.DAYTONA_API_KEY || '',
     daytonaApiUrl: process.env.DAYTONA_API_URL || 'https://app.daytona.io/api',
@@ -70,6 +83,7 @@ export function getConfig() {
     dockerfilePath: process.env.DOCKERFILE_PATH || path.join(rootDir, 'image', 'Dockerfile'),
     settingsFile: process.env.SETTINGS_DATA_PATH || path.join(defaultDataDir, 'settings.json'),
     recentProjectsFile: process.env.RECENT_PROJECTS_DATA_PATH || path.join(defaultDataDir, 'recent-projects.json'),
+    authFile: process.env.AUTH_DATA_PATH || process.env.MAKERSPACE_AUTH_DATA_PATH || path.join(defaultDataDir, 'auth.json'),
     remoteWorkspaceDir: process.env.REMOTE_WORKSPACE_DIR || '/srv/workspace',
     remoteControlDir: process.env.REMOTE_CONTROL_DIR || '/srv/micro-cloud',
     bridgePort: Number(process.env.PI_BRIDGE_PORT || 4310),

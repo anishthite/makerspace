@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Thread agent notes layout</title>
+<meta name="task" content="Make the thread timeline scrollable across history and add agent graph plus implementation-note rails.">
+<meta name="date-started" content="2026-06-24">
+<meta name="date-updated" content="2026-06-24">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="makerspace,ui,thread,timeline,implementation-notes,history">
+<meta name="related" content="2026-06-23-single-flow-thread-ui.html,2026-06-24-thread-implementation-notes-visibility.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-med{color:#b85c00}.status-in-progress{color:#b85c00}</style>
+</head>
+<body>
+<h1>Thread agent notes layout</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-24 · status <b>shipped</b> · blast <span class="blast-med">medium</span></p>
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Show thread history, a left agent graph, and a right implementation-notes rail on <code>/thread.html</code>.</div>
+  <b>Source</b><div>Existing stream events, session <code>threadMessages</code>, and implementation-note tool events.</div>
+  <b>Surface</b><div><code>GET /api/threads/:name</code>, <code>GET /api/sessions/:name/output</code>, <code>public/thread.js</code>, <code>public/styles.css</code>.</div>
+  <b>Schema</b><div>Add optional session <code>threadMessages[]</code> with <code>role</code>, <code>text</code>, <code>timestamp</code>, and <code>runId</code>.</div>
+  <b>Mobile</b><div>Stack rails above the timeline.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+<h2>UI layout</h2>
+<ol>
+  <li><b>Left rail</b>: render <code>you → pi → tools</code> as a compact graph with active/done/error states.</li>
+  <li><b>Center</b>: keep the chronological timeline and only follow the bottom while the viewer is already near it.</li>
+  <li><b>Right rail</b>: render implementation-note cards outside raw tool output.</li>
+</ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+<tr><td><code>src/session.js</code></td><td>touch</td><td>Add bounded <code>threadMessages</code> helpers.</td></tr>
+<tr><td><code>src/server.js</code></td><td>touch</td><td>Persist user and assistant messages for thread reload history.</td></tr>
+<tr><td><code>public/thread.html</code></td><td>touch</td><td>Add agent and notes rails around the timeline.</td></tr>
+<tr><td><code>public/thread.js</code></td><td>touch</td><td>Render history, agent graph, notes rail, and non-hostile auto-follow.</td></tr>
+<tr><td><code>public/styles.css</code></td><td>touch</td><td>Style the three-column thread workspace and compact rail cards.</td></tr>
+<tr><td><code>test/session.test.js</code></td><td>touch</td><td>Cover bounded thread history helpers.</td></tr>
+<tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Add this task to the notes index.</td></tr>
+</table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr>
+<tr><td>D-001</td><td>Use session-local <code>threadMessages[]</code>. It fixes reload history without adding a database.</td></tr>
+<tr><td>D-002</td><td>Build the agent graph from existing stream events. It avoids a new agent/subagent API.</td></tr>
+</table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+<tr><td>T-001</td><td>Bounded JSON history over append-only transcript files. The current thread volumes fit the session file.</td></tr>
+</table>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr>
+<tr><td><code>node --check public/thread.js src/server.js src/session.js</code></td><td>Passed.</td></tr>
+<tr><td><code>node --test test/session.test.js test/thread-note-events.test.js</code></td><td>Passed 14/14.</td></tr>
+<tr><td><code>npm test</code></td><td>Passed 54/54.</td></tr>
+<tr><td><code>npm run build</code></td><td>Passed.</td></tr>
+</table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Revert the touched server/session/client files to remove the optional history and rail UI.</p>
+<h2>Definition of done</h2>
+<ul>
+  <li>Thread reload shows prior user and assistant messages when stored.</li>
+  <li>Live updates stop snapping the viewport when the viewer scrolls upward.</li>
+  <li>Left rail shows agent/tool graph states.</li>
+  <li>Right rail shows implementation-note summaries.</li>
+  <li><code>node --test test/session.test.js test/thread-note-events.test.js</code> passes.</li>
+  <li><code>node --check public/thread.js src/server.js src/session.js</code> passes.</li>
+</ul>
+</body>
+</html>

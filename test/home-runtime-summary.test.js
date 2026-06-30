@@ -8,7 +8,7 @@ const runState = readFileSync(new URL('../src/server/run-state.js', import.meta.
 const threads = readFileSync(new URL('../src/server/threads.js', import.meta.url), 'utf8');
 
 test('home agents summary shows total active runtime', () => {
-  assert.match(html, /\/app\.js\?v=status-fallback-1/);
+  assert.match(html, /\/app\.js\?v=finished-indicator-1/);
   assert.match(js, /function formatRunningTotal\(starts, endValue = Date\.now\(\)\)/);
   assert.match(js, /totalMs \+= Math\.max\(0, end - start\)/);
   assert.match(js, /running\$\{total \? ` for \$\{total\} total` : ''\}/);
@@ -34,6 +34,7 @@ test('home history and finished clear controls are near agent refresh', () => {
   assert.match(html, /<a class="textbtn" href="\/history\.html">history<\/a>\s*<button id="refresh-threads"/);
   assert.match(js, /id="clear-finished-threads" class="textbtn lane-clear"/);
   assert.match(js, /for \(const name of names\) \{\s*await fetchJson\(`\/api\/threads\/\$\{encodeURIComponent\(name\)\}\/archive`/);
+  assert.match(js, /cache: 'no-store'/);
 });
 
 test('recently finished rows stack finished and runtime copy in the top right', () => {
@@ -41,11 +42,23 @@ test('recently finished rows stack finished and runtime copy in the top right', 
   assert.match(js, /function finishedOutcome\(thread, rawStatus\)/);
   assert.match(js, /thread\?\.finalAnswerSummary/);
   assert.match(js, /const outcome = active \? '' : finishedOutcome\(thread, rawStatus\);/);
+  assert.match(js, /function finishedAt\(thread\) \{/);
+  assert.match(js, /function finishedAtMs\(thread\) \{/);
+  assert.match(js, /const finishedValue = finishedAt\(thread\);/);
   assert.match(js, /const inactiveTimes = !active \? \[finished, runtime \? `ran \$\{runtime\}` : ''\]\.filter\(Boolean\) : \[\];/);
   assert.match(js, /<span class="finished-meta">\$\{inactiveTimes\.map\(\(text\) => `<time>\$\{escapeHtml\(text\)\}<\/time>`\)\.join\(''\)\}<\/span>/);
   assert.match(js, /\$\{inactiveMeta \|\| activeRuntime\}/);
   assert.match(js, /class="answer-preview">\$\{escapeHtml\(outcome\)\}/);
+  assert.match(js, /grouped\.done\.sort\(\(left, right\) => finishedAtMs\(right\) - finishedAtMs\(left\)\);/);
   assert.match(runState, /scheduleFinalAnswerSummaryGeneration\(updated, text, runId\);/);
+});
+
+test('recently finished success indicators can be dismissed locally', () => {
+  assert.ok(js.includes("const SEEN_FINISHED_THREADS_KEY = 'makerspaceSeenFinishedThreads';"));
+  assert.ok(js.includes("return !active && ['completed', 'ready'].includes(rawStatus);"));
+  assert.ok(js.includes('data-finished-indicator="${escapeHtml(indicatorKey)}"'));
+  assert.ok(js.includes('data-finished-thread="${escapeHtml(indicatorKey)}"'));
+  assert.match(js, /threadsList\.addEventListener\('keydown'/);
 });
 
 test('new runs clear stale terminal runtime fields', () => {

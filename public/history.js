@@ -112,7 +112,7 @@ function apiUrl(path) {
 }
 
 async function fetchJson(path, options = {}) {
-  const response = await fetch(apiUrl(path), { ...options, headers: { ...authHeaders(), ...(options.headers || {}) } });
+  const response = await fetch(apiUrl(path), { credentials: 'include', ...options, headers: { ...authHeaders(), ...(options.headers || {}) } });
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.error || `Request failed: ${response.status}`);
   return payload;

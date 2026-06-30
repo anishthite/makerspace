@@ -2,10 +2,12 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 export function createHttpHelpers({ publicDir }) {
+  const allowedOrigin = process.env.MAKERSPACE_ALLOWED_ORIGIN || process.env.PUBLIC_APP_ORIGIN || '*';
   const corsHeaders = {
-    'access-control-allow-origin': '*',
+    'access-control-allow-origin': allowedOrigin,
     'access-control-allow-methods': 'GET,POST,OPTIONS',
     'access-control-allow-headers': 'content-type,authorization,x-api-token,x-makerspace-session',
+    ...(allowedOrigin === '*' ? {} : { 'access-control-allow-credentials': 'true' }),
   };
 
   function sendJson(response, statusCode, payload) {

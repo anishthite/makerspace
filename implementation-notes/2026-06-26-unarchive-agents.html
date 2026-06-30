@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — unarchive agents</title>
+<meta name="task" content="Restore archived main agents to the workspace pane from history.">
+<meta name="date-started" content="2026-06-26">
+<meta name="date-updated" content="2026-06-26">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="makerspace,ui,history,archive,threads">
+<meta name="related" content="2026-06-24-archive-done-agents.html,2026-06-25-home-history-clear-all.html,2026-06-25-session-history-view.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}h3{font-size:13px;margin:1rem 0 .3rem;color:#444;text-transform:uppercase;letter-spacing:.04em}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code,pre{font-family:ui-monospace,Menlo,monospace}code{background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}pre{background:#f6f6f6;padding:.55rem .7rem;border-radius:4px;overflow-x:auto;font-size:12.5px;line-height:1.4}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Unarchive agents</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-26 · status <b class="status-shipped">shipped</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Let an archived thread agent be restored from history so <code>/api/threads</code> shows it in the workspace pane again.</div><b>Source</b><div>User asked for an unarchive control to bring the agent back to the main pane.</div><b>Surface</b><div><code>POST /api/threads/:name/unarchive</code>, <code>/history.html</code>, <code>/workspace.html</code> thread lanes.</div><b>Schema</b><div>No new fields; clear existing <code>archivedAt</code>.</div><b>Mobile</b><div>Reuse existing history card wrapping.</div><b>Open Qs</b><div>0; assume “main pane” means the workspace agent lanes filtered by <code>/api/threads</code>.</div></div>
+<h2>API contract</h2>
+<h3>Request</h3>
+<pre>POST /api/threads/:name/unarchive</pre>
+<h3>Response</h3>
+<pre>{ provider: ProviderInfo, thread: Session }</pre>
+<h2>Algorithm</h2>
+<ol><li>Require access to the existing <code>threadBridge</code> session.</li><li>Remove <code>archivedAt</code> and bump <code>updatedAt</code>.</li><li>Reload history; the workspace list includes the restored agent through the existing <code>!archivedAt</code> filter.</li></ol>
+<h2>UI layout</h2>
+<ol><li><b>History card</b>: show <code>restore to workspace</code> only on archived thread agents.</li></ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>src/store.js</code></td><td>touch</td><td>Add <code>unarchiveStoredSession</code> beside archive persistence.</td></tr><tr><td><code>src/server.js</code></td><td>touch</td><td>Add an access-checked unarchive route.</td></tr><tr><td><code>public/history.js</code></td><td>touch</td><td>Render and handle the restore action.</td></tr><tr><td><code>public/history.html</code>, <code>public/styles.css</code></td><td>touch</td><td>Bust history assets and size the restore button.</td></tr><tr><td><code>test/archive-route.test.js</code>, <code>test/history.test.js</code>, <code>test/store.test.js</code></td><td>touch</td><td>Cover route, UI wiring, and persistence.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Use a separate <code>/unarchive</code> route. It avoids overloading archive with hidden method semantics.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>History-only restore over another home filter. Archived agents already live in history.</td></tr></table>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>node --check src/store.js &amp;&amp; node --check src/server.js &amp;&amp; node --check public/history.js &amp;&amp; node --test test/store.test.js test/archive-route.test.js test/history.test.js</code></td><td>Passed 14/14.</td></tr><tr><td><code>npm run build</code></td><td>Passed.</td></tr><tr><td><code>npm test</code></td><td>Passed 120/120.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Revert the route/UI/store edits; archived rows remain unchanged unless restored manually.</p>
+<h2>Definition of done</h2>
+<ul><li>Archived history cards expose a restore action.</li><li>Restore clears <code>archivedAt</code> and reloads history.</li><li>Restored agents appear in <code>/api/threads</code>.</li><li>Focused tests and syntax checks pass.</li></ul>
+</body>
+</html>

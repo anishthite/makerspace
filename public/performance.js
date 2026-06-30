@@ -57,7 +57,7 @@ function apiUrl(path) {
 }
 
 async function fetchJson(path) {
-  const response = await fetch(apiUrl(path), { headers: authHeaders() });
+  const response = await fetch(apiUrl(path), { credentials: 'include', headers: authHeaders() });
   const text = await response.text();
   let payload;
   try {

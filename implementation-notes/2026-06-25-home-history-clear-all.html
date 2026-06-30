@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — home history and clear all</title>
+<meta name="task" content="Move history beside home refresh and add a clear-all control for recently finished agents.">
+<meta name="date-started" content="2026-06-25">
+<meta name="date-updated" content="2026-06-25">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="makerspace,ui,home,threads,history,archive">
+<meta name="related" content="2026-06-24-archive-done-agents.html,2026-06-24-archive-ready-threads.html,2026-06-25-running-lane-state-reset.html,2026-06-25-session-history-view.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Home history and clear all</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-25 · status <b class="status-shipped">shipped</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Put <code>history</code> beside the home agents <code>refresh</code> button and add a small clear-all button inside the right finished lane.</div><b>Source</b><div>User requested the home history button relocation and a right-side recently-finished clear control.</div><b>Surface</b><div><code>/</code> home topbar and agents lanes.</div><b>Schema</b><div>No new fields; clear-all archives visible finished thread rows through the existing archive route.</div><b>Open Qs</b><div>0; assume clear means archive so history remains searchable.</div></div>
+<h2>UI layout</h2>
+<ol><li><b>Agents header</b>: render <code>history</code> immediately before <code>refresh</code>.</li><li><b>Recently finished lane</b>: show <code>clear all</code> beside the count only when archiveable finished rows exist.</li></ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>public/index.html</code></td><td>touch</td><td>Move history link from topbar to the agents header and bust the app script cache.</td></tr><tr><td><code>public/app.js</code></td><td>touch</td><td>Render clear-all for finished rows and call existing archive endpoints.</td></tr><tr><td><code>public/styles.css</code></td><td>touch</td><td>Size the finished-lane clear button.</td></tr><tr><td><code>src/server.js</code></td><td>touch</td><td>Allow failed finished agents to be archived like ready/completed agents.</td></tr><tr><td><code>test/archive-route.test.js</code></td><td>touch</td><td>Cover failed-agent archiving.</td></tr><tr><td><code>test/home-runtime-summary.test.js</code></td><td>touch</td><td>Cover static home wiring for the moved history and clear-all control.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Archive instead of delete. Existing history depends on archived rows remaining stored.</td></tr><tr><td>D-002</td><td>Reuse <code>POST /api/threads/:name/archive</code>. A bulk route would duplicate access checks for one small button.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>Sequential existing archive calls over a new bulk API. The button is low-frequency and keeps the backend small.</td></tr></table>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>node --check public/app.js &amp;&amp; node --check src/server.js &amp;&amp; node --test test/home-runtime-summary.test.js test/archive-route.test.js</code></td><td>Passed 5/5.</td></tr><tr><td><code>npm run build</code></td><td>Passed.</td></tr><tr><td><code>npm test</code></td><td>Passed 78/78.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Revert the static UI edits and failed-status archive allowance; archived session rows remain readable.</p>
+<h2>Definition of done</h2>
+<ul><li>Home topbar no longer has a standalone history button.</li><li>Agents header shows history next to refresh.</li><li>Recently finished lane can archive all finished rows in one click.</li><li><code>node --check public/app.js src/server.js</code> and focused tests pass.</li></ul>
+</body>
+</html>

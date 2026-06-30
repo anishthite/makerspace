@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — trusted history access</title>
+<meta name="task" content="Let trusted desktop/API sessions read persisted history from previous browser-session IDs.">
+<meta name="date-started" content="2026-06-25">
+<meta name="date-updated" content="2026-06-25">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="makerspace,history,desktop,auth,threads">
+<meta name="related" content="2026-06-25-session-history-view.html,2026-06-25-parallel-project-instances.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-med{color:#b85c00}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Trusted history access</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-25 · status <b class="status-shipped">shipped</b> · blast <span class="blast-med">medium</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Show persisted sessions whose <code>githubOwnerSessionId</code> predates the current desktop/browser origin.</div><b>Source</b><div>Existing <code>CONTROL_API_TOKEN</code> authorization.</div><b>Surface</b><div><code>/api/sessions</code>, <code>/api/threads*</code>, <code>/api/sessions/*</code>.</div><b>Schema</b><div>No stored data change.</div><b>Mobile</b><div>Untouched.</div><b>Open Qs</b><div>0.</div></div>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>src/server.js</code></td><td>touch</td><td>Bypass browser-session ownership when a valid control token already authenticated the request.</td></tr><tr><td><code>test/history-route.test.js</code></td><td>new</td><td>Cover trusted access to old owner-tagged persisted sessions and threads.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Trust <code>CONTROL_API_TOKEN</code> for history ownership bypass. Desktop already rotates ports and injects this token per app launch.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>Server token bypass over persisting browser IDs. It fixes existing history without migration.</td></tr></table>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>node --check src/server.js &amp;&amp; node --test test/history-route.test.js</code></td><td>Passed.</td></tr><tr><td><code>npm test</code></td><td>Passed 70/70.</td></tr><tr><td><code>npm run build</code></td><td>Passed.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Revert <code>src/server.js</code> access-helper changes and remove the route test.</p>
+<h2>Definition of done</h2>
+<ul><li><code>/api/sessions</code> includes owner-tagged persisted rows for valid control-token requests.</li><li>Thread detail/history endpoints accept valid control-token requests for old owner-tagged rows.</li><li><code>node --test test/history-route.test.js</code> and <code>npm test</code> pass.</li></ul>
+</body>
+</html>

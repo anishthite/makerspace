@@ -63,6 +63,8 @@ function apiUrl(path) {
 
 async function fetchJson(path, options = {}) {
   const response = await fetch(apiUrl(path), {
+    credentials: 'include',
+    cache: 'no-store',
     ...options,
     headers: { ...authHeaders(), ...(options.headers || {}) },
   });
@@ -176,9 +178,13 @@ async function saveProject(project) {
 
 cacheRecentProjects(readCachedRecentProjects());
 
+function effectiveThreadStatus(thread) {
+  const runStatus = String(thread?.runStatus || '').toLowerCase();
+  return runStatus && runStatus !== 'unknown' ? runStatus : String(thread?.status || '').toLowerCase();
+}
+
 function isActiveThread(thread) {
-  const status = String(thread.runStatus || thread.status || '').toLowerCase();
-  return ['launching', 'starting', 'queued', 'running'].includes(status);
+  return ['launching', 'starting', 'queued', 'running'].includes(effectiveThreadStatus(thread));
 }
 
 function threadMatchesProject(thread, project) {
@@ -267,9 +273,15 @@ async function loadGitHubRepos() {
   renderRepoOptions(githubRepos);
 }
 
+async function refreshProjectThreads() {
+  await loadRecentProjects();
+  const payload = await fetchJson('/api/threads');
+  renderProvider(payload.provider);
+  renderRecentProjects(payload.threads || []);
+}
+
 async function loadStatus() {
   getBrowserSessionId();
-  await loadRecentProjects();
   renderRecentProjects();
   if (globalThis.makerspaceDesktop?.chooseFolder) {
     chooseFolder.hidden = false;
@@ -278,9 +290,7 @@ async function loadStatus() {
   }
 
   try {
-    const payload = await fetchJson('/api/threads');
-    renderProvider(payload.provider);
-    renderRecentProjects(payload.threads || []);
+    await refreshProjectThreads();
   } catch (error) {
     statusLine.textContent = error.message;
   }
@@ -314,6 +324,7 @@ repoRefresh.addEventListener('click', async () => {
   repoRefresh.disabled = true;
   repoHint.textContent = 'Loading…';
   try {
+    await refreshProjectThreads();
     await loadGitHubRepos();
   } catch (error) {
     repoHint.textContent = error.message;

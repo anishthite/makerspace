@@ -2,7 +2,7 @@ const THEME_KEY = 'makerspaceTheme';
 const FONT_KEY = 'makerspaceFont';
 const PALETTE_KEY = 'makerspaceDarkPalette';
 const DEFAULT_PALETTE = 'slate';
-const DARK_PALETTES = new Set(['slate', 'midnight', 'graphite', 'dusk', 'nerv-os']);
+const DARK_PALETTES = new Set(['slate', 'midnight', 'graphite', 'dusk', 'nerv-os', 'lcl-reactor']);
 
 export function normalizeAppearance(input = {}) {
   return {

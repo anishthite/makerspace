@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — server resource plan</title>
+<meta name="task" content="Plan CPU and memory reductions for the Makerspace server.">
+<meta name="date-started" content="2026-06-26">
+<meta name="date-updated" content="2026-06-26">
+<meta name="status" content="ready-for-review">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="makerspace,server,performance,cpu,memory,terminal">
+<meta name="related" content="2026-06-24-performance-harness-rollup.html,2026-06-25-pi-session-traces.html,2026-06-25-thread-resume-reconstruction.html,2026-06-25-bridge-workflow-continuation.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code { font-family: ui-monospace, Menlo, monospace; background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  ul { margin: .3rem 0 .8rem 1.2rem; padding: 0; }
+  li { margin: .15rem 0; }
+  .blast-med { color: #b85c00; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>Server resource plan</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-26 · status <b>ready-for-review</b> · blast <span class="blast-med">medium</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Cut idle/server CPU and RSS for terminal-first Pi usage.</div>
+  <b>Source</b><div>Inline audit plus workflow <code>run-mqum0ra2-1</code>.</div>
+  <b>Surface</b><div><code>src/server.js</code>, <code>src/store.js</code>, <code>src/host-pi-runner.js</code>, <code>src/setup-script.js</code>, <code>src/providers/daytona.js</code>.</div>
+  <b>Schema</b><div><code>/output</code> adds <code>baseOffset</code>/<code>truncated</code>; UI polish remains enabled but queued.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>implementation-notes/2026-06-26-server-resource-plan.html</code></td><td>new</td><td>Record the resource-reduction plan.</td></tr>
+  <tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Add this planning entry.</td></tr>
+  <tr><td><code>src/resource-utils.js</code></td><td>new</td><td>Hold pure retained-output and browser-session pruning helpers.</td></tr>
+  <tr><td><code>src/server.js</code></td><td>touch</td><td>Push SSE events, cap output, prune browser sessions, and queue polish jobs.</td></tr>
+  <tr><td><code>src/store.js</code></td><td>touch</td><td>Write compact JSON and cache reads by file stat.</td></tr>
+  <tr><td><code>public/thread.js</code></td><td>touch</td><td>Reload output when stream retention sends a reset snapshot.</td></tr>
+  <tr><td><code>test/resource-utils.test.js</code></td><td>new</td><td>Cover retained output offsets and browser-session pruning.</td></tr>
+  <tr><td><code>test/store.test.js</code></td><td>touch</td><td>Assert compact writes and stat-change refresh.</td></tr>
+  <tr><td><code>src/config.js</code></td><td>touch</td><td>Make host dispatch explicit opt-in.</td></tr>
+  <tr><td><code>test/config.test.js</code></td><td>touch</td><td>Assert host dispatch stays off unless requested.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Default <code>PI_HOST_DISPATCH</code> off. Terminal-first usage should not preload/run the Pi SDK on the control server.</td></tr>
+  <tr><td>D-002</td><td>Read Pi defaults from settings instead of creating a throwaway agent session. Model-picker nicety should not import the full SDK on page load.</td></tr>
+  <tr><td>D-003</td><td>Turn generated titles and final-answer summaries off by default. Extra LLM calls are optional UI polish.</td></tr>
+  <tr><td>D-004</td><td>Replace idle SSE polling with event push. One open tab should not parse <code>sessions.json</code> ten times per second.</td></tr>
+  <tr><td>D-005</td><td>Cap live output, tool output, thinking, and tracked-change buffers. Terminal output is live data, not permanent RAM ballast.</td></tr>
+  <tr><td>D-006</td><td>Supersedes: <code>D-003</code>. Keep generated titles and final-answer summaries enabled, but run them through one delayed serialized low-priority queue.</td></tr>
+  <tr><td>D-007</td><td>Use one <code>Map&lt;name, Set&lt;subscriber&gt;&gt;</code> for SSE push. Replay registers before enqueueing retained events so live events cannot slip between replay and subscription.</td></tr>
+  <tr><td>D-008</td><td>Add <code>baseOffset</code>/<code>nextOffset</code> to retained output. Clients can recover from tail truncation without retaining infinite text in RAM.</td></tr>
+  <tr><td>D-009</td><td>Make <code>PI_HOST_DISPATCH</code> explicit opt-in with <code>PI_LOCAL_DISPATCH</code> as a legacy truthy alias. Default server startup avoids Pi SDK preload.</td></tr>
+  <tr><td>D-010</td><td>Return settings-derived Pi defaults from <code>/api/threads</code>. Rich SDK model discovery stays off the hot path.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td>Cheap caps and defaults over SQLite/Redis. The bottlenecks are obvious without adding infrastructure.</td></tr>
+  <tr><td>T-002</td><td>Compact cached JSON store over per-session files. Avoid migration work until compact/cache is measured.</td></tr>
+  <tr><td>T-003</td><td>Opt-in UI polish over always-on title/summary/model discovery. Terminal use values low RSS more than decoration.</td></tr>
+  <tr><td>T-004</td><td>Queued polish over disabled polish. User constraint keeps UI finish while moving LLM calls off the run/create hot path.</td></tr>
+</table>
+
+<h2>Assumptions</h2>
+<ul>
+  <li>A-001 · Terminal/local mode is the priority. If remote web latency is priority, keep host dispatch opt-in with <code>PI_HOST_DISPATCH=1</code>.</li>
+</ul>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Defaults can be reverted or exposed as env toggles without data migration.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>Title generation, summary generation, and model default discovery do not load Pi SDK on the run/create hot path.</li>
+  <li>Idle SSE clients do not cause repeated store reads while no events arrive.</li>
+  <li>Live output/tool/thinking/tracked-change buffers have documented byte/count caps.</li>
+  <li><code>npm test</code> passes with one small regression test per touched hot path.</li>
+</ul>
+</body>
+</html>

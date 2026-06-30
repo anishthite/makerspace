@@ -45,7 +45,7 @@ export const report = {
       'Keep Daytona credentials on the backend only.',
     ],
     missingByDesign: [
-      'No auth or multi-user support beyond CONTROL_API_TOKEN.',
+      'No email/password auth; hosted users sign in with GitHub OAuth.',
       'No embedded terminal.',
       'No local repo upload/sync.',
     ],

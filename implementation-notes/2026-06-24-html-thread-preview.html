@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — HTML thread preview</title>
+<meta name="task" content="Render assistant HTML output as a designed thread preview.">
+<meta name="date-started" content="2026-06-24">
+<meta name="date-updated" content="2026-06-24">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="makerspace,ui,thread,html,design">
+<meta name="related" content="2026-06-24-thread-message-variations.html,2026-06-23-single-flow-thread-ui.html,2026-06-23-ui-layout-design-systems.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}.blast-low{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>HTML thread preview</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-24 · status <b class="status-shipped">shipped</b> · blast <span class="blast-low">low</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Render assistant HTML output as a sandboxed designed preview instead of raw escaped text.</div>
+  <b>Source</b><div>Assistant transcript chunks from <code>/api/sessions/:name/output</code> and <code>/stream</code>.</div>
+  <b>Surface</b><div><code>/thread.html</code>, homepage design prompt suggestion.</div>
+  <b>Security</b><div><code>iframe sandbox="allow-same-origin"</code>; no <code>allow-scripts</code>.</div>
+  <b>Schema</b><div>None.</div>
+  <b>Mobile</b><div>Preview frame width follows the thread card.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>Algorithm</h2>
+<ol>
+  <li>Trim assistant text and unwrap a full <code>```html</code> fence.</li>
+  <li>Classify as HTML when it starts with <code>&lt;!doctype html</code>, <code>&lt;html</code>, or a known semantic tag fragment.</li>
+  <li>Render HTML in a sandboxed <code>srcdoc</code> iframe; render all other content as text.</li>
+</ol>
+
+<h2>UI layout</h2>
+<ol>
+  <li><b>Assistant text</b>: keep the existing bubble and whitespace-preserving text.</li>
+  <li><b>HTML preview</b>: widen the assistant card, add a labelled preview rail, and auto-size the frame within a cap.</li>
+  <li><b>Prompt shortcut</b>: make the homepage design shortcut ask for hierarchy, spacing, responsive states, and one interaction.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>public/html-preview.js</code></td><td>new</td><td>Add pure HTML detection and preview-document helpers.</td></tr>
+  <tr><td><code>public/thread.js</code></td><td>touch</td><td>Switch assistant bodies between text and sandboxed HTML preview rendering.</td></tr>
+  <tr><td><code>public/styles.css</code></td><td>touch</td><td>Style HTML preview cards and preserve text message whitespace.</td></tr>
+  <tr><td><code>public/index.html</code></td><td>touch</td><td>Strengthen the design prompt shortcut.</td></tr>
+  <tr><td><code>test/html-preview.test.js</code></td><td>new</td><td>Pin HTML detection, code-fence extraction, and fragment wrapping.</td></tr>
+  <tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Add this task to the notes index.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Use a sandboxed iframe. It renders real HTML without trusting assistant markup in the app DOM.</td></tr>
+  <tr><td>D-002</td><td>Wrap fragments with a small default stylesheet. Bare semantic HTML should still look designed.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td><code>srcdoc</code> iframe over sanitizer allowlist. Browser sandboxing is shorter and safer for arbitrary HTML.</td></tr>
+  <tr><td>T-002</td><td>Prompt shortcut over hidden prompt rewriting. User prompts stay literal.</td></tr>
+</table>
+
+<h2>Assumptions</h2>
+<ul>
+  <li>A-001 · HTML output usually arrives as a full document, a fragment, or a single <code>html</code> code fence. If wrong: it remains readable text.</li>
+</ul>
+
+<h2>Verification</h2>
+<table>
+  <tr><th>Check</th><th>Result</th></tr>
+  <tr><td><code>node --test test/html-preview.test.js</code></td><td>Passed; four assertions cover detection, fence extraction, fragment wrapping, and plain text.</td></tr>
+  <tr><td><code>npm test</code></td><td>Passed; <code>35</code> tests.</td></tr>
+  <tr><td><code>npm run build</code></td><td>Passed; copied <code>public/</code> to <code>dist/</code>.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Revert the public UI files and remove <code>test/html-preview.test.js</code>; no stored data changes.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>HTML assistant output displays as a preview frame.</li>
+  <li>Plain assistant output remains escaped text.</li>
+  <li><code>npm test</code> and <code>npm run build</code> pass.</li>
+</ul>
+</body>
+</html>

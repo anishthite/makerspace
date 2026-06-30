@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — corrupt session store</title>
+<meta name="task" content="Keep desktop startup alive when the sessions JSON file is truncated.">
+<meta name="date-started" content="2026-06-25">
+<meta name="date-updated" content="2026-06-25">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="makerspace, store, sessions, desktop, bugfix, persistence">
+<meta name="related" content="2026-06-25-parallel-project-instances.html,2026-06-25-trusted-history-access.html">
+<style>body{font:14px/1.5 -apple-system,system-ui,sans-serif;max-width:1000px;margin:2rem auto;padding:0 1rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:6px 12px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ddd;padding:6px 8px;vertical-align:top;text-align:left}th{background:#f6f6f6}.blast-med{color:#b85c00}</style>
+</head>
+<body>
+<h1>Corrupt session store</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-25 · status <b>shipped</b> · blast <span class="blast-med">medium</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Do not crash desktop startup when <code>data/sessions.json</code> is truncated.</div><b>Surface</b><div><code>src/store.js</code> JSON read/write path.</div><b>Recovery</b><div>Rename corrupt stores to <code>sessions.json.corrupt-*</code> and recreate <code>[]</code>.</div><b>Prevention</b><div>Write sessions through same-directory temp files and atomic <code>rename()</code>.</div><b>Open Qs</b><div>0.</div></div>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>src/store.js</code></td><td>touch</td><td>Back up corrupt JSON and use atomic temp-file writes.</td></tr><tr><td><code>test/store.test.js</code></td><td>touch</td><td>Pin corrupt-store recovery and parseable temp-file writes.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Add this task.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Back up and reset invalid JSON. Startup availability beats crashing on history load.</td></tr><tr><td>D-002</td><td>Use temp-file plus <code>rename()</code>. Node stdlib covers partial-write prevention.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>Backup/reset over JSON-prefix salvage. Salvage is guessy and can silently corrupt session history.</td></tr></table>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>node --check src/store.js &amp;&amp; node --test test/store.test.js</code></td><td>Passed 5/5.</td></tr><tr><td>Corrupt temp-session server startup smoke</td><td>Server stayed alive and wrote <code>sessions.json.corrupt-*</code>.</td></tr><tr><td><code>npm test</code></td><td>Passed 87/87.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Revert <code>src/store.js</code> and remove the store tests; existing <code>sessions.json.corrupt-*</code> backups remain manual recovery artifacts.</p>
+<h2>Definition of done</h2>
+<ul><li>Desktop startup survives malformed <code>sessions.json</code>.</li><li>Bad history is preserved as a backup file.</li><li>Future store writes are atomic.</li><li><code>npm test</code> passes.</li></ul>
+</body>
+</html>

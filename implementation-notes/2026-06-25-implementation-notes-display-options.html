@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Implementation notes display options</title>
+<meta name="task" content="Create five static visual options for displaying implementation notes.">
+<meta name="date-started" content="2026-06-25">
+<meta name="date-updated" content="2026-06-25">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="makerspace,ui,thread,implementation-notes,design,samples">
+<meta name="related" content="2026-06-24-inline-note-rows.html,2026-06-24-thread-agent-notes-layout.html,2026-06-25-render-note-pane.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-shipped{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Implementation notes display options</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-25 · status <b class="status-shipped">shipped</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Show five alternate implementation-note display layouts without changing live app behavior.</div>
+  <b>Source</b><div>User disliked the current green row treatment and asked to see five options.</div>
+  <b>Surface</b><div><code>public/implementation-notes-display-options.html</code> static review sheet.</div>
+  <b>Schema</b><div>No API or stored-data change.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+<h2>UI layout</h2>
+<ol>
+  <li><b>Ledger rows</b>: show notes as a compact table with title, path, time, and action.</li>
+  <li><b>Split reader</b>: keep note list left and selected rendered summary right.</li>
+  <li><b>Session timeline</b>: mix note events with agent work while tinting note cards.</li>
+  <li><b>Change cards</b>: show each note as a review card with goal, tags, and touched files.</li>
+  <li><b>Grouped board</b>: cluster notes by surface area.</li>
+</ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+<tr><td><code>public/implementation-notes-display-options.html</code></td><td>new</td><td>Add the five-option static pick sheet.</td></tr>
+<tr><td><code>dist/implementation-notes-display-options.html</code></td><td>new</td><td>Generated copy from <code>npm run build</code>.</td></tr>
+<tr><td><code>implementation-notes/2026-06-25-implementation-notes-display-options.html</code></td><td>new</td><td>Record the design choice surface and reversibility.</td></tr>
+<tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this task.</td></tr>
+</table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr>
+<tr><td>D-001</td><td>Use a standalone static review sheet. It shows options without disturbing the live thread UI.</td></tr>
+<tr><td>D-002</td><td>Reuse the current note sample data. The comparison stays focused on layout, not content.</td></tr>
+</table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+<tr><td>T-001</td><td>Static mockups over a runtime variant selector. The user asked to compare options, not ship a switcher.</td></tr>
+</table>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr>
+<tr><td><code>npm run build</code></td><td>Passed.</td></tr>
+</table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Delete the static page, generated dist copy, and index row.</p>
+<h2>Definition of done</h2>
+<ul>
+  <li>Five display directions appear on one review page.</li>
+  <li>The page is static HTML/CSS with no dependencies.</li>
+  <li><code>npm run build</code> copies it into <code>dist/</code>.</li>
+</ul>
+</body>
+</html>

@@ -11,6 +11,9 @@ DMG_ROOT="$OUT_DIR/dmg-root"
 DMG_PATH="$OUT_DIR/makerspace.dmg"
 ICON_NAME="${ICON_NAME:-makerspace}"
 ICON_SOURCE="${ICON_SOURCE:-$ROOT/public/logo-mark.svg}"
+SIGN_IDENTITY="${SIGN_IDENTITY:-}"
+TEAM_ID="${TEAM_ID:-}"
+NOTARY_PROFILE="${NOTARY_PROFILE:-}"
 VERSION="$(cd "$ROOT" && node -p "require('./package.json').version")"
 ELECTRON_APP="$(cd "$ROOT" && node -e "const path = require('node:path'); console.log(path.join(path.dirname(require.resolve('electron')), 'dist', 'Electron.app'))")"
 
@@ -20,6 +23,92 @@ if [[ ! -d "$ELECTRON_APP" ]]; then
   exit 1
 fi
 
+(cd "$ROOT" && npm run build)
+
+if [[ -n "$NOTARY_PROFILE" && -z "$SIGN_IDENTITY" ]]; then
+  echo "SIGN_IDENTITY is required when NOTARY_PROFILE is set." >&2
+  exit 1
+fi
+
+sign_app() {
+  if [[ -z "$SIGN_IDENTITY" ]]; then
+    if command -v codesign >/dev/null 2>&1; then
+      codesign --force --deep --sign - "$APP_DIR" >/dev/null 2>&1 || echo "warning: codesign failed; built unsigned app" >&2
+    fi
+    return 0
+  fi
+
+  echo "signing $APP_DIR with $SIGN_IDENTITY"
+  (cd "$ROOT" && node --input-type=module - "$APP_DIR" "$SIGN_IDENTITY" <<'NODE'
+import { execFileSync } from 'node:child_process';
+import { readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
+
+let sign;
+try {
+  ({ sign } = await import('@electron/osx-sign'));
+} catch {
+  console.error('@electron/osx-sign missing. Run npm install first.');
+  process.exit(1);
+}
+
+const [app, identity] = process.argv.slice(2);
+const resources = join(app, 'Contents', 'Resources', 'app');
+const binaries = [];
+
+function isMachO(file) {
+  try {
+    return execFileSync('file', ['-b', file], { encoding: 'utf8' }).includes('Mach-O');
+  } catch {
+    return false;
+  }
+}
+
+function walk(dir) {
+  for (const name of readdirSync(dir)) {
+    const fullPath = join(dir, name);
+    const stat = statSync(fullPath);
+    if (stat.isDirectory()) {
+      walk(fullPath);
+    } else if (/\.(node|dylib)$/.test(name) && isMachO(fullPath)) {
+      binaries.push(fullPath);
+    }
+  }
+}
+
+walk(resources);
+if (binaries.length) {
+  console.log(`signing ${binaries.length} bundled native module(s)`);
+}
+
+await sign({
+  app,
+  identity,
+  platform: 'darwin',
+  binaries,
+  preEmbedProvisioningProfile: false,
+  strictVerify: true,
+  type: 'distribution',
+});
+NODE
+  )
+}
+
+notarize_dmg() {
+  [[ -z "$NOTARY_PROFILE" ]] && return 0
+
+  local args=(--keychain-profile "$NOTARY_PROFILE")
+  if [[ -n "$TEAM_ID" ]]; then
+    args+=(--team-id "$TEAM_ID")
+  fi
+
+  echo "submitting $DMG_PATH to Apple notarization"
+  xcrun notarytool submit "$DMG_PATH" "${args[@]}" --wait
+  xcrun stapler staple "$DMG_PATH"
+  xcrun stapler validate "$DMG_PATH"
+  spctl -a -t open --context context:primary-signature -v "$DMG_PATH"
+}
+
 rm -rf "$OUT_DIR"
 mkdir -p "$OUT_DIR"
 cp -R "$ELECTRON_APP" "$APP_DIR"
@@ -27,7 +116,7 @@ rm -f "$APP_DIR/Contents/Resources/default_app.asar"
 rm -rf "$APP_RESOURCES"
 mkdir -p "$APP_RESOURCES"
 
-for item in package.json package-lock.json desktop src public packages image node_modules; do
+for item in package.json package-lock.json desktop src public dist packages image node_modules; do
   if [[ -e "$ROOT/$item" ]]; then
     cp -R "$ROOT/$item" "$APP_RESOURCES/$item"
   fi
@@ -81,15 +170,17 @@ if [[ -f "$ICON_SOURCE" ]]; then
   fi
 fi
 
-if command -v codesign >/dev/null 2>&1; then
-  codesign --force --deep --sign - "$APP_DIR" >/dev/null 2>&1 || echo "warning: codesign failed; built unsigned app" >&2
-fi
+sign_app
 
 if command -v hdiutil >/dev/null 2>&1; then
   mkdir -p "$DMG_ROOT"
   cp -R "$APP_DIR" "$DMG_ROOT/$APP_NAME.app"
   ln -s /Applications "$DMG_ROOT/Applications"
   hdiutil create -volname "$APP_NAME" -srcfolder "$DMG_ROOT" -ov -format UDZO "$DMG_PATH" >/dev/null
+  if [[ -n "$SIGN_IDENTITY" ]]; then
+    codesign --force --timestamp --sign "$SIGN_IDENTITY" "$DMG_PATH"
+  fi
+  notarize_dmg
   echo "wrote $DMG_PATH"
 fi
 

@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — image prompts</title>
+<meta name="task" content="Send browser image attachments through Makerspace prompts into Pi SDK runs.">
+<meta name="date-started" content="2026-06-24">
+<meta name="date-updated" content="2026-06-24">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="makerspace,images,prompts,pi-sdk,threads">
+<meta name="related" content="2026-06-16-vm-bridge-sse.html,2026-06-16-pi-sdk-bridge.html,2026-06-24-single-flow-thread-ui.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code, pre { font-family: ui-monospace, Menlo, monospace; }
+  code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  pre { background: #f6f6f6; padding: .55rem .7rem; border-radius: 4px; overflow-x: auto; font-size: 12.5px; line-height: 1.4; }
+  ul, ol { margin: .3rem 0 .8rem 1.2rem; padding: 0; }
+  li { margin: .15rem 0; }
+  .blast-med { color: #b85c00; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>Image prompts</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-24 · status <b>shipped</b> · blast <span class="blast-med">medium</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Let users attach images to new and existing thread prompts.</div>
+  <b>Source</b><div>Browser <code>File</code> objects become Pi SDK <code>ImageContent</code>.</div>
+  <b>Surface</b><div><code>POST /api/threads</code>, <code>POST /api/threads/:name/messages</code>, bridge <code>POST /runs</code>, local Pi runner.</div>
+  <b>Schema</b><div>Add transient <code>images: ImageContent[]</code> to session records during active runs.</div>
+  <b>Mobile</b><div>Composer falls back to stacked controls.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>API contract</h2>
+<pre>POST /api/threads
+POST /api/threads/:name/messages
+{
+  prompt: string,
+  images?: [{ type: "image", mimeType: "image/png"|"image/jpeg"|"image/gif"|"image/webp", data: base64 }]
+}
+
+Bridge POST /runs
+{
+  id: string,
+  prompt: string,
+  images?: ImageContent[]
+}</pre>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>public/index.html</code></td><td>touch</td><td>Add image file input to new-thread prompt form.</td></tr>
+  <tr><td><code>public/thread.html</code></td><td>touch</td><td>Add image file input to thread composer.</td></tr>
+  <tr><td><code>public/app.js</code>, <code>public/thread.js</code></td><td>touch</td><td>Serialize selected images as base64 attachments and show counts.</td></tr>
+  <tr><td><code>public/styles.css</code></td><td>touch</td><td>Style small attachment controls.</td></tr>
+  <tr><td><code>src/session.js</code>, <code>src/server.js</code>, <code>src/host-pi-runner.js</code>, <code>src/setup-script.js</code></td><td>touch</td><td>Validate, persist, and forward image attachments to <code>piSession.prompt()</code>.</td></tr>
+  <tr><td><code>test/session.test.js</code>, <code>test/setup-script.test.js</code></td><td>touch</td><td>Pin image normalization and bridge forwarding.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Use Pi SDK <code>PromptOptions.images</code>. Pi already supports image attachments.</td></tr>
+  <tr><td>D-002</td><td>Keep attachments inline as base64. Avoid a file-upload store and remote file sync.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td>Browser resize skipped over custom canvas resizing. Server caps keep payloads small.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Remove <code>images</code> fields and file inputs to restore text-only prompts.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>New-thread and existing-thread forms send selected image files.</li>
+  <li>Cloud bridge and local Pi SDK sessions call <code>prompt(text, { images })</code>.</li>
+  <li><code>npm test</code> passes.</li>
+</ul>
+</body>
+</html>

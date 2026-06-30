@@ -388,7 +388,7 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
     );
   }
 
-  async function listSessionsPayload(viewerSessionId = '', trusted = false) {
+  async function listSessionsPayload(viewerSessionId = '', trusted = false, user = null) {
     const storedSessions = await listStoredSessions(config.sessionFile);
     let liveSessions = [];
     let liveError = null;
@@ -403,7 +403,7 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
       provider: provider.info(),
       liveError,
       sessions: mergeSessions(storedSessions, liveSessions)
-        .filter((session) => canAccessSession(session, viewerSessionId, trusted))
+        .filter((session) => canAccessSession(session, viewerSessionId, trusted, user))
         .map((session) => decorateLiveSession(session)),
     };
   }

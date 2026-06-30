@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — design variation gallery</title>
+<meta name="task" content="Create one small static page that previews the existing Makerspace design variation pages together.">
+<meta name="date-started" content="2026-06-30">
+<meta name="date-updated" content="2026-06-30">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="makerspace, ui, design, variations, gallery">
+<meta name="related" content="2026-06-30-better-design-directions.html,2026-06-29-theme-variation-artifacts.html,2026-06-29-standout-theme-tree.html,2026-06-29-static-theme-mockups.html">
+<style>body{font:14px/1.5 -apple-system,system-ui,sans-serif;max-width:960px;margin:2rem auto;padding:0 1rem;color:#111}table{border-collapse:collapse;width:100%;margin:1rem 0}th,td{border:1px solid #ddd;padding:6px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6}.low{color:#2a7a2a}.status{color:#b85c00}code{background:#f6f6f6;padding:1px 3px;border-radius:3px}</style>
+</head>
+<body>
+<h1>Design variation gallery</h1>
+<p><b>Status:</b> shipped · <b>Blast:</b> <span class="low">low</span> · static review page only.</p>
+<table><tr><th>Goal</th><td>Make one page that shows all existing design variation artifacts without duplicating the mockup code.</td></tr><tr><th>Source</th><td>User asked for a little page to see the variations again.</td></tr><tr><th>Surface</th><td><code>frontend/public/design-variation-gallery.html</code>.</td></tr><tr><th>Runtime</th><td>Static HTML/CSS; copied by Vite.</td></tr></table>
+<h2>UI layout</h2>
+<ol><li>Header gives the direct route and a short note.</li><li>Card grid embeds existing variation pages in iframes with full-page links.</li><li>Duplicate alias pages appear as secondary links, not duplicate previews.</li></ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>frontend/public/design-variation-gallery.html</code></td><td>new</td><td>Add one iframe gallery for existing design artifacts.</td></tr><tr><td><code>frontend/route-manifest.json</code></td><td>touch</td><td>Register the copied static route.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this task.</td></tr><tr><td><code>dist/design-variation-gallery.html</code></td><td>generated</td><td>Build output served by the existing backend when <code>dist/</code> exists.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice</th><th>Rationale</th></tr><tr><td>D-001</td><td>Embed existing pages instead of rebuilding every card.</td><td>The user needs review access, not another generated design system.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over rejected</th><th>Reason</th></tr><tr><td>T-001</td><td>Static iframes over JavaScript extraction.</td><td>Fewer moving parts and every source page keeps its original layout.</td></tr></table>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>node --test test/frontend-route-manifest.test.js</code></td><td>Passed 4/4.</td></tr><tr><td><code>npm run build</code></td><td>Passed; copied <code>/design-variation-gallery.html</code> into <code>dist/</code>.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="low">Low</span>. Delete the gallery page and manifest/index rows; no runtime state or API changes.</p>
+<h2>Definition of done</h2>
+<ul><li>Gallery page opens each existing variation artifact from one place.</li><li>Manifest route check includes the new static page.</li><li>Build copies the page into <code>dist/</code>.</li></ul>
+</body>
+</html>

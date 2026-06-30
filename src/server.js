@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 
@@ -14,7 +15,8 @@ import { createThreadService } from './server/threads.js';
 
 const config = getConfig();
 const provider = createProvider(config);
-const publicDir = path.join(config.rootDir, 'public');
+const distDir = path.join(config.rootDir, 'dist');
+const publicDir = process.env.MAKERSPACE_STATIC_DIR || (existsSync(path.join(distDir, 'index.html')) ? distDir : path.join(config.rootDir, 'public'));
 
 const httpHelpers = createHttpHelpers({ publicDir });
 const auth = createAuthService({ config, http: httpHelpers });
