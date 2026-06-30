@@ -6,7 +6,7 @@
 <meta name="task" content="Rebuild the desktop DMG, publish it as a GitHub Release asset, and keep the landing page simple.">
 <meta name="date-started" content="2026-06-30">
 <meta name="date-updated" content="2026-06-30">
-<meta name="status" content="in-progress">
+<meta name="status" content="shipped">
 <meta name="blast-radius" content="high">
 <meta name="tags" content="makerspace,desktop,dmg,landing,github,vercel,backend">
 <meta name="related" content="2026-06-29-notarized-desktop-release-script.html,2026-06-24-desktop-dmg-landing.html,2026-06-30-vercel-vite-build.html,2026-06-29-backend-dockerfile.html">
@@ -28,12 +28,12 @@
 </head>
 <body>
 <h1>DMG release landing</h1>
-<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-30 · status <b>in-progress</b> · blast <span class="blast-high">high</span></p>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-30 · status <b>shipped</b> · blast <span class="blast-high">high</span></p>
 
 <h2>Summary</h2>
 <div class="kv">
   <b>Goal</b><div>Serve a simple <code>/desktop</code> landing page whose download button resolves to the rebuilt DMG.</div>
-  <b>Source</b><div><code>output/desktop-package/makerspace.dmg</code> becomes a GitHub Release asset.</div>
+  <b>Source</b><div><code>output/desktop-package/makerspace.dmg</code> becomes a public <code>anishthite/makerspace-downloads</code> GitHub Release asset.</div>
   <b>Surface</b><div><code>/desktop</code>, GitHub Releases, Vercel production, backend deploy instructions.</div>
   <b>Schema</b><div>None.</div>
   <b>Open Qs</b><div>0.</div>
@@ -59,7 +59,7 @@
 <h2>Decisions</h2>
 <table>
   <tr><th>ID</th><th>Choice · Rationale</th></tr>
-  <tr><td>D-001</td><td>Use GitHub Releases for <code>makerspace.dmg</code>. The rebuilt DMG is too large for normal repo/Vercel static-file flow.</td></tr>
+  <tr><td>D-001</td><td>Use public <code>anishthite/makerspace-downloads</code> GitHub Releases for <code>makerspace.dmg</code>. The source repo is private and the DMG is too large for normal repo/Vercel static-file flow.</td></tr>
   <tr><td>D-002</td><td>Keep <code>/desktop</code> as the landing page. The app still uses <code>/</code> for project selection.</td></tr>
   <tr><td>D-003</td><td>Pin <code>installCommand</code> in <code>vercel.json</code>. The Vercel project still had a dashboard <code>true</code> install override.</td></tr>
   <tr><td>D-004</td><td>Make <code>.vercelignore</code> root-specific. Plain <code>src/</code> excluded <code>frontend/src</code> and broke Vite HTML resolution.</td></tr>
@@ -68,7 +68,19 @@
 <h2>Tradeoffs</h2>
 <table>
   <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
-  <tr><td>T-001</td><td>Release download URL over checked-in binary. Avoids GitHub repo file limits and keeps Vercel deploys small.</td></tr>
+  <tr><td>T-001</td><td>Public Release download URL over checked-in binary. Avoids GitHub repo file limits and keeps Vercel deploys small.</td></tr>
+</table>
+
+<h2>Validation</h2>
+<table>
+  <tr><th>ID</th><th>Command · Result</th></tr>
+  <tr><td>V-001</td><td><code>npm run desktop:release</code> · Apple notarization accepted submission <code>923be000-76cc-4326-a969-cd38a826ef94</code>.</td></tr>
+  <tr><td>V-002</td><td><code>shasum -a 256 output/desktop-package/makerspace.dmg</code> · <code>848885240ed78418da870930698abd460d268aa0506b16902a11cddf8e459065</code>.</td></tr>
+  <tr><td>V-003</td><td><code>npm test</code> · 140/140 pass.</td></tr>
+  <tr><td>V-004</td><td><code>npm run build</code> · pass.</td></tr>
+  <tr><td>V-005</td><td><code>vercel deploy --prod --yes</code> · aliased <code>https://makerspace-red.vercel.app</code>.</td></tr>
+  <tr><td>V-006</td><td><code>curl</code> smoke · <code>/</code>, <code>/desktop</code>, <code>/thread</code>, <code>/settings.html</code>, <code>/workspace.html</code> return <code>200</code>.</td></tr>
+  <tr><td>V-007</td><td><code>curl -L</code> against <code>makerspace-downloads/releases/latest/download/makerspace.dmg</code> · returns <code>200</code>.</td></tr>
 </table>
 
 <h2>Assumptions</h2>
@@ -85,7 +97,7 @@
   <li><code>npm run desktop:release</code> creates a notarized DMG.</li>
   <li><code>npm run build</code> and <code>npm test</code> pass.</li>
   <li><code>vercel deploy --prod --yes</code> installs dependencies before building.</li>
-  <li>GitHub has a release asset at <code>releases/latest/download/makerspace.dmg</code>.</li>
+  <li>GitHub has a public release asset at <code>anishthite/makerspace-downloads/releases/latest/download/makerspace.dmg</code>.</li>
   <li>Vercel production serves <code>/desktop</code>.</li>
   <li>Final reply names Vercel/backend setup steps.</li>
 </ul>

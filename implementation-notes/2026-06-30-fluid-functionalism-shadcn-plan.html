@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Fluid Functionalism and shadcn plan</title>
+<meta name="task" content="Plan how to add Fluid Functionalism and shadcn components to Makerspace.">
+<meta name="date-started" content="2026-06-30">
+<meta name="date-updated" content="2026-06-30">
+<meta name="status" content="planning">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="makerspace, ui, design-system, shadcn, fluid-functionalism, react, vite">
+<meta name="related" content="2026-06-30-react-vite-parity-rewrite.html,2026-06-30-better-design-directions.html,2026-06-26-agent-trace-thinking-summary.html,2026-06-25-enter-to-send.html,2026-06-23-ui-layout-design-systems.html">
+<style>body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;max-width:980px;margin:2rem auto;padding:0 1rem;color:#111}table{border-collapse:collapse;width:100%;margin:1rem 0}th,td{border:1px solid #ddd;padding:6px 8px;text-align:left;vertical-align:top}th{background:#f7f7f7}.meta{color:#666}.kv{display:grid;grid-template-columns:150px 1fr;gap:6px 12px}.blast-med{color:#b85c00;font-weight:700}code{background:#f6f6f6;padding:1px 3px;border-radius:3px}</style>
+</head>
+<body>
+<h1>Fluid Functionalism and shadcn plan</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-30 · planning · <span class="blast-med">blast medium</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Add a shadcn-compatible component layer and borrow Fluid Functionalism behavior without a full visual rewrite.</div><b>Source</b><div><code>https://www.fluidfunctionalism.com/</code>, <code>mickadesign/fluid-functionalism</code>, current React/Vite MPA.</div><b>Surface</b><div><code>frontend/src/components/ui</code>, <code>frontend/src/lib</code>, <code>frontend/src/pages.jsx</code>, <code>frontend/public/styles.css</code>, <code>vite.config.js</code>, <code>package.json</code>.</div><b>Build</b><div>Add Tailwind utilities with preflight omitted, shadcn aliases, and only installed components.</div><b>Runtime</b><div>Keep existing IDs and imperative runtime modules until each route is ported.</div><b>Open Qs</b><div>0.</div></div>
+<h2>UI layout</h2>
+<ol><li><code>Button</code>, <code>Badge</code>, <code>Tooltip</code> replace leaf controls and status pills first.</li><li><code>Select</code>, <code>Slider</code>, <code>Switch</code>, <code>InputGroup</code> replace settings and run controls next.</li><li><code>InputMessage</code> replaces workspace/thread composers after DOM selector parity is pinned.</li><li><code>ThinkingSteps</code> and <code>ThinkingIndicator</code> replace live status, trace, and running-agent summaries.</li><li><code>ScrollArea</code> adds edge fades to timelines, traces, repo lists, and performance tables.</li><li><code>Tabs</code>/<code>TabsSubtle</code>, <code>Dialog</code>, and <code>Dropdown</code> handle settings grouping, focused overlays, and menus.</li><li><code>AskUserQuestions</code> renders structured agent questions inside thread messages.</li></ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>components.json</code></td><td>new</td><td>Configure shadcn registry, aliases, and generated component paths.</td></tr><tr><td><code>vite.config.js</code></td><td>touch</td><td>Add <code>@</code> alias and Tailwind Vite plugin.</td></tr><tr><td><code>frontend/src/app.css</code></td><td>new</td><td>Import Tailwind theme/utilities without preflight and map shadcn tokens to current CSS variables.</td></tr><tr><td><code>frontend/src/components/ui/**</code>, <code>frontend/src/lib/**</code></td><td>new</td><td>Generated shadcn and Fluid Functionalism components, helpers, motion, surface, icon, and shape utilities.</td></tr><tr><td><code>frontend/src/pages.jsx</code></td><td>touch</td><td>Swap React shell markup route-by-route while preserving IDs used by runtime modules.</td></tr><tr><td><code>frontend/src/runtime/*.js</code></td><td>touch</td><td>Only adjust selectors when a component migration forces it.</td></tr><tr><td><code>package.json</code>, <code>package-lock.json</code></td><td>touch</td><td>Add generated dependencies such as Tailwind, Radix, Framer Motion, CVA, Tailwind Merge, and icons.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice</th><th>Rationale</th></tr><tr><td>D-001</td><td>Use shadcn as the local ownership model.</td><td>Generated source fits this app better than a hidden component package.</td></tr><tr><td>D-002</td><td>Install Fluid components one at a time.</td><td><code>InputMessage</code> and motion utilities pull real dependencies, so unused components are waste.</td></tr><tr><td>D-003</td><td>Keep <code>public/styles.css</code> during migration.</td><td>The current MPA already depends on this CSS for parity.</td></tr><tr><td>D-004</td><td>Omit Tailwind preflight.</td><td>Global reset drift would break existing handcrafted pages.</td></tr><tr><td>D-005</td><td>Prefer Radix-flavored components where focus, portals, or keyboard behavior matter.</td><td>shadcn defaults and accessibility behavior are already Radix-aligned.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected</th><th>Reason</th></tr><tr><td>T-001</td><td>Incremental islands over full design-system rewrite.</td><td>Thread streaming and desktop packaging are too easy to regress.</td></tr><tr><td>T-002</td><td>Tailwind utilities over translating every component to bespoke CSS.</td><td>Fluid registry code assumes utility classes and shadcn tokens.</td></tr><tr><td>T-003</td><td>Provider wrapper over per-component token props.</td><td>Surface, shape, icon, and reduced-motion policy stay centralized.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">Medium</span>. Remove generated component folders, <code>components.json</code>, Tailwind plugin/import, dependency additions, and route-specific JSX swaps; existing <code>public/styles.css</code> keeps the old UI intact.</p>
+<h2>Definition of done</h2>
+<ul><li>shadcn CLI can add a component and <code>npm run build</code> passes.</li><li>First route uses Fluid/shadcn components without breaking current runtime behavior.</li><li>Core pages pass screenshot smoke checks in light/dark palettes.</li><li>Keyboard, reduced-motion, and mobile/touch behavior are verified for migrated controls.</li><li>Old duplicate CSS is deleted only after the last route stops using it.</li></ul>
+</body>
+</html>

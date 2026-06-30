@@ -114,7 +114,7 @@ npm run desktop:install
 ```
 
 The installer copies `output/desktop-package/Makerspace.app` into `/Applications`. Pass a path when needed: `npm run desktop:install -- output/desktop-package/makerspace.dmg`.
-The DMG lands at `output/desktop-package/makerspace.dmg`; publish that file as a GitHub Release asset named `makerspace.dmg`. The `/desktop` landing page downloads from `https://github.com/anishthite/makerspace/releases/latest/download/makerspace.dmg`, so do not commit the 270MB binary to the repo.
+The DMG lands at `output/desktop-package/makerspace.dmg`; publish that file as a GitHub Release asset named `makerspace.dmg` in the public `anishthite/makerspace-downloads` repo. The `/desktop` landing page downloads from `https://github.com/anishthite/makerspace-downloads/releases/latest/download/makerspace.dmg`, so do not commit the 270MB binary to this source repo.
 
 Optional env vars:
 
