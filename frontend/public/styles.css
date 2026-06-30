@@ -298,7 +298,7 @@ p { color: var(--ink-2); }
 .textbtn,
 .nav-link,
 .primary-btn,
-button:not(.primary-btn):not(.textbtn):not(.run-summary) {
+button:not(.primary-btn):not(.textbtn):not(.run-summary):not(.agent-toast) {
   border: 1px solid var(--rule);
   border-radius: 2px;
   background: var(--paper);
@@ -312,7 +312,7 @@ button:not(.primary-btn):not(.textbtn):not(.run-summary) {
 @media (hover: hover) and (pointer: fine) {
   .textbtn:hover,
   .nav-link:hover,
-  button:not(.primary-btn):not(.run-summary):hover { border-color: var(--blue); color: var(--blue); background: var(--blue-soft); }
+  button:not(.primary-btn):not(.run-summary):not(.agent-toast):hover { border-color: var(--blue); color: var(--blue); background: var(--blue-soft); }
 }
 .primary-btn,
 button.primary {
@@ -407,7 +407,10 @@ button.primary {
 .home-topbar .header-actions { margin-left: auto; }
 .home-actions .auth-pill { border-color: transparent; background: color-mix(in srgb, var(--paper) 62%, transparent); }
 .launch-card {
-  width: min(680px, 100%);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  width: min(760px, 100%);
   margin: 0 auto;
   border: 1px solid var(--rule-2);
   border-radius: 2px;
@@ -416,6 +419,7 @@ button.primary {
   overflow: hidden;
 }
 .launch-card > textarea {
+  grid-column: 1 / -1;
   display: block;
   width: 100%;
   min-height: 112px;
@@ -497,8 +501,8 @@ button.primary {
 .launch-card,
 .flow-composer { transition: border-color 120ms ease, box-shadow 120ms ease, background 120ms ease; }
 .is-dragging-images { border-color: var(--blue); box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 18%, transparent), var(--shadow); }
-.launch-controls { padding: 0 10px 8px; }
-.workspace-run-row { display: flex; justify-content: flex-end; padding: 0 10px 10px; border-top: 0; background: transparent; }
+.launch-controls { grid-column: 1; flex-wrap: nowrap; padding: 0 8px 10px 10px; }
+.workspace-run-row { grid-column: 2; display: flex; justify-content: flex-end; align-self: stretch; padding: 0 10px 10px 0; border-top: 0; background: transparent; }
 .run-btn { min-width: 112px; min-height: 34px; padding: 8px 12px; }
 .repo-tray {
   display: grid;
@@ -517,6 +521,31 @@ button.primary {
 .home-recent .section-row > div { min-width: 0; }
 .home-recent h2 { margin-bottom: 4px; }
 .home-recent p { margin: 0; font-size: 13px; }
+.agent-toast {
+  appearance: none;
+  pointer-events: auto;
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  min-width: 240px;
+  max-width: min(360px, 100%);
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--green) 58%, var(--rule));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--green) 16%, var(--paper));
+  color: var(--ink);
+  box-shadow: var(--shadow-md);
+  font: inherit;
+  letter-spacing: normal;
+  text-align: left;
+  text-transform: none;
+}
+button.agent-toast { cursor: pointer; }
+.agent-toast strong { color: var(--green); font-size: 13px; }
+.agent-toast small { color: var(--ink-3); }
+.agent-toast.error { border-color: color-mix(in srgb, var(--red) 58%, var(--rule)); background: color-mix(in srgb, var(--red) 14%, var(--paper)); }
+.agent-toast.error strong { color: var(--red); }
+.agent-toast-inline { margin-top: 14px; cursor: default; }
 .thread-inbox { display: grid; gap: 8px; margin-top: 14px; }
 .action-lanes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(18px, 3vw, 34px); margin-top: 18px; }
 .action-lane { min-width: 0; }
@@ -584,7 +613,7 @@ body[data-home-ui="ops"] .home-shell {
   align-items: start;
 }
 body[data-home-ui="ops"] .home-topbar { grid-area: nav; }
-body[data-home-ui="ops"] .launch-card { grid-area: launch; width: min(640px, 100%); margin: 0 auto; }
+body[data-home-ui="ops"] .launch-card { grid-area: launch; width: min(760px, 100%); margin: 0 auto; }
 body[data-home-ui="ops"] .home-recent { grid-area: recent; width: 100%; margin: 0; }
 body[data-home-ui="ops"] .action-lanes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 body[data-home-ui="ops"] .launch-card > textarea { min-height: 92px; }
@@ -696,7 +725,7 @@ body.thread-page {
 .thread-flow-shell { min-height: 100vh; padding: 18px clamp(14px, 3vw, 34px) 34px; }
 .flow-topbar {
   position: sticky;
-  top: 10px;
+  top: 0;
   z-index: 20;
   display: grid;
   grid-template-columns: minmax(150px, 1fr) minmax(0, 680px) minmax(150px, 1fr);
@@ -991,7 +1020,7 @@ html[data-desktop="true"] .flow-topbar,
 }
 .flow-composer {
   position: sticky;
-  bottom: 12px;
+  bottom: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
@@ -1147,7 +1176,10 @@ select:focus { border-color: var(--blue); box-shadow: none; outline: none; }
   .home-topbar { align-items: flex-start; flex-direction: column; }
   .home-topbar .header-actions { margin-left: 0; }
   .home-actions { justify-content: flex-start; }
+  .launch-card { grid-template-columns: 1fr; }
   .launch-card > textarea { min-height: 104px; }
+  .launch-controls { grid-column: 1; flex-wrap: wrap; padding: 0 10px 8px; }
+  .workspace-run-row { grid-column: 1; padding: 0 10px 10px; }
   .thread-flow-shell { padding: 10px 10px 22px; }
   .agent-trace-inline { width: 100%; }
   .timeline-flow { padding-left: 20px; }
@@ -1163,6 +1195,45 @@ select:focus { border-color: var(--blue); box-shadow: none; outline: none; }
   .project-card .repo-tray select,
   .project-card .repo-tray button { min-height: 0; border: 1px solid var(--rule); border-radius: 2px; }
   .project-card .repo-tray p { padding: 0; }
+}
+
+.desktop-update-banner {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px 7px 12px;
+  border: 1px solid var(--rule-2);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--paper) 92%, transparent);
+  color: var(--ink);
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(14px);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .01em;
+}
+
+.desktop-update-banner button {
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: var(--paper-2);
+  color: var(--ink-2);
+  cursor: pointer;
+  font: inherit;
+  padding: 4px 8px;
+}
+
+.desktop-update-banner button:hover {
+  border-color: var(--rule-2);
+  color: var(--ink);
+}
+
+@media (max-width: 640px) {
+  .desktop-update-banner { left: 10px; right: 10px; justify-content: center; }
 }
 
 @keyframes status-pulse {

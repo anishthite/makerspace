@@ -35,9 +35,10 @@ test('project selector offers desktop local folders', () => {
   assert.match(settings, /id="claude-code"/);
   assert.match(settings, /id="github"/);
   assert.match(settingsJs, /function openWebCodexTab\(\)/);
+  assert.match(settingsJs, /function navigateCodexTab\(codexTab, url\)/);
   assert.match(settingsJs, /function openWebClaudeCodeTab\(\)/);
   assert.match(settingsJs, /\/api\/auth\/claude-code/);
-  assert.match(settingsJs, /globalThis\.makerspaceDesktop \? null : globalThis\.open\?\.\('about:blank', '_blank'\)/);
+  assert.match(settingsJs, /globalThis\.open\?\.\('about:blank', '_blank'\)/);
   assert.match(styles, /\.home-actions \.auth-pill \{[^}]*border-color: transparent;/);
   assert.match(app, /readSelectedProject/);
   assert.match(app, /repoPath: repoInput/);

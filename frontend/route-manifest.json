@@ -167,6 +167,7 @@
     "makerspaceFont",
     "makerspaceDarkPalette",
     "makerspaceSeenFinishedThreads",
-    "makerspaceRecentProjects"
+    "makerspaceRecentProjects",
+    "makerspaceUpdateDismissed:"
   ]
 }

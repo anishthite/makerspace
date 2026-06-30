@@ -142,16 +142,41 @@ async function loadClaudeCodeAuth() {
   return status;
 }
 
-function openWebAuthTab() {
-  return globalThis.makerspaceDesktop ? null : globalThis.open?.('about:blank', '_blank') || null;
+function writeAuthTab(authTab, title, body) {
+  try {
+    authTab.document.open();
+    authTab.document.write(`<!doctype html><title>${escapeHtml(title)}</title><body style="font:16px system-ui;padding:24px">${body}</body>`);
+    authTab.document.close();
+  } catch {}
 }
 
 function openWebCodexTab() {
-  return openWebAuthTab();
+  if (globalThis.makerspaceDesktop) return null;
+  const codexTab = globalThis.open?.('about:blank', '_blank') || null;
+  if (codexTab) writeAuthTab(codexTab, 'Codex sign-in', 'Opening Codex sign-in…');
+  return codexTab;
 }
 
 function openWebClaudeCodeTab() {
-  return openWebAuthTab();
+  if (globalThis.makerspaceDesktop) return null;
+  const claudeTab = globalThis.open?.('about:blank', '_blank') || null;
+  if (claudeTab) writeAuthTab(claudeTab, 'Claude Code sign-in', 'Opening Claude Code sign-in…');
+  return claudeTab;
+}
+
+function navigateAuthTab(authTab, title, label, url) {
+  if (!authTab || !url) return;
+  const safeUrl = escapeHtml(url);
+  const scriptUrl = JSON.stringify(url).replaceAll('</', '<\\/');
+  writeAuthTab(authTab, title, `Opening ${escapeHtml(label)} sign-in… <a href="${safeUrl}">Open manually</a><script>window.opener=null;location.replace(${scriptUrl});</script>`);
+}
+
+function navigateCodexTab(codexTab, url) {
+  navigateAuthTab(codexTab, 'Codex sign-in', 'Codex', url);
+}
+
+function navigateClaudeCodeTab(claudeTab, url) {
+  navigateAuthTab(claudeTab, 'Claude Code sign-in', 'Claude Code', url);
 }
 
 function renderCodexDevice(login, codexTab = null) {
@@ -160,12 +185,7 @@ function renderCodexDevice(login, codexTab = null) {
     codexTab?.close?.();
     return;
   }
-  if (codexTab && device.verificationUri) {
-    try {
-      codexTab.opener = null;
-      codexTab.location.href = device.verificationUri;
-    } catch {}
-  }
+  navigateCodexTab(codexTab, device.verificationUri);
   codexDevice.classList.remove('hidden');
   codexDevice.innerHTML = `<a href="${escapeHtml(device.verificationUri)}" target="_blank" rel="noreferrer">OpenAI</a>: <code>${escapeHtml(device.userCode)}</code>`;
 }
@@ -176,12 +196,7 @@ function renderClaudeCodeAuth(login, claudeTab = null) {
     claudeTab?.close?.();
     return;
   }
-  if (claudeTab) {
-    try {
-      claudeTab.opener = null;
-      claudeTab.location.href = auth.url;
-    } catch {}
-  }
+  navigateClaudeCodeTab(claudeTab, auth.url);
   claudeCodeAuth.classList.remove('hidden');
   claudeCodeCodeForm.classList.remove('hidden');
   claudeCodeAuth.innerHTML = `<a href="${escapeHtml(auth.url)}" target="_blank" rel="noreferrer">Claude</a>: approve access, then paste the final localhost redirect URL below.`;
@@ -222,13 +237,18 @@ function renderGitHubAuth(status) {
   if (!status.configured) {
     githubStatus.textContent = 'Missing GitHub OAuth env';
     githubLogin.disabled = true;
+    githubLogin.hidden = true;
     githubLogout.disabled = true;
+    githubLogout.hidden = true;
     return;
   }
 
+  const connected = Boolean(status.connected);
   githubLogin.disabled = false;
-  githubLogout.disabled = !status.connected;
-  githubStatus.textContent = status.connected
+  githubLogin.hidden = connected;
+  githubLogout.disabled = !connected;
+  githubLogout.hidden = !connected;
+  githubStatus.textContent = connected
     ? `Signed in · ${status.user?.login || 'GitHub'}`
     : 'Signed out';
 }

@@ -21,3 +21,11 @@ test('settings page exposes Pi profile editor wiring', () => {
   assert.match(settingsJs, /fetchJson\('\/api\/pi-profile'\)/);
   assert.match(settingsJs, /enabledSkills: checkedResourceIds\(piSkillsList\)/);
 });
+
+test('settings page hides unavailable GitHub auth actions', () => {
+  for (const source of [settingsJs, frontendSettingsJs]) {
+    assert.match(source, /githubLogin\.hidden = connected;/);
+    assert.match(source, /githubLogout\.hidden = !connected;/);
+    assert.match(source, /githubLogout\.hidden = true;/);
+  }
+});
