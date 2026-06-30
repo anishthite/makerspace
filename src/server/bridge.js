@@ -123,7 +123,13 @@ export function createBridgeService({ config, provider, auth, runState }) {
   }
 
   async function pruneExpiredIdleBridges() {
-    const sessions = await listStoredSessions(config.sessionFile);
+    let sessions = [];
+    try {
+      sessions = await listStoredSessions(config.sessionFile);
+    } catch (error) {
+      console.warn(`[micro-cloud] failed to list sessions for idle bridge pruning: ${error.message}`);
+      return;
+    }
 
     for (const session of sessions.filter(isExpiredIdleBridge)) {
       try {
