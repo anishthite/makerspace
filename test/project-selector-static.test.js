@@ -9,6 +9,7 @@ test('project selector offers desktop local folders', () => {
   const project = read('public/project.js');
   const workspace = read('public/workspace.html');
   const settings = read('public/settings.html');
+  const settingsJs = read('public/settings.js');
   const styles = read('public/styles.css');
   const app = read('public/app.js');
 
@@ -32,6 +33,8 @@ test('project selector offers desktop local folders', () => {
   assert.match(workspace, /href="\/settings\.html#github"/);
   assert.match(settings, /id="codex"/);
   assert.match(settings, /id="github"/);
+  assert.match(settingsJs, /function openWebCodexTab\(\)/);
+  assert.match(settingsJs, /globalThis\.makerspaceDesktop \? null : globalThis\.open\?\.\('about:blank', '_blank'\)/);
   assert.match(styles, /\.home-actions \.auth-pill \{[^}]*border-color: transparent;/);
   assert.match(app, /readSelectedProject/);
   assert.match(app, /repoPath: repoInput/);

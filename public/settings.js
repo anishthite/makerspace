@@ -128,9 +128,22 @@ async function loadCodexAuth() {
   return status;
 }
 
-function renderCodexDevice(login) {
+function openWebCodexTab() {
+  return globalThis.makerspaceDesktop ? null : globalThis.open?.('about:blank', '_blank') || null;
+}
+
+function renderCodexDevice(login, codexTab = null) {
   const device = login.device;
-  if (!device) return;
+  if (!device) {
+    codexTab?.close?.();
+    return;
+  }
+  if (codexTab && device.verificationUri) {
+    try {
+      codexTab.opener = null;
+      codexTab.location.href = device.verificationUri;
+    } catch {}
+  }
   codexDevice.classList.remove('hidden');
   codexDevice.innerHTML = `<a href="${escapeHtml(device.verificationUri)}" target="_blank" rel="noreferrer">OpenAI</a>: <code>${escapeHtml(device.userCode)}</code>`;
 }
@@ -230,16 +243,18 @@ darkModeInput.addEventListener('change', saveAppearanceControls);
 darkPaletteInput.addEventListener('change', saveAppearanceControls);
 monoFontInput.addEventListener('change', saveAppearanceControls);
 codexLogin.addEventListener('click', async () => {
+  const codexTab = openWebCodexTab();
   await persistConnectionInputs();
   codexLogin.disabled = true;
   codexStatus.textContent = 'Starting…';
   codexDevice.classList.add('hidden');
   try {
     const login = await fetchJson('/api/auth/openai-codex/login', { method: 'POST' });
-    renderCodexDevice(login);
+    renderCodexDevice(login, codexTab);
     codexStatus.textContent = 'Waiting…';
     await pollCodexLogin(login.id);
   } catch (error) {
+    codexTab?.close?.();
     codexStatus.textContent = error.message;
   } finally {
     codexLogin.disabled = false;
