@@ -309,6 +309,10 @@ export function createBridgeService({ config, provider, auth, runState }) {
     return true;
   }
 
+  async function syncBridgeAuth(session) {
+    return pushBridgeAuth(session, await readPiAuthForSession(session));
+  }
+
   async function startBridgeRun(session) {
     await fetchBridgeJson(session, '/runs', {
       method: 'POST',
@@ -380,6 +384,7 @@ export function createBridgeService({ config, provider, auth, runState }) {
   async function startClaimedBridgeRun(name, current, readyMessage) {
     if (!current.bridgeClaimed || !current.taskPrompt) return false;
     appendRunOutput(name, readyMessage, 'launching');
+    await syncBridgeAuth(current);
     await startBridgeRun(current);
     const running = await upsertSession(config.sessionFile, {
       ...current,
@@ -543,7 +548,7 @@ export function createBridgeService({ config, provider, auth, runState }) {
 
     resetRunState(claimed.name, 'launching');
     appendRunOutput(claimed.name, '[system] Using a prepared idle bridge sandbox.\n', 'launching');
-    await pushBridgeAuth(claimed, await readPiAuthForSession(claimed));
+    await syncBridgeAuth(claimed);
     await startBridgeRun(claimed);
     const running = await upsertSession(config.sessionFile, {
       ...claimed,
@@ -704,11 +709,13 @@ export function createBridgeService({ config, provider, auth, runState }) {
   }
 
   async function refreshBridgeSessionIfNeeded(session, refreshReference = session) {
-    if (!provider.shouldRefreshSession?.(refreshReference)) return session;
+    if (!provider.shouldRefreshSession?.(refreshReference)) {
+      await syncBridgeAuth(session);
+      return session;
+    }
 
     appendRunOutput(session.name, '[system] Waking the idle main agent sandbox...\n', 'launching');
     const imageSettings = await readSavedSettings(config.settingsFile);
-    const piAuthText = await readPiAuthForSession(session);
     const remote = await provider.createSession(session, imageSettings);
     const bridgeUrl = trimTrailingSlash(remote.bridgeUrl || remote.httpsUrl || session.bridgeUrl || '');
     const updated = await upsertSession(config.sessionFile, {
@@ -721,7 +728,7 @@ export function createBridgeService({ config, provider, auth, runState }) {
     });
 
     await waitForBridge(updated);
-    await pushBridgeAuth(updated, piAuthText);
+    await syncBridgeAuth(updated);
     return updated;
   }
 
@@ -740,6 +747,7 @@ export function createBridgeService({ config, provider, auth, runState }) {
     scheduleBridgeRelease,
     followBridgeRun,
     pushBridgeAuth,
+    syncBridgeAuth,
     startBridgeRun,
     makeWarmBridgeSession,
     makeIntentBridgeSession,
