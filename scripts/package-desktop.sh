@@ -23,7 +23,7 @@ if [[ ! -d "$ELECTRON_APP" ]]; then
   exit 1
 fi
 
-(cd "$ROOT" && npm run build)
+(cd "$ROOT" && VITE_MAKERSPACE_API_BASE= npm run build)
 
 if [[ -n "$NOTARY_PROFILE" && -z "$SIGN_IDENTITY" ]]; then
   echo "SIGN_IDENTITY is required when NOTARY_PROFILE is set." >&2

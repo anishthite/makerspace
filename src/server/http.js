@@ -26,10 +26,10 @@ export function createHttpHelpers({ publicDir }) {
     return error;
   }
 
-  function requestToken(request, url) {
+  function requestToken(request, _url) {
     const authorization = String(request.headers.authorization || '');
     if (authorization.startsWith('Bearer ')) return authorization.slice('Bearer '.length).trim();
-    return String(request.headers['x-api-token'] || url.searchParams.get('token') || '').trim();
+    return String(request.headers['x-api-token'] || '').trim();
   }
 
   function originFor(request) {

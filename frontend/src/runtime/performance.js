@@ -1,15 +1,7 @@
 import './appearance.js?v=palette-2';
 
 const BROWSER_SESSION_KEY = 'makerspaceBrowserSession';
-const params = new URLSearchParams(location.search);
-const apiFromUrl = params.get('api');
-const tokenFromUrl = params.get('token');
-if (tokenFromUrl) {
-  localStorage.setItem('makerspaceApiToken', tokenFromUrl);
-  params.delete('token');
-  const nextSearch = params.toString();
-  history.replaceState(null, '', `${location.pathname}${nextSearch ? `?${nextSearch}` : ''}${location.hash}`);
-}
+const API_BASE = String(import.meta.env.VITE_MAKERSPACE_API_BASE || '').trim().replace(/\/+$/, '');
 
 const statusNode = document.querySelector('#performance-status');
 const statsNode = document.querySelector('#performance-stats');
@@ -37,12 +29,11 @@ function getBrowserSessionId() {
 }
 
 function getApiBase() {
-  if (apiFromUrl) localStorage.setItem('makerspaceApiBase', apiFromUrl.replace(/\/+$/, ''));
-  return (localStorage.getItem('makerspaceApiBase') || '').replace(/\/+$/, '');
+  return API_BASE;
 }
 
 function getApiToken() {
-  return localStorage.getItem('makerspaceApiToken') || '';
+  return '';
 }
 
 function authHeaders() {
@@ -73,8 +64,6 @@ async function fetchJson(path) {
 function threadUrl(name) {
   const url = new URL('/thread.html', location.origin);
   url.searchParams.set('name', name);
-  const apiBase = getApiBase();
-  if (apiBase) url.searchParams.set('api', apiBase);
   return `${url.pathname}${url.search}`;
 }
 

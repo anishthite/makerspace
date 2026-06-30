@@ -28,7 +28,7 @@
     {
       "route": "/excalidraw-viewer.html",
       "file": "excalidraw-viewer.html",
-      "mode": "copy"
+      "mode": "vite"
     },
     {
       "route": "/history.html",
@@ -159,8 +159,6 @@
     }
   ],
   "storageKeys": [
-    "makerspaceApiToken",
-    "makerspaceApiBase",
     "makerspaceBrowserSession",
     "makerspaceSelectedProject",
     "makerspaceModelRef",

@@ -11,16 +11,9 @@ const THINKING_LEVEL_KEY = 'makerspaceThinkingLevel';
 const THINKING_LEVELS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh'];
 const ARCHIVEABLE_THREAD_STATUSES = ['completed', 'ready', 'failed'];
 
+const API_BASE = '';
 const params = new URLSearchParams(location.search);
 const name = params.get('name');
-const apiFromUrl = params.get('api');
-const tokenFromUrl = params.get('token');
-if (tokenFromUrl) {
-  localStorage.setItem('makerspaceApiToken', tokenFromUrl);
-  params.delete('token');
-  const nextSearch = params.toString();
-  history.replaceState(null, '', `${location.pathname}${nextSearch ? `?${nextSearch}` : ''}${location.hash}`);
-}
 
 const projectLabel = document.querySelector('#project-label');
 const title = document.querySelector('#thread-title');
@@ -140,12 +133,11 @@ function syncRunSummaryExpanded(open) {
 }
 
 function getApiBase() {
-  if (apiFromUrl) localStorage.setItem('makerspaceApiBase', apiFromUrl.replace(/\/+$/, ''));
-  return (localStorage.getItem('makerspaceApiBase') || '').replace(/\/+$/, '');
+  return API_BASE;
 }
 
 function getApiToken() {
-  return localStorage.getItem('makerspaceApiToken') || '';
+  return '';
 }
 
 function thinkingLevelValue() {
@@ -235,8 +227,6 @@ function apiUrl(path) {
 
 function streamUrl(path, after = 0) {
   const url = new URL(apiUrl(path), location.origin);
-  const token = getApiToken();
-  if (token) url.searchParams.set('token', token);
   url.searchParams.set('browserSession', getBrowserSessionId());
   if (after) url.searchParams.set('after', String(after));
   return url.toString();
@@ -247,8 +237,6 @@ function excalidrawViewerUrl(artifactPath) {
   url.searchParams.set('thread', name || '');
   url.searchParams.set('path', artifactPath);
   url.searchParams.set('theme', currentPreviewTheme());
-  const apiBase = getApiBase();
-  if (apiBase) url.searchParams.set('api', apiBase);
   return url.toString();
 }
 

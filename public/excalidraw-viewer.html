@@ -26,11 +26,9 @@
   const params = new URLSearchParams(location.search);
   const thread = params.get('thread') || params.get('name') || '';
   const rawArtifactPath = params.get('path') || '';
-  const apiParam = params.get('api') || '';
   const storedTheme = localStorage.getItem('makerspaceTheme') === 'light' ? 'light' : 'dark';
   const viewerTheme = ['dark', 'light'].includes(params.get('theme')) ? params.get('theme') : storedTheme;
   document.documentElement.dataset.theme = viewerTheme;
-  if (apiParam) localStorage.setItem('makerspaceApiBase', apiParam.replace(/\/+$/, ''));
 
   function safeArtifactPath(value) {
     const text = String(value || '').trim().replace(/^(?:\.\/)+/, '').replaceAll('\\', '/');
@@ -43,15 +41,13 @@
   const artifactPath = safeArtifactPath(rawArtifactPath);
 
   function apiUrl(path) {
-    return `${(localStorage.getItem('makerspaceApiBase') || '').replace(/\/+$/, '')}${path}`;
+    return path;
   }
 
   function authHeaders() {
     const headers = {};
     const session = localStorage.getItem('makerspaceBrowserSession') || '';
-    const token = localStorage.getItem('makerspaceApiToken') || '';
     if (session) headers['x-makerspace-session'] = session;
-    if (token) headers.authorization = `Bearer ${token}`;
     return headers;
   }
 

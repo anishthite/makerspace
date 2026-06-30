@@ -47,4 +47,4 @@ sudo systemctl enable --now makerspace
 sudo systemctl reload caddy
 ```
 
-Vercel UI: deploy this repo as a static app. In the homepage, set **Control backend URL** to `https://api.example.com`; users sign in with GitHub, while `CONTROL_API_TOKEN` remains an admin bypass.
+Vercel UI: deploy this repo as a static app with `VITE_MAKERSPACE_API_BASE=https://api.example.com`. Users sign in with GitHub; keep `CONTROL_API_TOKEN` as an admin/API-client bypass only.

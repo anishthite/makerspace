@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Env backend connection</title>
+<meta name="task" content="Connect the deployed frontend to the backend from env and remove URL API/token configuration.">
+<meta name="date-started" content="2026-06-30">
+<meta name="date-updated" content="2026-06-30">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="makerspace,frontend,backend,env,vercel,auth">
+<meta name="related" content="2026-06-30-dmg-release-landing.html,2026-06-30-vercel-vite-build.html,2026-06-30-multi-user-auth.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}ul{margin:.3rem 0 .8rem 1.2rem;padding:0}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-med{color:#b85c00}</style>
+</head>
+<body>
+<h1>Env backend connection</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-30 · status <b>shipped</b> · blast <span class="blast-med">medium</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Deploy frontend with backend URL from <code>VITE_MAKERSPACE_API_BASE</code> and no URL API/token bootstrap.</div><b>Source</b><div>Vercel build env and backend <code>MAKERSPACE_ALLOWED_ORIGIN</code>.</div><b>Surface</b><div>React/Vite runtime modules, Vite Excalidraw viewer, legacy public fallback files, settings page, README.</div><b>Schema</b><div>None.</div><b>Open Qs</b><div>0.</div></div>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>frontend/src/runtime/*.js</code></td><td>touch</td><td>Read API base from <code>import.meta.env.VITE_MAKERSPACE_API_BASE</code> and stop accepting <code>?api</code>/<code>?token</code>.</td></tr><tr><td><code>frontend/src/pages.jsx</code></td><td>touch</td><td>Replace editable backend URL/token settings with deployment config status.</td></tr><tr><td><code>frontend/excalidraw-viewer.html</code>, <code>vite.config.js</code></td><td>touch</td><td>Make the viewer a Vite input and load root <code>.env</code> so artifact fetches use <code>VITE_MAKERSPACE_API_BASE</code>.</td></tr><tr><td><code>public/*.js</code>, <code>public/*.html</code></td><td>touch</td><td>Remove legacy URL/token bootstrap from fallback static files.</td></tr><tr><td><code>.env</code></td><td>touch</td><td>Add local <code>VITE_MAKERSPACE_API_BASE</code> and <code>MAKERSPACE_ALLOWED_ORIGIN</code> values.</td></tr><tr><td><code>src/server/http.js</code></td><td>touch</td><td>Accept control token from headers only, not <code>?token=</code>.</td></tr><tr><td><code>frontend/route-manifest.json</code></td><td>touch</td><td>Drop API base/token localStorage keys from the frontend contract.</td></tr><tr><td><code>README.md</code>, <code>deploy/digitalocean/README.md</code></td><td>touch</td><td>Document Vercel/backend env variables and remove URL token setup.</td></tr><tr><td><code>test/settings-auth-query.test.js</code>, <code>test/frontend-route-manifest.test.js</code>, <code>test/history-route.test.js</code>, <code>test/multi-user-access.test.js</code></td><td>touch</td><td>Assert query bootstrap is gone and control-token tests use headers.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Use <code>VITE_MAKERSPACE_API_BASE</code> only for the browser backend URL. Vite exposes this as public deployment config.</td></tr><tr><td>D-002</td><td>Do not add a frontend env for <code>CONTROL_API_TOKEN</code>. A browser bundle would expose the admin bypass token.</td></tr><tr><td>D-003</td><td>Keep backend token auth as a header-only API/admin bypass. GitHub cookies are the hosted browser auth path.</td></tr><tr><td>D-004</td><td>Move <code>excalidraw-viewer.html</code> into Vite inputs. Static copied HTML cannot read Vite env.</td></tr><tr><td>D-005</td><td>Set <code>envDir</code> to repo root. The existing <code>.env</code> lives above <code>frontend/</code>.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>Deployment env over user-editable settings. Removes accidental wrong-backend/token links.</td></tr></table>
+<h2>Validation</h2>
+<table><tr><th>ID</th><th>Command · Result</th></tr><tr><td>V-001</td><td><code>node --test test/settings-auth-query.test.js test/frontend-route-manifest.test.js test/desktop-auth-token.test.js test/history-route.test.js test/multi-user-access.test.js</code> · 11/11 pass.</td></tr><tr><td>V-002</td><td><code>npm run build</code> · pass.</td></tr><tr><td>V-003</td><td><code>npm test</code> · 141/141 pass.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Restore API settings UI and query parsing if hosted frontend must support per-browser backend overrides.</p>
+<h2>Definition of done</h2>
+<ul><li class="done">Runtime code contains no <code>apiFromUrl</code>, <code>tokenFromUrl</code>, <code>makerspaceApiBase</code>, or <code>makerspaceApiToken</code>.</li><li class="done"><code>/settings.html?api=...&amp;token=...</code> no longer changes backend config.</li><li class="done">Docs name <code>VITE_MAKERSPACE_API_BASE</code> and backend <code>MAKERSPACE_ALLOWED_ORIGIN</code>.</li><li class="done"><code>npm run build</code> and <code>npm test</code> pass.</li></ul>
+</body>
+</html>

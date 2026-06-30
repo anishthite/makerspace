@@ -4,13 +4,14 @@ import { test } from 'node:test';
 
 const settingsHtml = readFileSync(new URL('../public/settings.html', import.meta.url), 'utf8');
 const settingsJs = readFileSync(new URL('../public/settings.js', import.meta.url), 'utf8');
+const frontendSettingsJs = readFileSync(new URL('../frontend/src/runtime/settings.js', import.meta.url), 'utf8');
 
-test('settings page consumes backend token query params before api calls', () => {
-  assert.match(settingsJs, /const connectionParams = new URLSearchParams\(location\.search\);/);
-  assert.match(settingsJs, /localStorage\.setItem\('makerspaceApiBase', apiFromUrl\.replace/);
-  assert.match(settingsJs, /localStorage\.setItem\('makerspaceApiToken', tokenFromUrl\);/);
-  assert.ok(settingsJs.indexOf('tokenFromUrl') < settingsJs.indexOf('async function loadCodexAuth'));
-  assert.match(settingsJs, /history\.replaceState/);
+test('settings page uses deployment backend config instead of URL query tokens', () => {
+  assert.doesNotMatch(settingsJs, /const connectionParams = new URLSearchParams\(location\.search\);/);
+  assert.doesNotMatch(settingsJs, /apiFromUrl|tokenFromUrl|makerspaceApiBase|makerspaceApiToken/);
+  assert.doesNotMatch(settingsHtml, /id="api-base"|id="api-token"/);
+  assert.match(settingsJs, /deployment config/);
+  assert.match(frontendSettingsJs, /import\.meta\.env\.VITE_MAKERSPACE_API_BASE/);
 });
 
 test('settings page exposes Pi profile editor wiring', () => {

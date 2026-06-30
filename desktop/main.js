@@ -112,7 +112,11 @@ function createWindow(port, token) {
       preload: path.join(__dirname, 'preload.cjs'),
     },
   });
-  mainWindow.loadURL(`http://127.0.0.1:${port}/?token=${encodeURIComponent(token)}`);
+  mainWindow.webContents.session.webRequest.onBeforeSendHeaders(
+    { urls: [`http://127.0.0.1:${port}/api/*`] },
+    (details, callback) => callback({ requestHeaders: { ...details.requestHeaders, 'x-api-token': token } }),
+  );
+  mainWindow.loadURL(`http://127.0.0.1:${port}/`);
 }
 
 function userDataDir() {

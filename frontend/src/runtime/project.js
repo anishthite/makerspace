@@ -3,15 +3,7 @@ import './appearance.js?v=palette-2';
 const BROWSER_SESSION_KEY = 'makerspaceBrowserSession';
 const PROJECT_KEY = 'makerspaceSelectedProject';
 const RECENT_PROJECTS_KEY = 'makerspaceRecentProjects';
-
-const params = new URLSearchParams(location.search);
-const tokenFromUrl = params.get('token');
-if (tokenFromUrl) {
-  localStorage.setItem('makerspaceApiToken', tokenFromUrl);
-  params.delete('token');
-  const nextSearch = params.toString();
-  history.replaceState(null, '', `${location.pathname}${nextSearch ? `?${nextSearch}` : ''}${location.hash}`);
-}
+const API_BASE = String(import.meta.env.VITE_MAKERSPACE_API_BASE || '').trim().replace(/\/+$/, '');
 
 const codexAuthPill = document.querySelector('#codex-auth-pill');
 const codexAuthLabel = document.querySelector('#codex-auth-label');
@@ -43,11 +35,11 @@ function getBrowserSessionId() {
 }
 
 function getApiBase() {
-  return (localStorage.getItem('makerspaceApiBase') || '').replace(/\/+$/, '');
+  return API_BASE;
 }
 
 function getApiToken() {
-  return localStorage.getItem('makerspaceApiToken') || '';
+  return '';
 }
 
 function authHeaders() {

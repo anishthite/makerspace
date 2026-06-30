@@ -8,8 +8,14 @@ const page = (file) => resolve(frontendRoot, file);
 
 export default defineConfig({
   root: frontendRoot,
+  envDir: import.meta.dirname,
   publicDir: resolve(frontendRoot, 'public'),
   plugins: [react()],
+  resolve: {
+    alias: {
+      '@': resolve(frontendRoot, 'src'),
+    },
+  },
   build: {
     outDir: resolve(import.meta.dirname, 'dist'),
     emptyOutDir: true,
@@ -22,6 +28,7 @@ export default defineConfig({
         history: page('history.html'),
         performance: page('performance.html'),
         desktop: page('desktop.html'),
+        excalidrawViewer: page('excalidraw-viewer.html'),
       },
     },
   },

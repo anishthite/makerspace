@@ -1,30 +1,7 @@
 import { applyAppearance, getAppearance, saveAppearance } from './appearance.js?v=palette-2';
 
 const BROWSER_SESSION_KEY = 'makerspaceBrowserSession';
-const connectionParams = new URLSearchParams(location.search);
-const apiFromUrl = connectionParams.get('api');
-const tokenFromUrl = connectionParams.get('token');
-let cleanedParams = false;
-
-if (apiFromUrl) {
-  localStorage.setItem('makerspaceApiBase', apiFromUrl.replace(/\/+$/, ''));
-  connectionParams.delete('api');
-  cleanedParams = true;
-}
-
-if (tokenFromUrl) {
-  localStorage.setItem('makerspaceApiToken', tokenFromUrl);
-  connectionParams.delete('token');
-  cleanedParams = true;
-}
-
-if (cleanedParams) {
-  const nextSearch = connectionParams.toString();
-  history.replaceState(null, '', `${location.pathname}${nextSearch ? `?${nextSearch}` : ''}${location.hash}`);
-}
-
-const apiBaseInput = document.querySelector('#api-base');
-const apiTokenInput = document.querySelector('#api-token');
+const API_BASE = String(import.meta.env.VITE_MAKERSPACE_API_BASE || '').trim().replace(/\/+$/, '');
 const connectionSummary = document.querySelector('#connection-summary');
 const codexLogin = document.querySelector('#codex-login');
 const codexStatus = document.querySelector('#codex-status');
@@ -81,25 +58,11 @@ function getBrowserSessionId() {
 }
 
 function getApiBase() {
-  return (localStorage.getItem('makerspaceApiBase') || '').replace(/\/+$/, '');
-}
-
-function setApiBase(value) {
-  const normalized = String(value || '').trim().replace(/\/+$/, '');
-  if (normalized) localStorage.setItem('makerspaceApiBase', normalized);
-  else localStorage.removeItem('makerspaceApiBase');
-  apiBaseInput.value = normalized;
+  return API_BASE;
 }
 
 function getApiToken() {
-  return localStorage.getItem('makerspaceApiToken') || '';
-}
-
-function setApiToken(value) {
-  const token = String(value || '').trim();
-  if (token) localStorage.setItem('makerspaceApiToken', token);
-  else localStorage.removeItem('makerspaceApiToken');
-  apiTokenInput.value = token;
+  return '';
 }
 
 function authHeaders() {
@@ -125,14 +88,10 @@ async function fetchJson(path, options = {}) {
 }
 
 function updateConnectionSummary() {
-  const target = apiBaseInput.value.trim().replace(/\/+$/, '') || 'same-origin';
-  const token = apiTokenInput.value.trim() ? 'token saved' : 'no token';
-  connectionSummary.textContent = `${target} · ${token}`;
+  connectionSummary.textContent = `${getApiBase() || 'same-origin'} · deployment config`;
 }
 
 async function persistConnectionInputs(reload = false) {
-  setApiBase(apiBaseInput.value);
-  setApiToken(apiTokenInput.value);
   updateConnectionSummary();
   if (reload) await reloadSettingsData();
 }
@@ -263,23 +222,12 @@ async function reloadSettingsData() {
   await loadPiProfile().catch((error) => { piProfileStatus.textContent = error.message; });
 }
 
-apiBaseInput.value = getApiBase();
-apiTokenInput.value = getApiToken();
 getBrowserSessionId();
 loadAppearanceControls();
 updateConnectionSummary();
-apiBaseInput.addEventListener('input', updateConnectionSummary);
-apiTokenInput.addEventListener('input', updateConnectionSummary);
 darkModeInput.addEventListener('change', saveAppearanceControls);
 darkPaletteInput.addEventListener('change', saveAppearanceControls);
 monoFontInput.addEventListener('change', saveAppearanceControls);
-apiBaseInput.addEventListener('change', async () => {
-  await persistConnectionInputs(true);
-});
-apiTokenInput.addEventListener('change', async () => {
-  await persistConnectionInputs(true);
-});
-
 codexLogin.addEventListener('click', async () => {
   await persistConnectionInputs();
   codexLogin.disabled = true;

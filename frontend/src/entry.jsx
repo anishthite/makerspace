@@ -2,6 +2,8 @@ import React, { useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { pages } from './pages.jsx';
+import './styles/fluid-ui.css';
+import './runtime/fluid-hover.js';
 
 const runtimeLoaders = {
   project: () => import('./runtime/project.js'),
@@ -32,5 +34,7 @@ function App({ page }) {
 
 const root = document.querySelector('#root');
 const page = document.body?.dataset?.reactPage || 'project';
+const reactRoot = root.__makerspaceRoot || createRoot(root);
+root.__makerspaceRoot = reactRoot;
 
-createRoot(root).render(<App page={page} />);
+reactRoot.render(<App page={page} />);

@@ -3,18 +3,9 @@ import './appearance.js?v=palette-2';
 const BROWSER_SESSION_KEY = 'makerspaceBrowserSession';
 const PROJECT_KEY = 'makerspaceSelectedProject';
 const ACTIVE_STATUSES = new Set(['launching', 'queued', 'starting', 'running', 'reconnecting']);
+const API_BASE = '';
 const doc = globalThis.document;
-const params = new URLSearchParams(globalThis.location?.search || '');
-const apiFromUrl = params.get('api') || '';
-const tokenFromUrl = params.get('token') || '';
 const storage = globalThis.localStorage && typeof globalThis.localStorage.getItem === 'function' ? globalThis.localStorage : null;
-
-if (tokenFromUrl) {
-  storage?.setItem('makerspaceApiToken', tokenFromUrl);
-  params.delete('token');
-  const nextSearch = params.toString();
-  globalThis.history?.replaceState?.(null, '', `${globalThis.location?.pathname || '/history.html'}${nextSearch ? `?${nextSearch}` : ''}${globalThis.location?.hash || ''}`);
-}
 
 const projectLabel = doc?.querySelector('#project-label');
 const workspaceLabel = doc?.querySelector('#workspace-label');
@@ -43,12 +34,11 @@ function getBrowserSessionId() {
 }
 
 function getApiBase() {
-  if (apiFromUrl) storage?.setItem('makerspaceApiBase', apiFromUrl.replace(/\/+$/, ''));
-  return (storage?.getItem('makerspaceApiBase') || '').replace(/\/+$/, '');
+  return API_BASE;
 }
 
 function getApiToken() {
-  return storage?.getItem('makerspaceApiToken') || '';
+  return '';
 }
 
 function readSelectedProject() {
@@ -119,10 +109,7 @@ async function fetchJson(path, options = {}) {
 }
 
 function threadUrl(name) {
-  const params = new URLSearchParams({ name });
-  const apiBase = getApiBase();
-  if (apiBase) params.set('api', apiBase);
-  return `/thread.html?${params}`;
+  return `/thread.html?${new URLSearchParams({ name })}`;
 }
 
 function statusValue(session = {}) {

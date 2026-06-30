@@ -30,9 +30,9 @@ That is deliberate. The goal is one prompt in, one real sandbox-backed run out.
 4. the agent page reads `GET /api/threads/:name`, mirrors output from `GET /api/sessions/:name/stream`, and sends follow-up prompts to `POST /api/threads/:name/messages`
 5. after each run completes, the same bridge sandbox returns to `ready` so the next prompt can reuse the repo workspace
 
-For deployment, put the built React/Vite static UI (`npm run build` → `dist/`) on Vercel and this Node control backend on a server with Daytona credentials. The UI has “Control backend URL” and “Control API token” fields; set them to the backend HTTPS URL and `CONTROL_API_TOKEN`. The backend keeps Daytona and model-provider credentials server-side.
+For deployment, put the built React/Vite static UI (`npm run build` → `dist/`) on Vercel and this Node control backend on a server with Daytona credentials. Set the frontend env `VITE_MAKERSPACE_API_BASE=https://api.example.com` in Vercel; the browser no longer accepts `?api=` or `?token=` bootstrap links. The backend keeps Daytona and model-provider credentials server-side.
 
-DigitalOcean App Platform can build the root `Dockerfile` for the control backend. Keep the source directory at `/`, use the Dockerfile build strategy, and set the public HTTP port to `8080`. `image/Dockerfile` is still the separate Daytona sandbox image. Set the Vercel app's backend URL in `/settings.html`, or open `/settings.html?api=https://api.example.com&token=<CONTROL_API_TOKEN>` once to save it in the browser.
+DigitalOcean App Platform can build the root `Dockerfile` for the control backend. Keep the source directory at `/`, use the Dockerfile build strategy, and set the public HTTP port to `8080`. `image/Dockerfile` is still the separate Daytona sandbox image. Set backend env `MAKERSPACE_ALLOWED_ORIGIN=https://your-vercel-app.vercel.app` so cross-origin GitHub-auth cookies work.
 
 To repeat the cold intent-prep measurement without relying on an existing warm bridge, start the server with an empty `SESSION_DATA_PATH`, then run:
 
@@ -123,6 +123,7 @@ PORT=8787
 MAKERSPACE_PROJECT=site
 MAKERSPACE_HOME=~/.makerspace/site
 CONTROL_API_TOKEN=
+VITE_MAKERSPACE_API_BASE= # frontend build env only; backend HTTPS origin
 MAKERSPACE_AUTH_REQUIRED= # set true to require GitHub sign-in even outside hosted mode
 MAKERSPACE_AUTH_SECRET= # stable secret for signed auth cookies and encrypted OAuth tokens
 MAKERSPACE_ALLOWED_ORIGIN= # set to the static frontend origin for cross-origin cookie auth
@@ -200,7 +201,7 @@ The settings page exposes the Makerspace Pi profile from `packages/makerspace-pi
 - `GET /api/sessions/:name/output`
 - `POST /api/sessions/:name/share`
 
-For single-user/token mode, set `CONTROL_API_TOKEN`; API clients send it as `Authorization: Bearer <token>`, and SSE streams may pass `?token=<token>`. In multi-user mode, GitHub sign-in sets a signed cookie; keep `CONTROL_API_TOKEN` as an admin bypass only.
+For single-user/token mode, set `CONTROL_API_TOKEN`; API clients send it as `Authorization: Bearer <token>`. The hosted browser path uses GitHub sign-in cookies; do not expose `CONTROL_API_TOKEN` in Vercel frontend env or URLs.
 
 ### Create agent body
 

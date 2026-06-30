@@ -45,7 +45,7 @@ test('static public pages stay in frontend/public for Vite copy', () => {
 });
 
 test('compatibility storage keys and deploy aliases are preserved', () => {
-  for (const key of ['makerspaceApiToken', 'makerspaceApiBase', 'makerspaceBrowserSession', 'makerspaceSelectedProject', 'makerspaceModelRef', 'makerspaceThinkingLevel', 'makerspaceTheme', 'makerspaceFont', 'makerspaceDarkPalette', 'makerspaceSeenFinishedThreads', 'makerspaceRecentProjects']) {
+  for (const key of ['makerspaceBrowserSession', 'makerspaceSelectedProject', 'makerspaceModelRef', 'makerspaceThinkingLevel', 'makerspaceTheme', 'makerspaceFont', 'makerspaceDarkPalette', 'makerspaceSeenFinishedThreads', 'makerspaceRecentProjects']) {
     assert.ok(manifest.storageKeys.includes(key), key);
   }
 

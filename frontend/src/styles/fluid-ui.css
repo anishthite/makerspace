@@ -1,0 +1,262 @@
+:root {
+  --ff-spring-fast: 80ms cubic-bezier(.23, 1, .32, 1);
+  --ff-spring-moderate: 160ms cubic-bezier(.23, 1, .32, 1);
+  --ff-spring-slow: 240ms cubic-bezier(.23, 1, .32, 1);
+  --sidebar: hsl(0 0% 98%);
+  --sidebar-foreground: hsl(240 5.3% 26.1%);
+  --sidebar-primary: hsl(240 5.9% 10%);
+  --sidebar-primary-foreground: hsl(0 0% 98%);
+  --sidebar-accent: hsl(240 4.8% 95.9%);
+  --sidebar-accent-foreground: hsl(240 5.9% 10%);
+  --sidebar-border: hsl(220 13% 91%);
+  --sidebar-ring: hsl(217.2 91.2% 59.8%);
+}
+
+@custom-variant dark (&:is(.dark *));
+
+.ff-proximity {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.ff-proximity::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(160px circle at var(--ff-x, 50%) var(--ff-y, 50%), color-mix(in srgb, var(--blue) 16%, transparent), transparent 72%);
+  transition: opacity var(--ff-spring-fast);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ff-proximity.is-proximity-active::before,
+  .ff-proximity:hover::before { opacity: 1; }
+}
+
+.ff-surface {
+  transition: border-color var(--ff-spring-moderate), box-shadow var(--ff-spring-moderate), background var(--ff-spring-moderate), transform var(--ff-spring-fast);
+}
+
+.ff-surface-2 { background: color-mix(in srgb, var(--paper) 84%, var(--paper-2)); }
+.ff-surface-3 { background: color-mix(in srgb, var(--paper-2) 88%, var(--ink) 4%); }
+
+@media (hover: hover) and (pointer: fine) {
+  .ff-surface:hover { border-color: var(--rule-2); box-shadow: var(--shadow-md); }
+}
+
+.ff-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: max-content;
+  font-variation-settings: 'wght' 720;
+  transition: border-color var(--ff-spring-fast), background var(--ff-spring-fast), color var(--ff-spring-fast), transform var(--ff-spring-fast), box-shadow var(--ff-spring-fast), font-variation-settings var(--ff-spring-fast);
+}
+
+.ff-button:hover { font-variation-settings: 'wght' 860; }
+.ff-button:active { transform: scale(.975); }
+.ff-button-ghost { border-color: transparent; background: transparent; box-shadow: none; }
+.ff-button-tertiary { background: transparent; }
+.ff-button-sm { padding: 6px 8px; font-size: 10px; }
+.ff-button-lg { padding: 12px 16px; font-size: 12px; }
+.ff-button.is-loading { pointer-events: none; opacity: .7; }
+.ff-button-label { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: inherit; }
+
+.ff-spinner {
+  position: relative;
+  z-index: 1;
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 999px;
+  animation: ff-spin .75s linear infinite;
+}
+
+@keyframes ff-spin { to { transform: rotate(360deg); } }
+
+.ff-badge,
+.ff-status-pill {
+  transition: border-color var(--ff-spring-fast), background var(--ff-spring-fast), color var(--ff-spring-fast), transform var(--ff-spring-fast);
+}
+.ff-badge.success { color: var(--teal); }
+.ff-badge.warning { color: var(--yellow); }
+.ff-badge.error { color: var(--red); }
+.ff-badge.info { color: var(--blue); }
+.ff-status-pill.is-active { color: var(--yellow); border-color: color-mix(in srgb, var(--yellow) 44%, var(--rule)); }
+
+.ff-input-group {
+  transition: border-color var(--ff-spring-fast), background var(--ff-spring-fast), box-shadow var(--ff-spring-fast);
+}
+.ff-input-group:focus-within { border-color: var(--blue); box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 16%, transparent); }
+.ff-select { min-width: 0; }
+.ff-slider { accent-color: var(--blue); }
+
+.ff-switch-card { transition: border-color var(--ff-spring-fast), background var(--ff-spring-fast), box-shadow var(--ff-spring-fast); }
+.ff-switch-card:focus-within { border-color: var(--blue); box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 14%, transparent); }
+.ff-switch { accent-color: var(--blue); }
+
+.ff-scroll-area {
+  scrollbar-color: color-mix(in srgb, var(--blue) 42%, transparent) transparent;
+  scrollbar-width: thin;
+}
+.ff-scroll-fade-y,
+.ff-scroll-area-x {
+  --ff-mask: linear-gradient(to bottom, transparent, #000 24px, #000 calc(100% - 24px), transparent);
+  -webkit-mask-image: var(--ff-mask);
+  mask-image: var(--ff-mask);
+}
+.ff-scroll-area-x {
+  --ff-mask: linear-gradient(to right, transparent, #000 24px, #000 calc(100% - 24px), transparent);
+}
+
+.ff-tabs {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  width: fit-content;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  padding: 4px;
+  background: color-mix(in srgb, var(--paper) 72%, transparent);
+}
+.ff-tab {
+  border-radius: 999px;
+  padding: 7px 10px;
+  color: var(--ink-3);
+  font: 700 11px/1 var(--mono);
+  text-transform: lowercase;
+  transition: background var(--ff-spring-moderate), color var(--ff-spring-moderate), transform var(--ff-spring-fast);
+}
+.ff-tab:hover,
+.ff-tab.is-active { background: var(--blue-soft); color: var(--blue); }
+.ff-tab:active { transform: scale(.98); }
+
+.ff-dialog {
+  border: 1px solid var(--rule-2);
+  border-radius: 12px;
+  padding: 18px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: var(--shadow-xl);
+}
+.ff-dialog::backdrop { background: rgba(0, 0, 0, .42); backdrop-filter: blur(3px); }
+
+.ff-thinking-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+}
+.ff-thinking-orb {
+  width: 32px;
+  height: 32px;
+  border: 1px solid color-mix(in srgb, var(--yellow) 58%, var(--rule));
+  border-radius: 999px;
+  background: radial-gradient(circle at 35% 35%, var(--yellow), transparent 58%), var(--blue-soft);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--yellow) 10%, transparent);
+  animation: ff-think 1.4s var(--ease-out) infinite alternate;
+}
+@keyframes ff-think { to { transform: scale(.86); opacity: .72; } }
+
+.ff-thinking-steps ol {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.ff-thinking-step {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  color: var(--ink-2);
+  font-size: 12px;
+}
+.ff-thinking-step small { display: block; color: var(--ink-3); }
+.ff-step-dot {
+  width: 8px;
+  height: 8px;
+  margin-top: 5px;
+  border-radius: 999px;
+  background: var(--ink-4);
+}
+.ff-thinking-step.active .ff-step-dot { background: var(--yellow); box-shadow: 0 0 0 5px color-mix(in srgb, var(--yellow) 14%, transparent); animation: status-pulse 1.25s var(--ease-out) infinite; }
+.ff-thinking-step.complete .ff-step-dot { background: var(--teal); }
+
+.ff-ask-user-questions { padding: 14px; }
+.ff-question-options { display: grid; gap: 6px; }
+.ff-question-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.ff-question-option small { display: block; color: var(--ink-3); font-size: 12px; }
+.ff-question-option kbd { color: var(--blue); font: 700 11px/1 var(--mono); }
+
+.ff-input-message {
+  transition: border-color var(--ff-spring-moderate), box-shadow var(--ff-spring-moderate), background var(--ff-spring-moderate);
+}
+.ff-input-message:focus-within { border-color: var(--blue); box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 16%, transparent), var(--shadow); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ff-proximity::before,
+  .ff-button,
+  .ff-surface,
+  .ff-thinking-orb,
+  .ff-spinner,
+  .ff-thinking-step.active .ff-step-dot { animation: none; transition-duration: 1ms; }
+}
+
+.dark {
+  --sidebar: hsl(240 5.9% 10%);
+  --sidebar-foreground: hsl(240 4.8% 95.9%);
+  --sidebar-primary: hsl(224.3 76.3% 48%);
+  --sidebar-primary-foreground: hsl(0 0% 100%);
+  --sidebar-accent: hsl(240 3.7% 15.9%);
+  --sidebar-accent-foreground: hsl(240 4.8% 95.9%);
+  --sidebar-border: hsl(240 3.7% 15.9%);
+  --sidebar-ring: hsl(217.2 91.2% 59.8%);
+}
+
+@theme inline {
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+    }
+  }
+
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
+  }
+}

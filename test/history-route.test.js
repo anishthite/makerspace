@@ -83,7 +83,7 @@ test('trusted history includes sessions from previous browser session ids', asyn
     assert.equal(threadResponse.status, 200);
     assert.equal((await threadResponse.json()).thread.name, 'old-private-thread');
 
-    const outputResponse = await fetch(`${baseUrl}/api/sessions/old-private-thread/output?token=test-token`);
+    const outputResponse = await fetch(`${baseUrl}/api/sessions/old-private-thread/output`, { headers });
     assert.equal(outputResponse.status, 200);
     assert.equal((await outputResponse.json()).session.name, 'old-private-thread');
   } finally {

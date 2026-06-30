@@ -13,10 +13,10 @@ function httpStub() {
       response.status = status;
       response.payload = payload;
     },
-    requestToken(request, url) {
+    requestToken(request, _url) {
       const authorization = String(request.headers?.authorization || '');
       if (authorization.startsWith('Bearer ')) return authorization.slice('Bearer '.length).trim();
-      return String(url.searchParams.get('token') || '');
+      return String(request.headers?.['x-api-token'] || '');
     },
     originFor() {
       return 'http://localhost:8787';

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "default",
+  "rsc": false,
+  "tsx": false,
+  "tailwind": {
+    "config": "",
+    "css": "frontend/src/styles/fluid-ui.css",
+    "baseColor": "slate",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "aliases": {
+    "components": "#components",
+    "ui": "#components/ui",
+    "lib": "#lib",
+    "utils": "#lib/utils",
+    "hooks": "#hooks"
+  },
+  "registries": {
+    "@fluid": "https://www.fluidfunctionalism.com/r/{name}.json"
+  },
+  "iconLibrary": "lucide"
+}

@@ -9,14 +9,7 @@ const PROJECT_KEY = 'makerspaceSelectedProject';
 const SEEN_FINISHED_THREADS_KEY = 'makerspaceSeenFinishedThreads';
 const THINKING_LEVELS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh'];
 const ARCHIVEABLE_THREAD_STATUSES = ['completed', 'ready', 'failed'];
-const params = new URLSearchParams(location.search);
-const tokenFromUrl = params.get('token');
-if (tokenFromUrl) {
-  localStorage.setItem('makerspaceApiToken', tokenFromUrl);
-  params.delete('token');
-  const nextSearch = params.toString();
-  history.replaceState(null, '', `${location.pathname}${nextSearch ? `?${nextSearch}` : ''}${location.hash}`);
-}
+const API_BASE = String(import.meta.env.VITE_MAKERSPACE_API_BASE || '').trim().replace(/\/+$/, '');
 
 const providerBanner = document.querySelector('#provider-banner');
 const projectLabel = document.querySelector('#project-label');
@@ -87,11 +80,11 @@ function getBrowserSessionId() {
 }
 
 function getApiBase() {
-  return (localStorage.getItem('makerspaceApiBase') || '').replace(/\/+$/, '');
+  return API_BASE;
 }
 
 function getApiToken() {
-  return localStorage.getItem('makerspaceApiToken') || '';
+  return '';
 }
 
 function thinkingLevelValue() {
@@ -204,10 +197,7 @@ function applySelectedProject() {
 }
 
 function threadUrl(name) {
-  const params = new URLSearchParams({ name });
-  const apiBase = getApiBase();
-  if (apiBase) params.set('api', apiBase);
-  return `/thread.html?${params}`;
+  return `/thread.html?${new URLSearchParams({ name })}`;
 }
 
 function normalizeRepoUrl(value) {
