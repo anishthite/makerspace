@@ -14,6 +14,7 @@
     "test": "node --test test/*.test.js",
     "desktop:dev": "electron desktop/main.js",
     "desktop:package": "bash scripts/package-desktop.sh",
+    "desktop:release": "SIGN_IDENTITY=\"Developer ID Application: Mahesh Thite (2EJKM9WA68)\" TEAM_ID=2EJKM9WA68 NOTARY_PROFILE=makerspace-notary bash scripts/package-desktop.sh",
     "desktop:install": "bash scripts/install-desktop-app.sh"
   },
   "dependencies": {
@@ -21,6 +22,7 @@
     "@earendil-works/pi-coding-agent": "0.79.7"
   },
   "devDependencies": {
+    "@electron/osx-sign": "^2.4.2",
     "electron": "^42.5.0"
   }
 }
