@@ -449,30 +449,33 @@ button.primary {
   background: var(--paper);
   padding: 0 12px;
 }
-.target-input span { color: var(--blue); font: 700 11px/1 var(--mono); text-transform: lowercase; }
+.target-input > span:first-child { color: var(--blue); font: 700 11px/1 var(--mono); text-transform: lowercase; white-space: nowrap; }
 .repo-input { grid-template-columns: minmax(0, 1fr); }
 .target-input input,
-.target-input select { border: 0; background: transparent; padding: 10px 0; box-shadow: none; font-size: 14px; }
+.target-input select { border: 0; background: transparent; padding: 8px 0; box-shadow: none; font-size: 14px; }
 .target-input input:focus,
 .target-input select:focus { border: 0; box-shadow: none; }
-.model-picker { grid-template-columns: auto minmax(0, 1fr) auto; position: relative; }
+.model-picker { grid-template-columns: 56px minmax(0, 1fr) auto; position: relative; }
 .model-picker::after { content: '⌄'; pointer-events: none; color: var(--blue); font: 700 13px/1 var(--mono); }
 .model-picker select { appearance: none; cursor: pointer; color: var(--ink-2); font-weight: 600; }
-.thinking-slider { grid-template-columns: auto minmax(80px, 1fr) auto; }
+.thinking-slider { grid-template-columns: 56px minmax(0, 1fr) 48px; min-width: 0; }
+.thinking-slider > span:not(:first-child) { width: 100%; min-width: 0; }
 .thinking-slider input[type="range"] { cursor: pointer; accent-color: var(--blue); padding: 0; }
 .thinking-slider output { min-width: 48px; color: var(--ink-2); font: 700 11px/1 var(--mono); text-align: right; text-transform: lowercase; }
-.composer-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; }
-.composer-controls .target-input { flex: 1 1 170px; }
+.composer-controls { display: flex; align-items: stretch; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.composer-controls .target-input { flex: 1 1 220px; min-height: 36px; }
+.composer-controls .model-picker { flex-basis: 240px; }
+.composer-controls .thinking-slider { flex-basis: 260px; }
 .attachment-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.composer-attachment-row { flex: 0 1 auto; justify-content: flex-start; min-height: 42px; }
+.composer-attachment-row { flex: 0 1 auto; justify-content: flex-start; min-height: 36px; }
 .attach-btn {
   display: grid;
   place-items: center;
   flex: none;
-  width: 30px;
-  height: 30px;
+  width: 36px;
+  height: 36px;
   padding: 0;
-  font-size: 18px;
+  font-size: 17px;
   line-height: 1;
 }
 .image-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
@@ -494,9 +497,9 @@ button.primary {
 .launch-card,
 .flow-composer { transition: border-color 120ms ease, box-shadow 120ms ease, background 120ms ease; }
 .is-dragging-images { border-color: var(--blue); box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 18%, transparent), var(--shadow); }
-.launch-controls { padding: 0 10px 10px; }
-.workspace-run-row { padding: 0; }
-.run-btn { min-width: 138px; }
+.launch-controls { padding: 0 10px 8px; }
+.workspace-run-row { display: flex; justify-content: flex-end; padding: 0 10px 10px; border-top: 0; background: transparent; }
+.run-btn { min-width: 112px; min-height: 34px; padding: 8px 12px; }
 .repo-tray {
   display: grid;
   grid-template-columns: minmax(210px, 1fr) auto minmax(0, 1.4fr) auto;

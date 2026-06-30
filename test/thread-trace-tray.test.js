@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { runInNewContext } from 'node:vm';
 
 const html = readFileSync(new URL('../public/thread.html', import.meta.url), 'utf8');
 const js = readFileSync(new URL('../public/thread.js', import.meta.url), 'utf8');
@@ -26,6 +27,16 @@ test('conversation runtime markers live in the timeline and toggle the inline tr
   assert.doesNotMatch(js, /activeRunSummaryMarker = appendRunSummaryMarker[\s\S]{0,240}activeAssistantBody = appendMessage\('assistant'/);
   assert.match(js, /syncRunSummaryExpanded\(open\)/);
   assert.match(js, /formatElapsedMinutes/);
+});
+
+test('run summary duration includes seconds', () => {
+  const start = js.indexOf('function formatElapsedMinutes');
+  const end = js.indexOf('function runSummaryCopy');
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+  const context = {};
+  runInNewContext(`${js.slice(start, end)}; globalThis.result = [formatElapsedMinutes(12_000), formatElapsedMinutes(65_000), formatElapsedMinutes(120_000)];`, context);
+  assert.equal(context.result.join('|'), '12s|1 min 5s|2 min');
 });
 
 test('usage telemetry is not rendered as timeline content', () => {
