@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 
 import { pages } from './pages.jsx';
 import { applyAppearance } from './runtime/appearance.js';
+import { startAgentToastWatcher } from './runtime/agent-toasts.js';
 import './styles/fluid-ui.css';
 
 const runtimeLoaders = {
@@ -74,6 +75,7 @@ applyAppearance();
 
 const root = document.querySelector('#root');
 const page = document.body?.dataset?.reactPage || 'project';
+if (page !== 'workspace') startAgentToastWatcher();
 const reactRoot = root.__makerspaceRoot || createRoot(root);
 root.__makerspaceRoot = reactRoot;
 

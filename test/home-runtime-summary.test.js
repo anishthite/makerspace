@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const pages = readFileSync(new URL('../frontend/src/pages.jsx', import.meta.url), 'utf8');
+const entry = readFileSync(new URL('../frontend/src/entry.jsx', import.meta.url), 'utf8');
 const js = readFileSync(new URL('../frontend/src/runtime/app.js', import.meta.url), 'utf8');
+const agentToasts = readFileSync(new URL('../frontend/src/runtime/agent-toasts.js', import.meta.url), 'utf8');
 const runState = readFileSync(new URL('../src/server/run-state.js', import.meta.url), 'utf8');
 const threads = readFileSync(new URL('../src/server/threads.js', import.meta.url), 'utf8');
 
@@ -68,6 +70,16 @@ test('workspace toasts when running agents finish', () => {
   assert.match(js, /const wasActive = isActiveThread\(\{ runStatus: knownThreadStatuses\.get\(name\) \}\);/);
   assert.match(js, /showAgentToast\(title, detail, rawStatus === 'failed' \? 'error' : 'success'\);/);
   assert.match(js, /setInterval\(\(\) => \{\s*if \(document\.visibilityState !== 'visible'\) return;\s*loadThreads\(\)\.catch\(\(\) => \{\}\);\s*\}, 10000\);/);
+});
+
+test('global toasts load outside the workspace screen', () => {
+  assert.match(entry, /import \{ startAgentToastWatcher \} from '\.\/runtime\/agent-toasts\.js';/);
+  assert.match(entry, /if \(page !== 'workspace'\) startAgentToastWatcher\(\);/);
+  assert.match(agentToasts, /export function startAgentToastWatcher\(\) \{/);
+  assert.match(agentToasts, /function notifyFinishedThreads\(threads\)/);
+  assert.match(agentToasts, /const wasActive = isActiveThread\(\{ runStatus: knownThreadStatuses\.get\(name\) \}\);/);
+  assert.match(agentToasts, /showAgentToast\(title, detail, rawStatus === 'failed' \? 'error' : 'success'\);/);
+  assert.match(agentToasts, /setInterval\(\(\) => \{\s*if \(document\.visibilityState !== 'visible'\) return;\s*loadThreadsForToasts\(\)\.catch\(\(\) => \{\}\);\s*\}, 10000\);/);
 });
 
 test('new runs clear stale terminal runtime fields', () => {
