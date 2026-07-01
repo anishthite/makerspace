@@ -31,9 +31,17 @@ function sendPendingUpdate(window = mainWindow) {
   window.webContents.send('makerspace:update-downloaded', pendingUpdate);
 }
 
+function sendUpdateStatus(message, level = 'info') {
+  BrowserWindow.getAllWindows().forEach((window) => {
+    if (!window || window.isDestroyed()) return;
+    window.webContents.send('makerspace:update-status', { message, level });
+  });
+}
+
 function announceUpdateDownloaded(info) {
   pendingUpdate = publicUpdateInfo(info);
   BrowserWindow.getAllWindows().forEach(sendPendingUpdate);
+  sendUpdateStatus('Update ready. Restart to install.', 'success');
 }
 
 function slugify(value) {
@@ -169,7 +177,24 @@ ipcMain.handle('makerspace:restart-to-update', () => {
   return true;
 });
 
+ipcMain.handle('makerspace:check-for-updates', () => {
+  if (!app.isPackaged) return { ok: false, message: 'Update checks work in the packaged app.' };
+  if (!['darwin', 'win32'].includes(process.platform)) return { ok: false, message: 'Electron updates are macOS/Windows only.' };
+  try {
+    autoUpdater.checkForUpdates();
+    return { ok: true, message: 'Checking for updates…' };
+  } catch (error) {
+    const message = error?.message || 'Could not check for updates.';
+    sendUpdateStatus(message, 'error');
+    return { ok: false, message };
+  }
+});
+
 if (app.isPackaged) {
+  autoUpdater.on('checking-for-update', () => sendUpdateStatus('Checking for updates…'));
+  autoUpdater.on('update-available', () => sendUpdateStatus('Update found. Downloading…'));
+  autoUpdater.on('update-not-available', () => sendUpdateStatus('You are up to date.', 'success'));
+  autoUpdater.on('error', (error) => sendUpdateStatus(error?.message || 'Update check failed.', 'error'));
   updateElectronApp({
     updateSource: {
       type: UpdateSourceType.ElectronPublicUpdateService,

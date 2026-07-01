@@ -19,6 +19,7 @@ const chooseFolder = document.querySelector('#project-choose-folder');
 const repoHint = document.querySelector('#project-repo-hint');
 const statusLine = document.querySelector('#project-status');
 const recentList = document.querySelector('#project-recent-list');
+const projectWelcome = document.querySelector('#project-welcome');
 
 let providerKind = '';
 let githubRepos = [];
@@ -216,6 +217,12 @@ function renderAuthPill(node, labelNode, ok, title, label) {
   labelNode.textContent = label;
 }
 
+function renderWelcome(user) {
+  if (!projectWelcome) return;
+  const name = String(user?.name || user?.login || '').trim().replace(/\s+/g, ' ');
+  projectWelcome.textContent = name ? `Welcome back, ${name}.` : 'Welcome back.';
+}
+
 function renderAuthError(message) {
   for (const pill of [codexAuthPill, githubAuthPill]) {
     pill.dataset.status = 'error';
@@ -292,6 +299,7 @@ async function loadStatus() {
     renderAuthPill(codexAuthPill, codexAuthLabel, Boolean(codex.configured), codex.configured ? `Codex: ${codex.source || 'signed in'}` : 'Codex: signed out', 'codex');
     const github = await fetchJson('/api/auth/github');
     const connected = Boolean(github.connected);
+    renderWelcome(connected ? github.user : null);
     renderAuthPill(githubAuthPill, githubAuthLabel, connected, connected ? `GitHub: ${github.user?.login || 'connected'}` : github.configured ? 'GitHub: signed out' : 'GitHub: not configured', 'github');
     repoPicker.disabled = providerKind === 'local' || !connected;
     repoRefresh.disabled = providerKind === 'local' || !connected;

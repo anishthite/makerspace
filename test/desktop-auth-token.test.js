@@ -5,6 +5,8 @@ import { test } from 'node:test';
 const desktopMain = readFileSync(new URL('../desktop/main.js', import.meta.url), 'utf8');
 const desktopPreload = readFileSync(new URL('../desktop/preload.cjs', import.meta.url), 'utf8');
 const frontendEntry = readFileSync(new URL('../frontend/src/entry.jsx', import.meta.url), 'utf8');
+const frontendPages = readFileSync(new URL('../frontend/src/pages.jsx', import.meta.url), 'utf8');
+const frontendSettings = readFileSync(new URL('../frontend/src/runtime/settings.js', import.meta.url), 'utf8');
 const frontendStyles = readFileSync(new URL('../frontend/public/styles.css', import.meta.url), 'utf8');
 const serverJs = readFileSync(new URL('../src/server.js', import.meta.url), 'utf8');
 const packageScript = readFileSync(new URL('../scripts/package-desktop.sh', import.meta.url), 'utf8');
@@ -40,6 +42,18 @@ test('downloaded desktop updates show a dismissible restart banner', () => {
   assert.match(frontendEntry, /restart to update/);
   assert.match(frontendEntry, /makerspaceUpdateDismissed:/);
   assert.match(frontendStyles, /\.desktop-update-banner/);
+});
+
+test('settings can manually check desktop updates', () => {
+  assert.match(desktopMain, /makerspace:check-for-updates/);
+  assert.match(desktopMain, /autoUpdater\.checkForUpdates\(\)/);
+  assert.match(desktopMain, /makerspace:update-status/);
+  assert.match(desktopPreload, /checkForUpdates/);
+  assert.match(desktopPreload, /onUpdateStatus/);
+  assert.match(frontendPages, /id="desktop-updates"/);
+  assert.match(frontendPages, /id="desktop-check-updates"/);
+  assert.match(frontendSettings, /desktop-check-updates/);
+  assert.match(frontendSettings, /checkForUpdates/);
 });
 
 test('desktop package build emits the signed app OTA zip', () => {

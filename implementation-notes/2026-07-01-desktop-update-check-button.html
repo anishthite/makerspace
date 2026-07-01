@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Desktop update check button</title>
+<meta name="task" content="Add a Settings button that manually checks for packaged Electron updates.">
+<meta name="date-started" content="2026-07-01">
+<meta name="date-updated" content="2026-07-01">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="makerspace, desktop, electron, updates, settings">
+<meta name="related" content="2026-06-30-update-restart-banner.html, 2026-06-30-desktop-ota-updates.html, 2026-06-30-settings-page-polish.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Desktop update check button</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-01 · status <b class="status-shipped">shipped</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Add a bottom Settings action that asks packaged Electron to check for updates now.</div><b>Surface</b><div><code>/settings.html#desktop-updates</code>, desktop preload IPC, Electron main updater.</div><b>Schema</b><div>No API or stored data change.</div><b>Open Qs</b><div>0.</div></div>
+<h2>UI layout</h2>
+<ol><li><code>Desktop updates</code>: hide the panel outside Electron and place it after <code>Sandbox</code>.</li><li><code>Check for updates</code>: trigger a manual check and show updater status text.</li></ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>desktop/main.js</code></td><td>touch</td><td>Add manual update IPC and broadcast updater status.</td></tr><tr><td><code>desktop/preload.cjs</code></td><td>touch</td><td>Expose <code>checkForUpdates</code> and <code>onUpdateStatus</code>.</td></tr><tr><td><code>frontend/src/pages.jsx</code></td><td>touch</td><td>Add hidden bottom Settings panel.</td></tr><tr><td><code>frontend/src/runtime/settings.js</code></td><td>touch</td><td>Wire the button and status copy.</td></tr><tr><td><code>test/desktop-auth-token.test.js</code></td><td>touch</td><td>Pin the desktop update IPC and Settings controls.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Manual check over forced install. Electron only installs after an update is downloaded and the existing restart action handles that.</td></tr><tr><td>D-002</td><td>Hide outside desktop. Web builds cannot call Electron <code>autoUpdater</code>.</td></tr></table>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>npm test</code></td><td>Passed 155 tests.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Revert the IPC handlers, Settings panel, runtime wiring, and static test assertions; no stored data changes.</p>
+<h2>Definition of done</h2>
+<ul><li>Settings shows a desktop-only update check action near the bottom.</li><li>Clicking the action calls <code>autoUpdater.checkForUpdates()</code> in packaged Electron.</li><li>Focused desktop static test passes.</li></ul>
+</body>
+</html>

@@ -27,6 +27,9 @@ const registryPasswordInput = document.querySelector('#registry-password');
 const anthropicApiKeyInput = document.querySelector('#anthropic-api-key');
 const settingsSubmit = document.querySelector('#settings-submit');
 const settingsStatus = document.querySelector('#settings-status');
+const desktopUpdates = document.querySelector('#desktop-updates');
+const desktopCheckUpdates = document.querySelector('#desktop-check-updates');
+const desktopUpdateStatus = document.querySelector('#desktop-update-status');
 let currentSettings = null;
 let currentPiProfile = null;
 
@@ -255,8 +258,34 @@ async function reloadSettingsData() {
   await loadPiProfile().catch((error) => { piProfileStatus.textContent = error.message; });
 }
 
+function showDesktopUpdateStatus(info = {}) {
+  desktopUpdateStatus.textContent = String(info.message || 'Update status changed.');
+}
+
+function initDesktopUpdates() {
+  const desktop = globalThis.makerspaceDesktop;
+  if (!desktopUpdates || !desktopCheckUpdates || !desktopUpdateStatus || !desktop?.checkForUpdates) return;
+  desktopUpdates.hidden = false;
+  desktopUpdateStatus.textContent = 'Ready to check for desktop updates.';
+  const unsubscribe = desktop.onUpdateStatus?.(showDesktopUpdateStatus);
+  desktopCheckUpdates.addEventListener('click', async () => {
+    desktopCheckUpdates.disabled = true;
+    desktopUpdateStatus.textContent = 'Checking for updates…';
+    try {
+      const result = await desktop.checkForUpdates();
+      desktopUpdateStatus.textContent = result?.message || 'Checking for updates…';
+    } catch (error) {
+      desktopUpdateStatus.textContent = error.message;
+    } finally {
+      desktopCheckUpdates.disabled = false;
+    }
+  });
+  globalThis.addEventListener?.('beforeunload', () => unsubscribe?.(), { once: true });
+}
+
 getBrowserSessionId();
 loadAppearanceControls();
+initDesktopUpdates();
 darkModeInput.addEventListener('change', saveAppearanceControls);
 darkPaletteInput.addEventListener('change', saveAppearanceControls);
 monoFontInput.addEventListener('change', saveAppearanceControls);
