@@ -53,3 +53,19 @@ test('hosted Codex auth is stored per user and formatted for Pi auth.json', asyn
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test('hosted Codex auth populates model picker defaults', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'makerspace-codex-models-'));
+  try {
+    const auth = createAuthService({ config: config(root), http: testHttp() });
+    const user = await auth.authStore.upsertUser({ githubId: '1', login: 'octo' });
+    const credential = { type: 'oauth', access: 'access-token', refresh: 'refresh-token', expires: Date.now() + 60_000, accountId: 'acct' };
+
+    await auth.authStore.writeUserSecret(user.id, 'openai-codex-auth', JSON.stringify(credential));
+
+    const defaults = await auth.loadPiDefaults(user);
+    assert.ok(defaults.models.includes('openai-codex/gpt-5.5'));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

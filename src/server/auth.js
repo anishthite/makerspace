@@ -345,13 +345,26 @@ export function createAuthService({ config, http }) {
     ]);
   }
 
-  async function loadPiDefaults() {
+  async function availablePiModels(user = null) {
+    try {
+      const { AuthStorage, ModelRegistry } = await loadPiSdk();
+      const authStorage = authRequired()
+        ? await authStorageForSession({ ownerUserId: user?.id || '' })
+        : AuthStorage.create();
+      return ModelRegistry.create(authStorage).getAvailable();
+    } catch {
+      return [];
+    }
+  }
+
+  async function loadPiDefaults(user = null) {
     let model = 'Pi default model';
     let thinking = 'medium';
     const settings = await readPiSettingsFile();
     const provider = String(settings.defaultProvider || '').trim();
     const modelId = String(settings.defaultModel || '').trim();
     const configuredThinking = String(settings.defaultThinkingLevel || '').trim();
+    const availableModels = await availablePiModels(user);
     if (provider && modelId) model = `${provider}/${modelId}`;
     else if (modelId) model = modelId;
     if (configuredThinking) thinking = configuredThinking;
@@ -360,7 +373,7 @@ export function createAuthService({ config, http }) {
       model,
       agent: model,
       thinking,
-      models: uniqueModelRefs([model, ...configuredModelRefs(settings)]),
+      models: uniqueModelRefs([model, ...configuredModelRefs(settings, availableModels)]),
     };
   }
 

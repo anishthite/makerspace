@@ -90,7 +90,7 @@ export function createThreadService({ config, provider, http, auth, runState, br
     const sessions = await listStoredSessions(config.sessionFile);
     return {
       provider: provider.info(),
-      defaults: await loadPiDefaults(),
+      defaults: await loadPiDefaults(user),
       threads: sessions
         .filter((session) => session.threadBridge && !session.archivedAt && canAccessSession(session, viewerSessionId, trusted, user))
         .map((session) => decorateLiveSession(session)),

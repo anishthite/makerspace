@@ -285,7 +285,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
         if (requireSessionAccess(request, response, thread, url, user)) return;
         sendJson(response, 200, {
           provider: provider.info(),
-          defaults: await loadPiDefaults(),
+          defaults: await loadPiDefaults(user),
           thread: decorateLiveSession(thread),
         });
         return;
