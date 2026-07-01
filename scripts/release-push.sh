@@ -6,8 +6,19 @@ cd "$ROOT"
 
 commit_message="${*:-}"
 release_repo="${RELEASE_REPO:-anishthite/makerspace-downloads}"
-tag="v$(node -p "require('./package.json').version")"
-title="Makerspace $tag"
+
+current_tag() {
+  node -p '"v" + require("./package.json").version'
+}
+
+commit_if_dirty() {
+  local message="$1"
+  if [[ -z "$(git status --porcelain)" ]]; then
+    return 0
+  fi
+  git add -A
+  git commit -m "$message"
+}
 
 if [[ -n "$(git status --porcelain)" ]]; then
   if [[ -z "$commit_message" ]]; then
@@ -19,9 +30,22 @@ if [[ -n "$(git status --porcelain)" ]]; then
     exit 1
   fi
 
-  git add -A
-  git commit -m "$commit_message"
+  commit_if_dirty "$commit_message"
 fi
+
+git fetch --quiet --tags origin || true
+tag="$(current_tag)"
+if git rev-parse -q --verify "refs/tags/$tag" >/dev/null 2>&1; then
+  if [[ "$(git rev-list -n 1 "$tag")" == "$(git rev-parse HEAD)" ]]; then
+    echo "$tag already tags HEAD; reusing it."
+  else
+    echo "$tag already exists; bumping patch."
+    npm version patch --no-git-tag-version
+    tag="$(current_tag)"
+  fi
+fi
+title="Makerspace $tag"
+commit_if_dirty "Prepare $tag release"
 
 npm run desktop:release
 
