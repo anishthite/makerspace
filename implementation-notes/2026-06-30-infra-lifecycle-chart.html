@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — infra lifecycle chart</title>
+<meta name="task" content="Compare Daytona sandbox, VPS/devbox, and shared container infrastructure options for Makerspace workspaces.">
+<meta name="date-started" content="2026-06-30">
+<meta name="date-updated" content="2026-06-30">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="makerspace, infra, daytona, vps, diagram, product-direction">
+<meta name="related" content="2026-06-27-inline-excalidraw-viewer.html,2026-06-26-remote-local-runtime-diagram.html,2026-06-17-idle-vm-expiry.html,2026-06-16-dockerfile-settings-panel.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code { font-family: ui-monospace, Menlo, monospace; background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  ul { margin: .3rem 0 .8rem 1.2rem; padding: 0; }
+  li { margin: .15rem 0; }
+  .blast-low { color: #2a7a2a; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>Infra lifecycle chart</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-06-30 · status <b>shipped</b> · blast <span class="blast-low">low</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Choose the smallest infra direction for durable AI coding workspaces.</div>
+  <b>Output</b><div><code>infra-options-decision.excalidraw</code> plus rendered <code>infra-options-decision.png</code>.</div>
+  <b>Recommendation</b><div>Ship persistent Daytona workspace mode first; keep fresh sandboxes as clean-room mode.</div>
+  <b>Provider path</b><div>Keep provider boundary so a VPS/devbox backend can replace Daytona later.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>infra-options-decision.excalidraw</code></td><td>new</td><td>Render the lifecycle-first infra comparison chart.</td></tr>
+  <tr><td><code>infra-options-decision.png</code></td><td>new</td><td>Rendered inline preview for the chart.</td></tr>
+  <tr><td><code>implementation-notes/2026-06-30-infra-lifecycle-chart.html</code></td><td>new</td><td>Record the decision rationale for the chart.</td></tr>
+  <tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Add this planning artifact.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Choose lifecycle before provider. The durable workspace contract matters more than Daytona versus VPS.</td></tr>
+  <tr><td>D-002</td><td>Recommend persistent Daytona workspace per <code>user + project</code> first. Existing integration gives isolation and previews with lower ops burden.</td></tr>
+  <tr><td>D-003</td><td>Keep per-task fresh sandboxes as clean-room mode. Reproducible and risky tasks still need disposable environments.</td></tr>
+  <tr><td>D-004</td><td>Treat per-user/project VPS as provider v2. It wins on devbox feel but adds provisioning, patching, networking, and recovery work.</td></tr>
+  <tr><td>D-005</td><td>Reject one shared DigitalOcean box/container pool for MVP. Cross-user noise and isolation risk hide the real cost.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td>Persistent workspace over Dockerfile automation first. Persisting installs solves the user pain before modeling every dependency.</td></tr>
+  <tr><td>T-002</td><td>Provider adapter over Daytona rewrite. The product UX can stay stable while infrastructure changes later.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Delete the chart files or supersede this note if infra direction changes.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>Chart compares fresh sandboxes, persistent Daytona workspaces, per-user/project VPS, and shared containers.</li>
+  <li>Chart states the recommended next step and later provider escape hatch.</li>
+  <li>Rendered PNG has been inspected for clipping and readability.</li>
+</ul>
+</body>
+</html>
