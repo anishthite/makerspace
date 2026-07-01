@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — project workspace mode</title>
+<meta name="task" content="Add durable project workspaces keyed by user and repo, with per-thread worktrees.">
+<meta name="date-started" content="2026-07-01">
+<meta name="date-updated" content="2026-07-01">
+<meta name="status" content="in-progress">
+<meta name="blast-radius" content="high">
+<meta name="tags" content="makerspace, workspace, daytona, d1, auth, threads">
+<meta name="related" content="2026-06-30-infra-lifecycle-chart.html,2026-06-30-multi-user-auth.html,2026-06-26-d1-state-store.html,2026-06-16-dockerfile-settings-panel.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 900px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code, pre { font-family: ui-monospace, Menlo, monospace; }
+  code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  pre { background: #f6f6f6; padding: .55rem .7rem; border-radius: 4px; overflow-x: auto; font-size: 12.5px; line-height: 1.4; }
+  ul, ol { margin: .3rem 0 .8rem 1.2rem; padding: 0; }
+  li { margin: .15rem 0; }
+  .blast-high { color: #b00020; font-weight: 600; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 150px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>Project workspace mode</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-01 · status <b>in-progress</b> · blast <span class="blast-high">high</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Reuse one durable remote workspace per <code>ownerUserId + repoUrl</code> and run each thread in its own worktree.</div>
+  <b>Flag</b><div><code>MAKERSPACE_WORKSPACE_MODE=1</code>; hosted mode requires GitHub auth for ownership.</div>
+  <b>State</b><div>Workspace rows stay in <code>makerspace_sessions</code>; lookup index uses <code>makerspace_kv</code>.</div>
+  <b>Remote layout</b><div><code>/srv/workspace/main</code> plus <code>/srv/workspace/tasks/&lt;thread&gt;</code>.</div>
+  <b>Bridge</b><div><code>POST /runs</code> accepts a validated <code>cwd</code> under <code>/srv/workspace</code>.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>API contract</h2>
+<pre>POST /runs
+{
+  id: string,
+  name: string,
+  prompt: string,
+  cwd?: string
+}</pre>
+
+<h2>Algorithm</h2>
+<ol>
+  <li>Normalize <code>repoUrl</code> and compute <code>workspaceKey = sha256(ownerUserId + repoUrl)</code>.</li>
+  <li>Read <code>workspace:index:&lt;ownerUserId&gt;:&lt;repoHash&gt;</code>; verify the session row still exists and belongs to the user.</li>
+  <li>Create a workspace row and Daytona sandbox when the index is missing or stale.</li>
+  <li>Bootstrap the workspace idempotently: clone/fetch repo into <code>/srv/workspace/main</code> without deleting the whole workspace.</li>
+  <li>Create <code>/srv/workspace/tasks/&lt;thread&gt;</code> from <code>main</code> with <code>git worktree add -f</code>.</li>
+  <li>Start the thread bridge run with <code>cwd</code> set to that task directory.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>src/config.js</code></td><td>touch</td><td>Add workspace-mode flag.</td></tr>
+  <tr><td><code>src/workspaces.js</code></td><td>new</td><td>Hold workspace keying, index, row, and worktree command helpers.</td></tr>
+  <tr><td><code>src/server/threads.js</code></td><td>touch</td><td>Route remote thread creation through workspace reuse when enabled.</td></tr>
+  <tr><td><code>src/server/bridge.js</code></td><td>touch</td><td>Send thread worktree <code>cwd</code> to the remote bridge.</td></tr>
+  <tr><td><code>src/setup-script.js</code></td><td>touch</td><td>Bootstrap workspace main clone idempotently and validate bridge run <code>cwd</code>.</td></tr>
+  <tr><td><code>test/workspaces.test.js</code></td><td>new</td><td>Cover workspace ownership/keying and command generation.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Use existing session rows for workspace records. Avoid a new table while the session store already supports D1/file fallback.</td></tr>
+  <tr><td>D-002</td><td>Require <code>ownerUserId</code> when hosted workspace mode is enabled. Cross-user repo sharing would leak code, installs, and auth.</td></tr>
+  <tr><td>D-003</td><td>Create one workspace bridge per repo and one run at a time per workspace. Parallel remote Pi sessions can come after the durable workspace path works.</td></tr>
+  <tr><td>D-004</td><td>Keep clean sandbox mode as the fallback when <code>MAKERSPACE_WORKSPACE_MODE</code> is off. Repro/risky tasks still need disposable sandboxes.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td>KV index plus JSON workspace row over normalized tables. Existing D1 client is a tiny REST wrapper and JSON rows keep the diff small.</td></tr>
+  <tr><td>T-002</td><td>Git worktrees over full reclones. Reuse Git objects and project caches while isolating task edits.</td></tr>
+</table>
+
+<h2>Assumptions</h2>
+<ul>
+  <li>A-001 · Daytona stopped sandboxes retain disk until autodelete; if wrong, workspace mode must switch to setup-recipe/image restore.</li>
+  <li>A-002 · One active run per workspace is acceptable for the first implementation; if wrong, add a per-workspace queue or multiple bridge services.</li>
+</ul>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-high">high</span>. Unset <code>MAKERSPACE_WORKSPACE_MODE</code> to return to current per-thread sandbox behavior while leaving old workspace rows inert.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>Same signed-in user and repo reuses one workspace row/sandbox.</li>
+  <li>Different users with the same repo get separate workspaces.</li>
+  <li>Threads run in separate remote worktree paths under <code>/srv/workspace/tasks</code>.</li>
+  <li>Remote bridge rejects <code>cwd</code> outside <code>/srv/workspace</code>.</li>
+  <li>Focused tests pass.</li>
+</ul>
+</body>
+</html>

@@ -24,7 +24,7 @@
 <h2>Decisions</h2>
 <table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Manual check over forced install. Electron only installs after an update is downloaded and the existing restart action handles that.</td></tr><tr><td>D-002</td><td>Hide outside desktop. Web builds cannot call Electron <code>autoUpdater</code>.</td></tr></table>
 <h2>Verification</h2>
-<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>npm test</code></td><td>Passed 155 tests.</td></tr></table>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>node --check desktop/main.js desktop/preload.cjs frontend/src/runtime/settings.js</code></td><td>Passed with <code>PATH=/opt/homebrew/bin:$PATH</code>.</td></tr><tr><td><code>node --test test/desktop-auth-token.test.js</code></td><td>Passed 8/8.</td></tr><tr><td><code>npm run build</code></td><td>Passed.</td></tr><tr><td><code>npm test</code></td><td>Passed 155/155.</td></tr></table>
 <h2>Reversibility</h2>
 <p>R-001 · <span class="blast-low">low</span>. Revert the IPC handlers, Settings panel, runtime wiring, and static test assertions; no stored data changes.</p>
 <h2>Definition of done</h2>
