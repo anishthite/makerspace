@@ -62,7 +62,7 @@ test('recently finished success indicators can be dismissed locally', () => {
 });
 
 test('workspace toasts when running agents finish', () => {
-  assert.match(pages, /agent-toast agent-toast-inline/);
+  assert.doesNotMatch(pages, /className="[^"]*agent-toast[^"]*"/);
   assert.match(js, /function showAgentToast\(title, detail = '', tone = 'success'\)/);
   assert.match(js, /function notifyFinishedThreads\(threads\)/);
   assert.match(js, /const wasActive = isActiveThread\(\{ runStatus: knownThreadStatuses\.get\(name\) \}\);/);

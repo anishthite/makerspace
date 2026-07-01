@@ -119,7 +119,6 @@ export function WorkspacePage() {
     </InputMessage>
     <Surface className="home-recent action-center" aria-label="Agents">
       <div className="section-row"><div><h2>Agents</h2><p id="action-summary" className="muted">Loading agent status…</p></div><div className="inline-actions"><Button as="a" variant="ghost" href="/history.html">history</Button><Button id="refresh-threads" variant="ghost" type="button">refresh</Button></div></div>
-      <div className="agent-toast agent-toast-inline" role="status"><strong>Agent finished</strong><small>Preview of the new success toast.</small></div>
       <ScrollArea id="threads-list" className="action-lanes"></ScrollArea>
     </Surface>
   </main>;

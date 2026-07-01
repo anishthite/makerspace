@@ -545,7 +545,6 @@ button.agent-toast { cursor: pointer; }
 .agent-toast small { color: var(--ink-3); }
 .agent-toast.error { border-color: color-mix(in srgb, var(--red) 58%, var(--rule)); background: color-mix(in srgb, var(--red) 14%, var(--paper)); }
 .agent-toast.error strong { color: var(--red); }
-.agent-toast-inline { margin-top: 14px; cursor: default; }
 .thread-inbox { display: grid; gap: 8px; margin-top: 14px; }
 .action-lanes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(18px, 3vw, 34px); margin-top: 18px; }
 .action-lane { min-width: 0; }
