@@ -15,10 +15,18 @@ function readOptional(relativePath: string): string {
 
 const agents = readOptional('context/AGENTS.md');
 const rules = readOptional('context/RULES.md');
-const block = [
-  agents && `<makerspace-instructions>\n${agents}\n</makerspace-instructions>`,
-  rules && `<makerspace-rules>\n${rules}\n</makerspace-rules>`,
-].filter(Boolean).join('\n\n');
+
+function contextHasAgents(event: any): boolean {
+  const files = event?.systemPromptOptions?.contextFiles;
+  return Array.isArray(files) && files.some((file: any) => String(file?.content || '').trim() === agents);
+}
+
+function promptBlock(event: any): string {
+  return [
+    agents && !contextHasAgents(event) && `<makerspace-instructions>\n${agents}\n</makerspace-instructions>`,
+    rules && `<makerspace-rules>\n${rules}\n</makerspace-rules>`,
+  ].filter(Boolean).join('\n\n');
+}
 
 function registerInferenceProvider(pi: any) {
   pi.registerProvider('inference', {
@@ -49,9 +57,11 @@ function registerInferenceProvider(pi: any) {
 export default function makerspaceDefaults(pi: any) {
   registerInferenceProvider(pi);
 
-  if (!block) return;
+  if (!agents && !rules) return;
 
-  pi.on('before_agent_start', (event: any) => ({
-    systemPrompt: `${event.systemPrompt}\n\n${block}`,
-  }));
+  pi.on('before_agent_start', (event: any) => {
+    const block = promptBlock(event);
+    if (!block) return;
+    return { systemPrompt: `${event.systemPrompt}\n\n${block}` };
+  });
 }

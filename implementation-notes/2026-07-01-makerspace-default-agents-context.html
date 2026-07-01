@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Makerspace default AGENTS context</title>
+<meta name="task" content="Make Makerspace Pi sessions load the bundled default AGENTS.md as a Pi context file.">
+<meta name="date-started" content="2026-07-01">
+<meta name="date-updated" content="2026-07-01">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="makerspace, pi, context, agents, defaults, sdk">
+<meta name="related" content="2026-06-26-pi-defaults-package.html,2026-06-26-pi-profile-settings.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Makerspace default AGENTS context</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-01 · status <b class="status-shipped">shipped</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Load <code>packages/makerspace-pi-defaults/context/AGENTS.md</code> as a Pi <code>AGENTS.md</code> context file in Makerspace SDK sessions.</div><b>Source</b><div>User observed Makerspace default HTML-response instruction was not reflected in the agent reply.</div><b>Surface</b><div><code>src/pi-defaults-package.js</code> resource-loader construction.</div><b>Schema</b><div>No API, settings, session, or storage change.</div><b>Open Qs</b><div>0.</div></div>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>src/pi-defaults-package.js</code></td><td>touch</td><td>Append bundled default <code>context/AGENTS.md</code> through <code>agentsFilesOverride</code>.</td></tr><tr><td><code>packages/makerspace-pi-defaults/extensions/makerspace-defaults.ts</code></td><td>touch</td><td>Skip extension AGENTS injection when the context file is already loaded.</td></tr><tr><td><code>test/pi-defaults-package.test.js</code></td><td>touch</td><td>Assert the SDK loader receives the bundled default context file.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Use <code>agentsFilesOverride</code> instead of only extension prompt injection. Pi exposes loaded <code>AGENTS.md</code> through the same context-file path the default system prompt already understands.</td></tr><tr><td>D-002</td><td>Keep extension fallback but skip duplicates. Remote runs with profile sync disabled still receive defaults.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>Append one default context file over changing <code>agentDir</code>. User auth/settings stay isolated.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Remove the override helper and focused assertion; package resources still load as before.</p>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>/opt/homebrew/bin/node --check src/pi-defaults-package.js &amp;&amp; /opt/homebrew/bin/node --test test/pi-defaults-package.test.js</code></td><td>Passed 5/5.</td></tr><tr><td><code>/opt/homebrew/bin/node --test test/*.test.js</code></td><td>Passed 152/152.</td></tr></table>
+<h2>Definition of done</h2>
+<ul><li><code>createPiResourceOptions()</code> adds <code>packages/makerspace-pi-defaults/context/AGENTS.md</code> to <code>DefaultResourceLoader</code> context files.</li><li>Focused test proves the file path and HTML instruction content are loaded.</li><li>Focused tests pass.</li></ul>
+</body>
+</html>

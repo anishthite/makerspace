@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 
@@ -55,6 +55,24 @@ function applyPendingProviderRegistrations(resourceLoader, modelRegistry) {
   return diagnostics;
 }
 
+function readDefaultsAgentsFile(defaults) {
+  if (!defaults) return null;
+  const filePath = path.join(defaults.packageDir, 'context', 'AGENTS.md');
+  try {
+    return { path: filePath, content: readFileSync(filePath, 'utf8') };
+  } catch {
+    return null;
+  }
+}
+
+function prependAgentsFile(current, agentsFile) {
+  if (!agentsFile) return current;
+  const agentsFiles = current.agentsFiles || [];
+  const agentsPath = path.resolve(agentsFile.path);
+  if (agentsFiles.some((file) => path.resolve(file.path) === agentsPath)) return current;
+  return { ...current, agentsFiles: [agentsFile, ...agentsFiles] };
+}
+
 export async function createPiResourceOptions(sdk, options = {}) {
   const cwd = options.cwd || process.cwd();
   const agentDir = options.agentDir || defaultAgentDir(sdk);
@@ -62,6 +80,7 @@ export async function createPiResourceOptions(sdk, options = {}) {
   const modelRegistry = options.modelRegistry || (authStorage && sdk.ModelRegistry?.create?.(authStorage, path.join(agentDir, 'models.json')));
   const settingsManager = options.settingsManager || sdk.SettingsManager.create(cwd, agentDir);
   const defaults = piDefaultsResourcePaths(options.packageDir);
+  const defaultsAgentsFile = readDefaultsAgentsFile(defaults);
   const profileOverrides = piProfileResourceOverrides(options.piProfile);
 
   const resourceLoader = new sdk.DefaultResourceLoader({
@@ -72,6 +91,7 @@ export async function createPiResourceOptions(sdk, options = {}) {
     additionalSkillPaths: defaults?.skillPaths || [],
     additionalPromptTemplatePaths: defaults?.promptPaths || [],
     ...profileOverrides,
+    agentsFilesOverride: (current) => prependAgentsFile(profileOverrides.agentsFilesOverride?.(current) || current, defaultsAgentsFile),
   });
   await resourceLoader.reload();
 

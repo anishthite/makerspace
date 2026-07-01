@@ -24,6 +24,7 @@ test('makerspace Pi defaults package exposes pi resources', async () => {
   assert.match(skill, /description: Keep concise append-only implementation notes/);
   assert.match(extension, /before_agent_start/);
   assert.match(extension, /context\/AGENTS\.md/);
+  assert.match(extension, /contextHasAgents/);
   assert.match(extension, /registerProvider\('inference'/);
   assert.match(extension, /\$INFERENCE_API_KEY/);
 });
@@ -56,6 +57,10 @@ test('createPiResourceOptions adds package resource paths when present', async (
   assert.deepEqual(captured.additionalExtensionPaths, [packageDir]);
   assert.deepEqual(captured.additionalSkillPaths, [path.join(packageDir, 'skills')]);
   assert.deepEqual(captured.additionalPromptTemplatePaths, [path.join(packageDir, 'prompts')]);
+  const agentsFiles = captured.agentsFilesOverride({ agentsFiles: [{ path: '/project/AGENTS.md', content: '# Project\n' }] }).agentsFiles;
+  assert.equal(agentsFiles[0].path, path.join(packageDir, 'context', 'AGENTS.md'));
+  assert.match(agentsFiles[0].content, /Default to replying to the user in polished, semantic HTML/);
+  assert.equal(agentsFiles[1].path, '/project/AGENTS.md');
   assert.equal(captured.reloaded, true);
 });
 
