@@ -160,8 +160,10 @@ function renderCodexDevice(login, codexTab = null) {
     return;
   }
   navigateCodexTab(codexTab, device.verificationUri);
+  const verificationUri = escapeHtml(device.verificationUri);
+  const userCode = escapeHtml(device.userCode);
   codexDevice.classList.remove('hidden');
-  codexDevice.innerHTML = `<a href="${escapeHtml(device.verificationUri)}" target="_blank" rel="noreferrer">OpenAI</a>: <code>${escapeHtml(device.userCode)}</code>`;
+  codexDevice.innerHTML = `If Codex sign-in does not open, go to <a href="${verificationUri}" target="_blank" rel="noreferrer">${verificationUri}</a> and enter <code>${userCode}</code>.`;
 }
 
 async function pollCodexLogin(id) {
