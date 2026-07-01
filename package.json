@@ -21,6 +21,7 @@
     "desktop:dev": "electron desktop/main.js",
     "desktop:package": "bash scripts/package-desktop.sh",
     "desktop:release": "SIGN_IDENTITY=\"Developer ID Application: Mahesh Thite (2EJKM9WA68)\" TEAM_ID=2EJKM9WA68 NOTARY_PROFILE=makerspace-notary bash scripts/package-desktop.sh",
+    "release:push": "bash scripts/release-push.sh",
     "desktop:install": "bash scripts/install-desktop-app.sh"
   },
   "dependencies": {
