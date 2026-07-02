@@ -67,7 +67,7 @@ export function ProjectPage() {
 
     <header className="project-hero">
       <h1 id="project-welcome">Welcome back.</h1>
-      <p className="lede">Choose a local folder on this Mac, or pick a GitHub repo for cloud mode. The agent page stays scoped to it.</p>
+      <p className="lede">Choose a project to continue.</p>
     </header>
 
     <section className="project-grid">
