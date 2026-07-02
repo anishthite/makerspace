@@ -364,7 +364,7 @@ async function createLocalPiSession(config, session) {
   });
 }
 
-async function runCreatedPiSession({ createSession, session, emitOutput, emitMetric, emitStatus, emitEvent, failureLabel }) {
+async function runCreatedPiSession({ createSession, session, emitOutput, emitMetric, emitStatus, emitEvent, failureLabel, signal }) {
   const submittedAtMs = Number(session.submittedAtMs) || Date.now();
   let piSession = null;
   let unsubscribe = null;
@@ -375,23 +375,35 @@ async function runCreatedPiSession({ createSession, session, emitOutput, emitMet
   let workflowResultCount = 0;
   let workflowResultEndTarget = 0;
   let agentEndCount = 0;
+  let stopped = Boolean(signal?.aborted);
   let notifyWorkflowContinuation = () => {};
+  let stopWorkflowWait = () => {};
+  const stopRun = () => {
+    stopped = true;
+    notifyWorkflowContinuation();
+    stopWorkflowWait();
+    void piSession?.abort?.();
+  };
+  signal?.addEventListener('abort', stopRun, { once: true });
   const workflowContinuationDone = () => (
+    stopped ||
     backgroundWorkflowCount === 0 ||
     (workflowResultCount >= backgroundWorkflowCount && workflowResultEndTarget > 0 && agentEndCount >= workflowResultEndTarget)
   );
   const waitForWorkflowContinuation = () => {
-    if (workflowContinuationDone()) return Promise.resolve(true);
+    if (workflowContinuationDone()) return Promise.resolve(!stopped);
     const timeoutMs = Number(process.env.PI_BACKGROUND_CONTINUATION_TIMEOUT_MS || process.env.PI_BRIDGE_BACKGROUND_CONTINUATION_TIMEOUT_MS || 1_800_000);
     return new Promise((resolve) => {
       const finish = (ok) => {
         clearTimeout(timer);
         notifyWorkflowContinuation = () => {};
+        stopWorkflowWait = () => {};
         resolve(ok);
       };
       const timer = setTimeout(() => finish(false), Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 1_800_000);
+      stopWorkflowWait = () => finish(false);
       notifyWorkflowContinuation = () => {
-        if (workflowContinuationDone()) finish(true);
+        if (workflowContinuationDone()) finish(!stopped);
       };
     });
   };
@@ -399,6 +411,7 @@ async function runCreatedPiSession({ createSession, session, emitOutput, emitMet
   try {
     const created = await createSession();
     piSession = created.session;
+    if (stopped) throw new Error('Stopped by user.');
     if (piSession.sessionFile) {
       emitOutput('[system] Pi session trace: ' + piSession.sessionFile + '\n', 'running');
     }
@@ -550,7 +563,9 @@ async function runCreatedPiSession({ createSession, session, emitOutput, emitMet
     });
 
     await emitStatus('running');
+    if (stopped) throw new Error('Stopped by user.');
     await piSession.prompt(session.taskPrompt, session.images?.length ? { images: session.images } : undefined);
+    if (stopped) throw new Error('Stopped by user.');
     if (backgroundWorkflowCount > workflowResultCount) {
       emitEvent?.({
         type: 'workflow_status',
@@ -572,40 +587,44 @@ async function runCreatedPiSession({ createSession, session, emitOutput, emitMet
         runStatus: 'running',
       });
     }
+    if (stopped) throw new Error('Stopped by user.');
     const lastAssistantText = piSession.getLastAssistantText?.();
     if (lastAssistantText && !streamedAssistantText.trim()) {
       emitOutput(lastAssistantText, 'running');
     }
     await emitStatus('completed', { done: true });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    emitOutput(`[system] ${failureLabel} failed: ${message}\n`, 'failed');
-    await emitStatus('failed', { warning: message, done: true });
+    const message = stopped ? 'Stopped by user.' : error instanceof Error ? error.message : String(error);
+    emitOutput(stopped ? `[system] ${message}\n` : `[system] ${failureLabel} failed: ${message}\n`, 'failed');
+    await emitStatus('failed', { warning: message, done: true, stopped });
   } finally {
+    signal?.removeEventListener('abort', stopRun);
     unsubscribe?.();
     piSession?.dispose?.();
   }
 }
 
-export async function runHostPiSession({ session, config, provider, remoteReadyPromise, emitOutput, emitMetric, emitStatus, emitEvent }) {
+export async function runHostPiSession({ session, config, provider, remoteReadyPromise, emitOutput, emitMetric, emitStatus, emitEvent, signal }) {
   return runCreatedPiSession({
     session,
     emitOutput,
     emitMetric,
     emitStatus,
     emitEvent,
+    signal,
     failureLabel: 'Host Pi dispatch',
     createSession: () => createHostPiSession(config, session, remoteReadyPromise, provider),
   });
 }
 
-export async function runLocalPiSession({ session, config, emitOutput, emitMetric, emitStatus, emitEvent }) {
+export async function runLocalPiSession({ session, config, emitOutput, emitMetric, emitStatus, emitEvent, signal }) {
   return runCreatedPiSession({
     session,
     emitOutput,
     emitMetric,
     emitStatus,
     emitEvent,
+    signal,
     failureLabel: 'Local Pi run',
     createSession: () => createLocalPiSession(config, session),
   });

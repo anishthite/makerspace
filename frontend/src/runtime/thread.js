@@ -19,6 +19,7 @@ const projectLabel = document.querySelector('#project-label');
 const title = document.querySelector('#thread-title');
 const meta = document.querySelector('#thread-meta');
 const statusNode = document.querySelector('#thread-status');
+const stopButton = document.querySelector('#stop-thread');
 const archiveButton = document.querySelector('#archive-thread');
 const timeline = document.querySelector('#timeline');
 const traceTimeline = document.querySelector('#trace-timeline');
@@ -324,6 +325,10 @@ function canArchiveThread(thread) {
   return ARCHIVEABLE_THREAD_STATUSES.includes(status) && !thread?.archivedAt;
 }
 
+function canStopThread(thread) {
+  return isActiveStatus(effectiveStatus(thread));
+}
+
 function syncHeaderStatusVisibility() {
   statusNode.hidden = statusNode.textContent === 'done' && Boolean(archiveButton && !archiveButton.hidden);
 }
@@ -334,6 +339,13 @@ function renderArchiveButton(thread = currentThread) {
   archiveButton.disabled = false;
   archiveButton.textContent = 'mark as done';
   syncHeaderStatusVisibility();
+}
+
+function renderStopButton(thread = currentThread) {
+  if (!stopButton) return;
+  stopButton.hidden = !canStopThread(thread);
+  stopButton.disabled = false;
+  stopButton.textContent = 'stop';
 }
 
 function threadDisplayTitle(thread = currentThread) {
@@ -370,6 +382,7 @@ function renderThread(thread) {
   graphStatus = lifecycleCopy(thread);
   if (!thinkingDetail.textContent) thinkingDetail.textContent = graphStatus;
   setStatus(graphStatus, statusTone(rawStatus), isActiveStatus(rawStatus));
+  renderStopButton(thread);
   renderArchiveButton(thread);
   renderAgentGraph();
   sendButton.disabled = Boolean(thread.bridgeClaimed && rawStatus !== 'ready');
@@ -1370,6 +1383,7 @@ function streamRun() {
       const doneStatus = payload.runStatus === 'completed' ? 'completed' : 'failed';
       currentThread = { ...currentThread, status: doneStatus, runStatus: doneStatus };
       setStatus(doneStatus === 'completed' ? 'done' : 'failed', statusTone(doneStatus));
+      renderStopButton(currentThread);
       renderArchiveButton(currentThread);
       scheduleDiffRefresh(0);
       sendButton.disabled = false;
@@ -1402,6 +1416,20 @@ thinkingLevelInput.addEventListener('input', () => {
   renderThinkingLevel();
   saveRunControls();
 });
+stopButton?.addEventListener('click', async () => {
+  stopButton.disabled = true;
+  stopButton.textContent = 'stopping…';
+  setStatus('stopping', 'warning', true);
+  try {
+    const payload = await fetchJson(`/api/threads/${encodeURIComponent(name)}/stop`, { method: 'POST' });
+    if (payload.thread) renderThread(payload.thread);
+  } catch (error) {
+    stopButton.disabled = false;
+    stopButton.textContent = 'stop';
+    setStatus(error.message, 'error');
+  }
+});
+
 archiveButton?.addEventListener('click', async () => {
   archiveButton.disabled = true;
   archiveButton.textContent = 'marking…';

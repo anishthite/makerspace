@@ -11,6 +11,8 @@ import { normalizeSubmittedAtMs } from './utils.js';
 
 export function createThreadService({ config, provider, http, auth, runState, bridge }) {
   const { clientError } = http;
+  const localRunControllers = new Map();
+  const STOPPED_WARNING = 'Stopped by user.';
   const { enrichGitHubRepoSession, canAccessSession, loadPiDefaults } = auth;
   const {
     activeRuns,
@@ -33,7 +35,7 @@ export function createThreadService({ config, provider, http, auth, runState, br
     persistHostDispatchMetric,
     persistHostDispatchStatus,
   } = runState;
-  const { startThreadBridgeLaunch, refreshBridgeSessionIfNeeded, startBridgeRun } = bridge;
+  const { startThreadBridgeLaunch, refreshBridgeSessionIfNeeded, startBridgeRun, fetchBridgeJson } = bridge;
   const MAX_EXCALIDRAW_BYTES = 8 * 1024 * 1024;
 
   function safeExcalidrawArtifactPath(value) {
@@ -160,6 +162,52 @@ export function createThreadService({ config, provider, http, auth, runState, br
     }
 
     return (await unarchiveStoredSession(config.sessionFile, name)) || existing;
+  }
+
+  async function markThreadStopped(session) {
+    const now = new Date().toISOString();
+    const stopped = await upsertSession(config.sessionFile, {
+      ...session,
+      taskPrompt: '',
+      images: [],
+      bridgeClaimed: false,
+      warmClaimed: false,
+      status: 'failed',
+      runStatus: 'failed',
+      warning: STOPPED_WARNING,
+      endedAt: session.endedAt || now,
+      runEndedAtMs: session.runEndedAtMs || Date.parse(now),
+      updatedAt: now,
+    });
+    setRunState(session.name, { runStatus: 'failed', warning: STOPPED_WARNING });
+    appendRunOutput(session.name, `[system] ${STOPPED_WARNING}\n`, 'failed');
+    appendRunStatus(session.name, 'failed', { warning: STOPPED_WARNING, done: true, stopped: true });
+    return stopped;
+  }
+
+  async function stopThreadSession(name, viewerSessionId = '', trusted = false, user = null) {
+    const existing = await getThreadSession(name);
+    if (!canAccessSession(existing, viewerSessionId, trusted, user)) {
+      throw clientError(`Main agent ${name} belongs to a different user.`, 403);
+    }
+
+    const live = decorateLiveSession(existing);
+    const status = effectiveStoredRunStatus(live);
+    if (!isActiveRunStatus(status)) {
+      throw clientError('Only running main agents can be stopped.');
+    }
+
+    if (existing.localMode) {
+      localRunControllers.get(name)?.abort();
+    } else if (existing.bridgeUrl && existing.bridgeRunId && existing.bridgeToken) {
+      try {
+        await fetchBridgeJson(existing, `/runs/${encodeURIComponent(existing.bridgeRunId)}/stop`, { method: 'POST' });
+      } catch (error) {
+        if (status !== 'launching') throw error;
+      }
+    }
+
+    return markThreadStopped(existing);
   }
 
   async function createThreadSession(body, browserSession = null, browserSessionIdValue = '', user = null) {
@@ -298,15 +346,21 @@ export function createThreadService({ config, provider, http, auth, runState, br
     resetRunState(stored.name, 'running');
     appendRunOutput(stored.name, `[system] Running main agent locally in ${stored.repoPath}.\n`, 'running');
 
+    const controller = new AbortController();
+    localRunControllers.set(stored.name, controller);
     liveLocalRuns.add(stored.name);
     void runLocalPiSession({
       session: { ...stored, ...(runImages.length ? { images: runImages } : {}) },
       config,
+      signal: controller.signal,
       emitOutput: (text, runStatus) => appendRunOutput(stored.name, text, runStatus),
       emitMetric: (event) => persistHostDispatchMetric(stored.name, event),
       emitStatus: (runStatus, extra) => persistHostDispatchStatus(stored.name, runStatus, extra),
       emitEvent: (event) => recordRunEvent(stored.name, event),
-    }).finally(() => liveLocalRuns.delete(stored.name));
+    }).finally(() => {
+      liveLocalRuns.delete(stored.name);
+      if (localRunControllers.get(stored.name) === controller) localRunControllers.delete(stored.name);
+    });
 
     return stored;
   }
@@ -331,6 +385,7 @@ export function createThreadService({ config, provider, http, auth, runState, br
     getThreadSession,
     archiveThreadSession,
     unarchiveThreadSession,
+    stopThreadSession,
     createThreadSession,
     promptThreadSession,
     resolveLocalRepoPath,

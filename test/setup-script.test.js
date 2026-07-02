@@ -39,7 +39,7 @@ test('buildSetupScript clones a repo and auto-runs pi when requested', () => {
   );
   const bridgeScript = extractBridgeScript(script);
 
-  assert.ok(Buffer.byteLength(script, 'utf8') < 12 * 1024);
+  assert.ok(Buffer.byteLength(script, 'utf8') < 13 * 1024);
   assert.match(script, /if \[ "\$\(id -u\)" -ne 0 \]; then exec sudo -E \/bin\/bash "\$0" "\$@"; fi/);
   assert.match(script, /export GIT_TERMINAL_PROMPT=0/);
   assert.match(script, /git -c 'http.extraHeader=AUTHORIZATION: basic abc123' clone --depth=1 --branch 'main' 'https:\/\/github.com\/acme\/demo\.git' '\/srv\/workspace'/);
@@ -87,6 +87,10 @@ test('buildSetupScript clones a repo and auto-runs pi when requested', () => {
   assert.match(bridgeScript, /event\.message\.customType === "workflow-result"/);
   assert.match(bridgeScript, /event\.result\?\.details\?\.background/);
   assert.match(bridgeScript, /const output = resultText\(event\.result\)\.trim\(\)/);
+  assert.match(bridgeScript, /stopMatch = url\.pathname\.match/);
+  assert.match(bridgeScript, /run\.stop = true/);
+  assert.match(bridgeScript, /typeof run\.abort === "function"/);
+  assert.match(bridgeScript, /void piSession\?\.abort\?\.\(\)/);
   assert.match(bridgeScript, /const run = runs\.get\(decodeURIComponent\(streamMatch\[1\]\)\);/);
 });
 

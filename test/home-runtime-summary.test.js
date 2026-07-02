@@ -95,5 +95,6 @@ test('local rows only stay live while a local runner promise is live', () => {
   assert.match(runState, /const liveLocalRuns = new Set\(\);/);
   assert.match(runState, /decorated\.localMode && isActiveRunStatus\(run\.runStatus \|\| decorated\.runStatus \|\| decorated\.status\) && !liveLocalRuns\.has\(session\.name\)/);
   assert.match(threads, /liveLocalRuns\.add\(stored\.name\);/);
-  assert.match(threads, /\.finally\(\(\) => liveLocalRuns\.delete\(stored\.name\)\)/);
+  assert.match(threads, /\.finally\(\(\) => \{\n\s+liveLocalRuns\.delete\(stored\.name\);/);
+  assert.match(threads, /localRunControllers\.delete\(stored\.name\)/);
 });

@@ -129,7 +129,7 @@ export function ThreadPage() {
     <header className="flow-topbar">
       <div className="flow-top-left"><a className="brand" href="/workspace.html"><span className="brand-box">←</span><span id="project-label" className="project-pill" hidden></span></a></div>
       <div className="flow-title"><strong id="thread-title">Loading</strong><span id="thread-meta" className="muted"></span></div>
-      <div className="header-actions"><StatusPill id="thread-status">connecting</StatusPill><Button id="archive-thread" variant="primary" className="thread-done-btn" type="button" hidden>mark as done</Button></div>
+      <div className="header-actions"><StatusPill id="thread-status">connecting</StatusPill><Button id="stop-thread" variant="ghost" className="thread-stop-btn" type="button" hidden>stop</Button><Button id="archive-thread" variant="primary" className="thread-done-btn" type="button" hidden>mark as done</Button></div>
     </header>
     <section className="thread-stage" aria-label="Main agent workspace">
       <aside className="agent-column" aria-label="Main agent status">

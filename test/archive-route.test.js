@@ -136,6 +136,53 @@ test('message route restarts stale and failed local threads', async () => {
   }
 });
 
+test('stop route marks a launching bridge thread failed', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'micro-cloud-stop-thread-'));
+  const sessionFile = path.join(tempDir, 'sessions.json');
+  const settingsFile = path.join(tempDir, 'settings.json');
+  const createdAt = '2026-06-25T03:00:00.000Z';
+  let server;
+
+  try {
+    await writeFile(sessionFile, `${JSON.stringify([
+      { name: 'launching', provider: 'daytona', threadBridge: true, bridgeMode: true, bridgeClaimed: true, taskPrompt: 'keep going', status: 'launching', runStatus: 'launching', createdAt },
+    ])}\n`);
+    await writeFile(settingsFile, '{}\n');
+
+    server = spawn(process.execPath, ['src/server.js'], {
+      cwd: path.resolve(import.meta.dirname, '..'),
+      env: {
+        ...process.env,
+        INFRA_PROVIDER: 'local',
+        HOST: '127.0.0.1',
+        PORT: '0',
+        SESSION_DATA_PATH: sessionFile,
+        SETTINGS_DATA_PATH: settingsFile,
+        WARM_BRIDGE_POOL_SIZE: '0',
+        IDLE_BRIDGE_TTL_MS: '0',
+        CONTROL_API_TOKEN: 'test-token',
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    const baseUrl = await waitForServer(server);
+
+    const response = await fetch(`${baseUrl}/api/threads/launching/stop`, { method: 'POST', headers: { authorization: 'Bearer test-token' } });
+    const payload = await response.json();
+    assert.equal(response.status, 200, payload.error);
+    assert.equal(payload.thread.runStatus, 'failed');
+    assert.equal(payload.thread.warning, 'Stopped by user.');
+    assert.equal(payload.thread.taskPrompt, '');
+    assert.equal(payload.thread.bridgeClaimed, false);
+
+    const sessions = JSON.parse(await readFile(sessionFile, 'utf8'));
+    assert.equal(sessions[0].runStatus, 'failed');
+    assert.equal(sessions[0].warning, 'Stopped by user.');
+  } finally {
+    if (server) await stopServer(server);
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
+
 test('archive route accepts finished threads but rejects running threads', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'micro-cloud-archive-'));
   const sessionFile = path.join(tempDir, 'sessions.json');

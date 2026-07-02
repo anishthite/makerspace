@@ -5,12 +5,22 @@ import { readFileSync } from 'node:fs';
 const pages = readFileSync(new URL('../frontend/src/pages.jsx', import.meta.url), 'utf8');
 const js = readFileSync(new URL('../frontend/src/runtime/thread.js', import.meta.url), 'utf8');
 
-test('thread view exposes a top-right mark-as-done control in the header', () => {
-  assert.match(pages, /<div className="header-actions"><StatusPill id="thread-status">connecting<\/StatusPill><Button id="archive-thread"[^>]+className="thread-done-btn"[^>]+>mark as done<\/Button><\/div>/);
+test('thread view exposes top-right stop and mark-as-done controls in the header', () => {
+  assert.match(pages, /<div className="header-actions"><StatusPill id="thread-status">connecting<\/StatusPill><Button id="stop-thread"[^>]+className="thread-stop-btn"[^>]+>stop<\/Button><Button id="archive-thread"[^>]+className="thread-done-btn"[^>]+>mark as done<\/Button><\/div>/);
+  assert.equal(pages.match(/id="stop-thread"/g)?.length, 1);
   assert.equal(pages.match(/id="archive-thread"/g)?.length, 1);
-  assert.ok(pages.indexOf('className="header-actions"') < pages.indexOf('id="archive-thread"'));
-  assert.ok(pages.indexOf('StatusPill id="thread-status"') < pages.indexOf('id="archive-thread"'));
+  assert.ok(pages.indexOf('className="header-actions"') < pages.indexOf('id="stop-thread"'));
+  assert.ok(pages.indexOf('StatusPill id="thread-status"') < pages.indexOf('id="stop-thread"'));
+  assert.ok(pages.indexOf('id="stop-thread"') < pages.indexOf('id="archive-thread"'));
   assert.ok(pages.indexOf('id="archive-thread"') < pages.indexOf('id="prompt-form"'));
+});
+
+test('stop control uses the running-thread stop route', () => {
+  assert.match(js, /const stopButton = document\.querySelector\('#stop-thread'\);/);
+  assert.match(js, /function canStopThread\(thread\) \{/);
+  assert.match(js, /return isActiveStatus\(effectiveStatus\(thread\)\);/);
+  assert.match(js, /stopButton\?\.addEventListener\('click', async \(\) => \{/);
+  assert.match(js, /fetchJson\(`\/api\/threads\/\$\{encodeURIComponent\(name\)\}\/stop`, \{ method: 'POST' \}\)/);
 });
 
 test('archive control uses the existing finished-thread archive route', () => {

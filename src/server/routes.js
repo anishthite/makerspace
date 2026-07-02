@@ -47,6 +47,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
     createThreadSession,
     archiveThreadSession,
     unarchiveThreadSession,
+    stopThreadSession,
     threadDiffPayload,
     threadArtifactPayload,
     getThreadSession,
@@ -257,6 +258,17 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
       if (request.method === 'POST' && unarchiveThreadMatch) {
         const name = decodeURIComponent(unarchiveThreadMatch[1]);
         const thread = await unarchiveThreadSession(name, viewerSessionId, trusted, user);
+        sendJson(response, 200, {
+          provider: provider.info(),
+          thread: decorateLiveSession(thread),
+        });
+        return;
+      }
+
+      const stopThreadMatch = pathname.match(/^\/api\/threads\/([^/]+)\/stop$/);
+      if (request.method === 'POST' && stopThreadMatch) {
+        const name = decodeURIComponent(stopThreadMatch[1]);
+        const thread = await stopThreadSession(name, viewerSessionId, trusted, user);
         sendJson(response, 200, {
           provider: provider.info(),
           thread: decorateLiveSession(thread),

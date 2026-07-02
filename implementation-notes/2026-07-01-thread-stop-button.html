@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Thread stop button</title>
+<meta name="task" content="Add a thread-scoped stop button for running main agents.">
+<meta name="date-started" content="2026-07-01">
+<meta name="date-updated" content="2026-07-01">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="makerspace, ui, thread, agent, stop, bridge">
+<meta name="related" content="2026-06-25-working-agent-placeholder.html,2026-06-25-stale-active-local-runs.html,2026-06-25-thread-done-action.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}h3{font-size:13px;margin:1rem 0 .3rem;color:#444;text-transform:uppercase;letter-spacing:.04em}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code,pre{font-family:ui-monospace,Menlo,monospace}code{background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}pre{background:#f6f6f6;padding:.55rem .7rem;border-radius:4px;overflow-x:auto;font-size:12.5px;line-height:1.4}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-med{color:#b85c00}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}</style>
+</head><body>
+<h1>Thread stop button</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-01 · status <b class="status-shipped">shipped</b> · blast <span class="blast-med">medium</span></p>
+<h2>Summary</h2><div class="kv"><b>Goal</b><div>Let the user stop the currently running main agent from the thread header.</div><b>Source</b><div><code>AgentSession.abort()</code> locally and a bridge <code>/runs/:id/stop</code> request remotely.</div><b>Surface</b><div><code>/thread.html</code>, <code>POST /api/threads/:name/stop</code>, bridge <code>POST /runs/:id/stop</code>.</div><b>Schema</b><div>No stored schema change; stopped runs reuse terminal <code>failed</code> with warning text.</div><b>Mobile</b><div>Header action reuses existing button flow.</div><b>Open Qs</b><div>0.</div></div>
+<h2>API contract</h2><h3>Request</h3><pre>POST /api/threads/:name/stop</pre><h3>Response</h3><pre>{ provider: object, thread: DecoratedThread }</pre>
+<h2>UI layout</h2><ol><li><b>Thread header</b>: place <code>stop</code> beside <code>#thread-status</code> because stopping is run-scoped, not composer-scoped.</li><li><b>Visibility</b>: show <code>#stop-thread</code> only for active statuses.</li></ol>
+<h2>Files</h2><table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>frontend/src/pages.jsx</code></td><td>touch</td><td>Add the header stop button.</td></tr><tr><td><code>frontend/src/runtime/thread.js</code></td><td>touch</td><td>Show, wire, and reset the stop button.</td></tr><tr><td><code>src/server/routes.js</code>, <code>src/server/threads.js</code></td><td>touch</td><td>Add the stop route and local/bridge dispatch.</td></tr><tr><td><code>src/host-pi-runner.js</code>, <code>src/setup-script.js</code></td><td>touch</td><td>Abort local and bridge Pi sessions.</td></tr><tr><td><code>test/thread-archive-control.test.js</code>, <code>test/setup-script.test.js</code></td><td>touch</td><td>Cover the visible control and generated bridge stop endpoint.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr></table>
+<h2>Decisions</h2><table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Place <code>stop</code> in the thread header. The control stays visible while the composer scrolls or disables.</td></tr><tr><td>D-002</td><td>Represent stopped as <code>failed</code> plus <code>Stopped by user.</code>. Existing terminal/archive paths already understand <code>failed</code>.</td></tr></table>
+<h2>Tradeoffs</h2><table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>One header button over adding workspace-card controls. The running thread is the place with live trace and confirmation context.</td></tr></table>
+<h2>Verification</h2><table><tr><th>Check</th><th>Result</th></tr><tr><td><code>node --check frontend/src/runtime/thread.js src/host-pi-runner.js src/server/threads.js src/server/routes.js src/setup-script.js</code></td><td>Passed.</td></tr><tr><td><code>npm test</code></td><td>Passed 164/164.</td></tr><tr><td><code>npm run build</code></td><td>Passed.</td></tr></table>
+<h2>Reversibility</h2><p>R-001 · <span class="blast-med">medium</span>. Revert the route, bridge stop endpoint, and UI control; no stored data migration exists.</p>
+<h2>Definition of done</h2><ul><li>Running thread shows a stop button beside status.</li><li>Clicking stop calls <code>POST /api/threads/:name/stop</code> and ends local Pi sessions through <code>abort()</code>.</li><li>Bridge runs expose <code>POST /runs/:id/stop</code> and abort their Pi session.</li><li>Focused syntax and static tests pass.</li></ul>
+</body></html>
