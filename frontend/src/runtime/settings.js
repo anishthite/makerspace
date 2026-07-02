@@ -1,5 +1,3 @@
-import { applyAppearance, getAppearance, saveAppearance } from './appearance.js?v=palette-2';
-
 const BROWSER_SESSION_KEY = 'makerspaceBrowserSession';
 const API_BASE = String(import.meta.env?.VITE_MAKERSPACE_API_BASE || '').trim().replace(/\/+$/, '');
 const codexLogin = document.querySelector('#codex-login');
@@ -18,9 +16,6 @@ const piExtensionsList = document.querySelector('#pi-extensions');
 const piPromptsList = document.querySelector('#pi-prompts');
 const piProfileSubmit = document.querySelector('#pi-profile-submit');
 const piProfileStatus = document.querySelector('#pi-profile-status');
-const darkModeInput = document.querySelector('#dark-mode');
-const darkPaletteInput = document.querySelector('#dark-palette');
-const monoFontInput = document.querySelector('#mono-font');
 const imageRefInput = document.querySelector('#image-ref');
 const registryUsernameInput = document.querySelector('#registry-username');
 const registryPasswordInput = document.querySelector('#registry-password');
@@ -97,22 +92,6 @@ function settingsSummary(settings) {
   const registryStatus = settings.hasRegistryAuth ? `registry: ${settings.registryUsername || 'yes'}` : 'registry: no';
   const keyStatus = settings.hasAnthropicApiKey ? 'anthropic: yes' : 'anthropic: no';
   return `image: ${settings.imageRef || 'default'} · ${registryStatus} · ${keyStatus}`;
-}
-
-function loadAppearanceControls() {
-  const appearance = getAppearance();
-  darkModeInput.checked = appearance.theme === 'dark';
-  darkPaletteInput.value = appearance.palette;
-  monoFontInput.checked = appearance.font === 'mono';
-  applyAppearance(appearance);
-}
-
-function saveAppearanceControls() {
-  saveAppearance({
-    theme: darkModeInput.checked ? 'dark' : 'light',
-    palette: darkPaletteInput.value,
-    font: monoFontInput.checked ? 'mono' : 'sans',
-  });
 }
 
 function codexStatusText(status) {
@@ -286,11 +265,7 @@ function initDesktopUpdates() {
 }
 
 getBrowserSessionId();
-loadAppearanceControls();
 initDesktopUpdates();
-darkModeInput.addEventListener('change', saveAppearanceControls);
-darkPaletteInput.addEventListener('change', saveAppearanceControls);
-monoFontInput.addEventListener('change', saveAppearanceControls);
 codexLogin.addEventListener('click', async () => {
   const codexTab = openWebCodexTab();
   await persistConnectionInputs();

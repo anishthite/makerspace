@@ -144,6 +144,17 @@ test('appendThreadMessages keeps bounded user and assistant history', () => {
   ]);
 });
 
+test('threadMessage preserves image attachments for chat history', () => {
+  const image = { type: 'image', mimeType: 'image/png', data: Buffer.from('png').toString('base64') };
+  assert.deepEqual(threadMessage('user', 'see this', 1, 'a', [image]), {
+    role: 'user',
+    text: 'see this',
+    timestamp: '1970-01-01T00:00:00.001Z',
+    runId: 'a',
+    images: [{ type: 'image', mimeType: 'image/png', data: 'cG5n' }],
+  });
+});
+
 test('normalizeCreateRequest avoids collisions for back-to-back generated names', () => {
   const first = normalizeCreateRequest(
     {

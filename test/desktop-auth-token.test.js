@@ -6,6 +6,7 @@ const desktopMain = readFileSync(new URL('../desktop/main.js', import.meta.url),
 const desktopPreload = readFileSync(new URL('../desktop/preload.cjs', import.meta.url), 'utf8');
 const frontendEntry = readFileSync(new URL('../frontend/src/entry.jsx', import.meta.url), 'utf8');
 const frontendPages = readFileSync(new URL('../frontend/src/pages.jsx', import.meta.url), 'utf8');
+const frontendRouteManifest = readFileSync(new URL('../frontend/route-manifest.json', import.meta.url), 'utf8');
 const frontendSettings = readFileSync(new URL('../frontend/src/runtime/settings.js', import.meta.url), 'utf8');
 const frontendStyles = readFileSync(new URL('../frontend/public/styles.css', import.meta.url), 'utf8');
 const serverJs = readFileSync(new URL('../src/server.js', import.meta.url), 'utf8');
@@ -31,17 +32,19 @@ test('packaged desktop app checks public GitHub releases for updates', () => {
   assert.match(desktopMain, /repo: 'anishthite\/makerspace-downloads'/);
 });
 
-test('downloaded desktop updates show a dismissible restart banner', () => {
-  assert.match(desktopMain, /onNotifyUser: announceUpdateDownloaded/);
-  assert.match(desktopMain, /makerspace:update-downloaded/);
-  assert.match(desktopMain, /makerspace:get-pending-update/);
-  assert.match(desktopMain, /makerspace:restart-to-update/);
-  assert.match(desktopPreload, /onUpdateDownloaded/);
-  assert.match(desktopPreload, /getPendingUpdate/);
-  assert.match(desktopPreload, /restartToUpdate/);
-  assert.match(frontendEntry, /restart to update/);
-  assert.match(frontendEntry, /makerspaceUpdateDismissed:/);
-  assert.match(frontendStyles, /\.desktop-update-banner/);
+test('downloaded desktop updates apply silently on next launch', () => {
+  assert.match(desktopMain, /notifyUser: false/);
+  assert.match(desktopMain, /autoUpdater\.on\('update-downloaded', announceUpdateDownloaded\)/);
+  assert.match(desktopMain, /install the next time Makerspace starts/);
+  assert.doesNotMatch(desktopMain, /makerspace:update-downloaded/);
+  assert.doesNotMatch(desktopMain, /makerspace:get-pending-update/);
+  assert.doesNotMatch(desktopMain, /makerspace:restart-to-update/);
+  assert.doesNotMatch(desktopPreload, /onUpdateDownloaded/);
+  assert.doesNotMatch(desktopPreload, /getPendingUpdate/);
+  assert.doesNotMatch(desktopPreload, /restartToUpdate/);
+  assert.doesNotMatch(frontendEntry, /restart to update|makerspaceUpdateDismissed:/);
+  assert.doesNotMatch(frontendRouteManifest, /makerspaceUpdateDismissed:/);
+  assert.doesNotMatch(frontendStyles, /\.desktop-update-banner/);
 });
 
 test('settings can manually check desktop updates', () => {

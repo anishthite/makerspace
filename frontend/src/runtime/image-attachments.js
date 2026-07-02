@@ -4,7 +4,7 @@ const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const droppedImageFiles = new WeakMap();
 
 function imageMimeType(file) {
-  const type = String(file?.type || '').toLowerCase();
+  const type = String(typeof file === 'string' ? file : file?.type || '').toLowerCase();
   return type === 'image/jpg' ? 'image/jpeg' : type;
 }
 
@@ -19,6 +19,13 @@ function readDataUrl(file) {
 
 export function imageAttachmentText(prompt, count) {
   return count ? `${prompt}\n\n[${count} image${count === 1 ? '' : 's'} attached]` : prompt;
+}
+
+export function imageAttachmentSrc(image = {}) {
+  const mimeType = imageMimeType(image.mimeType || image.mediaType || image.type);
+  const data = String(image.data || image.source?.data || '').replace(/^data:[^,]+,/i, '').replace(/\s/g, '');
+  if (!IMAGE_MIME_TYPES.has(mimeType) || !data || data.length % 4 === 1 || !/^[A-Za-z0-9+/]+={0,2}$/.test(data)) return '';
+  return `data:${mimeType};base64,${data}`;
 }
 
 export function imageInputFiles(input) {

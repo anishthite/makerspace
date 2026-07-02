@@ -163,11 +163,7 @@
     "makerspaceSelectedProject",
     "makerspaceModelRef",
     "makerspaceThinkingLevel",
-    "makerspaceTheme",
-    "makerspaceFont",
-    "makerspaceDarkPalette",
     "makerspaceSeenFinishedThreads",
-    "makerspaceRecentProjects",
-    "makerspaceUpdateDismissed:"
+    "makerspaceRecentProjects"
   ]
 }

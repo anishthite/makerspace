@@ -26,8 +26,7 @@
   const params = new URLSearchParams(location.search);
   const thread = params.get('thread') || params.get('name') || '';
   const rawArtifactPath = params.get('path') || '';
-  const storedTheme = localStorage.getItem('makerspaceTheme') === 'light' ? 'light' : 'dark';
-  const viewerTheme = ['dark', 'light'].includes(params.get('theme')) ? params.get('theme') : storedTheme;
+  const viewerTheme = ['dark', 'light'].includes(params.get('theme')) ? params.get('theme') : 'dark';
   document.documentElement.dataset.theme = viewerTheme;
 
   function safeArtifactPath(value) {

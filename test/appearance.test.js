@@ -1,51 +1,34 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { getAppearance, normalizeAppearance, saveAppearance } from '../frontend/src/runtime/appearance.js';
+import { applyAppearance } from '../frontend/src/runtime/appearance.js';
 
-test('normalizes appearance preferences', () => {
-  assert.deepEqual(normalizeAppearance({ theme: 'dark', font: 'mono', palette: 'graphite' }), { theme: 'dark', font: 'mono', palette: 'graphite' });
-  assert.deepEqual(normalizeAppearance({ theme: 'light', font: 'sans', palette: 'nerv-os' }), { theme: 'light', font: 'sans', palette: 'nerv-os' });
-  assert.deepEqual(normalizeAppearance({ theme: 'dark', font: 'mono', palette: 'lcl-reactor' }), { theme: 'dark', font: 'mono', palette: 'lcl-reactor' });
-  assert.deepEqual(normalizeAppearance({ theme: 'system', font: 'serif', palette: 'neon' }), { theme: 'dark', font: 'mono', palette: 'slate' });
-});
-
-test('saves and applies appearance preferences', (t) => {
+test('applies the fixed app appearance', (t) => {
   const oldDocument = globalThis.document;
-  const oldStorage = globalThis.localStorage;
   const oldDesktop = globalThis.makerspaceDesktop;
-  const store = new Map();
-  globalThis.document = { documentElement: { dataset: {} } };
-  globalThis.localStorage = {
-    getItem: (key) => store.get(key) || '',
-    setItem: (key, value) => store.set(key, value),
-    removeItem: (key) => store.delete(key),
+  const oldStorage = globalThis.localStorage;
+  const toggles = [];
+  globalThis.document = {
+    documentElement: {
+      dataset: {},
+      classList: { toggle: (name, value) => toggles.push([name, value]) },
+    },
   };
+  globalThis.localStorage = { getItem: () => assert.fail('appearance storage should not be read') };
   t.after(() => {
     if (oldDocument === undefined) delete globalThis.document;
     else globalThis.document = oldDocument;
-    if (oldStorage === undefined) delete globalThis.localStorage;
-    else globalThis.localStorage = oldStorage;
     if (oldDesktop === undefined) delete globalThis.makerspaceDesktop;
     else globalThis.makerspaceDesktop = oldDesktop;
+    if (oldStorage === undefined) delete globalThis.localStorage;
+    else globalThis.localStorage = oldStorage;
   });
 
-  assert.deepEqual(getAppearance(), { theme: 'dark', font: 'mono', palette: 'slate' });
-
-  saveAppearance({ theme: 'light', font: 'sans', palette: 'lcl-reactor' });
-  assert.deepEqual(getAppearance(), { theme: 'light', font: 'sans', palette: 'lcl-reactor' });
-  assert.equal(store.get('makerspaceTheme'), 'light');
-  assert.equal(store.get('makerspaceFont'), 'sans');
-  assert.equal(store.get('makerspaceDarkPalette'), 'lcl-reactor');
-  assert.deepEqual(globalThis.document.documentElement.dataset, { theme: 'light', font: 'sans', palette: 'lcl-reactor' });
-
-  saveAppearance({ theme: 'dark', font: 'mono', palette: 'slate' });
-  assert.equal(store.has('makerspaceTheme'), false);
-  assert.equal(store.has('makerspaceFont'), false);
-  assert.equal(store.has('makerspaceDarkPalette'), false);
+  assert.deepEqual(applyAppearance(), { theme: 'dark', font: 'mono', palette: 'slate' });
   assert.deepEqual(globalThis.document.documentElement.dataset, { theme: 'dark', font: 'mono', palette: 'slate' });
+  assert.deepEqual(toggles, [['dark', true]]);
 
   globalThis.makerspaceDesktop = {};
-  saveAppearance({ theme: 'dark', font: 'mono', palette: 'midnight' });
-  assert.deepEqual(globalThis.document.documentElement.dataset, { theme: 'dark', font: 'mono', palette: 'midnight', desktop: 'true' });
+  assert.deepEqual(applyAppearance(), { theme: 'dark', font: 'mono', palette: 'slate' });
+  assert.deepEqual(globalThis.document.documentElement.dataset, { theme: 'dark', font: 'mono', palette: 'slate', desktop: 'true' });
 });

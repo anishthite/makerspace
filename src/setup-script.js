@@ -5,8 +5,19 @@ function shellQuote(value) {
   return `'${escaped}'`;
 }
 
+function workspaceRootFor(session, config) {
+  return session.remoteWorkspaceRoot || config.remoteWorkspaceDir;
+}
+
+function workspaceMainDirFor(session, config) {
+  return session.workspaceBridge
+    ? session.remoteWorkspaceMainDir || `${workspaceRootFor(session, config).replace(/\/+$/, '')}/main`
+    : session.remoteWorkspaceDir || config.remoteWorkspaceDir;
+}
+
 function buildRepoLines(session, config) {
-  const workspaceDir = config.remoteWorkspaceDir;
+  const workspaceRoot = workspaceRootFor(session, config);
+  const workspaceDir = workspaceMainDirFor(session, config);
 
   if (session.repoMode === 'git') {
     const gitArgs = ['git'];
@@ -22,6 +33,35 @@ function buildRepoLines(session, config) {
       shellQuote(session.repoUrl),
       shellQuote(workspaceDir),
     ].join(' ');
+
+    if (session.workspaceBridge) {
+      const fetchBranch = session.branch
+        ? `${gitArgs.join(' ')} fetch --prune origin ${shellQuote(session.branch)} || true`
+        : `${gitArgs.join(' ')} fetch --prune origin || true`;
+      const branchClone = session.branch
+        ? [
+            ...gitArgs,
+            'clone',
+            '--depth=1',
+            '--branch',
+            shellQuote(session.branch),
+            shellQuote(session.repoUrl),
+            shellQuote(workspaceDir),
+          ].join(' ')
+        : plainClone;
+      return [
+        'export GIT_TERMINAL_PROMPT=0',
+        `mkdir -p ${shellQuote(workspaceRoot)}`,
+        `if [ -d ${shellQuote(`${workspaceDir}/.git`)} ]; then`,
+        `  cd ${shellQuote(workspaceDir)}`,
+        `  ${fetchBranch}`,
+        'else',
+        `  rm -rf ${shellQuote(workspaceDir)}`,
+        `  ${branchClone} || { rm -rf ${shellQuote(workspaceDir)}; ${plainClone}; }`,
+        'fi',
+        `cd ${shellQuote(workspaceRoot)}`,
+      ];
+    }
 
     if (session.branch) {
       const branchClone = [
@@ -197,9 +237,17 @@ function buildBridgeScriptSource(session, config) {
     '  };',
     '}',
     '',
-    'async function createPiSession(modelRef = "", thinkingLevel = "", resume = null) {',
+    'function safeRunCwd(v=""){',
+    'const root=path.resolve(workspaceDir);',
+    'const cwd=path.resolve(String(v||"").trim()||root);',
+    'if(cwd!==root&&!cwd.startsWith(root+path.sep))throw new Error("Bad cwd.");',
+    'return cwd;',
+    '}',
+    '',
+    'async function createPiSession(modelRef="",thinkingLevel="",resume=null,cwd=workspaceDir){',
+    'cwd=safeRunCwd(cwd);',
     '  const { createAgentSessionFromServices, createAgentSessionServices, SessionManager } = await loadSdk();',
-    '  const services = await createAgentSessionServices({ cwd: workspaceDir, agentDir: authDir, resourceLoaderOptions: defaultsResourceOptions() });',
+    '  const services = await createAgentSessionServices({ cwd, agentDir: authDir, resourceLoaderOptions: defaultsResourceOptions() });',
     '  const options = thinkingLevel ? { thinkingLevel } : {};',
     '  if (modelRef) {',
     '    const slash = modelRef.indexOf("/");',
@@ -210,11 +258,12 @@ function buildBridgeScriptSource(session, config) {
     '    options.model = model;',
     '  }',
     '  const sessionFile = await restoreSessionFile(resume?.name, resume?.entries);',
-    '  return createAgentSessionFromServices({ services, sessionManager: sessionFile ? SessionManager.open(sessionFile, sessionDir, workspaceDir) : SessionManager.create(workspaceDir, sessionDir), ...options });',
+    '  return createAgentSessionFromServices({ services, sessionManager: sessionFile ? SessionManager.open(sessionFile, sessionDir, cwd) : SessionManager.create(cwd, sessionDir), ...options });',
     '}',
     '',
-    'function preparePiSession(modelRef = "", thinkingLevel = "", resume = null) {',
-    '  if (resume?.name || modelRef || thinkingLevel) return createPiSession(modelRef, thinkingLevel, resume);',
+    'function preparePiSession(modelRef="",thinkingLevel="",resume=null,cwd=workspaceDir){',
+    'cwd=safeRunCwd(cwd);',
+    'if(cwd!==path.resolve(workspaceDir)||resume?.name||modelRef||thinkingLevel)return createPiSession(modelRef,thinkingLevel,resume,cwd);',
     '  if (!piSessionPromise) {',
     '    piSessionPromise = createPiSession().catch((error) => {',
     '      piSessionPromise = null;',
@@ -274,7 +323,7 @@ function buildBridgeScriptSource(session, config) {
     '  return payload;',
     '}',
     '',
-    'async function startRun(run, prompt, name, submittedAtMs, modelRef = "", thinkingLevel = "", images = [], entries = []) {',
+    'async function startRun(run,prompt,name,submittedAtMs,modelRef="",thinkingLevel="",images=[],entries=[],cwd=workspaceDir){',
     '  const normalizedSubmittedAtMs = Number(submittedAtMs);',
     '  run.submittedAtMs = Number.isFinite(normalizedSubmittedAtMs) && normalizedSubmittedAtMs > 0 ? normalizedSubmittedAtMs : null;',
     '  await mkdir(controlDir, { recursive: true });',
@@ -309,7 +358,7 @@ function buildBridgeScriptSource(session, config) {
     '  };',
     '',
     '  try {',
-    '    const created = await preparePiSession(modelRef, thinkingLevel, { name, entries });',
+    '    const created = await preparePiSession(modelRef, thinkingLevel, { name, entries }, cwd);',
     '    piSession = created.session;',
     '    if (run.stop) throw new Error("Stopped by user.");',
     '    if (piSession.sessionFile) publish(run, { type: "stdout", chunk: "[system] main agent session trace: " + piSession.sessionFile + "\\n", runStatus: "running" });',
@@ -531,7 +580,7 @@ function buildBridgeScriptSource(session, config) {
     '      const run = ensureRun(requestedId);',
     '      if (!run.child && run.events.length === 0) {',
     "        publish(run, { type: 'status', runStatus: 'queued' });",
-    '        void startRun(run, prompt, name, submittedAtMs, modelRef, thinkingLevel, images, entries);',
+    '        void startRun(run, prompt, name, submittedAtMs, modelRef, thinkingLevel, images, entries, body.cwd || workspaceDir);',
     '      }',
     '      sendJson(response, 202, { id: run.id, status: run.status });',
     '      return;',
@@ -615,7 +664,7 @@ function buildPiCommand(session) {
 
 export function buildSetupScript(session, config) {
   const controlDir = config.remoteControlDir;
-  const workspaceDir = config.remoteWorkspaceDir;
+  const workspaceDir = session.remoteWorkspaceRoot || session.remoteWorkspaceDir || config.remoteWorkspaceDir;
   const taskPrompt = session.taskPrompt || config.defaultTaskPrompt;
   const taskPromptB64 = Buffer.from(taskPrompt, 'utf8').toString('base64');
   const logPath = `${controlDir}/pi.log`;

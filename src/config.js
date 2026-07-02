@@ -43,6 +43,7 @@ function projectNameFromEnv(localDataDir) {
 export function getConfig() {
   const rootDir = process.cwd();
   const provider = process.env.INFRA_PROVIDER || process.env.PROVIDER || 'daytona';
+  const workspaceMode = truthy(process.env.MAKERSPACE_WORKSPACE_MODE || process.env.PROJECT_WORKSPACE_MODE);
   const localDataDir = process.env.MAKERSPACE_HOME || path.join(homedir(), '.makerspace');
   const defaultDataDir = provider === 'local' ? localDataDir : path.join(rootDir, 'data');
 
@@ -68,8 +69,9 @@ export function getConfig() {
     daytonaApiUrl: process.env.DAYTONA_API_URL || 'https://app.daytona.io/api',
     daytonaTarget: process.env.DAYTONA_TARGET || '',
     daytonaSnapshot: process.env.DAYTONA_SNAPSHOT || '',
+    workspaceMode,
     daytonaAutostopMinutes: Number(process.env.DAYTONA_AUTOSTOP_MINUTES || 60),
-    daytonaAutodeleteMinutes: Number(process.env.DAYTONA_AUTODELETE_MINUTES || 120),
+    daytonaAutodeleteMinutes: Number(process.env.DAYTONA_AUTODELETE_MINUTES || (workspaceMode ? 10080 : 120)),
     remoteUser: process.env.DAYTONA_USER || 'daytona',
     remoteHomeDir: process.env.DAYTONA_HOME || '/home/daytona',
     defaultCpu: process.env.DAYTONA_CPU || '2',

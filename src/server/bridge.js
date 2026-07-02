@@ -5,6 +5,15 @@ import { buildPiProfileSyncPayload } from '../pi-profile.js';
 import { readSavedSettings } from '../settings.js';
 import { normalizeChatRequest } from '../session.js';
 import { getStoredSession, listStoredSessions, removeStoredSession, upsertSession } from '../store.js';
+import {
+  buildWorkspaceIdentity,
+  buildWorkspaceSession,
+  buildWorktreeScript,
+  findWorkspaceSession,
+  saveWorkspaceIndex,
+  workspacePaths,
+  workspaceRemotePatch,
+} from '../workspaces.js';
 import { normalizeBridgeClientId, normalizeSubmittedAtMs, sleep, trimTrailingSlash } from './utils.js';
 
 export function createBridgeService({ config, provider, auth, runState }) {
@@ -327,7 +336,8 @@ export function createBridgeService({ config, provider, auth, runState }) {
         modelRef: session.modelRef || '',
         thinkingLevel: session.thinkingLevel || '',
         images: session.images || [],
-        r: buildThreadResumeEntries(session, config.remoteWorkspaceDir),
+        cwd: session.remoteWorkspaceDir || config.remoteWorkspaceDir,
+        r: buildThreadResumeEntries(session, session.remoteWorkspaceDir || config.remoteWorkspaceDir),
       }),
     });
 
@@ -635,7 +645,133 @@ export function createBridgeService({ config, provider, auth, runState }) {
     return { clientId, session };
   }
 
+  async function ensureWorkspaceBridge(threadSession, imageSettings, identity, repoAuthHeader = '') {
+    const now = new Date().toISOString();
+    const existing = await findWorkspaceSession(config, identity);
+    const base = existing || buildWorkspaceSession(threadSession, config, identity);
+    const workspace = await upsertSession(config.sessionFile, {
+      ...base,
+      bridgeToken: base.bridgeToken || randomBytes(24).toString('hex'),
+      bridgeRunId: base.bridgeRunId || randomUUID(),
+      provider: provider.kind,
+      imageRef: imageSettings.imageRef || config.image || base.imageRef || '',
+      status: 'launching',
+      runStatus: 'launching',
+      createdAt: base.createdAt || now,
+      updatedAt: now,
+      lastUsedAt: now,
+    });
+
+    await saveWorkspaceIndex(identity, workspace);
+    const launchSession = repoAuthHeader ? { ...workspace, repoAuthHeader } : workspace;
+    const remote = await provider.createSession(launchSession, imageSettings);
+    const bridgeUrl = trimTrailingSlash(remote.bridgeUrl || remote.httpsUrl || workspace.bridgeUrl || '');
+    const updated = await upsertSession(config.sessionFile, {
+      ...workspace,
+      ...remote,
+      bridgeUrl,
+      workspaceBridge: true,
+      workspaceKey: identity.workspaceKey,
+      ownerUserId: identity.ownerUserId,
+      repoAuthHeader: '',
+      status: 'launching',
+      runStatus: 'launching',
+      updatedAt: new Date().toISOString(),
+      lastUsedAt: new Date().toISOString(),
+    });
+
+    await waitForBridge(updated);
+    await syncBridgeAuth(updated);
+    const ready = await upsertSession(config.sessionFile, {
+      ...updated,
+      status: 'ready',
+      runStatus: 'ready',
+      updatedAt: new Date().toISOString(),
+      lastUsedAt: new Date().toISOString(),
+    });
+    await saveWorkspaceIndex(identity, ready);
+    return ready;
+  }
+
+  async function startWorkspaceThreadBridgeLaunch(session, imageSettings) {
+    if (!provider.runRemoteScript) throw new Error('Workspace mode requires remote script execution support.');
+    const identity = buildWorkspaceIdentity(session);
+    const repoAuthHeader = session.repoAuthHeader || '';
+    const paths = workspacePaths(config, session.name);
+    const now = new Date().toISOString();
+    const stored = await upsertSession(config.sessionFile, {
+      ...session,
+      repoAuthHeader: '',
+      provider: provider.kind,
+      imageRef: imageSettings.imageRef || config.image || '',
+      workspaceKey: identity.workspaceKey,
+      workspaceSessionName: '',
+      remoteWorkspaceRoot: paths.root,
+      remoteWorkspaceMainDir: paths.main,
+      remoteWorkspaceDir: paths.task,
+      status: 'launching',
+      runStatus: 'launching',
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    resetRunState(stored.name, 'launching');
+    appendRunOutput(stored.name, `[system] Preparing durable workspace for ${stored.repoUrl}.\n`, 'launching');
+
+    void (async () => {
+      try {
+        const workspace = await ensureWorkspaceBridge(stored, imageSettings, identity, repoAuthHeader);
+        appendRunOutput(stored.name, `[system] Workspace ready: ${workspace.name}.\n`, 'launching');
+        await provider.runRemoteScript(
+          workspace,
+          buildWorktreeScript({ ...stored, repoAuthHeader }, config),
+          { timeoutMs: 5 * 60 * 1000 },
+        );
+        appendRunOutput(stored.name, `[system] Thread worktree ready: ${paths.task}.\n`, 'launching');
+
+        const current = (await getStoredSession(config.sessionFile, stored.name)) || stored;
+        const runnable = await upsertSession(config.sessionFile, {
+          ...current,
+          ...workspaceRemotePatch(workspace),
+          bridgeMode: true,
+          bridgeClaimed: true,
+          workspaceSessionName: workspace.name,
+          workspaceKey: identity.workspaceKey,
+          remoteWorkspaceRoot: paths.root,
+          remoteWorkspaceMainDir: paths.main,
+          remoteWorkspaceDir: paths.task,
+          status: 'launching',
+          runStatus: 'launching',
+          updatedAt: new Date().toISOString(),
+        });
+        await startBridgeRun(runnable);
+        const running = await upsertSession(config.sessionFile, {
+          ...runnable,
+          ...activeRunResetPatch(),
+          status: 'running',
+          runStatus: 'running',
+          images: [],
+          updatedAt: new Date().toISOString(),
+        });
+        setRunState(stored.name, { runStatus: 'running', warning: null });
+        await persistRunStatus(running, 'running');
+        await upsertSession(config.sessionFile, {
+          ...workspace,
+          lastUsedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+      } catch (error) {
+        appendRunOutput(stored.name, `[system] Workspace launch failed: ${error.message}\n`, 'failed');
+        await markBridgeLaunchFailed(stored.name, error.message);
+      }
+    })();
+
+    return stored;
+  }
+
   async function startThreadBridgeLaunch(session, imageSettings) {
+    if (config.workspaceMode) return startWorkspaceThreadBridgeLaunch(session, imageSettings);
+
     const repoAuthHeader = session.repoAuthHeader || '';
     const prepared = {
       ...session,

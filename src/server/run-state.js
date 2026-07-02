@@ -451,10 +451,10 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
     return String(session?.bridgeRunId || submittedAtMs || '');
   }
 
-  function withUserThreadMessage(session, prompt, submittedAtMs, runId = threadRunId(session, submittedAtMs)) {
+  function withUserThreadMessage(session, prompt, submittedAtMs, runId = threadRunId(session, submittedAtMs), images = []) {
     return {
       ...session,
-      threadMessages: appendThreadMessages(session, [threadMessage('user', prompt, submittedAtMs, runId)]),
+      threadMessages: appendThreadMessages(session, [threadMessage('user', prompt, submittedAtMs, runId, images)]),
     };
   }
 

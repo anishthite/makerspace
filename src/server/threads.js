@@ -66,7 +66,7 @@ export function createThreadService({ config, provider, http, auth, runState, br
     }
 
     if (!provider.readRemoteFile) throw clientError('Artifact preview is unavailable for this provider.', 501);
-    const remotePath = path.posix.join(config.remoteWorkspaceDir, artifactPath);
+    const remotePath = path.posix.join(session.remoteWorkspaceDir || config.remoteWorkspaceDir, artifactPath);
     return bufferText(await provider.readRemoteFile(session, remotePath), artifactPath);
   }
 
@@ -222,7 +222,7 @@ export function createThreadService({ config, provider, http, auth, runState, br
       ...(bridgeRunId ? { bridgeRunId } : {}),
       ...(user?.id ? { ownerUserId: user.id } : browserSessionIdValue ? { githubOwnerSessionId: browserSessionIdValue } : {}),
       submittedAtMs,
-    }, browserSession, user)), normalized.initialPrompt || normalized.taskPrompt, submittedAtMs, bridgeRunId || String(submittedAtMs));
+    }, browserSession, user)), normalized.initialPrompt || normalized.taskPrompt, submittedAtMs, bridgeRunId || String(submittedAtMs), normalized.images || []);
     const existing = await getStoredSession(config.sessionFile, session.name);
     if (existing) {
       throw new Error(`A main agent named ${session.name} already exists.`);
@@ -256,12 +256,12 @@ export function createThreadService({ config, provider, http, auth, runState, br
     const images = normalizeImageAttachments(body.images);
     if (existing.localMode) {
       const runId = String(submittedAtMs);
-      return startLocalThreadRun({ ...withUserThreadMessage(existing, prompt, submittedAtMs, runId), ...modelOptions }, prompt, submittedAtMs, images);
+      return startLocalThreadRun({ ...withUserThreadMessage(existing, prompt, submittedAtMs, runId, images), ...modelOptions }, prompt, submittedAtMs, images);
     }
 
     const bridgeRunId = randomUUID();
     const claimed = await upsertSession(config.sessionFile, {
-      ...withUserThreadMessage(existing, prompt, submittedAtMs, bridgeRunId),
+      ...withUserThreadMessage(existing, prompt, submittedAtMs, bridgeRunId, images),
       ...activeRunResetPatch(),
       taskPrompt: prompt,
       submittedAtMs,

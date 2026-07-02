@@ -20,6 +20,16 @@ test('htmlPreviewDocument wraps fragments with no-scroll app defaults', () => {
   assert.match(doc, /Content-Security-Policy/);
   assert.match(doc, /data-makerspace-preview/);
   assert.match(doc, /overflow: hidden !important/);
+  assert.match(doc, /family=Inter/);
+  assert.doesNotMatch(doc, /Hack/);
+});
+
+test('standalone image tags render with safe image sources', () => {
+  const doc = htmlPreviewDocument('<img src="data:image/png;base64,cG5n" alt="screenshot">');
+  assert.match(doc, /^<!doctype html>/);
+  assert.match(doc, /<img src="data:image\/png;base64,cG5n" alt="screenshot">/);
+  assert.match(doc, /img-src 'self' http: https: data: blob:/);
+  assert.doesNotMatch(doc, /img-src[^">]*file:/);
 });
 
 test('htmlPreviewDocument can wrap fragments with dark defaults', () => {

@@ -1,7 +1,7 @@
 import './appearance.js?v=palette-2';
 import { htmlPreviewDocument } from './html-preview.js';
 import { submitOnEnter } from './submit-on-enter.js';
-import { bindImageDropZone, clearImageInput, filesToImageAttachments, imageAttachmentText, imageInputFiles, updateImageStatus } from './image-attachments.js';
+import { bindImageDropZone, clearImageInput, filesToImageAttachments, imageAttachmentSrc, imageAttachmentText, imageInputFiles, updateImageStatus } from './image-attachments.js';
 import { implementationNoteFromToolEvent, implementationNotesFromToolEvent } from './implementation-notes.js';
 import { excalidrawArtifactPaths } from './excalidraw-artifacts.js';
 
@@ -10,6 +10,7 @@ const MODEL_REF_KEY = 'makerspaceModelRef';
 const THINKING_LEVEL_KEY = 'makerspaceThinkingLevel';
 const THINKING_LEVELS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh'];
 const ARCHIVEABLE_THREAD_STATUSES = ['completed', 'ready', 'failed'];
+const COPY_FEEDBACK_MS = 1200;
 
 const API_BASE = String(import.meta.env?.VITE_MAKERSPACE_API_BASE || '').trim().replace(/\/+$/, '');
 const params = new URLSearchParams(location.search);
@@ -90,6 +91,59 @@ function escapeHtml(value) {
 function clamp(value, max = 1200) {
   const text = String(value || '');
   return text.length > max ? `${text.slice(0, max)}\n…` : text;
+}
+
+function fallbackCopyText(text) {
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.readOnly = true;
+  textarea.style.position = 'fixed';
+  textarea.style.left = '-9999px';
+  document.body.append(textarea);
+  textarea.select();
+  const ok = document.execCommand?.('copy');
+  textarea.remove();
+  if (!ok) throw new Error('copy failed');
+}
+
+async function copyText(text) {
+  const value = String(text || '');
+  if (!value) return false;
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(value);
+      return true;
+    } catch {
+      // Fall through for desktop/webviews that expose clipboard but reject it.
+    }
+  }
+  fallbackCopyText(value);
+  return true;
+}
+
+function makeCopyButton(getText, label) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'copy-button';
+  button.textContent = 'copy';
+  button.title = `copy ${label}`;
+  button.setAttribute('aria-label', `copy ${label}`);
+  button.addEventListener('click', async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const idleText = 'copy';
+    button.disabled = true;
+    try {
+      button.textContent = await copyText(getText()) ? 'copied' : 'empty';
+    } catch {
+      button.textContent = 'failed';
+    }
+    setTimeout(() => {
+      button.disabled = false;
+      button.textContent = idleText;
+    }, COPY_FEEDBACK_MS);
+  });
+  return button;
 }
 
 function getBrowserSessionId() {
@@ -285,6 +339,7 @@ function renderExcalidrawArtifacts(node, text) {
 async function fetchJson(path, options = {}) {
   const response = await fetch(apiUrl(path), {
     credentials: 'include',
+    cache: 'no-store',
     ...options,
     headers: { ...authHeaders(), ...(options.headers || {}) },
   });
@@ -718,6 +773,14 @@ function fallbackDiffText(file) {
   return `${label} ${path}\n\nNo captured preview for this file.`;
 }
 
+function ensureDiffCopyButton() {
+  const workbench = diffEditor?.closest('.diff-workbench');
+  if (!workbench || workbench.querySelector('.diff-copy-button')) return;
+  const button = makeCopyButton(() => diffEditor.value, 'selected diff');
+  button.classList.add('diff-copy-button');
+  workbench.append(button);
+}
+
 function renderDiffBox(payload = {}) {
   if (!diffBox || !diffCount || !diffFiles || !diffEditor) return;
   const files = diffFileRows(payload);
@@ -745,6 +808,7 @@ function renderDiffBox(payload = {}) {
 
   const selected = files.find((file) => file.path === selectedDiffPath) || files[0];
   diffEditor.value = `${selected.diff || fallbackDiffText(selected)}${payload.truncated ? '\n\n… changes truncated' : ''}`;
+  ensureDiffCopyButton();
   if (!diffBoxOpenedOnce) {
     diffBox.open = true;
     diffBoxOpenedOnce = true;
@@ -858,7 +922,26 @@ function currentPreviewTheme() {
   return document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
 }
 
-function renderMessageBody(node, text, allowHtml = false) {
+function renderMessageAttachments(node, images = []) {
+  node.querySelector('.message-attachments')?.remove();
+  const sources = (Array.isArray(images) ? images : []).map(imageAttachmentSrc).filter(Boolean).slice(0, 4);
+  if (!sources.length) return;
+
+  const list = document.createElement('div');
+  list.className = 'message-attachments';
+  list.setAttribute('aria-label', `${sources.length} image${sources.length === 1 ? '' : 's'} attached`);
+  sources.forEach((src, index) => {
+    const img = document.createElement('img');
+    img.className = 'message-attachment-image';
+    img.src = src;
+    img.alt = `attached image ${index + 1}`;
+    img.loading = 'lazy';
+    list.append(img);
+  });
+  node.append(list);
+}
+
+function renderMessageBody(node, text, allowHtml = false, images = []) {
   const raw = String(text || '');
   const preview = allowHtml ? htmlPreviewDocument(raw, currentPreviewTheme()) : '';
   const card = node.closest('.message-card');
@@ -868,6 +951,7 @@ function renderMessageBody(node, text, allowHtml = false) {
     node.dataset.renderMode = 'text';
     card?.classList.remove('html-rendered');
     node.textContent = raw;
+    renderMessageAttachments(node, images);
     renderExcalidrawArtifacts(node, raw);
     return;
   }
@@ -891,6 +975,7 @@ function renderMessageBody(node, text, allowHtml = false) {
   }
   iframe.style.height = '1px';
   iframe.srcdoc = preview;
+  renderMessageAttachments(node, images);
   renderExcalidrawArtifacts(node, raw);
 }
 
@@ -955,7 +1040,7 @@ function rememberRenderedThreadMessage(message = {}) {
   }
 }
 
-function appendMessage(role, label, text = '') {
+function appendMessage(role, label, text = '', images = []) {
   const follow = shouldFollowLatest();
   const article = document.createElement('article');
   article.className = `timeline-item message-item ${role}`;
@@ -966,7 +1051,9 @@ function appendMessage(role, label, text = '') {
     </div>
   `;
   const body = article.querySelector('.message-body');
-  renderMessageBody(body, text, role === 'assistant');
+  const card = article.querySelector('.message-card');
+  card.append(makeCopyButton(() => messageText.get(body) || body.textContent || '', `${role} message`));
+  renderMessageBody(body, text, role === 'assistant', images);
   timeline.append(article);
   followLatest(follow);
   return body;
@@ -984,7 +1071,7 @@ function renderThreadHistory(thread) {
     if (renderedMessageKeys.has(key)) continue;
 
     if (message.role === 'user') {
-      appendMessage('user', 'you', message.text);
+      appendMessage('user', 'you', message.text, message.images);
       rememberRenderedThreadMessage(message);
       const assistant = runId ? messages.slice(index + 1).find((item) => item.role === 'assistant' && item.runId === runId) : null;
       const isLatestRun = runId && runId === latestRunId;
@@ -1464,8 +1551,8 @@ promptForm.addEventListener('submit', async (event) => {
 
     const submittedAtMs = Date.now();
     const submittedAt = new Date(submittedAtMs).toISOString();
-    appendMessage('user', 'you', imageAttachmentText(prompt, images.length));
-    rememberRenderedThreadMessage({ role: 'user', text: prompt, timestamp: submittedAt, runId: String(submittedAtMs) });
+    appendMessage('user', 'you', imageAttachmentText(prompt, images.length), images);
+    rememberRenderedThreadMessage({ role: 'user', text: prompt, images, timestamp: submittedAt, runId: String(submittedAtMs) });
     activeRunSummaryMarker = appendRunSummaryMarker({ startMs: submittedAtMs, status: 'queued', runId: String(submittedAtMs) });
     saveRunControls();
     promptInput.value = '';

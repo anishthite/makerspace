@@ -40,18 +40,20 @@ export function normalizeClientId(value) {
   return slugify(String(value || '').trim());
 }
 
-export function threadMessage(role, text, timestampMs = Date.now(), runId = '') {
+export function threadMessage(role, text, timestampMs = Date.now(), runId = '', images = []) {
   const normalizedRole = role === 'assistant' ? 'assistant' : 'user';
   const body = String(text || '').trim();
   const timestamp = Number.isFinite(Number(timestampMs)) && Number(timestampMs) > 0
     ? new Date(Number(timestampMs)).toISOString()
     : new Date().toISOString();
+  const imageAttachments = normalizeImageAttachments(images);
 
   return body ? {
     role: normalizedRole,
     text: body.slice(-MAX_THREAD_MESSAGE_CHARS),
     timestamp,
     ...(runId ? { runId: String(runId) } : {}),
+    ...(imageAttachments.length ? { images: imageAttachments } : {}),
   } : null;
 }
 

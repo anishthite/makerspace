@@ -68,13 +68,14 @@ test('buildSetupScript clones a repo and auto-runs pi when requested', () => {
   assert.match(bridgeScript, /const \{ createAgentSessionFromServices, createAgentSessionServices, SessionManager \} = await loadSdk\(\);/);
   assert.match(bridgeScript, /function defaultsResourceOptions\(\)/);
   assert.match(bridgeScript, /additionalExtensionPaths: \[packageDir\]/);
-  assert.match(bridgeScript, /createAgentSessionServices\(\{ cwd: workspaceDir, agentDir: authDir, resourceLoaderOptions: defaultsResourceOptions\(\) \}\)/);
+  assert.match(bridgeScript, /createAgentSessionServices\(\{ cwd, agentDir: authDir, resourceLoaderOptions: defaultsResourceOptions\(\) \}\)/);
   assert.match(bridgeScript, /const id = slash > 0 \? modelRef\.slice\(slash \+ 1\) : modelRef/);
   assert.match(bridgeScript, /restoreSessionFile\(resume\?\.name, resume\?\.entries\)/);
-  assert.match(bridgeScript, /SessionManager\.open\(sessionFile, sessionDir, workspaceDir\)/);
+  assert.match(bridgeScript, /SessionManager\.open\(sessionFile, sessionDir, cwd\)/);
   assert.match(bridgeScript, /chunk: "\[system\] main agent session trace: " \+ piSession\.sessionFile \+ "\\n"/);
-  assert.match(bridgeScript, /function createPiSession\(modelRef = "", thinkingLevel = "", resume = null\)/);
-  assert.match(bridgeScript, /function preparePiSession\(modelRef = "", thinkingLevel = "", resume = null\)/);
+  assert.match(bridgeScript, /function safeRunCwd\(v=""\)/);
+  assert.match(bridgeScript, /function createPiSession\(modelRef="",thinkingLevel="",resume=null,cwd=workspaceDir\)/);
+  assert.match(bridgeScript, /function preparePiSession\(modelRef="",thinkingLevel="",resume=null,cwd=workspaceDir\)/);
   assert.match(bridgeScript, /metric: "first_llm_call_start"/);
   assert.match(bridgeScript, /let streamedAssistantText = ""/);
   assert.match(bridgeScript, /event\.type === "agent_end"/);
@@ -92,6 +93,27 @@ test('buildSetupScript clones a repo and auto-runs pi when requested', () => {
   assert.match(bridgeScript, /typeof run\.abort === "function"/);
   assert.match(bridgeScript, /void piSession\?\.abort\?\.\(\)/);
   assert.match(bridgeScript, /const run = runs\.get\(decodeURIComponent\(streamMatch\[1\]\)\);/);
+});
+
+test('buildSetupScript bootstraps workspace main without wiping workspace root', () => {
+  const script = buildSetupScript(
+    {
+      name: 'ws-demo',
+      repoMode: 'git',
+      repoUrl: 'https://github.com/acme/demo.git',
+      branch: 'main',
+      workspaceBridge: true,
+      remoteWorkspaceDir: '/srv/workspace',
+      remoteWorkspaceMainDir: '/srv/workspace/main',
+      autoRunAgent: false,
+    },
+    config,
+  );
+
+  assert.match(script, /mkdir -p '\/srv\/workspace'/);
+  assert.match(script, /if \[ -d '\/srv\/workspace\/main\/\.git' \]; then/);
+  assert.match(script, /git clone --depth=1 --branch 'main' 'https:\/\/github.com\/acme\/demo\.git' '\/srv\/workspace\/main'/);
+  assert.doesNotMatch(script, /rm -rf '\/srv\/workspace'\n/);
 });
 
 test('buildSetupScript initializes an empty repo when no repo URL is supplied', () => {
@@ -146,7 +168,7 @@ test('buildSetupScript skips direct pi auto-run for bridge-backed chat sessions'
   assert.match(bridgeScript, /images = Array\.isArray\(body\.images\)/);
   assert.match(bridgeScript, /entries = Array\.isArray\(body\.r\)/);
   assert.match(bridgeScript, /piSession\.prompt\(prompt, images\[0\] \? \{ images \} : undefined\)/);
-  assert.match(bridgeScript, /void startRun\(run, prompt, name, submittedAtMs, modelRef, thinkingLevel, images, entries\)/);
+  assert.match(bridgeScript, /void startRun\(run, prompt, name, submittedAtMs, modelRef, thinkingLevel, images, entries, body\.cwd \|\| workspaceDir\)/);
   assert.match(script, /printf '%s\\n' ready > '\/srv\/micro-cloud\/STATUS'/);
   assert.match(script, /installed_bridge_sdk=0/);
   assert.doesNotMatch(script, /for cmd in 'git' 'curl' 'tmux'/);

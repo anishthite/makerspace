@@ -1,7 +1,7 @@
 const HTML_FENCE_RE = /^```(?:html?)?\s*([\s\S]*?)\s*```$/i;
 const HTML_FENCE_ANYWHERE_RE = /```(?:html?)\s*([\s\S]*?)```/i;
 const HTML_TAG_RE = /<\/?(?:html|head|body|main|section|article|div|header|footer|nav|aside|h[1-6]|p|ul|ol|li|table|thead|tbody|tr|td|th|style|svg|canvas|form|button|input|label|figure|figcaption|img|a|span)\b[^>]*>/gi;
-const PREVIEW_CSP = '<meta http-equiv="Content-Security-Policy" content="script-src \'none\'; object-src \'none\'; base-uri \'none\'; form-action \'none\'">';
+const PREVIEW_CSP = '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src \'self\' http: https: data: blob:; style-src \'unsafe-inline\' https:; font-src https: data:; script-src \'none\'; object-src \'none\'; base-uri \'none\'; form-action \'none\'">';
 const PREVIEW_SHELL_STYLE = `<style data-makerspace-preview>
   * { box-sizing: border-box; }
   html, body { overflow: hidden !important; }
@@ -19,10 +19,10 @@ const FRAGMENT_THEMES = {
 
 function fragmentStyle(theme = 'dark') {
   return `<style>
-  @import url('https://cdn.jsdelivr.net/npm/hack-font@3/build/web/hack.css');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
   ${FRAGMENT_THEMES[theme === 'dark' ? 'dark' : 'light']}
   html, body { background: transparent; }
-  body { color: var(--ink); font: 15px/1.6 Hack, "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
+  body { color: var(--ink); font: 15px/1.6 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
   main, section, article { display: block; max-width: 100%; }
   h1, h2, h3 { margin: 0 0 .5em; line-height: 1.15; letter-spacing: -.025em; }
   h1 { color: var(--blue); font-size: 28px; }
@@ -38,7 +38,7 @@ function fragmentStyle(theme = 'dark') {
   table { width: 100%; border-collapse: collapse; }
   th, td { border: 1px solid var(--rule); padding: 10px 12px; text-align: left; }
   th { color: var(--blue); }
-  code, pre { font-family: Hack, "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
+  code, pre { font-family: inherit; }
   pre { padding: 14px; border: 1px solid var(--rule); background: var(--pre); }
 </style>`;
 }
@@ -47,6 +47,7 @@ function isHtmlCandidate(value) {
   const text = String(value || '').trim();
   if (!text) return false;
   if (/^<!doctype\s+html/i.test(text) || /^<html[\s>]/i.test(text)) return true;
+  if (/^<img\b[^>]*>$/i.test(text)) return true;
   const tags = text.match(HTML_TAG_RE) || [];
   return text.startsWith('<') && tags.length >= 2;
 }

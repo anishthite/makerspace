@@ -117,7 +117,7 @@ npm run desktop:install
 ```
 
 The installer copies `output/desktop-package/Makerspace.app` into `/Applications`. Pass a path when needed: `npm run desktop:install -- output/desktop-package/makerspace.dmg`.
-The DMG lands at `output/desktop-package/makerspace.dmg`; publish it as `makerspace.dmg` in the public `anishthite/makerspace-downloads` repo. The release script also writes `output/desktop-package/makerspace-mac-$ARCH.zip`; attach that ZIP to the same SemVer GitHub Release (`v0.0.2`, etc.) for OTA updates. Users need one manual install of a build containing the updater before later releases self-update. The `/desktop` landing page downloads from `https://github.com/anishthite/makerspace-downloads/releases/latest/download/makerspace.dmg`, so do not commit the 270MB binary to this source repo.
+The DMG lands at `output/desktop-package/makerspace.dmg`; publish it as `makerspace.dmg` in the public `anishthite/makerspace-downloads` repo. The release script also writes `output/desktop-package/makerspace-mac-$ARCH.zip`; attach that ZIP to the same SemVer GitHub Release (`v0.0.2`, etc.) for OTA updates. Users need one manual install of a build containing the updater before later releases download automatically and apply on the next launch. The `/desktop` landing page downloads from `https://github.com/anishthite/makerspace-downloads/releases/latest/download/makerspace.dmg`, so do not commit the 270MB binary to this source repo.
 
 Optional env vars:
 
@@ -133,6 +133,7 @@ MAKERSPACE_ALLOWED_ORIGIN= # set to the static frontend origin for cross-origin 
 MAKERSPACE_AUTH_SAMESITE= # defaults to None when MAKERSPACE_ALLOWED_ORIGIN is set, otherwise Lax
 AUTH_DATA_PATH=./data/auth.json
 MAKERSPACE_STATE_STORE=file # set d1 for hosted Cloudflare D1 persistence
+MAKERSPACE_WORKSPACE_MODE= # set true to reuse one remote workspace per signed-in user + repo
 CLOUDFLARE_ACCOUNT_ID=
 CLOUDFLARE_D1_DATABASE_ID=
 CLOUDFLARE_API_TOKEN=

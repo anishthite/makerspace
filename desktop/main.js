@@ -16,20 +16,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '..');
 let serverProcess = null;
 let mainWindow = null;
-let pendingUpdate = null;
-
-function publicUpdateInfo(info = {}) {
-  return {
-    releaseName: String(info.releaseName || ''),
-    releaseDate: String(info.releaseDate || ''),
-    updateURL: String(info.updateURL || ''),
-  };
-}
-
-function sendPendingUpdate(window = mainWindow) {
-  if (!pendingUpdate || !window || window.isDestroyed()) return;
-  window.webContents.send('makerspace:update-downloaded', pendingUpdate);
-}
 
 function sendUpdateStatus(message) {
   BrowserWindow.getAllWindows().forEach((window) => {
@@ -38,10 +24,8 @@ function sendUpdateStatus(message) {
   });
 }
 
-function announceUpdateDownloaded(info) {
-  pendingUpdate = publicUpdateInfo(info);
-  BrowserWindow.getAllWindows().forEach(sendPendingUpdate);
-  sendUpdateStatus('Update ready. Restart to install.');
+function announceUpdateDownloaded() {
+  sendUpdateStatus('Update downloaded. It will install the next time Makerspace starts.');
 }
 
 function slugify(value) {
@@ -147,7 +131,6 @@ function createWindow(port, token) {
     { urls: [`http://127.0.0.1:${port}/api/*`] },
     (details, callback) => callback({ requestHeaders: { ...details.requestHeaders, 'x-api-token': token } }),
   );
-  mainWindow.webContents.on('did-finish-load', () => sendPendingUpdate(mainWindow));
   mainWindow.loadURL(`http://127.0.0.1:${port}/`);
 }
 
@@ -159,8 +142,6 @@ ipcMain.handle('makerspace:get-last-folder', () => initialFolder || readLastFold
 
 ipcMain.handle('makerspace:remember-folder', (_event, folder) => writeLastFolder(userDataDir(), folder));
 
-ipcMain.handle('makerspace:get-pending-update', () => pendingUpdate);
-
 ipcMain.handle('makerspace:choose-folder', async (_event, folder) => {
   const defaultPath = cleanFolder(folder) || initialFolder || readLastFolder(userDataDir());
   const result = await dialog.showOpenDialog(mainWindow, {
@@ -170,11 +151,6 @@ ipcMain.handle('makerspace:choose-folder', async (_event, folder) => {
   const selected = result.canceled ? '' : result.filePaths[0] || '';
   if (selected) writeLastFolder(userDataDir(), selected);
   return selected;
-});
-
-ipcMain.handle('makerspace:restart-to-update', () => {
-  autoUpdater.quitAndInstall();
-  return true;
 });
 
 ipcMain.handle('makerspace:check-for-updates', () => {
@@ -194,13 +170,14 @@ if (app.isPackaged) {
   autoUpdater.on('checking-for-update', () => sendUpdateStatus('Checking for updates…'));
   autoUpdater.on('update-available', () => sendUpdateStatus('Update found. Downloading…'));
   autoUpdater.on('update-not-available', () => sendUpdateStatus('You are up to date.'));
+  autoUpdater.on('update-downloaded', announceUpdateDownloaded);
   autoUpdater.on('error', (error) => sendUpdateStatus(error?.message || 'Update check failed.'));
   updateElectronApp({
     updateSource: {
       type: UpdateSourceType.ElectronPublicUpdateService,
       repo: 'anishthite/makerspace-downloads',
     },
-    onNotifyUser: announceUpdateDownloaded,
+    notifyUser: false,
   });
 }
 

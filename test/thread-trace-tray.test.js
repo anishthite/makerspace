@@ -52,6 +52,11 @@ test('answer summary events refresh thread state and history', () => {
   assert.match(js, /renderThreadHistory\(event\.session\)/);
 });
 
+test('thread page reload fetches fresh worker trace state', () => {
+  assert.match(js, /async function fetchJson\(path, options = \{\}\)/);
+  assert.match(js, /cache: 'no-store'/);
+});
+
 test('agent trace shows thinking steps and answer summaries', () => {
   assert.match(pages, /<span>agent trace<\/span><strong>events<\/strong>/);
   assert.match(js, /const thinkingCards = new Map\(\)/);
@@ -78,7 +83,7 @@ test('tool rows show one-line action copy with the target path or search scope',
 });
 
 test('assistant card waits for output instead of showing a working placeholder', () => {
-  assert.match(js, /function appendMessage\(role, label, text = ''\)/);
+  assert.match(js, /function appendMessage\(role, label, text = '', images = \[\]\)/);
   assert.match(js, /function ensureAssistantBody\(\) \{\s*if \(!activeAssistantBody\) activeAssistantBody = appendMessage\('assistant', 'main agent'\);/);
   assert.match(js, /appendStreamingMessageText\(ensureAssistantBody\(\), text\)/);
   assert.match(js, /const renderedMessageKeys = new Set\(\)/);
@@ -97,6 +102,15 @@ test('follow-up responses and reopened active runs hydrate message history', () 
   assert.match(js, /if \(payload\.session\) \{\s*renderThread\(payload\.session\);\s*renderThreadHistory\(payload\.session\);\s*\}\s*streamRun\(\);/);
   assert.doesNotMatch(js, /isLatestRun && !assistant && isActiveStatus\(effectiveStatus\(thread\)\) && !activeAssistantBody/);
   assert.doesNotMatch(js, /appendMessage\('assistant', 'main agent', '', \{ pending: true \}\)/);
+});
+
+test('thread messages render stored image attachments', () => {
+  assert.match(js, /imageAttachmentSrc/);
+  assert.match(js, /function renderMessageAttachments/);
+  assert.match(js, /appendMessage\('user', 'you', message\.text, message\.images\)/);
+  assert.match(js, /appendMessage\('user', 'you', imageAttachmentText\(prompt, images\.length\), images\)/);
+  assert.match(css, /\.message-attachments/);
+  assert.match(css, /\.message-attachment-image/);
 });
 
 test('inline trace uses a subtle marker without overlay behavior', () => {

@@ -6,7 +6,7 @@
 <meta name="task" content="Add durable project workspaces keyed by user and repo, with per-thread worktrees.">
 <meta name="date-started" content="2026-07-01">
 <meta name="date-updated" content="2026-07-01">
-<meta name="status" content="in-progress">
+<meta name="status" content="shipped">
 <meta name="blast-radius" content="high">
 <meta name="tags" content="makerspace, workspace, daytona, d1, auth, threads">
 <meta name="related" content="2026-06-30-infra-lifecycle-chart.html,2026-06-30-multi-user-auth.html,2026-06-26-d1-state-store.html,2026-06-16-dockerfile-settings-panel.html">
@@ -30,7 +30,7 @@
 </head>
 <body>
 <h1>Project workspace mode</h1>
-<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-01 · status <b>in-progress</b> · blast <span class="blast-high">high</span></p>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-01 · status <b>shipped</b> · blast <span class="blast-high">high</span></p>
 
 <h2>Summary</h2>
 <div class="kv">
@@ -39,6 +39,7 @@
   <b>State</b><div>Workspace rows stay in <code>makerspace_sessions</code>; lookup index uses <code>makerspace_kv</code>.</div>
   <b>Remote layout</b><div><code>/srv/workspace/main</code> plus <code>/srv/workspace/tasks/&lt;thread&gt;</code>.</div>
   <b>Bridge</b><div><code>POST /runs</code> accepts a validated <code>cwd</code> under <code>/srv/workspace</code>.</div>
+  <b>Verification</b><div><code>PATH=/opt/homebrew/bin:$PATH npm test</code> passes.</div>
   <b>Open Qs</b><div>0.</div>
 </div>
 
@@ -70,6 +71,7 @@
   <tr><td><code>src/server/bridge.js</code></td><td>touch</td><td>Send thread worktree <code>cwd</code> to the remote bridge.</td></tr>
   <tr><td><code>src/setup-script.js</code></td><td>touch</td><td>Bootstrap workspace main clone idempotently and validate bridge run <code>cwd</code>.</td></tr>
   <tr><td><code>test/workspaces.test.js</code></td><td>new</td><td>Cover workspace ownership/keying and command generation.</td></tr>
+  <tr><td><code>README.md</code></td><td>touch</td><td>Document the workspace-mode env flag.</td></tr>
 </table>
 
 <h2>Decisions</h2>

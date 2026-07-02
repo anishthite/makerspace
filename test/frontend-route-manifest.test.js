@@ -45,8 +45,8 @@ test('static public pages stay in frontend/public for Vite copy', () => {
   assert.ok(existsSync(new URL('frontend/public/styles.css', root)));
 });
 
-test('compatibility storage keys and deploy aliases are preserved', () => {
-  for (const key of ['makerspaceBrowserSession', 'makerspaceSelectedProject', 'makerspaceModelRef', 'makerspaceThinkingLevel', 'makerspaceTheme', 'makerspaceFont', 'makerspaceDarkPalette', 'makerspaceSeenFinishedThreads', 'makerspaceRecentProjects']) {
+test('active storage keys and deploy aliases are listed', () => {
+  for (const key of ['makerspaceBrowserSession', 'makerspaceSelectedProject', 'makerspaceModelRef', 'makerspaceThinkingLevel', 'makerspaceSeenFinishedThreads', 'makerspaceRecentProjects']) {
     assert.ok(manifest.storageKeys.includes(key), key);
   }
 

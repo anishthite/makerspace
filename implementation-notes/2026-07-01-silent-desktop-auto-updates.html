@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Silent desktop auto-updates</title>
+<meta name="task" content="Let desktop updates download automatically without a restart banner.">
+<meta name="date-started" content="2026-07-01">
+<meta name="date-updated" content="2026-07-01">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="makerspace, desktop, electron, updates, cleanup">
+<meta name="related" content="2026-06-30-desktop-ota-updates.html, 2026-06-30-update-restart-banner.html, 2026-07-01-desktop-update-check-button.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Silent desktop auto-updates</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-01 · status <b class="status-shipped">shipped</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Download packaged desktop updates automatically and apply them on the next app launch without prompting.</div><b>Source</b><div><code>update-electron-app</code> startup/interval checks and Electron <code>autoUpdater</code> next-launch install behavior.</div><b>Surface</b><div>Electron main/preload, shared React entry, global CSS, docs, static tests.</div><b>Schema</b><div>No stored data or API schema change.</div><b>Open Qs</b><div>0.</div></div>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>desktop/main.js</code></td><td>touch</td><td>Disable updater prompts and keep only Settings status broadcasts.</td></tr><tr><td><code>desktop/preload.cjs</code></td><td>touch</td><td>Remove restart-banner IPC helpers.</td></tr><tr><td><code>frontend/src/entry.jsx</code></td><td>touch</td><td>Remove the desktop restart banner component.</td></tr><tr><td><code>frontend/public/styles.css</code></td><td>touch</td><td>Delete banner-only styles.</td></tr><tr><td><code>frontend/route-manifest.json</code></td><td>touch</td><td>Remove the obsolete update-dismiss storage key.</td></tr><tr><td><code>README.md</code></td><td>touch</td><td>Document next-launch update application.</td></tr><tr><td><code>test/desktop-auth-token.test.js</code></td><td>touch</td><td>Pin silent updater wiring and banner removal.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Set <code>notifyUser: false</code>. <code>update-electron-app</code> already downloads in the background.</td></tr><tr><td>D-002</td><td>Rely on next-launch install instead of forced restart. Electron documents downloaded updates as applying on the next app start.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>Silent next-launch install over <code>quitAndInstall()</code>. It avoids killing active local agent work.</td></tr></table>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>PATH=/opt/homebrew/bin:$PATH node --check desktop/main.js &amp;&amp; PATH=/opt/homebrew/bin:$PATH node --check desktop/preload.cjs &amp;&amp; PATH=/opt/homebrew/bin:$PATH node --test test/desktop-auth-token.test.js test/frontend-route-manifest.test.js</code></td><td>Passed 12/12.</td></tr><tr><td><code>PATH=/opt/homebrew/bin:$PATH npm run build</code></td><td>Passed.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Restore the prior updater banner IPC, React component, CSS, manifest key, and test assertions.</p>
+<h2>Definition of done</h2>
+<ul><li>Packaged desktop updates still check/download from GitHub Releases.</li><li>No restart banner or dismiss storage remains.</li><li>Focused desktop/update tests pass.</li><li>Build still passes.</li></ul>
+</body>
+</html>

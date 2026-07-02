@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { acceptedImageFiles, bindImageDropZone, clearImageInput, imageInputFiles, updateImageStatus } from '../frontend/src/runtime/image-attachments.js';
+import { acceptedImageFiles, bindImageDropZone, clearImageInput, imageAttachmentSrc, imageInputFiles, updateImageStatus } from '../frontend/src/runtime/image-attachments.js';
 
 test('acceptedImageFiles keeps supported non-empty images only', () => {
   const png = { name: 'screen.png', type: 'image/png', size: 1 };
@@ -17,6 +17,12 @@ test('acceptedImageFiles keeps supported non-empty images only', () => {
     ]),
     [png, jpg],
   );
+});
+
+test('imageAttachmentSrc builds safe data URLs only', () => {
+  assert.equal(imageAttachmentSrc({ mimeType: 'image/png', data: 'cG5n' }), 'data:image/png;base64,cG5n');
+  assert.equal(imageAttachmentSrc({ mimeType: 'image/svg+xml', data: 'PHN2Zz4=' }), '');
+  assert.equal(imageAttachmentSrc({ mimeType: 'image/png', data: 'not base64!' }), '');
 });
 
 test('bindImageDropZone stores dropped and pasted images without DataTransfer constructor', () => {

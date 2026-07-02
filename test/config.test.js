@@ -50,3 +50,15 @@ test('host dispatch is opt-in for remote providers', () => {
     assert.equal(getConfig().hostDispatchEnabled, true);
   });
 });
+
+test('workspace mode extends default Daytona autodelete', () => {
+  withEnv({ MAKERSPACE_WORKSPACE_MODE: '1', DAYTONA_AUTODELETE_MINUTES: undefined }, () => {
+    const config = getConfig();
+    assert.equal(config.workspaceMode, true);
+    assert.equal(config.daytonaAutodeleteMinutes, 10080);
+  });
+
+  withEnv({ MAKERSPACE_WORKSPACE_MODE: undefined, DAYTONA_AUTODELETE_MINUTES: undefined }, () => {
+    assert.equal(getConfig().daytonaAutodeleteMinutes, 120);
+  });
+});
