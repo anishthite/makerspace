@@ -5,8 +5,10 @@ Starter Pi package for Makerspace sessions.
 It bundles:
 
 - `extensions/makerspace-defaults.ts` — appends Makerspace product rules and registers `inference/nvidia/nemotron3-super` without editing user dotfiles.
-- `skills/` — optional workflow skills.
+- `skills/` — optional workflow skills, including `code-simplifier`, `playground`, `excalidraw-diagram`, Ponytail helpers, and `emil-design-eng`.
 - `prompts/` — slash prompt templates.
+
+The bundled `excalidraw-diagram` skill includes reference scripts/templates, but not local `.venv`, `.git`, or cache folders.
 - `context/` — source text used by the extension.
 
 ## Local install

@@ -53,6 +53,7 @@ test('recently finished rows stack finished and runtime copy in the top right', 
   assert.match(js, /class="answer-preview">\$\{escapeHtml\(outcome\)\}/);
   assert.match(js, /grouped\.done\.sort\(\(left, right\) => finishedAtMs\(right\) - finishedAtMs\(left\)\);/);
   assert.match(runState, /scheduleFinalAnswerSummaryGeneration\(updated, text, runId\);/);
+  assert.match(runState, /scheduleFinalTurnStatusClassification\(updated, \{ text \}, runId\);/);
 });
 
 test('recently finished success indicators can be dismissed locally', () => {
@@ -88,6 +89,7 @@ test('new runs clear stale terminal runtime fields', () => {
   assert.match(runState, /endedAt: undefined/);
   assert.match(runState, /runEndedAtMs: undefined/);
   assert.match(runState, /finalAnswerSummary: undefined/);
+  assert.match(runState, /finalTurnStatus: undefined/);
   assert.match(threads, /\.\.\.activeRunResetPatch\(\),\n\s+taskPrompt: prompt/);
 });
 

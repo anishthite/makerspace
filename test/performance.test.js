@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { applyPerformanceEvent, summarizeThreadPerformance, summarizeThreadPerformanceList } from '../src/performance.js';
+import { analyzePiTraceText, applyPerformanceEvent, summarizeThreadPerformance, summarizeThreadPerformanceList } from '../src/performance.js';
 
 test('summarizes live thread performance events', () => {
   const thread = summarizeThreadPerformance(
@@ -157,34 +157,77 @@ test('rollup keeps first llm latency metric-specific', () => {
   assert.deepEqual(performance.topTools, [['bash', 1]]);
 });
 
+test('analyzes Pi JSONL traces for lookback signals', () => {
+  const trace = analyzePiTraceText([
+    JSON.stringify({ type: 'session', id: 'demo', timestamp: new Date(1000).toISOString() }),
+    JSON.stringify({ type: 'message', id: 'u1', timestamp: new Date(1000).toISOString(), message: { role: 'user', content: [{ type: 'text', text: 'fix the app' }] } }),
+    JSON.stringify({ type: 'message', id: 'a1', parentId: 'u1', timestamp: new Date(2000).toISOString(), message: { role: 'assistant', content: [{ type: 'toolCall', name: 'edit', arguments: { path: 'app.js' } }], usage: { input: 10, output: 5, cost: { total: 0.02 } }, model: 'gpt-test', provider: 'openai-codex' } }),
+    JSON.stringify({ type: 'message', id: 't1', parentId: 'a1', timestamp: new Date(3000).toISOString(), message: { role: 'toolResult', toolName: 'edit', isError: true, content: [{ type: 'text', text: 'failed' }] } }),
+  ].join('\n'));
+
+  assert.equal(trace.entryCount, 3);
+  assert.equal(trace.userMessageCount, 1);
+  assert.equal(trace.assistantMessageCount, 1);
+  assert.equal(trace.toolCallCount, 1);
+  assert.equal(trace.failedToolCallCount, 1);
+  assert.equal(trace.totalTokens, 15);
+  assert.deepEqual(trace.models, ['openai-codex/gpt-test']);
+  assert.ok(trace.signalKinds.includes('failed_tool'));
+  assert.ok(trace.signalKinds.includes('verification_missing'));
+  assert.equal(trace.reviewScore, 6);
+});
+
 test('aggregates thread performance for analysis', () => {
   const performance = summarizeThreadPerformanceList(
     [
       {
         name: 'fast',
+        repoUrl: 'https://github.com/acme/app.git',
+        modelRef: 'openai/gpt-5',
         runStatus: 'ready',
-        submittedAtMs: 1000,
-        updatedAt: new Date(31_000).toISOString(),
+        submittedAtMs: 999_999_000,
+        updatedAt: new Date(1_000_000_000).toISOString(),
         firstLlmLatencyMs: 5000,
+        performance: {
+          hasDetailedMetrics: true,
+          toolCalls: 2,
+          topTools: [['bash', 2]],
+        },
       },
       {
         name: 'slow-fail',
+        repoUrl: 'https://github.com/acme/app.git',
         runStatus: 'failed',
-        submittedAtMs: 1000,
-        updatedAt: new Date(91_000).toISOString(),
+        submittedAtMs: 308_800_000,
+        updatedAt: new Date(309_000_000).toISOString(),
         firstLlmLatencyMs: 40_000,
+        archivedAt: new Date(309_100_000).toISOString(),
       },
     ],
     {},
-    100_000,
+    1_000_000_000,
+    { fast: { available: true, entryCount: 8, toolCallCount: 2, failedToolCallCount: 1, totalTokens: 20, totalCostUsd: 0.01, topTools: [['bash', 2]], reviewScore: 12, signalKinds: ['failed_tool'], signalCounts: { failed_tool: 1 }, models: ['openai/gpt-5'] } },
   );
 
   assert.equal(performance.summary.totalThreads, 2);
+  assert.equal(performance.summary.completedThreads, 1);
   assert.equal(performance.summary.failedThreads, 1);
+  assert.equal(performance.summary.archivedThreads, 1);
+  assert.equal(performance.summary.recent24hThreads, 1);
+  assert.equal(performance.summary.successRatePct, 50);
   assert.equal(performance.summary.medianFirstLlmMs, 5000);
   assert.equal(performance.summary.p95FirstLlmMs, 40_000);
+  assert.deepEqual(performance.summary.topRepos, [['acme/app', 2]]);
+  assert.deepEqual(performance.summary.topTools, [['bash', 2]]);
+  assert.deepEqual(performance.summary.topModels, [['openai/gpt-5', 1]]);
+  assert.equal(performance.summary.traceAnalyzedThreads, 1);
+  assert.equal(performance.summary.totalTraceEntries, 8);
+  assert.equal(performance.summary.totalReviewScore, 12);
+  assert.deepEqual(performance.summary.topSignalKinds, [['failed_tool', 1]]);
+  assert.deepEqual(performance.summary.reviewQueue.map((thread) => thread.name), ['fast']);
   const failed = performance.threads.find((thread) => thread.name === 'slow-fail');
   assert.match(performance.insights.join('\n'), /failed main agent/);
   assert.match(performance.insights.join('\n'), /Slowest first LLM/);
-  assert.deepEqual(failed.flags, ['failed', 'slow first LLM']);
+  assert.match(performance.insights.join('\n'), /Most-used repo: acme\/app×2/);
+  assert.deepEqual(failed.flags, ['failed', 'slow first LLM', 'archived']);
 });

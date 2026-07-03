@@ -5,6 +5,8 @@ import { isBackgroundWorkflowToolEnd, workflowRunIdFromText } from '../src/host-
 
 test('workflowRunIdFromText extracts workflow ids from completion text', () => {
   assert.equal(workflowRunIdFromText('Run ID: run-mqumvxu9-1\n'), 'run-mqumvxu9-1');
+  assert.equal(workflowRunIdFromText('Run ID: mqumvxu9-a1b2c3\n'), 'mqumvxu9-a1b2c3');
+  assert.equal(workflowRunIdFromText('Workflow "html-rendering-idea-lab" started.'), '');
   assert.equal(workflowRunIdFromText('no run here'), '');
 });
 

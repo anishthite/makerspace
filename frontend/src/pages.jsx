@@ -52,7 +52,6 @@ function WorkspaceNav({ active = 'workspace' }) {
       {active === 'workspace' && <AuthPills />}
       {active !== 'workspace' && <Button as="a" variant="ghost" href="/workspace.html">workspace</Button>}
       {active !== 'history' && <Button as="a" variant="ghost" href="/history.html">history</Button>}
-      {active !== 'performance' && <Button as="a" variant="ghost" href="/performance.html">performance</Button>}
       {active !== 'settings' && <Button as="a" variant="ghost" href="/settings.html">settings</Button>}
     </div>
   </nav>;
@@ -131,10 +130,10 @@ export function ThreadPage() {
       <div className="header-actions"><StatusPill id="thread-status">connecting</StatusPill><Button id="stop-thread" variant="ghost" className="thread-stop-btn" type="button" hidden>stop</Button><Button id="archive-thread" variant="primary" className="thread-done-btn" type="button" hidden>mark as done</Button></div>
     </header>
     <section className="thread-stage" aria-label="Main agent workspace">
-      <aside className="agent-column" aria-label="Main agent status">
-        <Surface as="div" id="agent-rail" className="agent-rail flow-card" aria-label="Main agent trace" role="button" tabIndex="0" aria-controls="agent-trace" aria-expanded="false">
-          <div className="rail-head"><span>agent</span><strong id="agent-graph-count">idle</strong></div>
-          <p className="rail-hint">click to open trace</p>
+      <aside className="agent-column" aria-label="Workflow agents">
+        <Surface as="div" id="agent-rail" className="agent-rail flow-card" aria-label="Workflow agent trace" role="button" tabIndex="0" aria-controls="agent-trace" aria-expanded="false">
+          <div className="rail-head"><span>workflow agents</span><strong id="agent-graph-count">idle</strong></div>
+          <p className="rail-hint">click for full workflow trace</p>
           <div id="agent-graph" className="agent-graph"></div>
         </Surface>
         <details id="diff-box" className="diff-box flow-card" hidden><summary><span>changes</span><strong id="diff-count">0</strong></summary><div className="diff-workbench"><div id="diff-files" className="diff-files" role="list"></div><textarea id="diff-editor" className="diff-editor" readOnly spellCheck="false" aria-label="Selected file changes"></textarea></div></details>
@@ -143,14 +142,14 @@ export function ThreadPage() {
         <ThinkingStatus titleId="thinking-title" detailId="thinking-detail" />
         <section className="conversation-main flow-card" aria-label="Main agent conversation">
           <ScrollArea id="timeline" className="timeline-flow" aria-live="polite"></ScrollArea>
-          <aside id="agent-trace" className="agent-activity agent-trace-inline" aria-label="Main agent trace" aria-hidden="true" hidden>
-            <div className="agent-activity-head"><div className="rail-head"><span>agent trace</span><strong>events</strong></div><Button id="agent-activity-close" variant="ghost" type="button">hide</Button></div>
+          <aside id="agent-trace" className="agent-activity agent-trace-inline" aria-label="Full workflow trace" aria-hidden="true" hidden>
+            <div className="agent-activity-head"><div className="rail-head"><span>workflow trace</span><strong>events</strong></div><Button id="agent-activity-close" variant="ghost" type="button">hide</Button></div>
             <ScrollArea id="trace-timeline" className="timeline-flow" aria-live="polite"></ScrollArea>
           </aside>
         </section>
         <Surface className="notes-main flow-card" aria-label="Implementation notes" hidden><div className="rail-head"><span>implementation notes</span><strong id="notes-count">0</strong></div><div id="notes-list" className="notes-list"></div></Surface>
         <InputMessage as="form" id="prompt-form" className="flow-composer">
-          <div className="composer-field"><label className="sr-only" htmlFor="prompt">Prompt</label><textarea id="prompt" rows="3" placeholder="Next task…"></textarea><RunControls /></div>
+          <div className="composer-field"><label className="sr-only" htmlFor="prompt">Prompt</label><textarea id="prompt" rows="3" placeholder="Next task…"></textarea><small id="composer-hint" className="composer-hint muted">Enter sends · Shift+Enter adds a line</small><RunControls /></div>
           <Button id="send" variant="primary" type="submit">send</Button>
         </InputMessage>
       </section>
@@ -168,20 +167,22 @@ export function HistoryPage() {
 }
 
 export function PerformancePage() {
+  const isLocal = globalThis.location?.pathname?.includes('local-telemetry');
   return <main className="home-shell performance-shell">
-    <nav className="home-topbar" aria-label="Makerspace navigation"><Brand href="/" /><div className="header-actions home-actions"><Button as="a" variant="ghost" href="/">main agents</Button><Button as="a" variant="ghost" href="/settings.html">settings</Button></div></nav>
-    <section className="performance-hero"><p className="eyebrow">lookback</p><h1>Main agent performance</h1><p id="performance-status" className="muted">Loading main agent metrics…</p></section>
-    <section id="performance-stats" className="performance-stats" aria-label="Performance summary"></section>
-    <section className="performance-grid"><Surface className="performance-panel"><div className="section-row"><h2>Signals</h2><Button id="refresh-performance" variant="ghost" type="button">refresh</Button></div><ul id="performance-insights" className="signal-list"></ul></Surface><Surface className="performance-panel table-panel"><div className="section-row"><h2>Main agents</h2><p id="performance-count" className="muted"></p></div><ScrollArea className="performance-table-wrap"><table className="performance-table"><thead><tr><th>main agent</th><th>status</th><th>first llm</th><th>duration</th><th>tools</th><th>tokens</th><th>cache</th><th>flags</th></tr></thead><tbody id="performance-rows"></tbody></table></ScrollArea></Surface></section>
+    <nav className="home-topbar" aria-label="Makerspace navigation"><Brand href="/" /><div className="header-actions home-actions"><Button as="a" variant="ghost" href="/workspace.html">agents</Button><Button as="a" variant="ghost" href="/history.html">history</Button><Button as="a" variant="ghost" href={isLocal ? '/telemetry.html' : '/local-telemetry.html'}>{isLocal ? 'db telemetry' : 'local sessions'}</Button><Button as="a" variant="ghost" href="/settings.html">settings</Button></div></nav>
+    <section className="performance-hero"><p className="eyebrow">telemetry</p><h1>{isLocal ? 'Local session telemetry' : 'Agent telemetry'}</h1><p id="performance-status" className="muted">Loading {isLocal ? 'local session' : 'DB-derived'} agent metrics…</p><p className="muted">{isLocal ? 'Reads the desktop/local sessions file and ignores old browser-session IDs.' : 'Estimated from the session DB plus live run events. No extra product tracking.'}</p></section>
+    <section id="performance-stats" className="performance-stats" aria-label="Telemetry summary"></section>
+    <section className="performance-grid"><div className="performance-side-stack"><Surface className="performance-panel"><div className="section-row"><h2>Signals</h2><Button id="refresh-performance" variant="ghost" type="button">refresh</Button></div><ul id="performance-insights" className="signal-list"></ul></Surface><Surface className="performance-panel"><div className="section-row"><h2>What this can show</h2></div><ul id="telemetry-sources" className="signal-list telemetry-source-list"></ul></Surface></div><Surface className="performance-panel table-panel"><div className="section-row"><h2>Main agents</h2><p id="performance-count" className="muted"></p></div><ScrollArea className="performance-table-wrap"><table className="performance-table"><thead><tr><th>main agent</th><th>status</th><th>first llm</th><th>duration</th><th>tools</th><th>tokens</th><th>cache</th><th>analysis</th><th>flags</th></tr></thead><tbody id="performance-rows"></tbody></table></ScrollArea></Surface></section>
   </main>;
 }
 
 export function SettingsPage() {
   return <><div className="crt-vignette" aria-hidden="true"></div><div className="crt-scanlines" aria-hidden="true"></div><main className="shell console-grid">
     <nav className="topbar panel-lite" aria-label="Settings controls"><a className="brand-mark has-logo" href="/" aria-label="Makerspace home"><img className="brand-logo" src="/logo-mark.svg" alt="" aria-hidden="true" /><strong>settings</strong></a><div className="topbar-actions"><Button as="a" variant="ghost" href="/">agents</Button></div></nav>
-    <header className="hero panel stack-lg"><h1>Settings</h1><Tabs items={[{ href: '#github', label: 'GitHub' }, { href: '#codex', label: 'Codex' }, { href: '#pi-profile', label: 'Pi profile' }, { href: '#sandbox', label: 'Sandbox' }]} /></header>
+    <header className="hero panel stack-lg"><h1>Settings</h1><Tabs items={[{ href: '#github', label: 'GitHub' }, { href: '#codex', label: 'Codex' }, { href: '#claude-code', label: 'Claude Code' }, { href: '#pi-profile', label: 'Pi profile' }, { href: '#sandbox', label: 'Sandbox' }]} /></header>
     <Surface as="section" id="github" className="panel stack-lg"><div className="panel-header"><div><h2>GitHub</h2></div><div className="inline-actions"><Button id="github-login" variant="primary" type="button">Sign in</Button><Button id="github-logout" variant="ghost" type="button">Sign out</Button></div></div><p id="github-status" className="muted">Checking…</p></Surface>
     <Surface as="section" id="codex" className="panel stack-lg"><div className="panel-header"><div><h2>Codex</h2></div><Button id="codex-login" variant="primary" type="button">Sign in</Button></div><p id="codex-status" className="muted">Checking…</p><div id="codex-device" className="notice hidden"></div></Surface>
+    <Surface as="section" id="claude-code" className="panel stack-lg"><div className="panel-header"><div><h2>Claude Code</h2></div><Button id="claude-code-login" variant="primary" type="button">Sign in</Button></div><p id="claude-code-status" className="muted">Checking…</p><div id="claude-code-auth" className="notice hidden"></div><form id="claude-code-code-form" className="stack-lg hidden"><label className="full-width"><span>Redirect URL or code</span><input id="claude-code-code" name="code" placeholder="http://localhost:53692/callback?code=…" autoComplete="off" /></label><div className="form-actions"><Button id="claude-code-code-submit" variant="primary" type="submit">Finish sign in</Button></div></form></Surface>
     <Surface as="section" id="pi-profile" className="panel stack-lg"><div className="panel-header"><div><h2>Pi profile</h2></div></div><form id="pi-profile-form" className="stack-lg"><label className="full-width"><span>AGENTS.md</span><textarea id="pi-agents" rows="12" spellCheck="false" placeholder="Makerspace Pi instructions"></textarea><small id="pi-agents-path" className="muted">Loading…</small></label><Switch id="pi-sync-remote" label="Sync selected profile to remote sandboxes " help="Per run; not baked into public images." /><div className="profile-resource-grid"><div><h3>Skills</h3><div id="pi-skills" className="resource-list muted">Loading…</div></div><div><h3>Extensions</h3><div id="pi-extensions" className="resource-list muted">Loading…</div></div><div><h3>Prompts</h3><div id="pi-prompts" className="resource-list muted">Loading…</div></div></div><div className="form-actions"><Button id="pi-profile-submit" variant="primary" type="submit">Save profile</Button><p id="pi-profile-status" className="muted">Loading…</p></div></form></Surface>
     <Surface as="section" id="sandbox" className="panel stack-lg"><div className="panel-header"><div><h2>Sandbox</h2></div></div><form id="settings-form" className="stack-lg"><div className="form-grid"><label className="full-width"><span>Image ref</span><input id="image-ref" name="imageRef" placeholder="image ref" /><small>Blank = default.</small></label><label><span>Registry username</span><input id="registry-username" name="registryUsername" placeholder="username" autoComplete="username" /></label><label><span>Registry token</span><input id="registry-password" name="registryPassword" type="password" placeholder="token" autoComplete="current-password" /><small>Blank keeps current.</small></label><label className="full-width"><span>Anthropic API key</span><input id="anthropic-api-key" name="anthropicApiKey" type="password" placeholder="API key" autoComplete="off" /><small>Blank keeps current.</small></label></div><div className="form-actions"><Button id="settings-submit" variant="primary" type="submit">Save</Button><p id="settings-status" className="muted">Loading…</p></div></form></Surface>
     <Surface as="section" id="desktop-updates" className="panel stack-lg" hidden><div className="panel-header"><div><h2>Desktop updates</h2><p className="muted">Check GitHub Releases for a newer desktop build.</p></div><Button id="desktop-check-updates" variant="ghost" type="button">Check for updates</Button></div><p id="desktop-update-status" className="muted">Desktop only.</p></Surface>

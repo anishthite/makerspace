@@ -4,6 +4,8 @@
   "outputDirectory": "dist",
   "rewrites": [
     { "source": "/desktop", "destination": "/desktop.html" },
-    { "source": "/thread", "destination": "/thread.html" }
+    { "source": "/thread", "destination": "/thread.html" },
+    { "source": "/telemetry", "destination": "/telemetry.html" },
+    { "source": "/local-telemetry", "destination": "/local-telemetry.html" }
   ]
 }

@@ -137,7 +137,7 @@ export function createBridgeService({ config, provider, auth, runState }) {
     try {
       sessions = await listStoredSessions(config.sessionFile);
     } catch (error) {
-      console.warn(`[micro-cloud] failed to list sessions for idle bridge pruning: ${error.message}`);
+      console.warn(`[makerspace] failed to list sessions for idle bridge pruning: ${error.message}`);
       return;
     }
 
@@ -147,7 +147,7 @@ export function createBridgeService({ config, provider, auth, runState }) {
         await removeStoredSession(config.sessionFile, session.name);
         activeRuns.delete(session.name);
       } catch (error) {
-        console.warn(`[micro-cloud] failed to destroy expired idle sandbox ${session.name}: ${error.message}`);
+        console.warn(`[makerspace] failed to destroy expired idle sandbox ${session.name}: ${error.message}`);
       }
     }
   }
@@ -249,7 +249,7 @@ export function createBridgeService({ config, provider, auth, runState }) {
               return;
             }
 
-            if (event.type === 'tool' || event.type === 'thinking' || event.type === 'usage' || event.type === 'workflow_status' || event.type === 'workflow_result') {
+            if (event.type === 'tool' || event.type === 'thinking' || event.type === 'usage' || event.type === 'queue' || event.type === 'workflow_status' || event.type === 'workflow_result') {
               recordRunEvent(sessionName, {
                 ...event,
                 type: event.type,

@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Interactive agent UI</title>
+<meta name="task" content="Render safe app-owned controls from assistant makerspace-ui artifacts.">
+<meta name="date-started" content="2026-07-03">
+<meta name="date-updated" content="2026-07-03">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="makerspace, ui, thread, interactive, artifacts">
+<meta name="related" content="2026-06-24-html-thread-preview.html,2026-06-27-inline-excalidraw-viewer.html,2026-07-02-message-steering-queue.html,2026-07-02-inline-diagram-viewing.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code,pre{font-family:ui-monospace,Menlo,monospace}code{background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}pre{background:#f6f6f6;padding:.55rem .7rem;border-radius:4px;overflow-x:auto;font-size:12.5px;line-height:1.4}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-med{color:#b85c00}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Interactive agent UI</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-03 · status <b class="status-shipped">shipped</b> · blast <span class="blast-med">medium</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Render app-owned thread controls from assistant <code>makerspace-ui</code> artifacts.</div>
+  <b>Source</b><div>Assistant final text with fenced <code>makerspace-ui</code> JSON.</div>
+  <b>Surface</b><div><code>/thread.html</code> assistant messages and existing follow-up composer.</div>
+  <b>Schema</b><div>Add versioned client-only <code>makerspace-ui</code> artifact schema.</div>
+  <b>Security</b><div>No assistant JavaScript; controls generate visible prompt text.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>API contract</h2>
+<h3>Artifact</h3>
+<pre>```makerspace-ui
+{
+  "version": 1,
+  "title": "Tune this answer",
+  "controls": [{ "id": "detail", "type": "slider", "label": "Detail", "min": 1, "max": 10, "default": 5 }],
+  "actions": [{ "id": "apply", "label": "Apply", "delivery": "followUp", "prompt": "Revise with detail={{detail}}." }]
+}
+```</pre>
+<h3>Action output</h3>
+<pre>[UI action: Apply]
+Revise with detail=7.</pre>
+
+<h2>Algorithm</h2>
+<ol>
+  <li>Extract complete fenced <code>makerspace-ui</code> blocks from raw assistant text.</li>
+  <li>Validate <code>version</code>, IDs, counts, lengths, control types, action types, and delivery allowlist.</li>
+  <li>Render controls as Makerspace DOM after message attachments and diagram cards.</li>
+  <li>Fill the composer with generated prompt text; user sends the visible message.</li>
+</ol>
+
+<h2>UI layout</h2>
+<ol>
+  <li><b>Artifact card</b>: title, optional description, control groups, action row.</li>
+  <li><b>Controls</b>: slider with live output, checklist, select, text area, buttons.</li>
+  <li><b>Action</b>: fill composer first and show requested delivery mode through existing composer behavior.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>frontend/src/runtime/interactive-artifacts.js</code></td><td>new</td><td>Parse, validate, render, and interpolate <code>makerspace-ui</code> artifacts.</td></tr>
+  <tr><td><code>frontend/src/runtime/thread.js</code></td><td>touch</td><td>Render interactive artifacts and fill composer from actions.</td></tr>
+  <tr><td><code>frontend/public/styles.css</code></td><td>touch</td><td>Style interactive artifact cards and controls.</td></tr>
+  <tr><td><code>test/interactive-artifacts.test.js</code></td><td>new</td><td>Pin extraction, validation, interpolation, and action payloads.</td></tr>
+  <tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this task.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Use fenced <code>makerspace-ui</code> JSON. It is parseable without trusting assistant HTML.</td></tr>
+  <tr><td>D-002</td><td>Fill the composer instead of auto-sending. The user sees every generated prompt before it leaves.</td></tr>
+  <tr><td>D-003</td><td>Keep widget state in the rendered message only. The transcript stays the durable record.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td>Vanilla DOM over React/Radix. The thread runtime is already vanilla and the MVP needs no new island.</td></tr>
+  <tr><td>T-002</td><td>Client-only schema over new server routes. Existing message posting covers the feedback loop.</td></tr>
+</table>
+
+<h2>Assumptions</h2>
+<ul>
+  <li>A-001 · Assistant artifacts fit inside stored message text. If wrong: add file-backed artifact loading.</li>
+  <li>A-002 · Composer-fill is acceptable for MVP. If wrong: add explicit per-action auto-send.</li>
+</ul>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Remove the new runtime module, CSS block, test, and <code>thread.js</code> import/call; no data migration exists.</p>
+
+<h2>Verification</h2>
+<table>
+  <tr><th>Check</th><th>Result</th></tr>
+  <tr><td><code>node --check frontend/src/runtime/interactive-artifacts.js &amp;&amp; node --check frontend/src/runtime/thread.js &amp;&amp; node --test test/interactive-artifacts.test.js test/html-preview.test.js test/excalidraw-artifacts.test.js</code></td><td>Passed focused parser, image, and artifact checks.</td></tr>
+  <tr><td><code>npm test</code></td><td>Passed 186/186.</td></tr>
+  <tr><td><code>npm run build</code></td><td>Passed.</td></tr>
+</table>
+
+<h2>Followups</h2>
+<ul>
+  <li>L-001 · Add Excalidraw edit actions after the generic control loop ships.</li>
+  <li>L-002 · Add trusted editor route only after read-only diagram action prompts prove useful.</li>
+</ul>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>Valid <code>makerspace-ui</code> blocks render controls under assistant messages.</li>
+  <li>Action buttons fill the composer with interpolated prompt text.</li>
+  <li>Invalid artifacts fail closed without breaking message rendering.</li>
+  <li>Focused tests and build checks pass.</li>
+</ul>
+</body>
+</html>

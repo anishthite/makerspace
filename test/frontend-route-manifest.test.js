@@ -6,7 +6,7 @@ import { test } from 'node:test';
 const root = new URL('..', import.meta.url);
 const read = (file) => readFileSync(new URL(file, root), 'utf8');
 const manifest = JSON.parse(read('frontend/route-manifest.json'));
-const reactFiles = ['index.html', 'workspace.html', 'thread.html', 'settings.html', 'history.html', 'performance.html', 'desktop.html'];
+const reactFiles = ['index.html', 'workspace.html', 'thread.html', 'settings.html', 'history.html', 'telemetry.html', 'local-telemetry.html', 'desktop.html'];
 
 function walk(dir) {
   const fullDir = new URL(dir, root);
@@ -52,6 +52,8 @@ test('active storage keys and deploy aliases are listed', () => {
 
   assert.ok(manifest.aliases.some((alias) => alias.route === '/desktop' && alias.target === '/desktop.html'));
   assert.ok(manifest.aliases.some((alias) => alias.route === '/thread' && alias.target === '/thread.html'));
+  assert.ok(manifest.aliases.some((alias) => alias.route === '/telemetry' && alias.target === '/telemetry.html'));
+  assert.ok(manifest.aliases.some((alias) => alias.route === '/local-telemetry' && alias.target === '/local-telemetry.html'));
   assert.match(read('src/server.js'), /const publicDir = process\.env\.MAKERSPACE_STATIC_DIR \|\| distDir;/);
   assert.doesNotMatch(read('src/server.js'), /rootDir, 'public'/);
 });

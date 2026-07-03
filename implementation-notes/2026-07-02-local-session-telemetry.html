@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Local session telemetry</title>
+<meta name="task" content="Add a local-session telemetry variant for desktop Makerspace state.">
+<meta name="date-started" content="2026-07-02">
+<meta name="date-updated" content="2026-07-02">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="makerspace,telemetry,local,desktop,sessions">
+<meta name="related" content="2026-07-02-db-telemetry-side-app.html,2026-06-25-trusted-history-access.html,2026-06-25-pi-session-traces.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Local session telemetry</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-02 · status <b>shipped</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Ship <code>/local-telemetry.html</code> for all local desktop session rows.</div><b>Source</b><div><code>${MAKERSPACE_HOME:-~/.makerspace}/sessions.json</code>.</div><b>Surface</b><div><code>GET /api/threads/performance?source=local</code> and <code>/local-telemetry.html</code>.</div><b>Schema</b><div>None.</div><b>Mobile</b><div>Reuse telemetry layout.</div><b>Open Qs</b><div>0.</div></div>
+<h2>Algorithm</h2>
+<ol><li>Read the configured DB store for normal telemetry.</li><li>When <code>source=local</code> and <code>INFRA_PROVIDER=local</code>, read <code>config.localDataDir/sessions.json</code> directly.</li><li>Bypass browser-session ownership only for the local-source view so old desktop browser IDs still show.</li></ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>src/server/threads.js</code>, <code>src/server/routes.js</code></td><td>touch</td><td>Add local-source performance payload routing.</td></tr><tr><td><code>frontend/local-telemetry.html</code>, <code>frontend/src/pages.jsx</code>, <code>frontend/src/runtime/performance.js</code></td><td>new/touch</td><td>Add the local-session telemetry route and copy.</td></tr><tr><td><code>vite.config.js</code>, <code>frontend/route-manifest.json</code>, <code>vercel.json</code></td><td>touch</td><td>Expose the local telemetry route and alias.</td></tr><tr><td><code>test/local-telemetry-route.test.js</code>, <code>test/frontend-route-manifest.test.js</code></td><td>new/touch</td><td>Cover local source visibility and route registration.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Use an explicit <code>source=local</code> route. The normal DB/D1 view keeps current access filtering.</td></tr><tr><td>D-002</td><td>Allow local source only under <code>INFRA_PROVIDER=local</code>. Hosted backends cannot mean the user's desktop filesystem.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>One local JSON file over Pi JSONL parsing. The existing telemetry rollup already comes from session rows.</td></tr></table>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>node --check src/server/threads.js src/server/routes.js frontend/src/runtime/performance.js</code></td><td>Passed.</td></tr><tr><td><code>node --test test/local-telemetry-route.test.js test/frontend-route-manifest.test.js test/performance.test.js</code></td><td>Passed 11/11.</td></tr><tr><td><code>npm run build</code></td><td>Passed.</td></tr><tr><td><code>GET /api/threads/performance?source=local</code> on local preview</td><td>Returned 186 local desktop sessions.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Remove the local route, query branch, test, and manifest rows; session files stay untouched.</p>
+<h2>Definition of done</h2>
+<ul><li><code>/local-telemetry.html</code> reads local desktop sessions independent of browser-session IDs.</li><li><code>/telemetry.html</code> keeps configured DB/D1 behavior.</li><li>Focused route and build checks pass.</li></ul>
+</body>
+</html>

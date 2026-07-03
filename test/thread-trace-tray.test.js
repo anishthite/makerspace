@@ -57,8 +57,8 @@ test('thread page reload fetches fresh worker trace state', () => {
   assert.match(js, /cache: 'no-store'/);
 });
 
-test('agent trace shows thinking steps and answer summaries', () => {
-  assert.match(pages, /<span>agent trace<\/span><strong>events<\/strong>/);
+test('workflow trace shows thinking steps and answer summaries', () => {
+  assert.match(pages, /<span>workflow trace<\/span><strong>events<\/strong>/);
   assert.match(js, /const thinkingCards = new Map\(\)/);
   assert.match(js, /function renderTimelineThinkingEvent/);
   assert.match(js, /thinking steps/);
@@ -68,6 +68,22 @@ test('agent trace shows thinking steps and answer summaries', () => {
   assert.match(css, /\.thinking-card/);
   assert.doesNotMatch(js, /formatTime/);
   assert.doesNotMatch(js, /data-thinking-time/);
+});
+
+test('workflow rail renders workflow agents, not generic tool calls', () => {
+  assert.match(pages, /aria-label="Workflow agent trace"/);
+  assert.match(pages, /<span>workflow agents<\/span><strong id="agent-graph-count">idle<\/strong>/);
+  assert.match(pages, /click for full workflow trace/);
+  assert.match(js, /const workflowRuns = new Map\(\)/);
+  assert.match(js, /function renderWorkflowRun/);
+  assert.match(js, /function workflowAgentDetail/);
+  assert.match(js, /workflow-agent-detail/);
+  assert.match(js, /workflow-agent-stack/);
+  assert.match(js, /workflow agents appear here when a workflow starts/);
+  assert.match(js, /\/workflows\/\$\{encodeURIComponent\(runId\)\}/);
+  assert.doesNotMatch(js, /const processHtml = graphItems\.map/);
+  assert.doesNotMatch(js, /item\.kind \|\| 'tool'/);
+  assert.doesNotMatch(js, /workflow trace · click to expand/);
 });
 
 test('tool rows show one-line action copy with the target path or search scope', () => {
@@ -83,7 +99,7 @@ test('tool rows show one-line action copy with the target path or search scope',
 });
 
 test('assistant card waits for output instead of showing a working placeholder', () => {
-  assert.match(js, /function appendMessage\(role, label, text = '', images = \[\]\)/);
+  assert.match(js, /function appendMessage\(role, label, text = '', images = \[\], options = \{\}\)/);
   assert.match(js, /function ensureAssistantBody\(\) \{\s*if \(!activeAssistantBody\) activeAssistantBody = appendMessage\('assistant', 'main agent'\);/);
   assert.match(js, /appendStreamingMessageText\(ensureAssistantBody\(\), text\)/);
   assert.match(js, /const renderedMessageKeys = new Set\(\)/);
@@ -99,18 +115,49 @@ test('assistant card waits for output instead of showing a working placeholder',
 test('follow-up responses and reopened active runs hydrate message history', () => {
   assert.match(js, /async function loadThread\(\)[\s\S]+renderThreadHistory\(payload\.thread\);\s*renderInitialPrompt\(payload\.thread\);/);
   assert.match(js, /const payload = await fetchJson\(`\/api\/threads\/\$\{encodeURIComponent\(name\)\}\/messages`, \{/);
-  assert.match(js, /if \(payload\.session\) \{\s*renderThread\(payload\.session\);\s*renderThreadHistory\(payload\.session\);\s*\}\s*streamRun\(\);/);
+  assert.match(js, /const returnedThread = payload\.thread \|\| payload\.session/);
+  assert.match(js, /if \(returnedThread\) \{\s*renderThread\(returnedThread\);\s*renderThreadHistory\(returnedThread\);\s*\}/);
   assert.doesNotMatch(js, /isLatestRun && !assistant && isActiveStatus\(effectiveStatus\(thread\)\) && !activeAssistantBody/);
   assert.doesNotMatch(js, /appendMessage\('assistant', 'main agent', '', \{ pending: true \}\)/);
+});
+
+test('running thread composer labels steer and follow-up delivery', () => {
+  assert.match(pages, /id="composer-hint"/);
+  assert.match(css, /\.composer-hint/);
+  assert.match(js, /Enter steers the running agent · Alt\+Enter queues a follow-up/);
+  assert.match(js, /nextSubmitDelivery = 'followUp'/);
+  assert.match(js, /const delivery = nextSubmitDelivery === 'followUp' \? 'followUp' : isRunningThread\(\) \? 'steer' : 'auto'/);
+  assert.match(js, /delivery,\s*submittedAtMs/);
+  assert.match(js, /if \(!activeDelivery\) activeRunSummaryMarker = appendRunSummaryMarker/);
+  assert.match(js, /event\.type === 'queue'\) updateQueueState\(event\)/);
 });
 
 test('thread messages render stored image attachments', () => {
   assert.match(js, /imageAttachmentSrc/);
   assert.match(js, /function renderMessageAttachments/);
-  assert.match(js, /appendMessage\('user', 'you', message\.text, message\.images\)/);
+  assert.match(js, /appendMessage\('user', 'you', message\.text, message\.images, \{ runId \}\)/);
   assert.match(js, /appendMessage\('user', 'you', imageAttachmentText\(prompt, images\.length\), images\)/);
   assert.match(css, /\.message-attachments/);
   assert.match(css, /\.message-attachment-image/);
+});
+
+test('opening a populated thread scrolls back to the latest user turn', () => {
+  assert.match(js, /let initialResumeScrollDone = false/);
+  assert.match(js, /function restoreInitialThreadPosition\(\)/);
+  assert.match(js, /timeline\.querySelectorAll\('\.message-item\.user'\)/);
+  assert.match(js, /timeline\.querySelector\('\.message-item\.assistant'\)/);
+  assert.match(js, /target\.getBoundingClientRect\(\)\.top \+ window\.scrollY - offset/);
+  assert.match(js, /const output = await loadOutput\(\);\n\s*restoreInitialThreadPosition\(\);/);
+});
+
+test('final turn status colors the matching assistant message', () => {
+  assert.match(js, /function finalTurnStatus\(thread = currentThread\)/);
+  assert.match(js, /function applyThreadTurnStatus\(thread = currentThread\)/);
+  assert.match(js, /item\.dataset\.runId === turn\.runId/);
+  assert.match(js, /event\.type === 'title' \|\| event\.type === 'answer_summary' \|\| event\.type === 'turn_status'/);
+  assert.match(css, /\.message-item\.assistant\[data-turn-color="green"\] \.timeline-dot/);
+  assert.match(css, /\.message-item\.assistant\[data-turn-color="amber"\] \.timeline-dot/);
+  assert.match(css, /\.message-item\.assistant\[data-turn-color="gray"\] \.timeline-dot/);
 });
 
 test('inline trace uses a subtle marker without overlay behavior', () => {

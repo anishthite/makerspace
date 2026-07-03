@@ -1,9 +1,10 @@
 import './appearance.js?v=palette-2';
 import { htmlPreviewDocument } from './html-preview.js';
+import { renderInteractiveArtifacts, stripInteractiveArtifactBlocks } from './interactive-artifacts.js';
 import { submitOnEnter } from './submit-on-enter.js';
 import { bindImageDropZone, clearImageInput, filesToImageAttachments, imageAttachmentSrc, imageAttachmentText, imageInputFiles, updateImageStatus } from './image-attachments.js';
 import { implementationNoteFromToolEvent, implementationNotesFromToolEvent } from './implementation-notes.js';
-import { excalidrawArtifactPaths } from './excalidraw-artifacts.js';
+import { diagramImageArtifactPaths, excalidrawArtifactPaths, normalizeDiagramImageArtifactPath } from './excalidraw-artifacts.js';
 
 const BROWSER_SESSION_KEY = 'makerspaceBrowserSession';
 const MODEL_REF_KEY = 'makerspaceModelRef';
@@ -11,6 +12,9 @@ const THINKING_LEVEL_KEY = 'makerspaceThinkingLevel';
 const THINKING_LEVELS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh'];
 const ARCHIVEABLE_THREAD_STATUSES = ['completed', 'ready', 'failed'];
 const COPY_FEEDBACK_MS = 1200;
+const PHOSPHOR_COPY_ICON = '<svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M216,34H88a6,6,0,0,0-6,6V82H40a6,6,0,0,0-6,6V216a6,6,0,0,0,6,6H168a6,6,0,0,0,6-6V174h42a6,6,0,0,0,6-6V40A6,6,0,0,0,216,34ZM162,210H46V94H162Zm48-48H174V88a6,6,0,0,0-6-6H94V46H210Z" /></svg><span class="sr-only">copy</span>';
+const MAX_INLINE_EXCALIDRAW_ARTIFACTS = 3;
+const MAX_INLINE_DIAGRAM_IMAGE_ARTIFACTS = 4;
 
 const API_BASE = String(import.meta.env?.VITE_MAKERSPACE_API_BASE || '').trim().replace(/\/+$/, '');
 const params = new URLSearchParams(location.search);
@@ -34,6 +38,7 @@ const notesList = document.querySelector('#notes-list');
 const notesCount = document.querySelector('#notes-count');
 const promptForm = document.querySelector('#prompt-form');
 const promptInput = document.querySelector('#prompt');
+const composerHint = document.querySelector('#composer-hint');
 const modelRefInput = document.querySelector('#model-ref');
 const thinkingLevelInput = document.querySelector('#thinking-level');
 const thinkingLevelOutput = document.querySelector('#thinking-level-value');
@@ -57,6 +62,7 @@ let lastEventId = 0;
 let fallbackEventId = 0;
 const seenEvents = new Set();
 const graphTools = new Map();
+const workflowRuns = new Map();
 const toolCards = new Map();
 const thinkingCards = new Map();
 const notesByPath = new Map();
@@ -78,6 +84,13 @@ let diffBoxOpenedOnce = false;
 let assistantChunkBuffer = '';
 let assistantChunkFrame = 0;
 let assistantChunkShouldFollow = false;
+let submitInFlight = false;
+let nextSubmitDelivery = 'auto';
+let queuedSteeringCount = 0;
+let queuedFollowUpCount = 0;
+let initialResumeScrollDone = false;
+let workflowPollTimer = 0;
+const excalidrawRenderTokens = new WeakMap();
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -125,13 +138,12 @@ function makeCopyButton(getText, label) {
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'copy-button';
-  button.textContent = 'copy';
+  button.innerHTML = PHOSPHOR_COPY_ICON;
   button.title = `copy ${label}`;
   button.setAttribute('aria-label', `copy ${label}`);
   button.addEventListener('click', async (event) => {
     event.preventDefault();
     event.stopPropagation();
-    const idleText = 'copy';
     button.disabled = true;
     try {
       button.textContent = await copyText(getText()) ? 'copied' : 'empty';
@@ -140,7 +152,7 @@ function makeCopyButton(getText, label) {
     }
     setTimeout(() => {
       button.disabled = false;
-      button.textContent = idleText;
+      button.innerHTML = PHOSPHOR_COPY_ICON;
     }, COPY_FEEDBACK_MS);
   });
   return button;
@@ -287,53 +299,185 @@ function streamUrl(path, after = 0) {
   return url.toString();
 }
 
-function excalidrawViewerUrl(artifactPath) {
+function excalidrawViewerUrl(artifactPath, mode = 'full') {
   const url = new URL('/excalidraw-viewer.html', location.origin);
   url.searchParams.set('thread', name || '');
   url.searchParams.set('path', artifactPath);
   url.searchParams.set('theme', currentPreviewTheme());
+  if (mode === 'preview') url.searchParams.set('mode', 'preview');
   return url.toString();
 }
 
-function renderExcalidrawArtifacts(node, text) {
+function diagramImageArtifactUrl(artifactPath) {
+  const url = new URL(apiUrl(`/api/threads/${encodeURIComponent(name)}/artifacts/file`), location.origin);
+  url.searchParams.set('path', artifactPath);
+  url.searchParams.set('browserSession', getBrowserSessionId());
+  return url.toString();
+}
+
+function resolveHtmlPreviewImageSrc(src) {
+  const artifactPath = normalizeDiagramImageArtifactPath(src);
+  return name && artifactPath ? diagramImageArtifactUrl(artifactPath) : '';
+}
+
+function artifactStem(artifactPath) {
+  return String(artifactPath || '').replace(/\.(?:excalidraw|gif|jpe?g|png|svg|webp)$/i, '');
+}
+
+function encodedPublicUrl(pathname) {
+  const encoded = pathname.split('/').map((part, index) => index ? encodeURIComponent(part) : part).join('/');
+  return new URL(encoded, location.origin).toString();
+}
+
+function publicExcalidrawArtifactUrls(artifactPath) {
+  const leaf = artifactPath.split('/').at(-1) || artifactPath;
+  return [...new Set([
+    `/artifacts/${artifactPath}`,
+    `/artifacts/${leaf}`,
+    `/${artifactPath}`,
+  ])].map(encodedPublicUrl);
+}
+
+function hasExcalidrawScene(payload) {
+  const scene = payload?.data || payload;
+  return scene?.type === 'excalidraw' && Array.isArray(scene.elements);
+}
+
+async function fetchPublicExcalidrawArtifact(url) {
+  const response = await fetch(url, { credentials: 'include', cache: 'no-store' });
+  if (!response.ok) throw new Error(`Request failed: ${response.status}`);
+  return response.json();
+}
+
+async function canLoadExcalidrawArtifact(artifactPath) {
+  if (name) {
+    try {
+      const payload = await fetchJson(`/api/threads/${encodeURIComponent(name)}/artifacts?path=${encodeURIComponent(artifactPath)}`);
+      return hasExcalidrawScene(payload);
+    } catch {
+      return false;
+    }
+  }
+
+  for (const url of publicExcalidrawArtifactUrls(artifactPath)) {
+    try {
+      if (hasExcalidrawScene(await fetchPublicExcalidrawArtifact(url))) return true;
+    } catch {
+      // Missing public fallback; keep looking.
+    }
+  }
+  return false;
+}
+
+async function viewableExcalidrawArtifactPaths(paths) {
+  const checks = await Promise.all(paths.map(async (artifactPath) => (
+    await canLoadExcalidrawArtifact(artifactPath) ? artifactPath : ''
+  )));
+  return checks.filter(Boolean);
+}
+
+async function fetchDiagramImageArtifact(artifactPath) {
+  try {
+    const response = await fetch(diagramImageArtifactUrl(artifactPath), {
+      credentials: 'include',
+      cache: 'no-store',
+      headers: authHeaders(),
+    });
+    if (!response.ok || !String(response.headers.get('content-type') || '').startsWith('image/')) return null;
+    return { path: artifactPath, src: URL.createObjectURL(await response.blob()) };
+  } catch {
+    return null;
+  }
+}
+
+async function viewableDiagramImageArtifacts(paths) {
+  const artifacts = await Promise.all(paths.map(fetchDiagramImageArtifact));
+  return artifacts.filter(Boolean);
+}
+
+function appendExcalidrawArtifactCard(section, artifactPath) {
+  const card = document.createElement('article');
+  card.className = 'excalidraw-card';
+
+  const head = document.createElement('div');
+  head.className = 'excalidraw-card-head';
+  const title = document.createElement('strong');
+  title.textContent = artifactPath.split('/').at(-1) || artifactPath;
+  title.title = artifactPath;
+  card.title = artifactPath;
+  const link = document.createElement('a');
+  link.href = excalidrawViewerUrl(artifactPath);
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  link.textContent = 'open';
+  link.setAttribute('aria-label', `Open ${artifactPath} full size`);
+  head.append(title, link);
+
+  const frame = document.createElement('iframe');
+  frame.className = 'excalidraw-inline-viewer';
+  frame.title = `Excalidraw preview: ${artifactPath}`;
+  frame.loading = 'lazy';
+  frame.referrerPolicy = 'no-referrer';
+  frame.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+  frame.setAttribute('scrolling', 'no');
+  frame.src = excalidrawViewerUrl(artifactPath, 'preview');
+
+  card.append(head, frame);
+  section.append(card);
+}
+
+function appendDiagramImageArtifactCard(section, artifact) {
+  const card = document.createElement('article');
+  card.className = 'excalidraw-card diagram-image-card';
+  card.title = artifact.path;
+
+  const head = document.createElement('div');
+  head.className = 'excalidraw-card-head';
+  const title = document.createElement('strong');
+  title.textContent = artifact.path.split('/').at(-1) || artifact.path;
+  title.title = artifact.path;
+  const link = document.createElement('a');
+  link.href = diagramImageArtifactUrl(artifact.path);
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  link.textContent = 'open';
+  head.append(title, link);
+
+  const image = document.createElement('img');
+  image.className = 'diagram-inline-image';
+  image.src = artifact.src;
+  image.alt = `Diagram preview: ${artifact.path}`;
+  image.loading = 'lazy';
+
+  card.append(head, image);
+  section.append(card);
+}
+
+function renderExcalidrawArtifacts(node, text, options = {}) {
+  const renderToken = {};
+  excalidrawRenderTokens.set(node, renderToken);
   node.querySelector('.excalidraw-artifacts')?.remove();
   if (!name || !node.closest('.message-item.assistant')) return;
 
-  const paths = excalidrawArtifactPaths(text);
-  if (!paths.length) return;
+  const imagePaths = options.includeImages === false ? [] : diagramImageArtifactPaths(text).slice(0, MAX_INLINE_DIAGRAM_IMAGE_ARTIFACTS);
+  const imageStems = new Set(imagePaths.map(artifactStem));
+  const excalidrawPaths = excalidrawArtifactPaths(text)
+    .filter((artifactPath) => !imageStems.has(artifactStem(artifactPath)))
+    .slice(0, MAX_INLINE_EXCALIDRAW_ARTIFACTS);
+  if (!imagePaths.length && !excalidrawPaths.length) return;
 
-  const section = document.createElement('section');
-  section.className = 'excalidraw-artifacts';
-  section.setAttribute('aria-label', 'Excalidraw drawings');
-
-  for (const artifactPath of paths) {
-    const card = document.createElement('article');
-    card.className = 'excalidraw-card';
-
-    const head = document.createElement('div');
-    head.className = 'excalidraw-card-head';
-    const title = document.createElement('strong');
-    title.textContent = artifactPath.split('/').at(-1) || artifactPath;
-    const link = document.createElement('a');
-    link.href = excalidrawViewerUrl(artifactPath);
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    link.textContent = 'open';
-    head.append(title, link);
-
-    const frame = document.createElement('iframe');
-    frame.className = 'excalidraw-inline-viewer';
-    frame.title = `Excalidraw preview: ${artifactPath}`;
-    frame.loading = 'lazy';
-    frame.referrerPolicy = 'no-referrer';
-    frame.setAttribute('sandbox', 'allow-scripts allow-same-origin');
-    frame.src = excalidrawViewerUrl(artifactPath);
-
-    card.append(head, frame);
-    section.append(card);
-  }
-
-  node.append(section);
+  void Promise.all([
+    viewableDiagramImageArtifacts(imagePaths),
+    viewableExcalidrawArtifactPaths(excalidrawPaths),
+  ]).then(([imageArtifacts, viewableExcalidrawPaths]) => {
+    if (excalidrawRenderTokens.get(node) !== renderToken || (!imageArtifacts.length && !viewableExcalidrawPaths.length)) return;
+    const section = document.createElement('section');
+    section.className = 'excalidraw-artifacts diagram-artifacts';
+    section.setAttribute('aria-label', 'Diagram artifacts');
+    imageArtifacts.forEach((artifact) => appendDiagramImageArtifactCard(section, artifact));
+    viewableExcalidrawPaths.forEach((artifactPath) => appendExcalidrawArtifactCard(section, artifactPath));
+    node.append(section);
+  });
 }
 
 async function fetchJson(path, options = {}) {
@@ -382,6 +526,81 @@ function canArchiveThread(thread) {
 
 function canStopThread(thread) {
   return isActiveStatus(effectiveStatus(thread));
+}
+
+function isRunningThread(thread = currentThread) {
+  return String(effectiveStatus(thread) || '').toLowerCase() === 'running';
+}
+
+function isStartingThread(thread = currentThread) {
+  return ['launching', 'queued', 'starting', 'reconnecting'].includes(String(effectiveStatus(thread) || '').toLowerCase());
+}
+
+function queueCountCopy() {
+  const parts = [];
+  if (queuedSteeringCount) parts.push(`${queuedSteeringCount} steer${queuedSteeringCount === 1 ? '' : 's'}`);
+  if (queuedFollowUpCount) parts.push(`${queuedFollowUpCount} follow-up${queuedFollowUpCount === 1 ? '' : 's'}`);
+  return parts.length ? ` · pending ${parts.join(', ')}` : '';
+}
+
+function renderComposerState(thread = currentThread) {
+  const running = isRunningThread(thread);
+  const starting = isStartingThread(thread);
+  if (composerHint) {
+    composerHint.textContent = running
+      ? `Enter steers the running agent · Alt+Enter queues a follow-up${queueCountCopy()}`
+      : starting
+        ? 'Agent is starting · steering unlocks once it is live'
+        : 'Enter sends · Shift+Enter adds a line';
+  }
+  if (promptInput) promptInput.placeholder = running ? 'Steer the running agent…' : 'Next task…';
+  if (sendButton) {
+    sendButton.disabled = submitInFlight || starting;
+    sendButton.textContent = running ? 'steer' : 'send';
+  }
+}
+
+function updateQueueState(event = {}) {
+  queuedSteeringCount = Array.isArray(event.steering) ? event.steering.length : queuedSteeringCount;
+  queuedFollowUpCount = Array.isArray(event.followUp) ? event.followUp.length : queuedFollowUpCount;
+  renderComposerState();
+}
+
+function finalTurnStatus(thread = currentThread) {
+  const status = String(thread?.finalTurnStatus || '').trim();
+  const color = String(thread?.finalTurnColor || '').trim();
+  if (!status || !color) return null;
+  return {
+    status,
+    color,
+    reason: String(thread?.finalTurnReason || '').trim(),
+    runId: String(thread?.finalTurnStatusRunId || currentRunId(thread) || ''),
+  };
+}
+
+function applyAssistantTurnStatus(item, turn) {
+  if (!item) return;
+  delete item.dataset.turnStatus;
+  delete item.dataset.turnColor;
+  item.removeAttribute('title');
+  if (!turn?.status || !turn?.color) return;
+  item.dataset.turnStatus = turn.status;
+  item.dataset.turnColor = turn.color;
+  if (turn.reason) item.title = turn.reason;
+}
+
+function turnStatusForMessage(message, thread = currentThread) {
+  const turn = finalTurnStatus(thread);
+  if (!turn || message?.role !== 'assistant') return null;
+  const runId = String(message.runId || '');
+  return !turn.runId || runId === turn.runId ? turn : null;
+}
+
+function applyThreadTurnStatus(thread = currentThread) {
+  const turn = finalTurnStatus(thread);
+  for (const item of timeline?.querySelectorAll('.message-item.assistant') || []) {
+    applyAssistantTurnStatus(item, turn && (!turn.runId || item.dataset.runId === turn.runId) ? turn : null);
+  }
 }
 
 function syncHeaderStatusVisibility() {
@@ -434,13 +653,17 @@ function renderThread(thread) {
   document.title = currentProjectName ? `${displayTitle} · ${currentProjectName} · Makerspace` : `${displayTitle} · Makerspace`;
   meta.textContent = '';
   const rawStatus = effectiveStatus(thread) || 'unknown';
+  if (String(rawStatus).toLowerCase() !== 'running') {
+    queuedSteeringCount = 0;
+    queuedFollowUpCount = 0;
+  }
   graphStatus = lifecycleCopy(thread);
   if (!thinkingDetail.textContent) thinkingDetail.textContent = graphStatus;
   setStatus(graphStatus, statusTone(rawStatus), isActiveStatus(rawStatus));
   renderStopButton(thread);
   renderArchiveButton(thread);
   renderAgentGraph();
-  sendButton.disabled = Boolean(thread.bridgeClaimed && rawStatus !== 'ready');
+  renderComposerState(thread);
 }
 
 function timestampMs(value) {
@@ -553,6 +776,19 @@ function followLatest(enabled = true) {
   requestAnimationFrame(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'auto' }));
 }
 
+function restoreInitialThreadPosition() {
+  if (initialResumeScrollDone || !timeline) return;
+  const userMessages = timeline.querySelectorAll('.message-item.user');
+  const target = userMessages[userMessages.length - 1];
+  if (!target || (!timeline.querySelector('.message-item.assistant') && userMessages.length < 2)) return;
+  initialResumeScrollDone = true;
+  requestAnimationFrame(() => {
+    const topbar = document.querySelector('.flow-topbar');
+    const offset = Math.ceil(topbar?.getBoundingClientRect().height || 0) + 18;
+    window.scrollTo({ top: Math.max(0, target.getBoundingClientRect().top + window.scrollY - offset), behavior: 'auto' });
+  });
+}
+
 function shouldFollowTrace() {
   if (!isAgentActivityOpen() || !agentActivity) return false;
   return agentActivity.getBoundingClientRect().bottom <= window.innerHeight + 180;
@@ -630,7 +866,7 @@ function toolDisplay(event = {}) {
   const rawLabel = event.label || event.toolName || 'tool';
   const kind = /workflow/i.test(`${event.toolName || ''} ${rawLabel}`) ? 'workflow' : /agent/i.test(rawLabel) ? 'subagent' : 'tool';
   const scriptName = String(args.script || '').match(/\bname:\s*['"`]([^'"`]+)['"`]/)?.[1];
-  const runId = String([event.output, event.delta, rawLabel].filter(Boolean).join(' ')).match(/\brun-[a-z0-9-]+\b/i)?.[0] || '';
+  const runId = workflowRunIdFromEvent(event);
   const target = toolTarget(event);
   return {
     kind,
@@ -667,6 +903,8 @@ function activityCopy(event) {
   }
 
   if (event.type === 'workflow_result') return ['Workflow complete', 'continuation picked up'];
+
+  if (event.type === 'queue') return ['Queued messages', queueCountCopy().replace(/^ · /, '') || 'queue updated'];
 
   if (event.type === 'tool') {
     const note = implementationNoteFromToolEvent(event);
@@ -716,20 +954,65 @@ function setNow(event) {
   }
 }
 
-function renderAgentGraph() {
-  const graphItems = [...graphTools.values()];
-  const workflowItems = graphItems.filter((item) => item.kind === 'workflow' || item.kind === 'subagent');
-  const hiddenCopy = workflowItems.length ? 'workflow trace · click to expand' : '';
-  const workflowHtml = workflowItems.map((item) => {
-    const state = item.state === 'error' ? 'error' : item.state === 'done' ? 'done' : 'running';
-    const meta = [state, item.runId].filter(Boolean).join(' · ');
-    return `<div class="agent-node workflow ${state}"><span>${escapeHtml(item.label)}</span><small>${escapeHtml(meta)}</small></div>`;
+function workflowStateClass(status) {
+  const value = String(status || '').toLowerCase();
+  if (value === 'done' || value === 'completed') return 'done';
+  if (value === 'error' || value === 'failed' || value === 'aborted') return 'error';
+  if (value === 'skipped' || value === 'paused') return 'done';
+  return 'running';
+}
+
+function workflowTokens(value) {
+  const tokens = Number(value);
+  if (!Number.isFinite(tokens) || tokens <= 0) return '';
+  if (tokens < 1000) return `${Math.round(tokens)} tok`;
+  return `${(tokens / 1000).toFixed(tokens < 10_000 ? 1 : 0)}k tok`;
+}
+
+function workflowAgentDetail(label, value) {
+  const text = String(value || '').trim();
+  return text ? `<span><b>${escapeHtml(label)}</b>${escapeHtml(text)}</span>` : '';
+}
+
+function workflowAgentGroups(run) {
+  const agents = Array.isArray(run.agents) ? run.agents : [];
+  const phases = Array.isArray(run.phases) && run.phases.length ? run.phases : [...new Set(agents.map((agent) => agent.phase || 'workflow'))];
+  return phases.map((phase) => ({
+    phase,
+    agents: agents.filter((agent) => (agent.phase || 'workflow') === phase),
+  })).filter((group) => group.agents.length || group.phase === run.currentPhase);
+}
+
+function renderWorkflowRun(run) {
+  const agents = Array.isArray(run.agents) ? run.agents : [];
+  const done = agents.filter((agent) => ['done', 'skipped'].includes(String(agent.status || '').toLowerCase())).length;
+  const total = agents.length;
+  const state = workflowStateClass(run.status);
+  const groups = workflowAgentGroups(run).map((group) => {
+    const phaseAgents = group.agents.map((agent) => {
+      const agentState = workflowStateClass(agent.status);
+      const meta = [agent.status || 'queued', agent.model, workflowTokens(agent.tokens)].filter(Boolean).join(' · ');
+      const details = [
+        workflowAgentDetail('task', agent.promptPreview),
+        workflowAgentDetail('result', agent.resultPreview),
+        workflowAgentDetail('error', agent.error),
+      ].filter(Boolean).join('');
+      return `<div class="agent-node workflow-agent ${agentState}"><span>${escapeHtml(agent.label || 'agent')}</span><small>${escapeHtml(meta)}</small>${details ? `<div class="workflow-agent-detail">${details}</div>` : ''}</div>`;
+    }).join('');
+    return `<section class="workflow-phase"><div class="workflow-phase-head"><span>${escapeHtml(group.phase)}</span><small>${group.agents.length} agent${group.agents.length === 1 ? '' : 's'}</small></div>${phaseAgents}</section>`;
   }).join('');
-  agentGraphCount.textContent = graphStatus;
+
+  return `<div class="workflow-run"><div class="agent-node workflow ${state}"><span>${escapeHtml(run.workflowName || run.label || 'workflow')}</span><small>${escapeHtml([run.runId, run.status || 'running', total ? `${done}/${total} agents` : 'waiting for agents'].filter(Boolean).join(' · '))}</small></div>${groups}</div>`;
+}
+
+function renderAgentGraph() {
+  const runs = [...workflowRuns.values()];
+  const workflowHtml = runs.map(renderWorkflowRun).join('');
+  const agentCount = runs.reduce((sum, run) => sum + (Array.isArray(run.agents) ? run.agents.length : 0), 0);
+  agentGraphCount.textContent = runs.length ? `${graphStatus} · ${agentCount || runs.length}` : graphStatus;
   agentGraph.innerHTML = `
     <div class="agent-node pi ${escapeHtml(graphStatus)}"><span>main agent</span><small>${escapeHtml(graphStatus)}</small></div>
-    ${workflowHtml ? `<div class="agent-edge"></div><div class="subagent-stack workflow-stack">${workflowHtml}</div>` : ''}
-    ${hiddenCopy ? `<p class="rail-empty hidden-tool-hint">${escapeHtml(hiddenCopy)}</p>` : ''}
+    ${workflowHtml ? `<div class="agent-edge"></div><div class="subagent-stack workflow-agent-stack">${workflowHtml}</div>` : '<p class="rail-empty">workflow agents appear here when a workflow starts</p>'}
   `;
 }
 
@@ -867,7 +1150,7 @@ function renderNotesRail() {
       ${note.summary ? `<p class="rail-note-summary">${escapeHtml(note.summary)}</p>` : ''}
     `;
 
-    const preview = htmlPreviewDocument(note.html || '', currentPreviewTheme());
+    const preview = htmlPreviewDocument(note.html || '', currentPreviewTheme(), { resolveImageSrc: resolveHtmlPreviewImageSrc });
     if (preview) {
       const iframe = document.createElement('iframe');
       iframe.className = 'html-preview note-html-preview';
@@ -941,18 +1224,29 @@ function renderMessageAttachments(node, images = []) {
   node.append(list);
 }
 
+function fillComposerFromInteractiveAction({ prompt = '', delivery = 'followUp' } = {}) {
+  if (!promptInput || !prompt) return;
+  promptInput.value = prompt;
+  nextSubmitDelivery = delivery === 'followUp' && isRunningThread() ? 'followUp' : 'auto';
+  promptInput.focus();
+  renderComposerState();
+  setStatus('review interactive action, then send', 'info');
+}
+
 function renderMessageBody(node, text, allowHtml = false, images = []) {
   const raw = String(text || '');
-  const preview = allowHtml ? htmlPreviewDocument(raw, currentPreviewTheme()) : '';
+  const displayText = stripInteractiveArtifactBlocks(raw);
+  const preview = allowHtml ? htmlPreviewDocument(displayText, currentPreviewTheme(), { resolveImageSrc: resolveHtmlPreviewImageSrc }) : '';
   const card = node.closest('.message-card');
   messageText.set(node, raw);
 
   if (!preview) {
     node.dataset.renderMode = 'text';
     card?.classList.remove('html-rendered');
-    node.textContent = raw;
+    node.textContent = displayText;
     renderMessageAttachments(node, images);
     renderExcalidrawArtifacts(node, raw);
+    renderInteractiveArtifacts(node, raw, fillComposerFromInteractiveAction);
     return;
   }
 
@@ -976,7 +1270,8 @@ function renderMessageBody(node, text, allowHtml = false, images = []) {
   iframe.style.height = '1px';
   iframe.srcdoc = preview;
   renderMessageAttachments(node, images);
-  renderExcalidrawArtifacts(node, raw);
+  renderExcalidrawArtifacts(node, raw, { includeImages: false });
+  renderInteractiveArtifacts(node, raw, fillComposerFromInteractiveAction);
 }
 
 function appendMessageText(node, text, allowHtml = false) {
@@ -1040,10 +1335,11 @@ function rememberRenderedThreadMessage(message = {}) {
   }
 }
 
-function appendMessage(role, label, text = '', images = []) {
+function appendMessage(role, label, text = '', images = [], options = {}) {
   const follow = shouldFollowLatest();
   const article = document.createElement('article');
   article.className = `timeline-item message-item ${role}`;
+  if (options.runId) article.dataset.runId = String(options.runId);
   article.innerHTML = `
     <div class="timeline-dot" aria-hidden="true"></div>
     <div class="message-card">
@@ -1052,8 +1348,9 @@ function appendMessage(role, label, text = '', images = []) {
   `;
   const body = article.querySelector('.message-body');
   const card = article.querySelector('.message-card');
-  card.append(makeCopyButton(() => messageText.get(body) || body.textContent || '', `${role} message`));
+  if (role === 'assistant') card.append(makeCopyButton(() => messageText.get(body) || body.textContent || '', 'assistant message'));
   renderMessageBody(body, text, role === 'assistant', images);
+  if (role === 'assistant') applyAssistantTurnStatus(article, options.turnStatus || null);
   timeline.append(article);
   followLatest(follow);
   return body;
@@ -1071,7 +1368,7 @@ function renderThreadHistory(thread) {
     if (renderedMessageKeys.has(key)) continue;
 
     if (message.role === 'user') {
-      appendMessage('user', 'you', message.text, message.images);
+      appendMessage('user', 'you', message.text, message.images, { runId });
       rememberRenderedThreadMessage(message);
       const assistant = runId ? messages.slice(index + 1).find((item) => item.role === 'assistant' && item.runId === runId) : null;
       const isLatestRun = runId && runId === latestRunId;
@@ -1090,7 +1387,10 @@ function renderThreadHistory(thread) {
     if (activeAssistantBody && isLatestAssistant) {
       flushAssistantChunks();
       const follow = shouldFollowLatest();
+      const item = activeAssistantBody.closest('.message-item.assistant');
+      if (item && runId) item.dataset.runId = runId;
       renderMessageBody(activeAssistantBody, message.text, true);
+      applyAssistantTurnStatus(item, turnStatusForMessage(message, thread));
       activeAssistantBody = null;
       rememberRenderedThreadMessage(message);
       followLatest(follow);
@@ -1102,10 +1402,11 @@ function renderThreadHistory(thread) {
       continue;
     }
 
-    appendMessage('assistant', 'main agent', message.text);
+    appendMessage('assistant', 'main agent', message.text, [], { runId, turnStatus: turnStatusForMessage(message, thread) });
     rememberRenderedThreadMessage(message);
   }
   renderRunSummary();
+  applyThreadTurnStatus(thread);
   historyRendered = true;
   initialPromptRendered = true;
 }
@@ -1126,7 +1427,7 @@ function renderInitialPrompt(thread) {
   const startMs = timestampMs(thread?.submittedAtMs) || timestampMs(thread?.createdAt);
   const endMs = timestampMs(thread?.runEndedAtMs) || timestampMs(thread?.completedAt) || timestampMs(thread?.endedAt);
   const timestamp = startMs ? new Date(startMs).toISOString() : null;
-  appendMessage('user', 'you', prompt);
+  appendMessage('user', 'you', prompt, [], { runId: currentRunId(thread) });
   rememberRenderedThreadMessage({ role: 'user', text: prompt, timestamp, runId: currentRunId(thread) });
   const marker = appendRunSummaryMarker({ startMs, endMs, status: effectiveStatus(thread), runId: currentRunId(thread) });
   if (marker) activeRunSummaryMarker = marker;
@@ -1185,7 +1486,38 @@ function appendAssistantChunk(text) {
 }
 
 function workflowRunIdFromEvent(event = {}) {
-  return event.workflowRunId || String([event.output, event.delta, event.text, event.label].filter(Boolean).join(' ')).match(/\brun-[a-z0-9-]+\b/i)?.[0] || '';
+  const explicit = event.workflowRunId || event.details?.runId;
+  if (explicit) return String(explicit);
+  const text = String([event.output, event.delta, event.text].filter(Boolean).join(' '));
+  return text.match(/\brun-[a-z0-9-]+\b/i)?.[0] || text.match(/\bRun ID:\s*([a-z0-9][a-z0-9-]{2,100})\b/i)?.[1] || '';
+}
+
+function upsertWorkflowRun(runId, patch = {}) {
+  if (!runId) return;
+  const previous = workflowRuns.get(runId) || { runId, workflowName: 'workflow', status: 'running', phases: [], agents: [] };
+  workflowRuns.set(runId, { ...previous, ...patch, runId });
+  renderAgentGraph();
+}
+
+async function fetchWorkflowRun(runId) {
+  const payload = await fetchJson(`/api/threads/${encodeURIComponent(name)}/workflows/${encodeURIComponent(runId)}`);
+  upsertWorkflowRun(runId, payload);
+  return payload;
+}
+
+function workflowRunIsActive(run) {
+  return ['pending', 'running', 'unknown'].includes(String(run?.status || '').toLowerCase());
+}
+
+function scheduleWorkflowPolling() {
+  if (workflowPollTimer || !name) return;
+  const activeRunIds = [...workflowRuns.values()].filter(workflowRunIsActive).map((run) => run.runId);
+  if (!activeRunIds.length) return;
+  workflowPollTimer = window.setTimeout(async () => {
+    workflowPollTimer = 0;
+    await Promise.all(activeRunIds.map((runId) => fetchWorkflowRun(runId).catch(() => null)));
+    scheduleWorkflowPolling();
+  }, 1200);
 }
 
 function toolKey(event) {
@@ -1214,25 +1546,29 @@ function updateAgentGraphForTool(event) {
     runId: display.runId || previous.runId || '',
     label,
   });
-  renderAgentGraph();
+  if (display.kind === 'workflow' && (display.runId || previous.runId)) {
+    const runId = display.runId || previous.runId;
+    upsertWorkflowRun(runId, { workflowName: label, status: state === 'error' ? 'failed' : 'running' });
+    fetchWorkflowRun(runId).catch(() => null);
+    scheduleWorkflowPolling();
+  } else {
+    renderAgentGraph();
+  }
 }
 
 function updateAgentGraphForWorkflowEvent(event) {
   const runId = workflowRunIdFromEvent(event);
-  let key = runId ? `workflow:${runId}` : '';
-  if (!key) {
-    const match = [...graphTools.entries()].reverse().find(([, item]) => item.kind === 'workflow' && item.state === 'running');
-    key = match?.[0] || `workflow:${event.id || event.timestamp || graphTools.size}`;
-  }
-  const previous = graphTools.get(key) || {};
   const name = String(event.text || '').match(/Background workflow "([^"]+)" finished/)?.[1];
-  graphTools.set(key, {
-    kind: 'workflow',
-    label: name || previous.label || 'workflow',
-    runId: runId || previous.runId || '',
-    state: event.type === 'workflow_result' ? 'done' : 'running',
-  });
-  renderAgentGraph();
+  if (runId) {
+    upsertWorkflowRun(runId, {
+      workflowName: name || workflowRuns.get(runId)?.workflowName || 'workflow',
+      status: event.type === 'workflow_result' ? 'completed' : 'running',
+    });
+    fetchWorkflowRun(runId).catch(() => null);
+    scheduleWorkflowPolling();
+  } else {
+    renderAgentGraph();
+  }
 }
 
 function renderTimelineToolEvent(event) {
@@ -1369,7 +1705,7 @@ function renderEvent(event, { appendTranscript = false } = {}) {
   updateLastEventId(event);
   if (event.type === 'usage') return;
 
-  if (event.type === 'title' || event.type === 'answer_summary') {
+  if (event.type === 'title' || event.type === 'answer_summary' || event.type === 'turn_status') {
     const key = eventKey(event);
     const isNewEvent = !seenEvents.has(key);
     seenEvents.add(key);
@@ -1395,6 +1731,7 @@ function renderEvent(event, { appendTranscript = false } = {}) {
   const key = eventKey(event);
   if (seenEvents.has(key)) return;
   seenEvents.add(key);
+  if (event.type === 'queue') updateQueueState(event);
   setNow(event);
 
   if (event.type === 'thinking') {
@@ -1403,7 +1740,7 @@ function renderEvent(event, { appendTranscript = false } = {}) {
     renderToolEvent(event);
   } else if (event.type === 'workflow_status' || event.type === 'workflow_result') {
     renderWorkflowEvent(event);
-  } else if (!['log', 'status', 'metric'].includes(event.type)) {
+  } else if (!['log', 'status', 'metric', 'queue'].includes(event.type)) {
     const [headline, detail] = activityCopy(event);
     appendTimelineItem(event.type || 'event', headline, detail);
   }
@@ -1473,9 +1810,10 @@ function streamRun() {
       renderStopButton(currentThread);
       renderArchiveButton(currentThread);
       scheduleDiffRefresh(0);
-      sendButton.disabled = false;
+      submitInFlight = false;
       finalizeAssistantBody();
       activeAssistantBody = null;
+      renderComposerState(currentThread);
     }
   };
 
@@ -1531,6 +1869,13 @@ archiveButton?.addEventListener('click', async () => {
 });
 imageInput?.addEventListener('change', () => updateImageStatus(imageInput, imageStatus));
 bindImageDropZone(promptForm, imageInput, imageStatus);
+promptInput?.addEventListener('keydown', (event) => {
+  if (event.defaultPrevented || event.key !== 'Enter' || !event.altKey || event.shiftKey || event.ctrlKey || event.metaKey || event.isComposing) return;
+  if (sendButton?.disabled) return;
+  event.preventDefault();
+  nextSubmitDelivery = 'followUp';
+  promptForm.requestSubmit();
+});
 submitOnEnter(promptInput, promptForm, sendButton);
 setAgentActivityOpen(false);
 renderAgentGraph();
@@ -1539,32 +1884,43 @@ renderNotesRail();
 promptForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   const typedPrompt = promptInput.value.trim();
-  sendButton.disabled = true;
+  const delivery = nextSubmitDelivery === 'followUp' ? 'followUp' : isRunningThread() ? 'steer' : 'auto';
+  nextSubmitDelivery = 'auto';
+  submitInFlight = true;
+  renderComposerState();
 
   try {
     const images = await filesToImageAttachments(imageInputFiles(imageInput));
     const prompt = typedPrompt || (images.length ? 'Describe the attached image(s).' : '');
     if (!prompt) {
-      sendButton.disabled = false;
+      submitInFlight = false;
+      renderComposerState();
       return;
     }
 
     const submittedAtMs = Date.now();
     const submittedAt = new Date(submittedAtMs).toISOString();
+    const activeDelivery = delivery !== 'auto';
+    const runId = activeDelivery ? currentRunId(currentThread) || String(submittedAtMs) : String(submittedAtMs);
+    if (activeDelivery) {
+      finalizeAssistantBody();
+      activeAssistantBody = null;
+    }
     appendMessage('user', 'you', imageAttachmentText(prompt, images.length), images);
-    rememberRenderedThreadMessage({ role: 'user', text: prompt, images, timestamp: submittedAt, runId: String(submittedAtMs) });
-    activeRunSummaryMarker = appendRunSummaryMarker({ startMs: submittedAtMs, status: 'queued', runId: String(submittedAtMs) });
+    rememberRenderedThreadMessage({ role: 'user', text: prompt, images, timestamp: submittedAt, runId });
+    if (!activeDelivery) activeRunSummaryMarker = appendRunSummaryMarker({ startMs: submittedAtMs, status: 'queued', runId });
     saveRunControls();
     promptInput.value = '';
     clearImageInput(imageInput);
     updateImageStatus(imageInput, imageStatus);
-    renderEvent({ type: 'status', runStatus: 'queued', timestamp: new Date(submittedAtMs).toISOString(), submittedAtMs });
+    if (!activeDelivery) renderEvent({ type: 'status', runStatus: 'queued', timestamp: new Date(submittedAtMs).toISOString(), submittedAtMs });
 
     const payload = await fetchJson(`/api/threads/${encodeURIComponent(name)}/messages`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         prompt,
+        delivery,
         submittedAtMs,
         clientId: getBrowserSessionId(),
         modelRef: modelRefInput.value,
@@ -1572,21 +1928,26 @@ promptForm.addEventListener('submit', async (event) => {
         images,
       }),
     });
-    if (payload.session) {
-      renderThread(payload.session);
-      renderThreadHistory(payload.session);
+    const returnedThread = payload.thread || payload.session;
+    if (returnedThread) {
+      renderThread(returnedThread);
+      renderThreadHistory(returnedThread);
     }
+    submitInFlight = false;
+    renderComposerState(returnedThread || currentThread);
     streamRun();
   } catch (error) {
     renderEvent({ type: 'status', runStatus: 'failed', warning: error.message, timestamp: new Date().toISOString() });
     setStatus(error.message, 'error');
-    sendButton.disabled = false;
+    submitInFlight = false;
+    renderComposerState();
   }
 });
 
 try {
   const thread = await loadThread();
   const output = await loadOutput();
+  restoreInitialThreadPosition();
   const status = output.runStatus || thread.runStatus;
   if (['launching', 'running', 'starting', 'queued'].includes(status)) streamRun();
 } catch (error) {

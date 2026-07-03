@@ -1,4 +1,4 @@
-# micro cloud v0
+# makerspace v0
 
 A tiny control plane for talking to `pi` inside fresh Daytona sandboxes.
 
@@ -32,7 +32,7 @@ That is deliberate. The goal is one prompt in, one real sandbox-backed run out.
 
 For deployment, put the built React/Vite static UI (`npm run build` → `dist/`) on Vercel and this Node control backend on a server with Daytona credentials. Set the frontend env `VITE_MAKERSPACE_API_BASE=https://api.example.com` in Vercel; the browser no longer accepts `?api=` or `?token=` bootstrap links. The backend keeps Daytona credentials server-side.
 
-Hosted users sign in with GitHub for their Makerspace account, then Settings → Codex stores their own ChatGPT Plus/Pro Codex OAuth for Pi. Do not set `OPENAI_API_KEY` in Vercel or DigitalOcean for hosted Codex runs.
+Hosted users sign in with GitHub for their Makerspace account. Settings → Codex stores their own ChatGPT Plus/Pro Codex OAuth for Pi; Settings → Claude Code stores their Claude Pro/Max OAuth. Do not set shared model API keys in Vercel or DigitalOcean for hosted OAuth runs.
 
 DigitalOcean App Platform can build the root `Dockerfile` for the control backend. Keep the source directory at `/`, use the Dockerfile build strategy, and set the public HTTP port to `8080`. `image/Dockerfile` is still the separate Daytona sandbox image. Set backend env `MAKERSPACE_ALLOWED_ORIGIN=https://your-vercel-app.vercel.app` so cross-origin GitHub-auth cookies work.
 
@@ -158,7 +158,7 @@ PI_CODING_AGENT_DIR=~/.pi/agent
 PI_PROFILE_DATA_PATH=./data/pi-profile.json
 MAKERSPACE_PI_DEFAULTS_PACKAGE_DIR=./packages/makerspace-pi-defaults
 REMOTE_WORKSPACE_DIR=/srv/workspace
-REMOTE_CONTROL_DIR=/srv/micro-cloud
+REMOTE_CONTROL_DIR=/srv/makerspace
 REMOTE_PI_DEFAULTS_PACKAGE_DIR=/home/daytona/.pi/agent/makerspace-pi-defaults
 PI_BRIDGE_PORT=4310
 PI_BRIDGE_READY_TIMEOUT_MS=240000

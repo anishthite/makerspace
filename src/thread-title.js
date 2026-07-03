@@ -1,7 +1,15 @@
 export const DEFAULT_THREAD_TITLE_MODEL = 'openai-codex/gpt-5.4-mini';
 const MAX_TITLE_LENGTH = 64;
 const MAX_SUMMARY_LENGTH = 140;
+const MAX_STATUS_REASON_LENGTH = 96;
 const SUMMARY_OUTPUT_CHARS = 8_000;
+const TURN_STATUS_USER_CHARS = 4_000;
+const TURN_STATUS_ASSISTANT_CHARS = 8_000;
+const TURN_STATUS_COLORS = {
+  done: 'green',
+  waiting_on_human: 'amber',
+  unknown: 'gray',
+};
 
 export function cleanThreadTitle(value, maxLength = MAX_TITLE_LENGTH) {
   let text = String(value ?? '').replaceAll('\r', '\n').trim();
@@ -98,6 +106,64 @@ export function buildFinalAnswerSummaryPrompt(session, finalOutput) {
   ].join('\n');
 }
 
+function capPromptText(value, max) {
+  const text = String(value || '').trim();
+  return text.length > max ? text.slice(-max) : text;
+}
+
+export function buildFinalTurnStatusPrompt(previousUserTurn, latestAssistantTurn) {
+  return [
+    'You are a tiny status classifier for an AI coding session.',
+    'Look only at the latest assistant turn, with the previous user turn as context.',
+    'Classify the latest assistant turn into exactly one status:',
+    '- "done": The assistant indicates the task is complete and no human action is required.',
+    '- "waiting_on_human": The assistant needs the human to do, provide, approve, check, confirm, choose, install, log in, grant access, or otherwise unblock something.',
+    '- "unknown": The status is ambiguous, ongoing, or cannot be determined.',
+    'Rules:',
+    '- If the assistant asks a question or presents choices, classify as "waiting_on_human".',
+    '- If the assistant says it is blocked, paused, needs credentials, needs confirmation, or asks the user to verify something it cannot verify, classify as "waiting_on_human".',
+    '- If the assistant reports successful completion with no next action for the human, classify as "done".',
+    '- Do not infer hidden state. Use only the text provided.',
+    '- Return only JSON with keys status, color, reason.',
+    'Color mapping: done=green, waiting_on_human=amber, unknown=gray.',
+    'Reason: max 12 words.',
+    `Previous user turn:\n${capPromptText(previousUserTurn, TURN_STATUS_USER_CHARS)}`,
+    `Latest assistant turn:\n${capPromptText(latestAssistantTurn, TURN_STATUS_ASSISTANT_CHARS)}`,
+  ].join('\n');
+}
+
+function normalizeTurnStatus(value) {
+  const status = String(value || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+  if (['complete', 'completed', 'success', 'shipped'].includes(status)) return 'done';
+  if (['human', 'waiting', 'waiting_for_human', 'blocked', 'needs_human', 'needs_input'].includes(status)) return 'waiting_on_human';
+  return Object.hasOwn(TURN_STATUS_COLORS, status) ? status : 'unknown';
+}
+
+function cleanStatusReason(value) {
+  return String(value || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, MAX_STATUS_REASON_LENGTH);
+}
+
+export function cleanFinalTurnStatus(value) {
+  const text = String(value ?? '').trim();
+  const jsonText = text.match(/\{[\s\S]*\}/)?.[0] || text;
+  let parsed = {};
+  try {
+    parsed = JSON.parse(jsonText);
+  } catch {
+    parsed = { status: text };
+  }
+
+  const status = normalizeTurnStatus(parsed.status);
+  return {
+    status,
+    color: TURN_STATUS_COLORS[status],
+    reason: cleanStatusReason(parsed.reason) || status.replaceAll('_', ' '),
+  };
+}
+
 async function generateShortText(options, settings) {
   const modelRef = String(options.modelRef || DEFAULT_THREAD_TITLE_MODEL).trim();
   if (!modelRef || modelRef.toLowerCase() === 'off') return '';
@@ -126,15 +192,16 @@ async function generateShortText(options, settings) {
       env: authStorage.getProviderEnv?.(model.provider),
       signal: options.signal,
       maxTokens: settings.maxTokens,
-      reasoning: 'minimal',
+      temperature: settings.temperature,
+      reasoning: settings.reasoning || 'minimal',
       cacheRetention: 'none',
     },
   );
 
   if (response.stopReason === 'error') throw new Error(response.errorMessage || `${settings.label} generation failed.`);
-  const text = settings.clean(assistantText(response));
-  if (!text) throw new Error(`${settings.label} generation returned an empty ${settings.emptyNoun}.`);
-  return text;
+  const result = settings.clean(assistantText(response));
+  if (!result) throw new Error(`${settings.label} generation returned an empty ${settings.emptyNoun}.`);
+  return result;
 }
 
 export function generateThreadTitle(session, options = {}) {
@@ -156,5 +223,17 @@ export function generateFinalAnswerSummary(session, finalOutput, options = {}) {
     prompt: buildFinalAnswerSummaryPrompt(session, finalOutput),
     maxTokens: 48,
     clean: cleanFinalAnswerSummary,
+  });
+}
+
+export function generateFinalTurnStatus(previousUserTurn, latestAssistantTurn, options = {}) {
+  return generateShortText(options, {
+    label: 'Turn status',
+    emptyNoun: 'status',
+    systemPrompt: 'Return only the JSON object.',
+    prompt: buildFinalTurnStatusPrompt(previousUserTurn, latestAssistantTurn),
+    maxTokens: 96,
+    reasoning: 'off',
+    clean: cleanFinalTurnStatus,
   });
 }

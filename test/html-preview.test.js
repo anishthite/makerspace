@@ -32,6 +32,15 @@ test('standalone image tags render with safe image sources', () => {
   assert.doesNotMatch(doc, /img-src[^">]*file:/);
 });
 
+test('htmlPreviewDocument rewrites resolved relative image sources only', () => {
+  const doc = htmlPreviewDocument('<section><img src="output/playwright/demo.png" alt="demo"><img src="https://example.com/demo.png"><img src="../secret.png"></section>', 'dark', {
+    resolveImageSrc: (src) => (src === 'output/playwright/demo.png' ? '/api/threads/t/artifacts/file?path=output%2Fplaywright%2Fdemo.png&browserSession=abc' : ''),
+  });
+  assert.match(doc, /src="\/api\/threads\/t\/artifacts\/file\?path=output%2Fplaywright%2Fdemo\.png&amp;browserSession=abc"/);
+  assert.match(doc, /src="https:\/\/example\.com\/demo\.png"/);
+  assert.match(doc, /src="\.\.\/secret\.png"/);
+});
+
 test('htmlPreviewDocument can wrap fragments with dark defaults', () => {
   const doc = htmlPreviewDocument('<section><h1>Hello</h1><p>World</p></section>', 'dark');
   assert.match(doc, /color-scheme: dark/);

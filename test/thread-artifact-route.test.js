@@ -31,13 +31,14 @@ async function stopServer(child) {
 }
 
 test('thread artifact route serves local Excalidraw drawings only', async () => {
-  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'micro-cloud-excalidraw-'));
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'makerspace-excalidraw-'));
   const sessionFile = path.join(tempDir, 'sessions.json');
   const settingsFile = path.join(tempDir, 'settings.json');
   let server;
 
   try {
     await writeFile(path.join(tempDir, 'diagram.excalidraw'), `${JSON.stringify({ type: 'excalidraw', elements: [], appState: {}, files: {} })}\n`);
+    await writeFile(path.join(tempDir, 'diagram.png'), Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=', 'base64'));
     await writeFile(path.join(tempDir, 'notes.txt'), 'not a drawing\n');
     await writeFile(sessionFile, `${JSON.stringify([
       {
@@ -75,11 +76,23 @@ test('thread artifact route serves local Excalidraw drawings only', async () => 
     assert.equal(ok.status, 200);
     assert.equal((await ok.json()).data.type, 'excalidraw');
 
+    const image = await fetch(`${baseUrl}/api/threads/viewer/artifacts/file?path=diagram.png`, { headers });
+    assert.equal(image.status, 200);
+    assert.equal(image.headers.get('content-type'), 'image/png');
+    assert.match(image.headers.get('content-security-policy') || '', /sandbox/);
+    assert.ok((await image.arrayBuffer()).byteLength > 0);
+
     const wrongExt = await fetch(`${baseUrl}/api/threads/viewer/artifacts?path=notes.txt`, { headers });
     assert.equal(wrongExt.status, 400);
 
+    const wrongImageExt = await fetch(`${baseUrl}/api/threads/viewer/artifacts/file?path=notes.txt`, { headers });
+    assert.equal(wrongImageExt.status, 400);
+
     const traversal = await fetch(`${baseUrl}/api/threads/viewer/artifacts?path=../diagram.excalidraw`, { headers });
     assert.equal(traversal.status, 400);
+
+    const imageTraversal = await fetch(`${baseUrl}/api/threads/viewer/artifacts/file?path=../diagram.png`, { headers });
+    assert.equal(imageTraversal.status, 400);
   } finally {
     if (server) await stopServer(server);
     await rm(tempDir, { recursive: true, force: true });

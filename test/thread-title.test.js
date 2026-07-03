@@ -3,10 +3,13 @@ import assert from 'node:assert/strict';
 
 import {
   buildFinalAnswerSummaryPrompt,
+  buildFinalTurnStatusPrompt,
   cleanFinalAnswerSummary,
+  cleanFinalTurnStatus,
   cleanThreadTitle,
   fallbackThreadTitle,
   generateFinalAnswerSummary,
+  generateFinalTurnStatus,
   generateThreadTitle,
   parseThreadTitleModelRef,
   resolveThreadTitleModel,
@@ -34,6 +37,23 @@ test('buildFinalAnswerSummaryPrompt caps output to the tail', () => {
   assert.match(prompt, /Fix UI/);
   assert.doesNotMatch(prompt, /start/);
   assert.match(prompt, /end$/);
+});
+
+const turnStatusCases = [
+  ['{"status":"done","color":"green","reason":"shipped"}', { status: 'done', color: 'green', reason: 'shipped' }],
+  ['```json\n{"status":"waiting-on-human","reason":"needs login"}\n```', { status: 'waiting_on_human', color: 'amber', reason: 'needs login' }],
+  ['not json', { status: 'unknown', color: 'gray', reason: 'unknown' }],
+];
+
+test('cleanFinalTurnStatus parses JSON and owns color mapping', () => {
+  for (const [raw, expected] of turnStatusCases) assert.deepEqual(cleanFinalTurnStatus(raw), expected);
+});
+
+test('buildFinalTurnStatusPrompt includes prior user and latest assistant turns', () => {
+  const prompt = buildFinalTurnStatusPrompt('Please fix it', 'Done. Tests pass.');
+  assert.match(prompt, /tiny status classifier/);
+  assert.match(prompt, /Previous user turn:\nPlease fix it/);
+  assert.match(prompt, /Latest assistant turn:\nDone\. Tests pass\./);
 });
 
 test('fallbackThreadTitle uses the first useful prompt sentence', () => {
@@ -84,6 +104,41 @@ test('generateFinalAnswerSummary uses a minimal no-tool completion and cleans th
   );
 
   assert.equal(summary, 'Fixed checkout totals and added a smoke test');
+});
+
+test('generateFinalTurnStatus uses a no-thinking JSON classifier completion', async () => {
+  const model = { provider: 'openai-codex', id: 'gpt-5.4-mini' };
+  const status = await generateFinalTurnStatus(
+    'Please add the button.',
+    'Done. Added it and ran the focused test.',
+    {
+      modelRef: 'openai-codex/gpt-5.4-mini',
+      loadPiSdk: async () => ({
+        AuthStorage: {
+          create: () => ({
+            getApiKey: async () => 'fake-token',
+            getProviderEnv: () => ({ FOO: 'bar' }),
+          }),
+        },
+        ModelRegistry: { create: () => ({ find: () => model }) },
+      }),
+      loadPiAi: async () => ({
+        completeSimple: async (receivedModel, context, options) => {
+          assert.equal(receivedModel, model);
+          assert.equal(context.systemPrompt, 'Return only the JSON object.');
+          assert.match(context.messages[0].content, /Previous user turn:\nPlease add the button\./);
+          assert.match(context.messages[0].content, /Latest assistant turn:\nDone\. Added it/);
+          assert.equal(options.apiKey, 'fake-token');
+          assert.equal(options.temperature, undefined);
+          assert.equal(options.reasoning, 'off');
+          assert.equal(options.maxTokens, 96);
+          return { stopReason: 'stop', content: [{ type: 'text', text: '{"status":"done","color":"green","reason":"completed"}' }] };
+        },
+      }),
+    },
+  );
+
+  assert.deepEqual(status, { status: 'done', color: 'green', reason: 'completed' });
 });
 
 test('generateThreadTitle uses a minimal no-tool completion and cleans the response', async () => {

@@ -30,15 +30,17 @@ function config(root) {
   };
 }
 
-test('hosted Codex auth is stored per user and formatted for Pi auth.json', async () => {
+test('hosted Codex and Claude Code auth are stored per user and formatted for Pi auth.json', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'makerspace-codex-auth-'));
   try {
     const auth = createAuthService({ config: config(root), http: testHttp() });
     const user = await auth.authStore.upsertUser({ githubId: '1', login: 'octo' });
     const other = await auth.authStore.upsertUser({ githubId: '2', login: 'mona' });
     const credential = { type: 'oauth', access: 'access-token', refresh: 'refresh-token', expires: Date.now() + 60_000, accountId: 'acct' };
+    const claudeCredential = { type: 'oauth', access: 'claude-access', refresh: 'claude-refresh', expires: Date.now() + 60_000 };
 
     await auth.authStore.writeUserSecret(user.id, 'openai-codex-auth', JSON.stringify(credential));
+    await auth.authStore.writeUserSecret(user.id, 'claude-code-auth', JSON.stringify(claudeCredential));
 
     const status = await auth.codexAuthStatus(user);
     assert.equal(status.configured, true);
@@ -46,8 +48,14 @@ test('hosted Codex auth is stored per user and formatted for Pi auth.json', asyn
     assert.equal(status.expiresAt, credential.expires);
     assert.equal((await auth.codexAuthStatus(other)).configured, false);
 
+    const claudeStatus = await auth.claudeCodeAuthStatus(user);
+    assert.equal(claudeStatus.configured, true);
+    assert.equal(claudeStatus.source, 'user');
+    assert.equal(claudeStatus.expiresAt, claudeCredential.expires);
+    assert.equal((await auth.claudeCodeAuthStatus(other)).configured, false);
+
     const authText = await auth.readPiAuthForSession({ ownerUserId: user.id });
-    assert.deepEqual(JSON.parse(authText), { 'openai-codex': credential });
+    assert.deepEqual(JSON.parse(authText), { 'openai-codex': credential, anthropic: claudeCredential });
     assert.equal(await auth.readPiAuthForSession({ ownerUserId: other.id }), null);
   } finally {
     await rm(root, { recursive: true, force: true });

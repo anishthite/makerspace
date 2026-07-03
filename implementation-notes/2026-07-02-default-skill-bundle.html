@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Default skill bundle</title>
+<meta name="task" content="Bundle selected home Pi skills into Makerspace defaults.">
+<meta name="date-started" content="2026-07-02">
+<meta name="date-updated" content="2026-07-02">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="makerspace, pi, package, skills, defaults, agents">
+<meta name="related" content="2026-06-26-pi-defaults-package.html,2026-07-01-makerspace-default-agents-context.html,2026-06-26-pi-profile-settings.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:920px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Default skill bundle</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-02 · status <b class="status-shipped">shipped</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Bundle requested home skills into <code>@makerspace/pi-defaults</code> without copying heavyweight local runtimes.</div><b>Source</b><div>User selected <code>code-simplifier</code>, <code>playground</code>, <code>excalidraw-diagram</code>, Ponytail suite, and <code>emil-design-eng</code>.</div><b>Surface</b><div><code>packages/makerspace-pi-defaults</code> skill resources and bundled <code>context/AGENTS.md</code>.</div><b>Schema</b><div>No API, settings, session, or storage change.</div><b>Licensing</b><div><code>emil-design-eng</code> upstream reports MIT; Ponytail reports MIT.</div><b>Open Qs</b><div>0; assume copied package resources are intended for the same distribution scope as the defaults package.</div></div>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>packages/makerspace-pi-defaults/skills/</code></td><td>touch</td><td>Add selected skill directories from the home Pi setup.</td></tr><tr><td><code>packages/makerspace-pi-defaults/context/AGENTS.md</code></td><td>touch</td><td>Make artifact and diagram defaults point agents at the newly bundled skills.</td></tr><tr><td><code>packages/makerspace-pi-defaults/README.md</code></td><td>touch</td><td>List bundled skills and note the excluded Excalidraw <code>.venv</code>.</td></tr><tr><td><code>test/pi-defaults-package.test.js</code></td><td>touch</td><td>Assert the requested skills are packaged and no Excalidraw virtualenv is copied.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Copy skills into <code>packages/makerspace-pi-defaults/skills</code>. The existing manifest already loads that directory.</td></tr><tr><td>D-002</td><td>Omit <code>excalidraw-diagram/references/.venv</code> and <code>.git</code>. They are local setup/cache state, not skill instructions.</td></tr><tr><td>D-003</td><td>Use upstream MIT evidence for <code>emil-design-eng</code>. The local copy has no license file but matches the public MIT skill repository.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>Bundled copies over adding package dependencies. Makerspace remote images already bake this one defaults package.</td></tr><tr><td>T-002</td><td>AGENTS guidance over editing skill bodies. Keeps imported skills close to upstream and puts Makerspace-specific behavior in the defaults context.</td></tr></table>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>node --test test/pi-defaults-package.test.js</code></td><td>Passed package resource and bundled skill checks.</td></tr><tr><td><code>npm test</code></td><td>Passed full suite.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Delete the added skill directories and revert the docs/test/context edits; runtime loading still uses the same package resource path.</p>
+<h2>Definition of done</h2>
+<ul><li>Requested skill manifests exist under <code>packages/makerspace-pi-defaults/skills</code>.</li><li><code>excalidraw-diagram</code> excludes <code>.venv</code> and other local cache folders.</li><li>Bundled <code>AGENTS.md</code> nudges agents to make playgrounds and diagrams as Makerspace artifacts.</li><li>Focused tests pass.</li></ul>
+</body>
+</html>

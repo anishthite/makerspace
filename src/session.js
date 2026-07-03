@@ -124,7 +124,7 @@ export function normalizeCreateRequest(body, config) {
   const normalizedSharePort = Number.isFinite(sharePort) && sharePort > 0 ? sharePort : null;
   const requestedName = String(body.name || '').trim();
   const fallbackName = buildGeneratedName(inferBaseName(repoUrl));
-  const name = slugify(requestedName || fallbackName) || buildGeneratedName('micro-cloud');
+  const name = slugify(requestedName || fallbackName) || buildGeneratedName('makerspace');
 
   return {
     name,

@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — DB telemetry side app</title>
+<meta name="task" content="Add a simple DB-derived telemetry side app for Makerspace agents.">
+<meta name="date-started" content="2026-07-02">
+<meta name="date-updated" content="2026-07-02">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="makerspace,telemetry,performance,db,ui">
+<meta name="related" content="2026-06-24-thread-performance-lookback.html,2026-06-24-performance-harness-rollup.html,2026-06-25-performance-token-lookback.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code { font-family: ui-monospace, Menlo, monospace; background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+  .blast-low { color: #2a7a2a; }
+</style>
+</head>
+<body>
+<h1>DB telemetry side app</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-02 · status <b>shipped</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Ship <code>/telemetry.html</code> as a read-only view of DB-derived agent telemetry.</div>
+  <b>Source</b><div><code>makerspace_sessions.data</code> or <code>data/sessions.json</code> plus live <code>activeRuns.events</code>.</div>
+  <b>Surface</b><div><code>GET /api/threads/performance</code>, <code>/performance.html</code>, and <code>/telemetry.html</code>.</div>
+  <b>Schema</b><div>None; summarize existing session fields only.</div>
+  <b>Mobile</b><div>Reuse existing responsive stats grid and horizontal table scroll.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+<h2>Algorithm</h2>
+<ol>
+  <li>Load accessible <code>threadBridge</code> sessions from the existing store.</li>
+  <li>Compute recency, success, coverage, top repo/tool/model, latency, duration, token, and cache rollups from stored/live summaries.</li>
+  <li>Render unknown values as <code>—</code> instead of inventing analytics.</li>
+</ol>
+<h2>UI layout</h2>
+<ol>
+  <li><b>Hero</b>: label the view as telemetry and state that it is estimated from the session DB.</li>
+  <li><b>Stats</b>: show total, recent, status, success, latency, tools, and usage counters.</li>
+  <li><b>Side panel</b>: list what the DB can and cannot tell us without adding tracking.</li>
+</ol>
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>src/performance.js</code></td><td>touch</td><td>Add DB telemetry rollups to the existing performance payload.</td></tr>
+  <tr><td><code>frontend/src/pages.jsx</code></td><td>touch</td><td>Retitle the performance shell as telemetry and add a DB-source panel.</td></tr>
+  <tr><td><code>frontend/src/runtime/performance.js</code></td><td>touch</td><td>Render new rollup fields and source details.</td></tr>
+  <tr><td><code>frontend/performance.html</code>, <code>frontend/telemetry.html</code></td><td>touch/new</td><td>Keep the existing route and add a dedicated side-app entry.</td></tr>
+  <tr><td><code>frontend/public/styles.css</code></td><td>touch</td><td>Style the compact telemetry source list.</td></tr>
+  <tr><td><code>vite.config.js</code>, <code>frontend/route-manifest.json</code>, <code>vercel.json</code></td><td>touch</td><td>Expose the telemetry entry and alias.</td></tr>
+  <tr><td><code>test/performance.test.js</code>, <code>test/frontend-route-manifest.test.js</code></td><td>touch</td><td>Cover rollups and route registration.</td></tr>
+  <tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr>
+</table>
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Reuse <code>/api/threads/performance</code>. It already filters by access and merges DB with live run events.</td></tr>
+  <tr><td>D-002</td><td>Add <code>/telemetry.html</code> as an alias entry instead of a new app stack. The side app is the current lookback with clearer telemetry framing.</td></tr>
+</table>
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td>DB estimates over client analytics. The user asked what existing DB state can show.</td></tr>
+</table>
+<h2>Assumptions</h2>
+<ul><li>A-001 · “Telemetry” means internal agent/run telemetry, not product pageview analytics; if wrong, add explicit event tracking later.</li></ul>
+<h2>Verification</h2>
+<table>
+  <tr><th>Check</th><th>Result</th></tr>
+  <tr><td><code>node --check src/performance.js</code></td><td>Passed.</td></tr>
+  <tr><td><code>node --test test/performance.test.js test/frontend-route-manifest.test.js</code></td><td>Passed 10/10.</td></tr>
+  <tr><td><code>npm run build</code></td><td>Passed.</td></tr>
+</table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Remove the route entry, UI copy, summary fields, and tests; stored sessions remain unchanged.</p>
+<h2>Definition of done</h2>
+<ul>
+  <li><code>/telemetry.html</code> builds and shows the same accessible DB-derived data as <code>/performance.html</code>.</li>
+  <li>The page explains measured versus unavailable telemetry.</li>
+  <li>Focused performance and route tests pass.</li>
+</ul>
+</body>
+</html>

@@ -55,7 +55,7 @@ server.listen(config.port, config.host || undefined, () => {
   const address = server.address();
   const port = typeof address === 'object' && address ? address.port : config.port;
   const host = config.host || 'localhost';
-  console.log(`[micro-cloud] listening on http://${host}:${port} (${provider.kind}; ${config.projectName})`);
+  console.log(`[makerspace] listening on http://${host}:${port} (${provider.kind}; ${config.projectName})`);
   void bridge.pruneExpiredIdleBridges();
   void bridge.ensureWarmBridgePool();
   if (Number.isFinite(config.idleBridgeTtlMs) && config.idleBridgeTtlMs > 0) {

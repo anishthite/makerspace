@@ -4,7 +4,7 @@ import { randomBytes } from 'node:crypto';
 function parseArgs(argv) {
   const options = {
     runs: 1,
-    url: process.env.MICRO_CLOUD_URL || 'http://127.0.0.1:8787',
+    url: process.env.MAKERSPACE_URL || 'http://127.0.0.1:8787',
     prompt: 'Reply with exactly: bootup measurement ok',
     timeoutMs: 180_000,
     prepTimeoutMs: null,

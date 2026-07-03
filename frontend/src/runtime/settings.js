@@ -3,6 +3,12 @@ const API_BASE = String(import.meta.env?.VITE_MAKERSPACE_API_BASE || '').trim().
 const codexLogin = document.querySelector('#codex-login');
 const codexStatus = document.querySelector('#codex-status');
 const codexDevice = document.querySelector('#codex-device');
+const claudeCodeLogin = document.querySelector('#claude-code-login');
+const claudeCodeStatus = document.querySelector('#claude-code-status');
+const claudeCodeAuth = document.querySelector('#claude-code-auth');
+const claudeCodeCodeForm = document.querySelector('#claude-code-code-form');
+const claudeCodeCodeInput = document.querySelector('#claude-code-code');
+const claudeCodeCodeSubmit = document.querySelector('#claude-code-code-submit');
 const githubLogin = document.querySelector('#github-login');
 const githubLogout = document.querySelector('#github-logout');
 const githubStatus = document.querySelector('#github-status');
@@ -27,6 +33,7 @@ const desktopCheckUpdates = document.querySelector('#desktop-check-updates');
 const desktopUpdateStatus = document.querySelector('#desktop-update-status');
 let currentSettings = null;
 let currentPiProfile = null;
+let activeClaudeCodeLoginId = '';
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -94,10 +101,10 @@ function settingsSummary(settings) {
   return `image: ${settings.imageRef || 'default'} · ${registryStatus} · ${keyStatus}`;
 }
 
-function codexStatusText(status) {
+function oauthStatusText(status, label) {
   if (status.disabled === 'sign-in-required') return 'Sign in with GitHub first';
   if (!status.configured) return 'Signed out';
-  const source = status.source === 'user' ? 'your Codex' : status.source;
+  const source = status.source === 'user' ? `your ${label}` : status.label || status.source;
   const expires = Number(status.expiresAt || 0);
   const suffix = Number.isFinite(expires) && expires > 0 ? ` · expires ${new Date(expires).toLocaleDateString()}` : '';
   return `Signed in${source ? ` · ${source}` : ''}${suffix}`;
@@ -106,30 +113,52 @@ function codexStatusText(status) {
 async function loadCodexAuth() {
   const status = await fetchJson('/api/auth/openai-codex');
   codexLogin.disabled = status.disabled === 'sign-in-required';
-  codexStatus.textContent = codexStatusText(status);
+  codexStatus.textContent = oauthStatusText(status, 'Codex');
   return status;
 }
 
-function writeCodexTab(codexTab, body) {
+async function loadClaudeCodeAuth() {
+  const status = await fetchJson('/api/auth/claude-code');
+  claudeCodeLogin.disabled = status.disabled === 'sign-in-required';
+  claudeCodeStatus.textContent = oauthStatusText(status, 'Claude Code');
+  return status;
+}
+
+function writeAuthTab(authTab, title, body) {
   try {
-    codexTab.document.open();
-    codexTab.document.write(`<!doctype html><title>Codex sign-in</title><body style="font:16px system-ui;padding:24px">${body}</body>`);
-    codexTab.document.close();
+    authTab.document.open();
+    authTab.document.write(`<!doctype html><title>${escapeHtml(title)}</title><body style="font:16px system-ui;padding:24px">${body}</body>`);
+    authTab.document.close();
   } catch {}
 }
 
 function openWebCodexTab() {
   if (globalThis.makerspaceDesktop) return null;
   const codexTab = globalThis.open?.('about:blank', '_blank') || null;
-  if (codexTab) writeCodexTab(codexTab, 'Opening Codex sign-in…');
+  if (codexTab) writeAuthTab(codexTab, 'Codex sign-in', 'Opening Codex sign-in…');
   return codexTab;
 }
 
-function navigateCodexTab(codexTab, url) {
-  if (!codexTab || !url) return;
+function openWebClaudeCodeTab() {
+  if (globalThis.makerspaceDesktop) return null;
+  const claudeTab = globalThis.open?.('about:blank', '_blank') || null;
+  if (claudeTab) writeAuthTab(claudeTab, 'Claude Code sign-in', 'Opening Claude Code sign-in…');
+  return claudeTab;
+}
+
+function navigateAuthTab(authTab, title, label, url) {
+  if (!authTab || !url) return;
   const safeUrl = escapeHtml(url);
   const scriptUrl = JSON.stringify(url).replaceAll('</', '<\\/');
-  writeCodexTab(codexTab, `Opening Codex sign-in… <a href="${safeUrl}">Open manually</a><script>window.opener=null;location.replace(${scriptUrl});</script>`);
+  writeAuthTab(authTab, title, `Opening ${escapeHtml(label)} sign-in… <a href="${safeUrl}">Open manually</a><script>window.opener=null;location.replace(${scriptUrl});</script>`);
+}
+
+function navigateCodexTab(codexTab, url) {
+  navigateAuthTab(codexTab, 'Codex sign-in', 'Codex', url);
+}
+
+function navigateClaudeCodeTab(claudeTab, url) {
+  navigateAuthTab(claudeTab, 'Claude Code sign-in', 'Claude Code', url);
 }
 
 function renderCodexDevice(login, codexTab = null) {
@@ -145,6 +174,18 @@ function renderCodexDevice(login, codexTab = null) {
   codexDevice.innerHTML = `If Codex sign-in does not open, go to <a href="${verificationUri}" target="_blank" rel="noreferrer">${verificationUri}</a> and enter <code>${userCode}</code>.`;
 }
 
+function renderClaudeCodeAuth(login, claudeTab = null) {
+  const auth = login.auth;
+  if (!auth?.url) {
+    claudeTab?.close?.();
+    return;
+  }
+  navigateClaudeCodeTab(claudeTab, auth.url);
+  claudeCodeAuth.classList.remove('hidden');
+  claudeCodeCodeForm.classList.remove('hidden');
+  claudeCodeAuth.innerHTML = `<a href="${escapeHtml(auth.url)}" target="_blank" rel="noreferrer">Claude</a>: approve access, then paste the final localhost redirect URL below.`;
+}
+
 async function pollCodexLogin(id) {
   while (true) {
     const login = await fetchJson(`/api/auth/openai-codex/login/${encodeURIComponent(id)}`);
@@ -155,6 +196,23 @@ async function pollCodexLogin(id) {
       return;
     }
     if (login.status === 'failed') throw new Error(login.error || 'Codex failed');
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+  }
+}
+
+async function pollClaudeCodeLogin(id) {
+  while (true) {
+    const login = await fetchJson(`/api/auth/claude-code/login/${encodeURIComponent(id)}`);
+    if (login.status === 'complete') {
+      claudeCodeStatus.textContent = 'Signed in';
+      claudeCodeAuth.classList.add('hidden');
+      claudeCodeCodeForm.classList.add('hidden');
+      activeClaudeCodeLoginId = '';
+      await loadClaudeCodeAuth();
+      return;
+    }
+    if (login.status === 'failed') throw new Error(login.error || 'Claude Code failed');
+    if (login.progress) claudeCodeStatus.textContent = login.progress;
     await new Promise((resolve) => setTimeout(resolve, 2000));
   }
 }
@@ -235,6 +293,7 @@ async function loadPiProfile() {
 async function reloadSettingsData() {
   await loadGitHubAuth().catch((error) => { githubStatus.textContent = error.message; });
   await loadCodexAuth().catch((error) => { codexStatus.textContent = error.message; });
+  await loadClaudeCodeAuth().catch((error) => { claudeCodeStatus.textContent = error.message; });
   await loadSettings().catch((error) => { settingsStatus.textContent = error.message; });
   await loadPiProfile().catch((error) => { piProfileStatus.textContent = error.message; });
 }
@@ -282,6 +341,48 @@ codexLogin.addEventListener('click', async () => {
     codexStatus.textContent = error.message;
   } finally {
     codexLogin.disabled = false;
+  }
+});
+
+claudeCodeLogin.addEventListener('click', async () => {
+  const claudeTab = openWebClaudeCodeTab();
+  await persistConnectionInputs();
+  claudeCodeLogin.disabled = true;
+  claudeCodeStatus.textContent = 'Starting…';
+  claudeCodeAuth.classList.add('hidden');
+  claudeCodeCodeForm.classList.add('hidden');
+  try {
+    const login = await fetchJson('/api/auth/claude-code/login', { method: 'POST' });
+    activeClaudeCodeLoginId = login.id;
+    renderClaudeCodeAuth(login, claudeTab);
+    claudeCodeStatus.textContent = 'Waiting for Claude…';
+    await pollClaudeCodeLogin(login.id);
+  } catch (error) {
+    claudeTab?.close?.();
+    claudeCodeStatus.textContent = error.message;
+  } finally {
+    claudeCodeLogin.disabled = false;
+  }
+});
+
+claudeCodeCodeForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (!activeClaudeCodeLoginId) {
+    claudeCodeStatus.textContent = 'Start Claude Code sign-in first.';
+    return;
+  }
+  claudeCodeCodeSubmit.disabled = true;
+  claudeCodeStatus.textContent = 'Exchanging…';
+  try {
+    await fetchJson(`/api/auth/claude-code/login/${encodeURIComponent(activeClaudeCodeLoginId)}/code`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ code: claudeCodeCodeInput.value }),
+    });
+  } catch (error) {
+    claudeCodeStatus.textContent = error.message;
+  } finally {
+    claudeCodeCodeSubmit.disabled = false;
   }
 });
 

@@ -5,40 +5,75 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Makerspace Desktop</title>
   <meta name="description" content="Download the Makerspace desktop app for macOS.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="icon" href="/favicon.svg">
   <style>
-    :root { color-scheme: dark; --bg: #0f1117; --card: #171b24; --text: #f4f7fb; --muted: #a8b0bf; --line: #2a3140; --accent: #8ab4ff; }
+    :root { color-scheme: dark; --bg: #0b0d13; --card: #151923; --card-strong: #1d2430; --text: #f6f8fc; --muted: #aab4c4; --line: #2b3342; --accent: #8ab4ff; --accent-strong: #b7ceff; }
     * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; background: var(--bg); color: var(--text); font: 16px/1.5 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-    main { width: min(620px, 100%); padding: 32px; border: 1px solid var(--line); border-radius: 18px; background: var(--card); box-shadow: 0 24px 80px rgb(0 0 0 / 32%); }
-    nav { display: flex; justify-content: space-between; gap: 16px; align-items: center; margin-bottom: 56px; }
+    body { margin: 0; min-height: 100vh; padding: 24px; background: radial-gradient(circle at 20% 0, rgb(138 180 255 / 18%), transparent 34rem), var(--bg); color: var(--text); font: 16px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    a { color: var(--accent); }
+    main { width: min(1040px, 100%); margin: 0 auto; }
+    nav { display: flex; justify-content: space-between; gap: 16px; align-items: center; padding: 8px 0 56px; }
     .brand { display: inline-flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; font-weight: 800; letter-spacing: -0.04em; }
     .brand img { width: 32px; height: 32px; }
-    a { color: var(--accent); }
-    h1 { margin: 0 0 12px; font-size: clamp(44px, 9vw, 76px); line-height: .9; letter-spacing: -0.08em; }
+    .nav-links { display: flex; gap: 16px; align-items: center; font-weight: 700; }
+    .hero { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(280px, .9fr); gap: 24px; align-items: stretch; }
+    .panel { border: 1px solid var(--line); border-radius: 22px; background: rgb(21 25 35 / 92%); box-shadow: 0 24px 80px rgb(0 0 0 / 30%); }
+    .intro { padding: clamp(28px, 6vw, 56px); }
+    .eyebrow { margin: 0 0 14px; color: var(--accent-strong); font-weight: 800; text-transform: uppercase; letter-spacing: .12em; font-size: 12px; }
+    h1 { margin: 0 0 18px; font-size: clamp(48px, 8vw, 88px); line-height: .88; letter-spacing: -0.085em; }
     p { margin: 0; color: var(--muted); }
-    .actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 28px 0 18px; }
-    .button { display: inline-flex; min-height: 48px; align-items: center; justify-content: center; padding: 0 18px; border-radius: 12px; background: var(--accent); color: #09111f; text-decoration: none; font-weight: 800; }
+    .lede { max-width: 580px; font-size: clamp(18px, 2vw, 22px); }
+    .actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 32px 0 16px; }
+    .button { display: inline-flex; min-height: 50px; align-items: center; justify-content: center; padding: 0 18px; border-radius: 14px; background: var(--accent); color: #09111f; text-decoration: none; font-weight: 900; }
     .secondary { background: transparent; color: var(--accent); border: 1px solid var(--line); }
-    .install { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 14px; }
-    @media (max-width: 560px) { main { padding: 24px; } nav { margin-bottom: 42px; } .button { width: 100%; } }
+    .install { font-size: 14px; }
+    .release-card { padding: 28px; display: flex; flex-direction: column; justify-content: space-between; gap: 26px; background: linear-gradient(160deg, var(--card-strong), var(--card)); }
+    .release-card h2 { margin: 0 0 10px; font-size: 24px; letter-spacing: -0.04em; }
+    .release-card code { display: inline-block; margin-top: 16px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: rgb(0 0 0 / 22%); color: var(--text); }
+    .offer-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 18px; }
+    .offer { padding: 22px; border: 1px solid var(--line); border-radius: 18px; background: rgb(21 25 35 / 72%); }
+    .offer h2 { margin: 0 0 8px; font-size: 18px; letter-spacing: -0.03em; }
+    @media (max-width: 760px) { body { padding: 18px; } nav, .nav-links { align-items: flex-start; flex-direction: column; } .hero, .offer-grid { grid-template-columns: 1fr; } .button { width: 100%; } }
   </style>
 </head>
 <body>
   <main>
     <nav aria-label="Makerspace navigation">
       <a class="brand" href="/"><img src="/logo-mark.svg" alt="" aria-hidden="true"><span>makerspace</span></a>
-      <a href="/">web app</a>
+      <div class="nav-links">
+        <a href="https://github.com/anishthite/makerspace-downloads/releases/latest">latest release</a>
+        <a href="/">web app</a>
+      </div>
     </nav>
 
-    <section aria-labelledby="title">
-      <h1 id="title">Makerspace for Mac.</h1>
-      <p>Run Pi agents against local folders from a tiny desktop app.</p>
-      <div class="actions">
-        <a class="button" href="https://github.com/anishthite/makerspace-downloads/releases/latest/download/makerspace.dmg">Download DMG</a>
-        <a class="button secondary" href="https://github.com/anishthite/makerspace-downloads/releases/latest">Release notes</a>
+    <section class="hero" aria-labelledby="title">
+      <div class="panel intro">
+        <p class="eyebrow">macOS desktop app</p>
+        <h1 id="title">Run coding agents where your code lives.</h1>
+        <p class="lede">Makerspace wraps Pi in a focused desktop app: pick a folder, launch an agent, review the work, and keep your local setup in the loop.</p>
+        <div class="actions">
+          <a class="button" href="https://github.com/anishthite/makerspace-downloads/releases/latest">Open latest release</a>
+          <a class="button secondary" href="https://github.com/anishthite/makerspace-downloads/releases/latest/download/makerspace.dmg">Direct DMG download</a>
+        </div>
+        <p class="install">On the release page, download <strong>makerspace.dmg</strong>, open it, drag Makerspace to Applications, then pick a folder.</p>
       </div>
-      <p class="install">Open the DMG, drag Makerspace to Applications, launch it, pick a folder.</p>
+      <aside class="panel release-card" aria-label="Download details">
+        <div>
+          <p class="eyebrow">download</p>
+          <h2>Signed DMG, plus release notes.</h2>
+          <p>The latest GitHub Release is the safest download target because it always shows the current DMG and what changed.</p>
+        </div>
+        <code>makerspace.dmg</code>
+      </aside>
+    </section>
+
+    <section class="offer-grid" aria-label="What Makerspace offers">
+      <article class="offer"><h2>Local projects</h2><p>Open a real folder on your Mac and let agents work against the files you already use.</p></article>
+      <article class="offer"><h2>Remote sandboxes</h2><p>Move heavier repo work into disposable cloud workspaces when local isn’t the right place.</p></article>
+      <article class="offer"><h2>Your Pi setup</h2><p>Bring AGENTS.md, skills, prompts, model choices, and auth state into each run.</p></article>
     </section>
   </main>
 </body>

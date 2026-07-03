@@ -39,7 +39,8 @@ function messageText(message) {
 }
 
 export function workflowRunIdFromText(text) {
-  return String(text || '').match(/\brun-[a-z0-9-]+\b/i)?.[0] || '';
+  const value = String(text || '');
+  return value.match(/\brun-[a-z0-9-]+\b/i)?.[0] || value.match(/\bRun ID:\s*([a-z0-9][a-z0-9-]{2,100})\b/i)?.[1] || '';
 }
 
 export function isBackgroundWorkflowToolEnd(event = {}, output = resultText(event.result).trim()) {
@@ -364,10 +365,11 @@ async function createLocalPiSession(config, session) {
   });
 }
 
-async function runCreatedPiSession({ createSession, session, emitOutput, emitMetric, emitStatus, emitEvent, failureLabel, signal }) {
+async function runCreatedPiSession({ createSession, session, emitOutput, emitMetric, emitStatus, emitEvent, failureLabel, signal, onMessageControl }) {
   const submittedAtMs = Number(session.submittedAtMs) || Date.now();
   let piSession = null;
   let unsubscribe = null;
+  let clearMessageControl = null;
   let firstProviderCallPublished = false;
   let streamedAssistantText = '';
   const toolOutput = new Map();
@@ -411,6 +413,13 @@ async function runCreatedPiSession({ createSession, session, emitOutput, emitMet
   try {
     const created = await createSession();
     piSession = created.session;
+    clearMessageControl = onMessageControl?.({
+      sendMessage: async (text, { delivery = 'steer', images = [] } = {}) => {
+        const attachments = Array.isArray(images) && images.length ? images : undefined;
+        if (delivery === 'followUp') await piSession.followUp(text, attachments);
+        else await piSession.steer(text, attachments);
+      },
+    }) || null;
     if (stopped) throw new Error('Stopped by user.');
     if (piSession.sessionFile) {
       emitOutput('[system] Pi session trace: ' + piSession.sessionFile + '\n', 'running');
@@ -434,6 +443,16 @@ async function runCreatedPiSession({ createSession, session, emitOutput, emitMet
     };
 
     unsubscribe = piSession.subscribe((event) => {
+      if (event.type === 'queue_update') {
+        emitEvent?.({
+          type: 'queue',
+          steering: [...event.steering],
+          followUp: [...event.followUp],
+          runStatus: 'running',
+        });
+        return;
+      }
+
       if (event.type === 'message_update') {
         const messageEvent = event.assistantMessageEvent;
         if (messageEvent.type === 'text_delta') {
@@ -599,6 +618,7 @@ async function runCreatedPiSession({ createSession, session, emitOutput, emitMet
     await emitStatus('failed', { warning: message, done: true, stopped });
   } finally {
     signal?.removeEventListener('abort', stopRun);
+    clearMessageControl?.();
     unsubscribe?.();
     piSession?.dispose?.();
   }
@@ -617,7 +637,7 @@ export async function runHostPiSession({ session, config, provider, remoteReadyP
   });
 }
 
-export async function runLocalPiSession({ session, config, emitOutput, emitMetric, emitStatus, emitEvent, signal }) {
+export async function runLocalPiSession({ session, config, emitOutput, emitMetric, emitStatus, emitEvent, signal, onMessageControl }) {
   return runCreatedPiSession({
     session,
     emitOutput,
@@ -625,6 +645,7 @@ export async function runLocalPiSession({ session, config, emitOutput, emitMetri
     emitStatus,
     emitEvent,
     signal,
+    onMessageControl,
     failureLabel: 'Local Pi run',
     createSession: () => createLocalPiSession(config, session),
   });

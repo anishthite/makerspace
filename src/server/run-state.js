@@ -3,13 +3,14 @@ import { applyPerformanceEvent } from '../performance.js';
 import { appendRetainedOutput, retainedOutputChunk } from '../resource-utils.js';
 import { appendThreadMessages, decorateSession, threadMessage } from '../session.js';
 import { getStoredSession, listStoredSessions, upsertSession } from '../store.js';
-import { fallbackThreadTitle, generateFinalAnswerSummary, generateThreadTitle } from '../thread-title.js';
+import { fallbackThreadTitle, generateFinalAnswerSummary, generateFinalTurnStatus, generateThreadTitle } from '../thread-title.js';
 import { sleep } from './utils.js';
 
 export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAccessSession, authStorageForSession = null }) {
   const activeRuns = new Map();
   const liveLocalRuns = new Set();
   const finalAnswerSummaryRuns = new Set();
+  const finalTurnStatusRuns = new Set();
   const runSubscribers = new Map();
   const polishQueue = [];
   let polishQueueRunning = false;
@@ -267,7 +268,7 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
     const change = trackedChangeFromToolEvent(event, event.args || remembered.args || {});
     if (!change) return;
     run.trackedChanges = mergeTrackedChanges(run.trackedChanges, [change]);
-    void persistTrackedChanges(name).catch((error) => console.warn(`[micro-cloud] failed to persist tracked changes for ${name}: ${error.message}`));
+    void persistTrackedChanges(name).catch((error) => console.warn(`[makerspace] failed to persist tracked changes for ${name}: ${error.message}`));
   }
 
   const FINISHED_RUN_STATUSES = ['completed', 'ready', 'failed'];
@@ -308,6 +309,12 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
       finalAnswerSummaryRunId: undefined,
       finalAnswerSummaryModel: undefined,
       finalAnswerSummaryUpdatedAt: undefined,
+      finalTurnStatus: undefined,
+      finalTurnColor: undefined,
+      finalTurnReason: undefined,
+      finalTurnStatusRunId: undefined,
+      finalTurnStatusModel: undefined,
+      finalTurnStatusUpdatedAt: undefined,
     };
   }
 
@@ -475,8 +482,22 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
     )) || null;
   }
 
+  function latestUserThreadMessage(session, runId = threadRunId(session)) {
+    const messages = Array.isArray(session?.threadMessages) ? session.threadMessages : [];
+    return [...messages].reverse().find((message) => (
+      message?.role === 'user' &&
+      String(message.text || '').trim() &&
+      (!runId || message.runId === runId)
+    )) || null;
+  }
+
   function threadSummaryTimeoutMs() {
     const value = Number(config.threadSummaryTimeoutMs);
+    return Number.isFinite(value) && value > 0 ? value : 15000;
+  }
+
+  function threadTurnStatusTimeoutMs() {
+    const value = Number(config.threadTurnStatusTimeoutMs);
     return Number.isFinite(value) && value > 0 ? value : 15000;
   }
 
@@ -544,6 +565,58 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
     });
   }
 
+  function scheduleFinalTurnStatusClassification(session, assistantMessage, runId = threadRunId(session)) {
+    const modelRef = String(config.threadTurnStatusModel || config.threadSummaryModel || config.threadTitleModel || '').trim();
+    const latestAssistantTurn = String(assistantMessage?.text || assistantMessage || '').trim();
+    const key = `${session?.name || ''}:${runId || 'latest'}`;
+    if (!session?.name || !latestAssistantTurn || !modelRef || modelRef.toLowerCase() === 'off') return;
+    if (session.finalTurnStatus && (!runId || session.finalTurnStatusRunId === runId)) return;
+    if (finalTurnStatusRuns.has(key)) return;
+
+    finalTurnStatusRuns.add(key);
+    enqueuePolishJob(async () => {
+      try {
+        const current = await getStoredSession(config.sessionFile, session.name);
+        if (!current?.threadBridge) return;
+        const currentRunId = threadRunId(current);
+        if (runId && currentRunId && currentRunId !== runId) return;
+        if (!latestAssistantThreadMessage(current, runId)) return;
+
+        const previousUserTurn = latestUserThreadMessage(current, runId)?.text || current.taskPrompt || current.initialPrompt || '';
+        const result = await generateFinalTurnStatus(previousUserTurn, latestAssistantTurn, {
+          loadPiSdk,
+          loadPiAi,
+          modelRef,
+          authStorage: authStorageForSession ? await authStorageForSession(current) : null,
+          signal: AbortSignal.timeout(threadTurnStatusTimeoutMs()),
+        });
+        if (!result?.status) return;
+
+        const updated = await upsertSession(config.sessionFile, {
+          ...current,
+          finalTurnStatus: result.status,
+          finalTurnColor: result.color,
+          finalTurnReason: result.reason,
+          finalTurnStatusRunId: runId || '',
+          finalTurnStatusModel: modelRef,
+          finalTurnStatusUpdatedAt: new Date().toISOString(),
+        });
+        recordRunEvent(session.name, {
+          type: 'turn_status',
+          status: result.status,
+          color: result.color,
+          reason: result.reason,
+          runStatus: ensureRunState(session.name).runStatus,
+          session: decorateLiveSession(updated),
+        });
+      } catch (error) {
+        console.warn(`[makerspace] skipped turn status for ${session.name}: ${error.message}`);
+      } finally {
+        finalTurnStatusRuns.delete(key);
+      }
+    });
+  }
+
   async function persistThreadAssistantMessage(sessionName) {
     const session = await getStoredSession(config.sessionFile, sessionName);
     if (!session?.threadBridge) return;
@@ -552,6 +625,7 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
     const existingAssistant = latestAssistantThreadMessage(session, runId);
     if (existingAssistant) {
       scheduleFinalAnswerSummaryGeneration(session, existingAssistant.text, runId);
+      scheduleFinalTurnStatusClassification(session, existingAssistant, runId);
       return;
     }
 
@@ -564,6 +638,7 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
       updatedAt: new Date().toISOString(),
     });
     scheduleFinalAnswerSummaryGeneration(updated, text, runId);
+    scheduleFinalTurnStatusClassification(updated, { text }, runId);
   }
 
   function withFallbackThreadTitle(session) {

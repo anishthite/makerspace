@@ -49,7 +49,7 @@ export function deriveNpmPackageManifest(settingsText) {
   }
 
   return {
-    name: 'micro-cloud-image-packages',
+    name: 'makerspace-image-packages',
     private: true,
     dependencies,
   };
@@ -104,7 +104,7 @@ async function copyIfExists(source, destination) {
 }
 
 export async function prepareBuildContext(config) {
-  const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'micro-cloud-image-'));
+  const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'makerspace-image-'));
   const contextDir = path.join(tempRoot, 'image');
 
   await cp(config.imageAssetsDir, contextDir, { recursive: true });

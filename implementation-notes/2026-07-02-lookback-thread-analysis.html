@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Lookback thread analysis</title>
+<meta name="task" content="Port pi-lookback-style trace analysis into local telemetry.">
+<meta name="date-started" content="2026-07-02">
+<meta name="date-updated" content="2026-07-02">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="makerspace,telemetry,pi-lookback,threads,analysis">
+<meta name="related" content="2026-07-02-local-session-telemetry.html,2026-07-02-db-telemetry-side-app.html,2026-06-25-pi-session-traces.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Lookback thread analysis</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-02 · status <b>shipped</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Add review score, signal mix, and trace-derived per-thread stats to local telemetry.</div><b>Source</b><div><code>pi-lookback/src/summary.js</code> and <code>pi-lookback/src/signals.js</code> heuristics, adapted to Makerspace <code>pi-sessions/*.jsonl</code>.</div><b>Surface</b><div><code>GET /api/threads/performance?source=local</code>, <code>/local-telemetry.html</code>.</div><b>Schema</b><div>None; read-only JSONL parsing.</div><b>Mobile</b><div>Existing horizontal telemetry table scroll.</div><b>Open Qs</b><div>0.</div></div>
+<h2>Algorithm</h2>
+<ol><li>Read <code>${PI_SESSION_TRACE_DIR}/${session.name}.jsonl</code> for local-source rows when present.</li><li>Count users, assistants, tools, failed tools, bash, compactions, switches, tokens, cost, models, and parent branches.</li><li>Detect pi-lookback signals: failed tools/bash, repeated failures, user corrections, long no-tool stretches, high cost, branch/compaction heavy, huge/truncated output, aborted assistant, and missing verification.</li><li>Compute <code>reviewScore = failedTool*4 + failedBash*6 + branch*5 + compaction*3 + min(40, floor(cost*100)) + parseErrors*10 + largeSessionBonus</code>.</li></ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>src/performance.js</code></td><td>touch</td><td>Add pure trace parser, signal detectors, and aggregate review queue fields.</td></tr><tr><td><code>src/server/threads.js</code></td><td>touch</td><td>Load local trace text for local-source telemetry rows.</td></tr><tr><td><code>frontend/src/pages.jsx</code>, <code>frontend/src/runtime/performance.js</code></td><td>touch</td><td>Render analysis column, signal mix, and review queue.</td></tr><tr><td><code>test/performance.test.js</code>, <code>test/local-telemetry-route.test.js</code></td><td>touch</td><td>Cover trace analysis and local-source trace loading.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Copy the small heuristics instead of importing <code>../pi-lookback</code>. Makerspace must run without a sibling checkout.</td></tr><tr><td>D-002</td><td>Analyze traces only for local-source telemetry. D1 has compact rows, not local JSONL trace files.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>Session-level analysis over full three-pane trace UI. The telemetry table gets depth without porting a second app.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Remove trace parsing, aggregate fields, UI column, and tests; stored session files are untouched.</p>
+<h2>Definition of done</h2>
+<ul><li>Local telemetry reports trace coverage and review-worthy rows.</li><li>Rows show trace-derived score and top signal kinds.</li><li>Focused tests and build pass.</li></ul>
+<h2>Verification</h2>
+<table><tr><th>ID</th><th>Check</th><th>Result</th></tr><tr><td>V-001</td><td><code>node --check src/performance.js src/server/threads.js frontend/src/runtime/performance.js src/setup-script.js</code></td><td>Passed via per-file syntax checks.</td></tr><tr><td>V-002</td><td><code>node --test test/performance.test.js test/local-telemetry-route.test.js test/frontend-route-manifest.test.js</code></td><td>12/12 pass.</td></tr><tr><td>V-003</td><td><code>VITE_MAKERSPACE_API_BASE= npm run build</code></td><td>Passed.</td></tr><tr><td>V-004</td><td><code>npm test</code></td><td>178/178 pass.</td></tr><tr><td>V-005</td><td><code>curl -H "sec-fetch-site: same-origin" /api/threads/performance?source=local</code></td><td>187 sessions, 152 traces, top signals failed_tool/failed_bash/high_cost/user_correction.</td></tr></table>
+</body>
+</html>

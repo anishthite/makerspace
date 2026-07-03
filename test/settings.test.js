@@ -93,7 +93,7 @@ test('deriveNpmPackageManifest keeps only npm packages', () => {
   }));
 
   assert.deepEqual(manifest, {
-    name: 'micro-cloud-image-packages',
+    name: 'makerspace-image-packages',
     private: true,
     dependencies: {
       'pi-web-access': 'latest',

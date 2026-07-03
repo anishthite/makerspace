@@ -12,6 +12,8 @@ const PREVIEW_SHELL_STYLE = `<style data-makerspace-preview>
   th, td { overflow-wrap: anywhere; }
 </style>`;
 const PREVIEW_HEAD = `${PREVIEW_CSP}${PREVIEW_SHELL_STYLE}`;
+const IMG_TAG_RE = /<img\b[^>]*>/gi;
+const SRC_ATTR_RE = /\ssrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/i;
 const FRAGMENT_THEMES = {
   light: ':root { color-scheme: light; --bg: #FAF8F3; --paper: #FFFFFF; --ink: #241A12; --muted: #6F5D50; --blue: #1F5E9C; --rule: rgba(31, 94, 156, .18); --pre: #F3EEDF; }',
   dark: ':root { color-scheme: dark; --bg: #0E1118; --paper: #151923; --ink: #E6EDF3; --muted: #C8D0E0; --blue: #89B4FA; --rule: rgba(137, 180, 250, .22); --pre: #1B2130; }',
@@ -74,9 +76,27 @@ function injectPreviewHead(html) {
   return `${PREVIEW_HEAD}${html}`;
 }
 
-export function htmlPreviewDocument(value, theme = 'dark') {
+function escapeAttribute(value) {
+  return String(value || '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('"', '&quot;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;');
+}
+
+export function rewriteHtmlImageSources(html, resolveImageSrc) {
+  if (typeof resolveImageSrc !== 'function') return html;
+  return String(html || '').replace(IMG_TAG_RE, (tag) => tag.replace(SRC_ATTR_RE, (attribute, doubleQuoted, singleQuoted, unquoted) => {
+    const src = doubleQuoted ?? singleQuoted ?? unquoted ?? '';
+    const resolved = resolveImageSrc(src);
+    return resolved && resolved !== src ? ` src="${escapeAttribute(resolved)}"` : attribute;
+  }));
+}
+
+export function htmlPreviewDocument(value, theme = 'dark', options = {}) {
   const html = extractHtmlOutput(value);
   if (!html) return '';
-  if (/^<!doctype\s+html/i.test(html) || /^<html[\s>]/i.test(html)) return injectPreviewHead(html);
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${PREVIEW_HEAD}${fragmentStyle(theme)}</head><body>${html}</body></html>`;
+  const resolvedHtml = rewriteHtmlImageSources(html, options.resolveImageSrc);
+  if (/^<!doctype\s+html/i.test(resolvedHtml) || /^<html[\s>]/i.test(resolvedHtml)) return injectPreviewHead(resolvedHtml);
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${PREVIEW_HEAD}${fragmentStyle(theme)}</head><body>${resolvedHtml}</body></html>`;
 }

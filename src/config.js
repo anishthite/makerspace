@@ -87,7 +87,7 @@ export function getConfig() {
     recentProjectsFile: process.env.RECENT_PROJECTS_DATA_PATH || path.join(defaultDataDir, 'recent-projects.json'),
     authFile: process.env.AUTH_DATA_PATH || process.env.MAKERSPACE_AUTH_DATA_PATH || path.join(defaultDataDir, 'auth.json'),
     remoteWorkspaceDir: process.env.REMOTE_WORKSPACE_DIR || '/srv/workspace',
-    remoteControlDir: process.env.REMOTE_CONTROL_DIR || '/srv/micro-cloud',
+    remoteControlDir: process.env.REMOTE_CONTROL_DIR || '/srv/makerspace',
     bridgePort: Number(process.env.PI_BRIDGE_PORT || 4310),
     bridgeReadyTimeoutMs: Number(process.env.PI_BRIDGE_READY_TIMEOUT_MS || 240000),
     bridgeReadyPollMs: Number(process.env.PI_BRIDGE_READY_POLL_MS || 1000),
@@ -113,6 +113,8 @@ export function getConfig() {
     threadTitleTimeoutMs: Number(process.env.THREAD_TITLE_TIMEOUT_MS || 15000),
     threadSummaryModel: process.env.THREAD_SUMMARY_MODEL || process.env.THREAD_TITLE_MODEL || 'openai-codex/gpt-5.4-mini',
     threadSummaryTimeoutMs: Number(process.env.THREAD_SUMMARY_TIMEOUT_MS || 15000),
+    threadTurnStatusModel: process.env.THREAD_TURN_STATUS_MODEL || process.env.THREAD_SUMMARY_MODEL || process.env.THREAD_TITLE_MODEL || 'openai-codex/gpt-5.4-mini',
+    threadTurnStatusTimeoutMs: Number(process.env.THREAD_TURN_STATUS_TIMEOUT_MS || 15000),
     sessionFile:
       process.env.SESSION_DATA_PATH || path.join(defaultDataDir, 'sessions.json'),
     piSessionTraceDir:

@@ -27,9 +27,12 @@ test('project selector offers desktop local folders', () => {
   assert.match(pages, /href="\/settings\.html#codex"/);
   assert.match(pages, /href="\/settings\.html#github"/);
   assert.match(pages, /id="codex"/);
+  assert.match(pages, /id="claude-code"/);
   assert.match(pages, /id="github"/);
   assert.match(settingsJs, /function openWebCodexTab\(\)/);
   assert.match(settingsJs, /function navigateCodexTab\(codexTab, url\)/);
+  assert.match(settingsJs, /function openWebClaudeCodeTab\(\)/);
+  assert.match(settingsJs, /\/api\/auth\/claude-code/);
   assert.match(settingsJs, /globalThis\.open\?\.\('about:blank', '_blank'\)/);
   assert.match(styles, /\.home-actions \.auth-pill \{[^}]*border-color: transparent;/);
   assert.match(app, /readSelectedProject/);

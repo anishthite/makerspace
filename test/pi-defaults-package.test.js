@@ -27,6 +27,11 @@ test('makerspace Pi defaults package exposes pi resources', async () => {
   assert.match(extension, /contextHasAgents/);
   assert.match(extension, /registerProvider\('inference'/);
   assert.match(extension, /\$INFERENCE_API_KEY/);
+
+  for (const skill of ['code-simplifier', 'playground', 'excalidraw-diagram', 'ponytail', 'ponytail-audit', 'ponytail-debt', 'ponytail-help', 'ponytail-review', 'emil-design-eng']) {
+    assert.match(await readFile(path.join(packageDir, 'skills', skill, 'SKILL.md'), 'utf8'), /#|---|name:/);
+  }
+  await assert.rejects(readFile(path.join(packageDir, 'skills/excalidraw-diagram/references/.venv/pyvenv.cfg'), 'utf8'), /ENOENT/);
 });
 
 test('createPiResourceOptions adds package resource paths when present', async () => {

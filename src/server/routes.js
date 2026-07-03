@@ -20,6 +20,9 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
     githubRepoPayload,
     codexAuthStatus,
     startCodexDeviceLogin,
+    claudeCodeAuthStatus,
+    startClaudeCodeLogin,
+    submitClaudeCodeLoginCode,
     getAuthLogin,
     publicAuthLogin,
     requireSessionAccess,
@@ -49,7 +52,9 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
     unarchiveThreadSession,
     stopThreadSession,
     threadDiffPayload,
+    threadWorkflowPayload,
     threadArtifactPayload,
+    threadImageArtifactPayload,
     getThreadSession,
     promptThreadSession,
   } = threads;
@@ -100,7 +105,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
       }
 
       if (request.method === 'GET' && (pathname === '/api/performance' || pathname === '/api/threads/performance')) {
-        sendJson(response, 200, await listThreadPerformancePayload(viewerSessionId, trusted, user));
+        sendJson(response, 200, await listThreadPerformancePayload(viewerSessionId, trusted, user, { source: url.searchParams.get('source') }));
         return;
       }
 
@@ -180,6 +185,34 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
       }
 
       if (request.method === 'GET' && pathname.startsWith('/api/auth/openai-codex/login/')) {
+        const id = pathname.split('/').pop();
+        const job = getAuthLogin(id, user);
+        if (!job) {
+          sendJson(response, 404, { error: 'Login not found' });
+          return;
+        }
+        sendJson(response, 200, publicAuthLogin(job));
+        return;
+      }
+
+      if (request.method === 'GET' && pathname === '/api/auth/claude-code') {
+        sendJson(response, 200, await claudeCodeAuthStatus(user));
+        return;
+      }
+
+      if (request.method === 'POST' && pathname === '/api/auth/claude-code/login') {
+        sendJson(response, 202, await startClaudeCodeLogin(user));
+        return;
+      }
+
+      if (request.method === 'POST' && pathname.startsWith('/api/auth/claude-code/login/') && pathname.endsWith('/code')) {
+        const id = pathname.split('/').at(-2);
+        const body = await readJsonBody(request);
+        sendJson(response, 200, submitClaudeCodeLoginCode(id, user, body));
+        return;
+      }
+
+      if (request.method === 'GET' && pathname.startsWith('/api/auth/claude-code/login/')) {
         const id = pathname.split('/').pop();
         const job = getAuthLogin(id, user);
         if (!job) {
@@ -280,6 +313,26 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
       if (request.method === 'GET' && threadDiffMatch) {
         const name = decodeURIComponent(threadDiffMatch[1]);
         sendJson(response, 200, await threadDiffPayload(name, viewerSessionId, trusted, user));
+        return;
+      }
+
+      const threadWorkflowMatch = pathname.match(/^\/api\/threads\/([^/]+)\/workflows\/([^/]+)$/);
+      if (request.method === 'GET' && threadWorkflowMatch) {
+        const name = decodeURIComponent(threadWorkflowMatch[1]);
+        const runId = decodeURIComponent(threadWorkflowMatch[2]);
+        sendJson(response, 200, await threadWorkflowPayload(name, runId, viewerSessionId, trusted, user));
+        return;
+      }
+
+      const threadArtifactFileMatch = pathname.match(/^\/api\/threads\/([^/]+)\/artifacts\/file$/);
+      if (request.method === 'GET' && threadArtifactFileMatch) {
+        const name = decodeURIComponent(threadArtifactFileMatch[1]);
+        const artifact = await threadImageArtifactPayload(name, url.searchParams.get('path'), viewerSessionId, trusted, user);
+        sendText(response, 200, artifact.data, artifact.contentType, {
+          'cache-control': 'no-store',
+          'content-security-policy': "default-src 'none'; img-src data: blob:; style-src 'unsafe-inline'; sandbox",
+          'x-content-type-options': 'nosniff',
+        });
         return;
       }
 

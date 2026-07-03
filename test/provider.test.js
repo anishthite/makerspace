@@ -13,7 +13,7 @@ const config = {
   daytonaAutodeleteMinutes: 120,
   remoteUser: 'daytona',
   remoteHomeDir: '/home/daytona',
-  remoteControlDir: '/srv/micro-cloud',
+  remoteControlDir: '/srv/makerspace',
   remoteWorkspaceDir: '/srv/workspace',
   bridgePort: 4310,
   bridgeReadyTimeoutMs: 240000,

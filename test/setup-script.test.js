@@ -6,7 +6,7 @@ import { buildSetupScript } from '../src/setup-script.js';
 
 const config = {
   remoteWorkspaceDir: '/srv/workspace',
-  remoteControlDir: '/srv/micro-cloud',
+  remoteControlDir: '/srv/makerspace',
   piInstallCommand: 'npm install -g --ignore-scripts @earendil-works/pi-coding-agent',
   defaultTaskPrompt: 'Do the task.',
   bridgePort: 4310,
@@ -17,7 +17,7 @@ const config = {
 
 function extractBridgeScript(script) {
   const match = script.match(
-    /base64 -d<<'E'\|gzip -d>'\/srv\/micro-cloud\/pi-bridge\.mjs'\n([\s\S]*?)\nE/
+    /base64 -d<<'E'\|gzip -d>'\/srv\/makerspace\/pi-bridge\.mjs'\n([\s\S]*?)\nE/
   );
 
   assert.ok(match, 'expected compressed bridge payload in setup script');
@@ -44,24 +44,24 @@ test('buildSetupScript clones a repo and auto-runs pi when requested', () => {
   assert.match(script, /export GIT_TERMINAL_PROMPT=0/);
   assert.match(script, /git -c 'http.extraHeader=AUTHORIZATION: basic abc123' clone --depth=1 --branch 'main' 'https:\/\/github.com\/acme\/demo\.git' '\/srv\/workspace'/);
   assert.match(script, /\|\| \{ rm -rf '\/srv\/workspace'; git -c 'http.extraHeader=AUTHORIZATION: basic abc123' clone --depth=1 'https:\/\/github.com\/acme\/demo\.git' '\/srv\/workspace'; \}/);
-  assert.match(script, /base64 -d<<'E'\|gzip -d>'\/srv\/micro-cloud\/pi-bridge\.mjs'/);
+  assert.match(script, /base64 -d<<'E'\|gzip -d>'\/srv\/makerspace\/pi-bridge\.mjs'/);
   assert.match(script, /if \[ ! -d '\/home\/daytona\/\.pi\/agent\/npm\/node_modules\/@earendil-works\/pi-coding-agent' \]; then\n  PI_VERSION=/);
   assert.match(script, /PI_SDK_SPEC='@earendil-works\/pi-coding-agent'/);
   assert.match(script, /npm install --prefix '\/home\/daytona\/\.pi\/agent\/npm' --no-audit --no-fund --ignore-scripts --legacy-peer-deps "\$PI_SDK_SPEC"/);
-  assert.match(script, /mkdir -p '\/srv\/micro-cloud' '\/srv\/workspace' '\/srv\/micro-cloud\/pi-sessions'/);
-  assert.match(script, /chown -R 'daytona:daytona' '\/srv\/micro-cloud' '\/srv\/workspace' '\/home\/daytona\/\.pi\/agent'/);
+  assert.match(script, /mkdir -p '\/srv\/makerspace' '\/srv\/workspace' '\/srv\/makerspace\/pi-sessions'/);
+  assert.match(script, /chown -R 'daytona:daytona' '\/srv\/makerspace' '\/srv\/workspace' '\/home\/daytona\/\.pi\/agent'/);
   assert.match(script, /Description=pi bridge/);
   assert.match(script, /systemctl enable --now pi-bridge\.service/);
   assert.match(script, /curl http:\/\/127\.0\.0\.1:4310\/healthz/);
   assert.match(script, /printf 'export ANTHROPIC_API_KEY=%q\\n' "\$\{ANTHROPIC_API_KEY:-\}"/);
-  assert.match(script, /printf '%s\\n' booting > '\/srv\/micro-cloud\/STATUS'/);
-  assert.match(script, /printf '%s\\n' launching > '\/srv\/micro-cloud\/STATUS'/);
-  assert.match(script, /printf '%s\\n' running > '\/srv\/micro-cloud\/STATUS'/);
-  assert.match(script, /printf '%s\\n' completed > '\/srv\/micro-cloud\/STATUS'/);
-  assert.match(script, /printf '%s\\n' failed > '\/srv\/micro-cloud\/STATUS'/);
+  assert.match(script, /printf '%s\\n' booting > '\/srv\/makerspace\/STATUS'/);
+  assert.match(script, /printf '%s\\n' launching > '\/srv\/makerspace\/STATUS'/);
+  assert.match(script, /printf '%s\\n' running > '\/srv\/makerspace\/STATUS'/);
+  assert.match(script, /printf '%s\\n' completed > '\/srv\/makerspace\/STATUS'/);
+  assert.match(script, /printf '%s\\n' failed > '\/srv\/makerspace\/STATUS'/);
   assert.match(script, /if pi --approve --name 'landing-agent' -p "\$PROMPT_TEXT"; then/);
   assert.match(script, /tmux new-session -d -s pi-agent/);
-  assert.match(script, /base64 -d > '\/srv\/micro-cloud\/TASK\.md'/);
+  assert.match(script, /base64 -d > '\/srv\/makerspace\/TASK\.md'/);
 
   assert.doesNotMatch(bridgeScript, /createRequire/);
   assert.match(bridgeScript, /node_modules", "@earendil-works", "pi-coding-agent", "dist", "index\.js"/);
@@ -131,7 +131,7 @@ test('buildSetupScript initializes an empty repo when no repo URL is supplied', 
 
   assert.match(script, /git init/);
   assert.match(script, /git branch -M 'main' \|\| true/);
-  assert.match(script, /printf '%s\\n' ready > '\/srv\/micro-cloud\/STATUS'/);
+  assert.match(script, /printf '%s\\n' ready > '\/srv\/makerspace\/STATUS'/);
   assert.doesNotMatch(script, /git clone --depth=1/);
   assert.doesNotMatch(script, /tmux new-session -d -s pi-agent/);
 });
@@ -151,7 +151,7 @@ test('buildSetupScript skips direct pi auto-run for bridge-backed chat sessions'
     config,
   );
 
-  assert.ok(Buffer.byteLength(script, 'utf8') < 12 * 1024);
+  assert.ok(Buffer.byteLength(script, 'utf8') < 13 * 1024);
   assert.match(script, /printf 'export PI_BRIDGE_TOKEN=%s\\n' 'secret-token'/);
   assert.match(script, /printf 'export PI_BRIDGE_PACKAGE_DIR=%s\\n' '\/home\/daytona\/\.pi\/agent\/npm'/);
   assert.match(script, /printf 'export MAKERSPACE_PI_DEFAULTS_PACKAGE_DIR=%s\\n' '\/home\/daytona\/\.pi\/agent\/makerspace-pi-defaults'/);
@@ -167,9 +167,14 @@ test('buildSetupScript skips direct pi auto-run for bridge-backed chat sessions'
   assert.match(bridgeScript, /thinkingLevel = String\(body\.thinkingLevel \|\| ""\)\.trim\(\)\.toLowerCase\(\)/);
   assert.match(bridgeScript, /images = Array\.isArray\(body\.images\)/);
   assert.match(bridgeScript, /entries = Array\.isArray\(body\.r\)/);
+  assert.match(bridgeScript, /delivery=body\.delivery==="followUp"\?"followUp":body\.delivery==="steer"\?"steer":""/);
+  assert.match(bridgeScript, /type:"queue",steering:\[\.\.\.event\.steering\],followUp:\[\.\.\.event\.followUp\]/);
+  assert.match(bridgeScript, /if\(run\.child\?\.steer&&delivery\)/);
+  assert.match(bridgeScript, /if\(delivery==="followUp"\)await run\.child\.followUp\(prompt,images\[0\]\?images:undefined\)/);
+  assert.match(bridgeScript, /else await run\.child\.steer\(prompt,images\[0\]\?images:undefined\)/);
   assert.match(bridgeScript, /piSession\.prompt\(prompt, images\[0\] \? \{ images \} : undefined\)/);
   assert.match(bridgeScript, /void startRun\(run, prompt, name, submittedAtMs, modelRef, thinkingLevel, images, entries, body\.cwd \|\| workspaceDir\)/);
-  assert.match(script, /printf '%s\\n' ready > '\/srv\/micro-cloud\/STATUS'/);
+  assert.match(script, /printf '%s\\n' ready > '\/srv\/makerspace\/STATUS'/);
   assert.match(script, /installed_bridge_sdk=0/);
   assert.doesNotMatch(script, /for cmd in 'git' 'curl' 'tmux'/);
   assert.doesNotMatch(script, /tmux new-session -d -s pi-agent/);

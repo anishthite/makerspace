@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { runLocalPiSession } from '../host-pi-runner.js';
-import { summarizeThreadPerformanceList } from '../performance.js';
+import { analyzePiTraceText, summarizeThreadPerformanceList } from '../performance.js';
 import { normalizeImageAttachments, normalizeModelOptions, normalizeThreadRequest } from '../session.js';
 import { readSavedSettings } from '../settings.js';
 import { archiveStoredSession, getStoredSession, listStoredSessions, unarchiveStoredSession, upsertSession } from '../store.js';
@@ -12,6 +12,7 @@ import { normalizeSubmittedAtMs } from './utils.js';
 export function createThreadService({ config, provider, http, auth, runState, bridge }) {
   const { clientError } = http;
   const localRunControllers = new Map();
+  const localRunMessageControls = new Map();
   const STOPPED_WARNING = 'Stopped by user.';
   const { enrichGitHubRepoSession, canAccessSession, loadPiDefaults } = auth;
   const {
@@ -37,37 +38,125 @@ export function createThreadService({ config, provider, http, auth, runState, br
   } = runState;
   const { startThreadBridgeLaunch, refreshBridgeSessionIfNeeded, startBridgeRun, fetchBridgeJson } = bridge;
   const MAX_EXCALIDRAW_BYTES = 8 * 1024 * 1024;
+  const MAX_IMAGE_ARTIFACT_BYTES = 16 * 1024 * 1024;
+  const IMAGE_ARTIFACT_TYPES = new Map([
+    ['.gif', 'image/gif'],
+    ['.jpg', 'image/jpeg'],
+    ['.jpeg', 'image/jpeg'],
+    ['.png', 'image/png'],
+    ['.svg', 'image/svg+xml; charset=utf-8'],
+    ['.webp', 'image/webp'],
+  ]);
 
-  function safeExcalidrawArtifactPath(value) {
+  function safeRelativeArtifactPath(value, allowedExts, message) {
     const input = String(value || '').trim().replaceAll('\\', '/');
-    if (!input || input.includes('\0') || path.isAbsolute(input) || /^[a-z][a-z0-9+.-]*:/i.test(input)) {
-      throw clientError('A relative .excalidraw path is required.');
+    if (!input || input.includes('\0') || path.isAbsolute(input) || /^[a-z][a-z0-9+.-]*:/i.test(input) || /[*?\[\]{}]/.test(input)) {
+      throw clientError(message);
     }
 
     const normalized = path.posix.normalize(input.replace(/^\.\//, ''));
-    if (!normalized || normalized === '.' || normalized === '..' || normalized.startsWith('../') || !normalized.endsWith('.excalidraw')) {
-      throw clientError('Only relative .excalidraw artifacts can be viewed.');
+    const ext = path.posix.extname(normalized).toLowerCase();
+    if (!normalized || normalized === '.' || normalized === '..' || normalized.startsWith('../') || !allowedExts.has(ext)) {
+      throw clientError(message);
     }
     return normalized;
   }
 
-  function bufferText(buffer, artifactPath) {
-    const data = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer || '');
-    if (data.byteLength > MAX_EXCALIDRAW_BYTES) throw clientError(`${artifactPath} is too large to preview.`);
-    return data.toString('utf8');
+  function safeExcalidrawArtifactPath(value) {
+    return safeRelativeArtifactPath(value, new Set(['.excalidraw']), 'Only relative .excalidraw artifacts can be viewed.');
   }
 
-  async function readThreadArtifactFile(session, artifactPath) {
+  function safeImageArtifactPath(value) {
+    return safeRelativeArtifactPath(value, new Set(IMAGE_ARTIFACT_TYPES.keys()), 'Only relative image artifacts can be viewed.');
+  }
+
+  function safeWorkflowRunId(value) {
+    const runId = String(value || '').trim();
+    if (!/^[a-z0-9][a-z0-9-]{2,100}$/i.test(runId)) throw clientError('Invalid workflow run id.');
+    return runId;
+  }
+
+  function checkedBuffer(buffer, artifactPath, maxBytes) {
+    const data = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer || '');
+    if (data.byteLength > maxBytes) throw clientError(`${artifactPath} is too large to preview.`);
+    return data;
+  }
+
+  function bufferText(buffer, artifactPath) {
+    return checkedBuffer(buffer, artifactPath, MAX_EXCALIDRAW_BYTES).toString('utf8');
+  }
+
+  async function readThreadArtifactBuffer(session, artifactPath, maxBytes) {
     if (session.repoPath) {
       const root = path.resolve(session.repoPath);
       const filePath = path.resolve(root, artifactPath);
       if (filePath !== root && !filePath.startsWith(`${root}${path.sep}`)) throw clientError('Artifact path escapes the workspace.');
-      return bufferText(await readFile(filePath), artifactPath);
+      return checkedBuffer(await readFile(filePath), artifactPath, maxBytes);
     }
 
     if (!provider.readRemoteFile) throw clientError('Artifact preview is unavailable for this provider.', 501);
     const remotePath = path.posix.join(session.remoteWorkspaceDir || config.remoteWorkspaceDir, artifactPath);
-    return bufferText(await provider.readRemoteFile(session, remotePath), artifactPath);
+    return checkedBuffer(await provider.readRemoteFile(session, remotePath), artifactPath, maxBytes);
+  }
+
+  async function readThreadArtifactFile(session, artifactPath) {
+    return bufferText(await readThreadArtifactBuffer(session, artifactPath, MAX_EXCALIDRAW_BYTES), artifactPath);
+  }
+
+  async function readThreadWorkflowRunFile(session, runId) {
+    const runPath = path.posix.join('.pi/workflows/runs', `${runId}.json`);
+    if (session.repoPath) return readFile(path.join(session.repoPath, runPath), 'utf8');
+    if (!provider.readRemoteFile) throw clientError('Workflow run details are unavailable for this provider.', 501);
+    return provider.readRemoteFile(session, path.posix.join(session.remoteWorkspaceDir || config.remoteWorkspaceDir, runPath));
+  }
+
+  function workflowPreview(value, max = 260) {
+    const text = String(value || '').replace(/\s+/g, ' ').trim();
+    return text.length > max ? `${text.slice(0, max)}…` : text;
+  }
+
+  function workflowRunPayload(runId, raw) {
+    const data = JSON.parse(raw);
+    const agents = Array.isArray(data.agents) ? data.agents : [];
+    return {
+      available: true,
+      runId: data.runId || runId,
+      workflowName: data.workflowName || 'workflow',
+      status: data.status || 'unknown',
+      phases: Array.isArray(data.phases) ? data.phases : [],
+      currentPhase: data.currentPhase || '',
+      agents: agents.map((agent) => ({
+        id: agent.id,
+        label: agent.label || `agent ${agent.id ?? ''}`.trim(),
+        phase: agent.phase || '',
+        status: agent.status || 'unknown',
+        model: agent.model || '',
+        tokens: Number.isFinite(agent.tokens) ? agent.tokens : null,
+        promptPreview: workflowPreview(agent.prompt),
+        resultPreview: workflowPreview(agent.resultPreview),
+        error: workflowPreview(agent.error),
+        startedAt: agent.startedAt || '',
+        endedAt: agent.endedAt || '',
+      })),
+      updatedAt: data.updatedAt || '',
+    };
+  }
+
+  async function threadWorkflowPayload(name, runIdValue, viewerSessionId = '', trusted = false, user = null) {
+    const session = await getThreadSession(name);
+    if (!canAccessSession(session, viewerSessionId, trusted, user)) {
+      throw clientError(`Main agent ${name} belongs to a different user.`, 403);
+    }
+    const runId = safeWorkflowRunId(runIdValue);
+    try {
+      return workflowRunPayload(runId, await readThreadWorkflowRunFile(session, runId));
+    } catch (error) {
+      if (error.code === 'ENOENT' || /not found|no such file/i.test(error.message || '')) {
+        return { available: false, runId, workflowName: 'workflow', status: 'pending', phases: [], agents: [] };
+      }
+      if (error instanceof SyntaxError) throw clientError(`${runId} workflow run state is invalid.`);
+      throw error;
+    }
   }
 
   async function threadArtifactPayload(name, artifactPath, viewerSessionId = '', trusted = false, user = null) {
@@ -88,6 +177,20 @@ export function createThreadService({ config, provider, http, auth, runState, br
     return { path: safePath, data };
   }
 
+  async function threadImageArtifactPayload(name, artifactPath, viewerSessionId = '', trusted = false, user = null) {
+    const session = await getThreadSession(name);
+    if (!canAccessSession(session, viewerSessionId, trusted, user)) {
+      throw clientError(`Main agent ${name} belongs to a different user.`, 403);
+    }
+
+    const safePath = safeImageArtifactPath(artifactPath);
+    return {
+      path: safePath,
+      contentType: IMAGE_ARTIFACT_TYPES.get(path.posix.extname(safePath).toLowerCase()),
+      data: await readThreadArtifactBuffer(session, safePath, MAX_IMAGE_ARTIFACT_BYTES),
+    };
+  }
+
   async function listThreadsPayload(viewerSessionId = '', trusted = false, user = null) {
     const sessions = await listStoredSessions(config.sessionFile);
     return {
@@ -99,14 +202,55 @@ export function createThreadService({ config, provider, http, auth, runState, br
     };
   }
 
-  async function listThreadPerformancePayload(viewerSessionId = '', trusted = false, user = null) {
-    const sessions = (await listStoredSessions(config.sessionFile))
-      .filter((session) => session.threadBridge && canAccessSession(session, viewerSessionId, trusted, user));
+  function localTelemetryFile() {
+    return path.join(config.localDataDir || path.join(config.rootDir || process.cwd(), 'data'), 'sessions.json');
+  }
+
+  async function listLocalTelemetrySessions() {
+    if (config.provider !== 'local') throw clientError('Local session telemetry is only available from a local backend.', 400);
+    try {
+      const sessions = JSON.parse((await readFile(localTelemetryFile(), 'utf8')).trim() || '[]');
+      if (!Array.isArray(sessions)) throw new Error('Local session store must be a JSON array.');
+      return sessions.filter((session) => session && typeof session === 'object' && session.provider !== 'mock');
+    } catch (error) {
+      if (error.code === 'ENOENT') return [];
+      throw error;
+    }
+  }
+
+  function localTraceFile(session) {
+    return path.join(config.piSessionTraceDir || path.join(config.localDataDir || '', 'pi-sessions'), `${session.name}.jsonl`);
+  }
+
+  async function localTraceAnalyses(sessions) {
+    const pairs = await Promise.all(sessions.map(async (session) => {
+      try {
+        return [session.name, analyzePiTraceText(await readFile(localTraceFile(session), 'utf8'))];
+      } catch (error) {
+        if (error.code === 'ENOENT') return [session.name, null];
+        return [session.name, { available: true, parseErrorCount: 1, entryCount: 0, reviewScore: 10, signalKinds: ['trace_read_error'], signalCounts: { trace_read_error: 1 }, signals: [{ kind: 'trace_read_error', msg: error.message }] }];
+      }
+    }));
+    return Object.fromEntries(pairs.filter(([, analysis]) => analysis));
+  }
+
+  async function listThreadPerformancePayload(viewerSessionId = '', trusted = false, user = null, options = {}) {
+    const source = String(options.source || '').toLowerCase();
+    const localSource = source === 'local';
+    const allSessions = localSource ? await listLocalTelemetrySessions() : await listStoredSessions(config.sessionFile);
+    const sessions = allSessions
+      .filter((session) => session.threadBridge && (localSource || canAccessSession(session, viewerSessionId, trusted, user)));
     const eventsByName = Object.fromEntries(sessions.map((session) => [session.name, activeRuns.get(session.name)?.events || []]));
+    const traceByName = localSource ? await localTraceAnalyses(sessions) : {};
     return {
       provider: provider.info(),
       generatedAt: new Date().toISOString(),
-      performance: summarizeThreadPerformanceList(sessions, eventsByName),
+      performance: {
+        source: localSource
+          ? { kind: 'local-file', label: 'Local desktop sessions', path: localTelemetryFile(), traceDir: config.piSessionTraceDir }
+          : { kind: 'configured-store', label: 'Configured session store' },
+        ...summarizeThreadPerformanceList(sessions, eventsByName, Date.now(), traceByName),
+      },
     };
   }
 
@@ -210,6 +354,41 @@ export function createThreadService({ config, provider, http, auth, runState, br
     return markThreadStopped(existing);
   }
 
+  function normalizeMessageDelivery(value) {
+    return value === 'followUp' ? 'followUp' : 'steer';
+  }
+
+  function currentRunId(session, submittedAtMs) {
+    return String(session.bridgeRunId || session.submittedAtMs || submittedAtMs || '');
+  }
+
+  async function appendActiveThreadMessage(session, prompt, submittedAtMs, runId, images) {
+    const current = (await getStoredSession(config.sessionFile, session.name)) || session;
+    return upsertSession(config.sessionFile, {
+      ...withUserThreadMessage(current, prompt, submittedAtMs, runId, images),
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  async function sendActiveLocalThreadMessage(session, prompt, submittedAtMs, delivery, images) {
+    const control = localRunMessageControls.get(session.name);
+    if (!control) throw clientError('Main agent is starting; try again in a moment.', 409);
+    await control.sendMessage(prompt, { delivery, images });
+    return appendActiveThreadMessage(session, prompt, submittedAtMs, currentRunId(session, submittedAtMs), images);
+  }
+
+  async function sendActiveBridgeThreadMessage(session, prompt, submittedAtMs, delivery, images) {
+    if (!session.bridgeUrl || !session.bridgeRunId || !session.bridgeToken || !fetchBridgeJson) {
+      throw clientError('Main agent is starting; try again in a moment.', 409);
+    }
+    await fetchBridgeJson(session, '/runs', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id: session.bridgeRunId, name: session.name, prompt, delivery, images }),
+    });
+    return appendActiveThreadMessage(session, prompt, submittedAtMs, currentRunId(session, submittedAtMs), images);
+  }
+
   async function createThreadSession(body, browserSession = null, browserSessionIdValue = '', user = null) {
     const submittedAtMs = normalizeSubmittedAtMs(body.submittedAtMs);
     const normalized = normalizeThreadRequest(body, config);
@@ -244,16 +423,23 @@ export function createThreadService({ config, provider, http, auth, runState, br
     if (!canAccessSession(existing, viewerSessionId, trusted, user)) {
       throw clientError(`Main agent ${name} belongs to a different user.`, 403);
     }
-    if (existing.localMode) {
-      if (liveLocalRuns.has(name)) throw new Error(`Main agent ${name} is already running.`);
-    } else if (existing.runStatus === 'failed') {
-      throw new Error(`Main agent ${name} failed; create a new main agent.`);
-    }
-    if (existing.bridgeClaimed && existing.taskPrompt) throw new Error(`Main agent ${name} is already running.`);
-
     const submittedAtMs = normalizeSubmittedAtMs(body.submittedAtMs);
     const modelOptions = normalizeModelOptions(body);
     const images = normalizeImageAttachments(body.images);
+    const delivery = normalizeMessageDelivery(body.delivery);
+    const status = String(effectiveStoredRunStatus(decorateLiveSession(existing)) || existing.runStatus || existing.status || '').toLowerCase();
+
+    if (existing.localMode && liveLocalRuns.has(name)) {
+      return sendActiveLocalThreadMessage(existing, prompt, submittedAtMs, delivery, images);
+    }
+    if (!existing.localMode && existing.runStatus === 'failed') {
+      throw new Error(`Main agent ${name} failed; create a new main agent.`);
+    }
+    if (!existing.localMode && existing.bridgeClaimed && existing.taskPrompt) {
+      if (status !== 'running') throw clientError('Main agent is starting; try again in a moment.', 409);
+      return sendActiveBridgeThreadMessage(existing, prompt, submittedAtMs, delivery, images);
+    }
+
     if (existing.localMode) {
       const runId = String(submittedAtMs);
       return startLocalThreadRun({ ...withUserThreadMessage(existing, prompt, submittedAtMs, runId, images), ...modelOptions }, prompt, submittedAtMs, images);
@@ -357,6 +543,12 @@ export function createThreadService({ config, provider, http, auth, runState, br
       emitMetric: (event) => persistHostDispatchMetric(stored.name, event),
       emitStatus: (runStatus, extra) => persistHostDispatchStatus(stored.name, runStatus, extra),
       emitEvent: (event) => recordRunEvent(stored.name, event),
+      onMessageControl: (control) => {
+        localRunMessageControls.set(stored.name, control);
+        return () => {
+          if (localRunMessageControls.get(stored.name) === control) localRunMessageControls.delete(stored.name);
+        };
+      },
     }).finally(() => {
       liveLocalRuns.delete(stored.name);
       if (localRunControllers.get(stored.name) === controller) localRunControllers.delete(stored.name);
@@ -381,7 +573,9 @@ export function createThreadService({ config, provider, http, auth, runState, br
     listThreadPerformancePayload,
     trackedChangesPayloadForThread,
     threadDiffPayload,
+    threadWorkflowPayload,
     threadArtifactPayload,
+    threadImageArtifactPayload,
     getThreadSession,
     archiveThreadSession,
     unarchiveThreadSession,

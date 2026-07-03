@@ -61,8 +61,13 @@
       "mode": "copy"
     },
     {
-      "route": "/performance.html",
-      "file": "performance.html",
+      "route": "/telemetry.html",
+      "file": "telemetry.html",
+      "mode": "react"
+    },
+    {
+      "route": "/local-telemetry.html",
+      "file": "local-telemetry.html",
       "mode": "react"
     },
     {
@@ -155,6 +160,16 @@
     {
       "route": "/thread",
       "target": "/thread.html",
+      "source": "vercel.json"
+    },
+    {
+      "route": "/telemetry",
+      "target": "/telemetry.html",
+      "source": "vercel.json"
+    },
+    {
+      "route": "/local-telemetry",
+      "target": "/local-telemetry.html",
       "source": "vercel.json"
     }
   ],
