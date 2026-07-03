@@ -55,6 +55,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
     threadWorkflowPayload,
     threadArtifactPayload,
     threadImageArtifactPayload,
+    saveThreadArtifactPayload,
     getThreadSession,
     promptThreadSession,
   } = threads;
@@ -340,6 +341,12 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
       if (request.method === 'GET' && threadArtifactMatch) {
         const name = decodeURIComponent(threadArtifactMatch[1]);
         sendJson(response, 200, await threadArtifactPayload(name, url.searchParams.get('path'), viewerSessionId, trusted, user));
+        return;
+      }
+      if (request.method === 'POST' && threadArtifactMatch) {
+        const name = decodeURIComponent(threadArtifactMatch[1]);
+        const body = await readJsonBody(request);
+        sendJson(response, 200, await saveThreadArtifactPayload(name, url.searchParams.get('path'), body, viewerSessionId, trusted, user));
         return;
       }
 

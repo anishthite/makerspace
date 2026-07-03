@@ -308,6 +308,14 @@ function excalidrawViewerUrl(artifactPath, mode = 'full') {
   return url.toString();
 }
 
+function excalidrawEditorUrl(artifactPath) {
+  const url = new URL('/excalidraw-editor.html', location.origin);
+  url.searchParams.set('thread', name || '');
+  url.searchParams.set('path', artifactPath);
+  url.searchParams.set('theme', currentPreviewTheme());
+  return url.toString();
+}
+
 function diagramImageArtifactUrl(artifactPath) {
   const url = new URL(apiUrl(`/api/threads/${encodeURIComponent(name)}/artifacts/file`), location.origin);
   url.searchParams.set('path', artifactPath);
@@ -405,13 +413,22 @@ function appendExcalidrawArtifactCard(section, artifactPath) {
   title.textContent = artifactPath.split('/').at(-1) || artifactPath;
   title.title = artifactPath;
   card.title = artifactPath;
+  const links = document.createElement('span');
+  links.className = 'excalidraw-card-links';
   const link = document.createElement('a');
   link.href = excalidrawViewerUrl(artifactPath);
   link.target = '_blank';
   link.rel = 'noopener noreferrer';
   link.textContent = 'open';
   link.setAttribute('aria-label', `Open ${artifactPath} full size`);
-  head.append(title, link);
+  const editLink = document.createElement('a');
+  editLink.href = excalidrawEditorUrl(artifactPath);
+  editLink.target = '_blank';
+  editLink.rel = 'noopener noreferrer';
+  editLink.textContent = 'edit';
+  editLink.setAttribute('aria-label', `Edit ${artifactPath}`);
+  links.append(link, editLink);
+  head.append(title, links);
 
   const frame = document.createElement('iframe');
   frame.className = 'excalidraw-inline-viewer';
@@ -422,7 +439,24 @@ function appendExcalidrawArtifactCard(section, artifactPath) {
   frame.setAttribute('scrolling', 'no');
   frame.src = excalidrawViewerUrl(artifactPath, 'preview');
 
-  card.append(head, frame);
+  const actions = document.createElement('div');
+  actions.className = 'excalidraw-card-actions';
+  [
+    ['Simplify', 'Simplify this diagram, reduce clutter, and create a new .excalidraw artifact.'],
+    ['Relayout', 'Re-layout this diagram for clearer left-to-right flow and create a new .excalidraw artifact.'],
+    ['Mockup', 'Turn this diagram into a UI mockup direction and create a new .excalidraw artifact.'],
+  ].forEach(([label, instruction]) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = label;
+    button.addEventListener('click', () => fillComposerFromInteractiveAction({
+      delivery: 'followUp',
+      prompt: `[Diagram action: ${label}]\nFor ${artifactPath}: ${instruction}\nMention the new artifact path as plain text so Makerspace renders it inline.`,
+    }));
+    actions.append(button);
+  });
+
+  card.append(head, frame, actions);
   section.append(card);
 }
 
@@ -983,26 +1017,34 @@ function workflowAgentGroups(run) {
   })).filter((group) => group.agents.length || group.phase === run.currentPhase);
 }
 
+function workflowAgentNode(agent) {
+  const agentState = workflowStateClass(agent.status);
+  const meta = [agent.model, workflowTokens(agent.tokens)].filter(Boolean).join(' · ');
+  const details = [
+    workflowAgentDetail('task', agent.promptPreview),
+    workflowAgentDetail('result', agent.resultPreview),
+    workflowAgentDetail('error', agent.error),
+  ].filter(Boolean).join('');
+  return `<article class="workflow-view-node workflow-agent ${agentState}"><div class="workflow-node-top"><span>${escapeHtml(agent.label || 'agent')}</span><b>${escapeHtml(agent.status || 'queued')}</b></div>${meta ? `<small>${escapeHtml(meta)}</small>` : ''}${details ? `<div class="workflow-agent-detail">${details}</div>` : ''}</article>`;
+}
+
 function renderWorkflowRun(run) {
   const agents = Array.isArray(run.agents) ? run.agents : [];
   const done = agents.filter((agent) => ['done', 'skipped'].includes(String(agent.status || '').toLowerCase())).length;
   const total = agents.length;
   const state = workflowStateClass(run.status);
-  const groups = workflowAgentGroups(run).map((group) => {
-    const phaseAgents = group.agents.map((agent) => {
-      const agentState = workflowStateClass(agent.status);
-      const meta = [agent.status || 'queued', agent.model, workflowTokens(agent.tokens)].filter(Boolean).join(' · ');
-      const details = [
-        workflowAgentDetail('task', agent.promptPreview),
-        workflowAgentDetail('result', agent.resultPreview),
-        workflowAgentDetail('error', agent.error),
-      ].filter(Boolean).join('');
-      return `<div class="agent-node workflow-agent ${agentState}"><span>${escapeHtml(agent.label || 'agent')}</span><small>${escapeHtml(meta)}</small>${details ? `<div class="workflow-agent-detail">${details}</div>` : ''}</div>`;
-    }).join('');
-    return `<section class="workflow-phase"><div class="workflow-phase-head"><span>${escapeHtml(group.phase)}</span><small>${group.agents.length} agent${group.agents.length === 1 ? '' : 's'}</small></div>${phaseAgents}</section>`;
+  const groups = workflowAgentGroups(run);
+  const phasePills = groups.map((group, index) => {
+    const phaseDone = group.agents.filter((agent) => ['done', 'skipped'].includes(String(agent.status || '').toLowerCase())).length;
+    return `<span class="workflow-phase-pill"><i>${index + 1}</i>${escapeHtml(group.phase)} <small>${phaseDone}/${group.agents.length}</small></span>`;
   }).join('');
+  const lanes = groups.map((group, index) => {
+    const phaseDone = group.agents.filter((agent) => ['done', 'skipped'].includes(String(agent.status || '').toLowerCase())).length;
+    const phaseRunning = group.agents.filter((agent) => String(agent.status || '').toLowerCase() === 'running').length;
+    return `<section class="workflow-lane"><div class="workflow-lane-head"><span>${index + 1}. ${escapeHtml(group.phase)}</span><small>${phaseRunning ? `${phaseRunning} running` : `${phaseDone}/${group.agents.length} done`}</small></div><div class="workflow-agent-grid">${group.agents.map(workflowAgentNode).join('')}</div></section>`;
+  }).join('<div class="workflow-step-link" aria-hidden="true">↓</div>');
 
-  return `<div class="workflow-run"><div class="agent-node workflow ${state}"><span>${escapeHtml(run.workflowName || run.label || 'workflow')}</span><small>${escapeHtml([run.runId, run.status || 'running', total ? `${done}/${total} agents` : 'waiting for agents'].filter(Boolean).join(' · '))}</small></div>${groups}</div>`;
+  return `<div class="workflow-map"><div class="workflow-map-head agent-node workflow ${state}"><span>${escapeHtml(run.workflowName || run.label || 'workflow')}</span><small>${escapeHtml([run.runId, run.status || 'running', total ? `${done}/${total} agents` : 'waiting for agents'].filter(Boolean).join(' · '))}</small></div>${phasePills ? `<div class="workflow-phase-strip">${phasePills}</div>` : ''}<div class="workflow-flow"><div class="workflow-terminal"><span>start</span><small>workflow args → phases</small></div>${lanes ? `<div class="workflow-step-link" aria-hidden="true">↓</div>${lanes}<div class="workflow-step-link" aria-hidden="true">↓</div>` : ''}<div class="workflow-terminal ${state}"><span>${state === 'done' ? 'result' : state === 'error' ? 'failed' : 'running'}</span><small>${total ? `${done}/${total} agents` : 'waiting'}</small></div></div></div>`;
 }
 
 function renderAgentGraph() {
@@ -1235,7 +1277,7 @@ function fillComposerFromInteractiveAction({ prompt = '', delivery = 'followUp' 
 
 function renderMessageBody(node, text, allowHtml = false, images = []) {
   const raw = String(text || '');
-  const displayText = stripInteractiveArtifactBlocks(raw);
+  const displayText = allowHtml ? stripInteractiveArtifactBlocks(raw) : raw;
   const preview = allowHtml ? htmlPreviewDocument(displayText, currentPreviewTheme(), { resolveImageSrc: resolveHtmlPreviewImageSrc }) : '';
   const card = node.closest('.message-card');
   messageText.set(node, raw);
@@ -1246,7 +1288,7 @@ function renderMessageBody(node, text, allowHtml = false, images = []) {
     node.textContent = displayText;
     renderMessageAttachments(node, images);
     renderExcalidrawArtifacts(node, raw);
-    renderInteractiveArtifacts(node, raw, fillComposerFromInteractiveAction);
+    if (allowHtml) renderInteractiveArtifacts(node, raw, fillComposerFromInteractiveAction);
     return;
   }
 

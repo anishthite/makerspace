@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { runLocalPiSession } from '../host-pi-runner.js';
@@ -103,6 +103,21 @@ export function createThreadService({ config, provider, http, auth, runState, br
     return bufferText(await readThreadArtifactBuffer(session, artifactPath, MAX_EXCALIDRAW_BYTES), artifactPath);
   }
 
+  async function writeThreadArtifactFile(session, artifactPath, text) {
+    checkedBuffer(Buffer.from(String(text || '')), artifactPath, MAX_EXCALIDRAW_BYTES);
+    if (session.repoPath) {
+      const root = path.resolve(session.repoPath);
+      const filePath = path.resolve(root, artifactPath);
+      if (filePath !== root && !filePath.startsWith(`${root}${path.sep}`)) throw clientError('Artifact path escapes the workspace.');
+      await mkdir(path.dirname(filePath), { recursive: true });
+      await writeFile(filePath, text);
+      return;
+    }
+
+    if (!provider.writeRemoteFile) throw clientError('Artifact editing is unavailable for this provider.', 501);
+    await provider.writeRemoteFile(session, path.posix.join(session.remoteWorkspaceDir || config.remoteWorkspaceDir, artifactPath), text);
+  }
+
   async function readThreadWorkflowRunFile(session, runId) {
     const runPath = path.posix.join('.pi/workflows/runs', `${runId}.json`);
     if (session.repoPath) return readFile(path.join(session.repoPath, runPath), 'utf8');
@@ -189,6 +204,29 @@ export function createThreadService({ config, provider, http, auth, runState, br
       contentType: IMAGE_ARTIFACT_TYPES.get(path.posix.extname(safePath).toLowerCase()),
       data: await readThreadArtifactBuffer(session, safePath, MAX_IMAGE_ARTIFACT_BYTES),
     };
+  }
+
+  async function saveThreadArtifactPayload(name, artifactPath, body = {}, viewerSessionId = '', trusted = false, user = null) {
+    const session = await getThreadSession(name);
+    if (!canAccessSession(session, viewerSessionId, trusted, user)) {
+      throw clientError(`Main agent ${name} belongs to a different user.`, 403);
+    }
+
+    const safePath = safeExcalidrawArtifactPath(artifactPath);
+    const scene = body.data || body.scene || body;
+    if (scene?.type !== 'excalidraw' || !Array.isArray(scene.elements)) throw clientError(`${safePath} is not an Excalidraw drawing.`);
+    const payload = {
+      type: 'excalidraw',
+      version: Number.isFinite(Number(scene.version)) ? Number(scene.version) : 2,
+      source: scene.source || 'https://excalidraw.com',
+      elements: scene.elements,
+      appState: scene.appState && typeof scene.appState === 'object' ? scene.appState : {},
+      files: scene.files && typeof scene.files === 'object' ? scene.files : {},
+    };
+    const text = `${JSON.stringify(payload, null, 2)}\n`;
+    checkedBuffer(Buffer.from(text), safePath, MAX_EXCALIDRAW_BYTES);
+    await writeThreadArtifactFile(session, safePath, text);
+    return { path: safePath, saved: true, byteLength: Buffer.byteLength(text) };
   }
 
   async function listThreadsPayload(viewerSessionId = '', trusted = false, user = null) {
@@ -576,6 +614,7 @@ export function createThreadService({ config, provider, http, auth, runState, br
     threadWorkflowPayload,
     threadArtifactPayload,
     threadImageArtifactPayload,
+    saveThreadArtifactPayload,
     getThreadSession,
     archiveThreadSession,
     unarchiveThreadSession,

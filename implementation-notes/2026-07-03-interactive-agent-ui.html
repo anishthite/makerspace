@@ -18,11 +18,11 @@
 
 <h2>Summary</h2>
 <div class="kv">
-  <b>Goal</b><div>Render app-owned thread controls from assistant <code>makerspace-ui</code> artifacts.</div>
-  <b>Source</b><div>Assistant final text with fenced <code>makerspace-ui</code> JSON.</div>
-  <b>Surface</b><div><code>/thread.html</code> assistant messages and existing follow-up composer.</div>
-  <b>Schema</b><div>Add versioned client-only <code>makerspace-ui</code> artifact schema.</div>
-  <b>Security</b><div>No assistant JavaScript; controls generate visible prompt text.</div>
+  <b>Goal</b><div>Render app-owned thread controls and trusted Excalidraw editing from assistant artifacts.</div>
+  <b>Source</b><div>Assistant final text with fenced <code>makerspace-ui</code> JSON and mentioned <code>.excalidraw</code> paths.</div>
+  <b>Surface</b><div><code>/thread.html</code>, <code>/excalidraw-editor.html</code>, and <code>/api/threads/:name/artifacts</code>.</div>
+  <b>Schema</b><div>Add versioned client-only <code>makerspace-ui</code> schema and constrained <code>.excalidraw</code> save payload.</div>
+  <b>Security</b><div>No assistant JavaScript; controls generate visible prompt text; editor writes only checked <code>.excalidraw</code> files.</div>
   <b>Open Qs</b><div>0.</div>
 </div>
 
@@ -39,6 +39,14 @@
 <h3>Action output</h3>
 <pre>[UI action: Apply]
 Revise with detail=7.</pre>
+<h3>Excalidraw save</h3>
+<pre>POST /api/threads/:name/artifacts?path=diagram.excalidraw
+{
+  "type": "excalidraw",
+  "elements": [],
+  "appState": {},
+  "files": {}
+}</pre>
 
 <h2>Algorithm</h2>
 <ol>
@@ -46,6 +54,8 @@ Revise with detail=7.</pre>
   <li>Validate <code>version</code>, IDs, counts, lengths, control types, action types, and delivery allowlist.</li>
   <li>Render controls as Makerspace DOM after message attachments and diagram cards.</li>
   <li>Fill the composer with generated prompt text; user sends the visible message.</li>
+  <li>Expose diagram prompt actions from inline Excalidraw cards.</li>
+  <li>Save trusted editor changes through the existing artifact route after path, session, type, and size checks.</li>
 </ol>
 
 <h2>UI layout</h2>
@@ -53,15 +63,21 @@ Revise with detail=7.</pre>
   <li><b>Artifact card</b>: title, optional description, control groups, action row.</li>
   <li><b>Controls</b>: slider with live output, checklist, select, text area, buttons.</li>
   <li><b>Action</b>: fill composer first and show requested delivery mode through existing composer behavior.</li>
+  <li><b>Diagram card</b>: show <code>open</code>, <code>edit</code>, and scoped prompt-action buttons.</li>
+  <li><b>Editor</b>: open explicit full-page Excalidraw editor with save status and thread link.</li>
 </ol>
 
 <h2>Files</h2>
 <table>
   <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
   <tr><td><code>frontend/src/runtime/interactive-artifacts.js</code></td><td>new</td><td>Parse, validate, render, and interpolate <code>makerspace-ui</code> artifacts.</td></tr>
-  <tr><td><code>frontend/src/runtime/thread.js</code></td><td>touch</td><td>Render interactive artifacts and fill composer from actions.</td></tr>
-  <tr><td><code>frontend/public/styles.css</code></td><td>touch</td><td>Style interactive artifact cards and controls.</td></tr>
+  <tr><td><code>frontend/src/runtime/thread.js</code></td><td>touch</td><td>Render interactive artifacts, fill composer from actions, and add diagram prompt buttons.</td></tr>
+  <tr><td><code>frontend/excalidraw-editor.html</code></td><td>new</td><td>Add explicit trusted Excalidraw editor with save action.</td></tr>
+  <tr><td><code>src/server/threads.js</code>, <code>src/server/routes.js</code></td><td>touch</td><td>Save checked <code>.excalidraw</code> artifact payloads through the existing route.</td></tr>
+  <tr><td><code>frontend/route-manifest.json</code>, <code>vite.config.js</code></td><td>touch</td><td>Register the editor page as a Vite entry.</td></tr>
+  <tr><td><code>frontend/public/styles.css</code></td><td>touch</td><td>Style interactive cards and diagram action rows.</td></tr>
   <tr><td><code>test/interactive-artifacts.test.js</code></td><td>new</td><td>Pin extraction, validation, interpolation, and action payloads.</td></tr>
+  <tr><td><code>test/thread-artifact-route.test.js</code></td><td>touch</td><td>Pin constrained <code>.excalidraw</code> saving.</td></tr>
   <tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this task.</td></tr>
 </table>
 
@@ -71,6 +87,9 @@ Revise with detail=7.</pre>
   <tr><td>D-001</td><td>Use fenced <code>makerspace-ui</code> JSON. It is parseable without trusting assistant HTML.</td></tr>
   <tr><td>D-002</td><td>Fill the composer instead of auto-sending. The user sees every generated prompt before it leaves.</td></tr>
   <tr><td>D-003</td><td>Keep widget state in the rendered message only. The transcript stays the durable record.</td></tr>
+  <tr><td>D-004</td><td>Add diagram prompt buttons before automating diagram edits. Prompted edits keep workspace changes auditable.</td></tr>
+  <tr><td>D-005</td><td>Use a separate <code>excalidraw-editor.html</code> route for writes. Normal assistant previews stay no-JS and read-only.</td></tr>
+  <tr><td>D-006</td><td>Render <code>makerspace-ui</code> controls only for HTML-mode assistant messages. Plain-text turns keep literal artifact fences visible.</td></tr>
 </table>
 
 <h2>Tradeoffs</h2>
@@ -78,6 +97,7 @@ Revise with detail=7.</pre>
   <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
   <tr><td>T-001</td><td>Vanilla DOM over React/Radix. The thread runtime is already vanilla and the MVP needs no new island.</td></tr>
   <tr><td>T-002</td><td>Client-only schema over new server routes. Existing message posting covers the feedback loop.</td></tr>
+  <tr><td>T-003</td><td>Constrained <code>.excalidraw</code> save route over generic artifact writes. Narrow writes reduce path and content risk.</td></tr>
 </table>
 
 <h2>Assumptions</h2>
@@ -87,26 +107,22 @@ Revise with detail=7.</pre>
 </ul>
 
 <h2>Reversibility</h2>
-<p>R-001 · <span class="blast-med">medium</span>. Remove the new runtime module, CSS block, test, and <code>thread.js</code> import/call; no data migration exists.</p>
+<p>R-001 · <span class="blast-med">medium</span>. Remove the new runtime module, editor page, route save branch, CSS blocks, tests, and <code>thread.js</code> import/calls; no data migration exists.</p>
 
 <h2>Verification</h2>
 <table>
   <tr><th>Check</th><th>Result</th></tr>
-  <tr><td><code>node --check frontend/src/runtime/interactive-artifacts.js &amp;&amp; node --check frontend/src/runtime/thread.js &amp;&amp; node --test test/interactive-artifacts.test.js test/html-preview.test.js test/excalidraw-artifacts.test.js</code></td><td>Passed focused parser, image, and artifact checks.</td></tr>
-  <tr><td><code>npm test</code></td><td>Passed 186/186.</td></tr>
+  <tr><td><code>node --check frontend/src/runtime/interactive-artifacts.js &amp;&amp; node --check frontend/src/runtime/thread.js &amp;&amp; node --check src/server/threads.js &amp;&amp; node --check src/server/routes.js &amp;&amp; node --test test/interactive-artifacts.test.js test/html-preview.test.js test/excalidraw-artifacts.test.js test/thread-artifact-route.test.js test/frontend-route-manifest.test.js</code></td><td>Passed 21/21.</td></tr>
+  <tr><td><code>node --test test/interactive-artifacts.test.js test/html-preview.test.js test/excalidraw-artifacts.test.js test/thread-artifact-route.test.js test/frontend-route-manifest.test.js test/thread-trace-tray.test.js test/thread-workflow-route.test.js</code></td><td>Passed 39/39.</td></tr>
   <tr><td><code>npm run build</code></td><td>Passed.</td></tr>
 </table>
-
-<h2>Followups</h2>
-<ul>
-  <li>L-001 · Add Excalidraw edit actions after the generic control loop ships.</li>
-  <li>L-002 · Add trusted editor route only after read-only diagram action prompts prove useful.</li>
-</ul>
 
 <h2>Definition of done</h2>
 <ul>
   <li>Valid <code>makerspace-ui</code> blocks render controls under assistant messages.</li>
   <li>Action buttons fill the composer with interpolated prompt text.</li>
+  <li>Diagram cards expose prompt actions and a trusted edit link.</li>
+  <li>Trusted editor saves checked <code>.excalidraw</code> payloads.</li>
   <li>Invalid artifacts fail closed without breaking message rendering.</li>
   <li>Focused tests and build checks pass.</li>
 </ul>

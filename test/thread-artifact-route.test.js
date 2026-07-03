@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 
 function waitForServer(child) {
   return new Promise((resolve, reject) => {
@@ -81,6 +81,22 @@ test('thread artifact route serves local Excalidraw drawings only', async () => 
     assert.equal(image.headers.get('content-type'), 'image/png');
     assert.match(image.headers.get('content-security-policy') || '', /sandbox/);
     assert.ok((await image.arrayBuffer()).byteLength > 0);
+
+    const save = await fetch(`${baseUrl}/api/threads/viewer/artifacts?path=diagram.excalidraw`, {
+      method: 'POST',
+      headers: { ...headers, 'content-type': 'application/json' },
+      body: JSON.stringify({ type: 'excalidraw', elements: [{ id: 'saved', type: 'rectangle', isDeleted: false }], appState: { viewBackgroundColor: '#fff' }, files: {} }),
+    });
+    assert.equal(save.status, 200);
+    assert.equal((await save.json()).saved, true);
+    assert.equal(JSON.parse(await readFile(path.join(tempDir, 'diagram.excalidraw'), 'utf8')).elements[0].id, 'saved');
+
+    const saveWrongExt = await fetch(`${baseUrl}/api/threads/viewer/artifacts?path=notes.txt`, {
+      method: 'POST',
+      headers: { ...headers, 'content-type': 'application/json' },
+      body: JSON.stringify({ type: 'excalidraw', elements: [] }),
+    });
+    assert.equal(saveWrongExt.status, 400);
 
     const wrongExt = await fetch(`${baseUrl}/api/threads/viewer/artifacts?path=notes.txt`, { headers });
     assert.equal(wrongExt.status, 400);

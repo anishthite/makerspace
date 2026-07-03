@@ -31,6 +31,7 @@ export default defineConfig({
         localTelemetry: page('local-telemetry.html'),
         desktop: page('desktop.html'),
         excalidrawViewer: page('excalidraw-viewer.html'),
+        excalidrawEditor: page('excalidraw-editor.html'),
       },
     },
   },

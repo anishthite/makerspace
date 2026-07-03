@@ -797,31 +797,45 @@ html[data-desktop="true"] .flow-topbar,
 .agent-node.pi.working,
 .agent-node.tool.running,
 .agent-node.subagent.running,
-.agent-node.workflow-agent.running,
-.agent-node.workflow.running { border-color: color-mix(in srgb, var(--yellow) 68%, var(--rule)); background: color-mix(in srgb, var(--yellow) 10%, var(--paper)); }
+.agent-node.workflow.running,
+.workflow-view-node.running { border-color: color-mix(in srgb, var(--yellow) 68%, var(--rule)); background: color-mix(in srgb, var(--yellow) 10%, var(--paper)); }
 .agent-node.pi.done,
 .agent-node.tool.done,
 .agent-node.subagent.done,
-.agent-node.workflow-agent.done,
-.agent-node.workflow.done { border-color: color-mix(in srgb, var(--green) 58%, var(--rule)); background: color-mix(in srgb, var(--green) 8%, var(--paper)); }
+.agent-node.workflow.done,
+.workflow-view-node.done { border-color: color-mix(in srgb, var(--green) 58%, var(--rule)); background: color-mix(in srgb, var(--green) 8%, var(--paper)); }
 .agent-node.pi.failed,
 .agent-node.tool.error,
 .agent-node.subagent.error,
-.agent-node.workflow-agent.error,
-.agent-node.workflow.error { border-color: color-mix(in srgb, var(--red) 58%, var(--rule)); background: color-mix(in srgb, var(--red) 8%, var(--paper)); }
+.agent-node.workflow.error,
+.workflow-view-node.error { border-color: color-mix(in srgb, var(--red) 58%, var(--rule)); background: color-mix(in srgb, var(--red) 8%, var(--paper)); }
 .agent-node.workflow { border-color: color-mix(in srgb, var(--blue) 42%, var(--rule)); }
-.agent-node.subagent,
-.agent-node.workflow-agent { border-color: color-mix(in srgb, var(--green) 42%, var(--rule)); }
+.agent-node.subagent { border-color: color-mix(in srgb, var(--green) 42%, var(--rule)); }
 .agent-node.tool { border-color: color-mix(in srgb, var(--rule-2) 72%, var(--rule)); }
 .agent-edge { width: 2px; height: 18px; margin-left: 18px; background: linear-gradient(var(--rule-2), transparent); }
 .subagent-stack { display: grid; gap: 7px; margin-left: 18px; padding-left: 12px; border-left: 2px solid var(--rule); }
-.workflow-agent-stack { max-height: min(52vh, 540px); overflow-y: auto; padding-right: 4px; }
-.workflow-run,
-.workflow-phase { display: grid; gap: 7px; }
-.workflow-phase { margin-left: 10px; }
-.workflow-phase-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--ink-3); font: 700 10px/1.2 var(--mono); text-transform: lowercase; }
-.workflow-phase-head small { color: var(--ink-4); }
-.workflow-agent-detail { display: grid; gap: 3px; margin-top: 5px; color: var(--ink-3); font: 10px/1.25 var(--mono); text-transform: none; }
+.workflow-agent-stack { max-height: min(56vh, 620px); overflow-y: auto; padding-right: 4px; }
+.workflow-map { display: grid; gap: 9px; }
+.workflow-map-head { margin-bottom: 2px; }
+.workflow-phase-strip { display: flex; flex-wrap: wrap; gap: 6px; }
+.workflow-phase-pill { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; border: 1px solid var(--rule); border-radius: 999px; padding: 4px 7px; background: var(--paper-2); color: var(--ink-3); font: 10px/1.1 var(--mono); text-transform: lowercase; }
+.workflow-phase-pill i { display: inline-grid; place-items: center; width: 15px; height: 15px; border-radius: 999px; background: color-mix(in srgb, var(--blue) 18%, var(--paper)); color: var(--blue); font-style: normal; }
+.workflow-phase-pill small { color: var(--ink-4); }
+.workflow-flow { display: grid; gap: 8px; }
+.workflow-terminal { display: grid; gap: 1px; border: 1px dashed var(--rule-2); border-radius: 6px; padding: 6px 8px; background: color-mix(in srgb, var(--paper) 88%, var(--blue-soft)); text-align: center; }
+.workflow-terminal span { color: var(--ink-2); font: 800 11px/1.1 var(--mono); text-transform: lowercase; }
+.workflow-terminal small { color: var(--ink-4); font: 10px/1.2 var(--mono); text-transform: lowercase; }
+.workflow-step-link { justify-self: center; margin: -2px 0; color: var(--ink-4); font: 800 14px/1 var(--mono); }
+.workflow-lane { display: grid; gap: 7px; border: 1px solid color-mix(in srgb, var(--blue) 28%, var(--rule)); border-radius: 6px; padding: 8px; background: color-mix(in srgb, var(--blue-soft) 34%, transparent); }
+.workflow-lane-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--ink-3); font: 800 10px/1.2 var(--mono); text-transform: lowercase; }
+.workflow-lane-head small { color: var(--ink-4); font-weight: 700; }
+.workflow-agent-grid { display: grid; gap: 7px; }
+.workflow-view-node { position: relative; display: grid; gap: 4px; border: 1px solid color-mix(in srgb, var(--green) 42%, var(--rule)); border-radius: 6px; padding: 8px 9px; background: var(--paper); box-shadow: 0 1px 0 var(--inset-highlight); }
+.workflow-node-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.workflow-node-top span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); font-weight: 800; font-size: 12px; }
+.workflow-node-top b { flex: none; border: 1px solid var(--rule); border-radius: 999px; padding: 2px 5px; color: var(--ink-3); background: var(--paper-2); font: 800 9px/1 var(--mono); text-transform: lowercase; }
+.workflow-view-node small { color: var(--ink-4); font: 10px/1.2 var(--mono); text-transform: lowercase; }
+.workflow-agent-detail { display: grid; gap: 3px; margin-top: 2px; color: var(--ink-3); font: 10px/1.25 var(--mono); text-transform: none; }
 .workflow-agent-detail span { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 5px; min-width: 0; }
 .workflow-agent-detail b { color: var(--ink-4); font-weight: 700; }
 .notes-list { display: grid; gap: 10px; }
@@ -1049,9 +1063,14 @@ html[data-desktop="true"] .flow-topbar,
 .excalidraw-card { overflow: hidden; border: 1px solid color-mix(in srgb, var(--rule) 82%, var(--ink-4)); border-radius: 8px; background: color-mix(in srgb, var(--paper) 92%, var(--bg)); box-shadow: var(--shadow); }
 .excalidraw-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 10px; border-bottom: 1px solid var(--rule); color: var(--ink-2); font: 12px/1.3 var(--mono); }
 .excalidraw-card-head strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.excalidraw-card-links { display: inline-flex; align-items: center; gap: 9px; flex: none; }
 .excalidraw-card-head a { flex: none; color: var(--blue); text-decoration: none; }
 .excalidraw-card-head a:hover { text-decoration: underline; }
 .excalidraw-inline-viewer { display: block; width: 100%; height: min(520px, 58vh); min-height: 280px; border: 0; background: color-mix(in srgb, var(--paper) 70%, var(--bg)); }
+.excalidraw-card-actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 10px 10px; border-top: 1px solid var(--rule); }
+.excalidraw-card-actions button { border: 1px solid var(--rule); border-radius: 999px; background: color-mix(in srgb, var(--paper) 92%, var(--blue-soft)); color: var(--ink-2); padding: 6px 9px; font: 700 11px/1 var(--mono); cursor: pointer; }
+.excalidraw-card-actions button:hover,
+.excalidraw-card-actions button:focus-visible { border-color: var(--blue); color: var(--blue); }
 .diagram-inline-image { display: block; width: 100%; max-height: min(620px, 68vh); object-fit: contain; background: color-mix(in srgb, var(--paper) 70%, var(--bg)); }
 .interactive-artifacts { display: grid; gap: 10px; margin-top: 12px; white-space: normal; }
 .interactive-artifact-card { overflow: hidden; border: 1px solid color-mix(in srgb, var(--blue) 28%, var(--rule)); border-radius: 8px; background: color-mix(in srgb, var(--paper) 94%, var(--blue-soft)); box-shadow: var(--shadow); }
