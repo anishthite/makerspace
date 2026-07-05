@@ -268,7 +268,7 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
     const change = trackedChangeFromToolEvent(event, event.args || remembered.args || {});
     if (!change) return;
     run.trackedChanges = mergeTrackedChanges(run.trackedChanges, [change]);
-    void persistTrackedChanges(name).catch((error) => console.warn(`[makerspace] failed to persist tracked changes for ${name}: ${error.message}`));
+    void persistTrackedChanges(name).catch((error) => console.warn(`[workbench] failed to persist tracked changes for ${name}: ${error.message}`));
   }
 
   const FINISHED_RUN_STATUSES = ['completed', 'ready', 'failed'];
@@ -511,7 +511,7 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
         try {
           await next();
         } catch (error) {
-          console.warn(`[makerspace] skipped polish job: ${error.message}`);
+          console.warn(`[workbench] skipped polish job: ${error.message}`);
         }
         await sleep(250);
       }
@@ -558,7 +558,7 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
           session: decorateLiveSession(updated),
         });
       } catch (error) {
-        console.warn(`[makerspace] skipped answer summary for ${session.name}: ${error.message}`);
+        console.warn(`[workbench] skipped answer summary for ${session.name}: ${error.message}`);
       } finally {
         finalAnswerSummaryRuns.delete(key);
       }
@@ -610,7 +610,7 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
           session: decorateLiveSession(updated),
         });
       } catch (error) {
-        console.warn(`[makerspace] skipped turn status for ${session.name}: ${error.message}`);
+        console.warn(`[workbench] skipped turn status for ${session.name}: ${error.message}`);
       } finally {
         finalTurnStatusRuns.delete(key);
       }
@@ -682,7 +682,7 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
           session: decorateLiveSession(updated),
         });
       } catch (error) {
-        console.warn(`[makerspace] skipped agent title for ${session.name}: ${error.message}`);
+        console.warn(`[workbench] skipped agent title for ${session.name}: ${error.message}`);
       }
     });
   }

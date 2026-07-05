@@ -8,12 +8,12 @@ const config = {
   daytonaApiKey: 'test-key',
   daytonaApiUrl: 'https://app.daytona.io/api',
   daytonaTarget: 'us',
-  daytonaSnapshot: 'makerspace-base',
+  daytonaSnapshot: 'workbench-base',
   daytonaAutostopMinutes: 60,
   daytonaAutodeleteMinutes: 120,
   remoteUser: 'daytona',
   remoteHomeDir: '/home/daytona',
-  remoteControlDir: '/srv/makerspace',
+  remoteControlDir: '/srv/workbench',
   remoteWorkspaceDir: '/srv/workspace',
   bridgePort: 4310,
   bridgeReadyTimeoutMs: 240000,
@@ -103,14 +103,14 @@ test('createProvider rejects unknown infrastructure providers', () => {
 });
 
 test('createProvider exposes local metadata and validates repo paths', async () => {
-  const provider = createProvider({ ...config, provider: 'local', projectName: 'api', localDataDir: '/tmp/makerspace-test' });
+  const provider = createProvider({ ...config, provider: 'local', projectName: 'api', localDataDir: '/tmp/workbench-test' });
 
   assert.equal(provider.kind, 'local');
   assert.equal(provider.info().transport, 'local-process');
   assert.equal(provider.info().ready, true);
-  assert.deepEqual(provider.info().project, { name: 'api', home: '/tmp/makerspace-test' });
+  assert.deepEqual(provider.info().project, { name: 'api', home: '/tmp/workbench-test' });
   assert.equal(await provider.resolveRepoPath('.'), await realpath('.'));
-  await assert.rejects(() => provider.resolveRepoPath('/definitely/missing/makerspace'), /ENOENT|no such file/i);
+  await assert.rejects(() => provider.resolveRepoPath('/definitely/missing/workbench'), /ENOENT|no such file/i);
 });
 
 test('createSession creates a Daytona sandbox and returns bridge preview metadata', async () => {
@@ -139,17 +139,17 @@ test('createSession creates a Daytona sandbox and returns bridge preview metadat
   const remote = await provider.createSession(session, {});
 
   assert.equal(createParams.name, 'thread-one');
-  assert.equal(createParams.snapshot, 'makerspace-base');
+  assert.equal(createParams.snapshot, 'workbench-base');
   assert.equal(createParams.resources, undefined);
-  assert.equal(createParams.labels.makerspace, '1');
-  assert.equal(createParams.labels.makerspaceSession, 'thread-one');
+  assert.equal(createParams.labels.workbench, '1');
+  assert.equal(createParams.labels.workbenchSession, 'thread-one');
   assert.equal(remote.name, 'thread-one');
   assert.equal(remote.bridgeUrl, 'https://preview.example/4310');
   assert.equal(remote.previewToken, 'preview-token');
   assert.equal(remote.daytonaSandboxId, 'sandbox-123');
   assert.equal(remote.connectCommand, 'daytona ssh sandbox-123');
-  assert.equal(sandbox.calls.some((call) => call[0] === 'uploadFile' && call[1] === '/tmp/makerspace-setup.sh'), true);
-  assert.equal(sandbox.calls.some((call) => call[0] === 'executeCommand' && String(call[1]).includes('/tmp/makerspace-setup.sh')), true);
+  assert.equal(sandbox.calls.some((call) => call[0] === 'uploadFile' && call[1] === '/tmp/workbench-setup.sh'), true);
+  assert.equal(sandbox.calls.some((call) => call[0] === 'executeCommand' && String(call[1]).includes('/tmp/workbench-setup.sh')), true);
 });
 
 test('createSession reuses a stored Daytona sandbox id before creating', async () => {

@@ -5,7 +5,7 @@ FROM ubuntu:24.04
 
 SHELL ["/bin/bash", "-euxo", "pipefail", "-c"]
 
-ENV MAKERSPACE_DAYTONA_IMAGE=1
+ENV WORKBENCH_DAYTONA_IMAGE=1
 
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
@@ -72,17 +72,17 @@ RUN usermod -l daytona -c "Daytona user" ubuntu && \
     echo '/dev/vda / ext4 defaults,x-systemd.growfs 0 1' > /etc/fstab
 
 COPY package.json /home/daytona/.pi/agent/npm/package.json
-COPY ctx/ /tmp/makerspace-ctx/
+COPY ctx/ /tmp/workbench-ctx/
 
 RUN npm install --prefix /home/daytona/.pi/agent/npm --no-audit --no-fund --omit=dev --ignore-scripts --legacy-peer-deps && \
-    if [ -d /tmp/makerspace-ctx/makerspace-pi-defaults ]; then \
-      rm -rf /home/daytona/.pi/agent/makerspace-pi-defaults && \
-      cp -R /tmp/makerspace-ctx/makerspace-pi-defaults /home/daytona/.pi/agent/makerspace-pi-defaults; \
+    if [ -d /tmp/workbench-ctx/workbench-pi-defaults ]; then \
+      rm -rf /home/daytona/.pi/agent/workbench-pi-defaults && \
+      cp -R /tmp/workbench-ctx/workbench-pi-defaults /home/daytona/.pi/agent/workbench-pi-defaults; \
     fi && \
     ln -sf /home/daytona/.pi/agent/npm/node_modules/.bin/pi /home/daytona/.local/bin/pi && \
     ln -sf /home/daytona/.local/bin/pi /usr/local/bin/pi && \
-    if [ -d /home/daytona/.pi/agent/makerspace-pi-defaults ]; then \
-      settings='{"defaultProvider":"openai-codex","defaultModel":"gpt-5.4","defaultThinkingLevel":"medium","enabledModels":["openai-codex/gpt-5.4","openai-codex/gpt-5.4-mini","inference/nvidia/nemotron3-super"],"packages":["/home/daytona/.pi/agent/makerspace-pi-defaults","npm:pi-chrome"]}'; \
+    if [ -d /home/daytona/.pi/agent/workbench-pi-defaults ]; then \
+      settings='{"defaultProvider":"openai-codex","defaultModel":"gpt-5.4","defaultThinkingLevel":"medium","enabledModels":["openai-codex/gpt-5.4","openai-codex/gpt-5.4-mini","inference/nvidia/nemotron3-super"],"packages":["/home/daytona/.pi/agent/workbench-pi-defaults","npm:pi-chrome"]}'; \
     else \
       settings='{"defaultProvider":"openai-codex","defaultModel":"gpt-5.4","defaultThinkingLevel":"medium","enabledModels":["openai-codex/gpt-5.4","openai-codex/gpt-5.4-mini"],"packages":["npm:pi-chrome"]}'; \
     fi && \

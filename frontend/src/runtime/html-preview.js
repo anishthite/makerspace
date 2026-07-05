@@ -2,7 +2,7 @@ const HTML_FENCE_RE = /^```(?:html?)?\s*([\s\S]*?)\s*```$/i;
 const HTML_FENCE_ANYWHERE_RE = /```(?:html?)\s*([\s\S]*?)```/i;
 const HTML_TAG_RE = /<\/?(?:html|head|body|main|section|article|div|header|footer|nav|aside|h[1-6]|p|ul|ol|li|table|thead|tbody|tr|td|th|style|svg|canvas|form|button|input|label|figure|figcaption|img|a|span)\b[^>]*>/gi;
 const PREVIEW_CSP = '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src \'self\' http: https: data: blob:; style-src \'unsafe-inline\' https:; font-src https: data:; script-src \'none\'; object-src \'none\'; base-uri \'none\'; form-action \'none\'">';
-const PREVIEW_SHELL_STYLE = `<style data-makerspace-preview>
+const PREVIEW_SHELL_STYLE = `<style data-workbench-preview>
   * { box-sizing: border-box; }
   html, body { overflow: hidden !important; }
   body { margin: 0; background: transparent; }

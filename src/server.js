@@ -15,7 +15,7 @@ import { createThreadService } from './server/threads.js';
 const config = getConfig();
 const provider = createProvider(config);
 const distDir = path.join(config.rootDir, 'dist');
-const publicDir = process.env.MAKERSPACE_STATIC_DIR || distDir;
+const publicDir = process.env.WORKBENCH_STATIC_DIR || distDir;
 
 const httpHelpers = createHttpHelpers({ publicDir });
 const auth = createAuthService({ config, http: httpHelpers });
@@ -55,7 +55,7 @@ server.listen(config.port, config.host || undefined, () => {
   const address = server.address();
   const port = typeof address === 'object' && address ? address.port : config.port;
   const host = config.host || 'localhost';
-  console.log(`[makerspace] listening on http://${host}:${port} (${provider.kind}; ${config.projectName})`);
+  console.log(`[workbench] listening on http://${host}:${port} (${provider.kind}; ${config.projectName})`);
   void bridge.pruneExpiredIdleBridges();
   void bridge.ensureWarmBridgePool();
   if (Number.isFinite(config.idleBridgeTtlMs) && config.idleBridgeTtlMs > 0) {

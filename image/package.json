@@ -1,7 +1,7 @@
 {
-  "name": "makerspace-pi-runtime",
+  "name": "workbench-pi-runtime",
   "private": true,
-  "description": "Pi packages baked into Makerspace Daytona bridge snapshots.",
+  "description": "Pi packages baked into Workbench Daytona bridge snapshots.",
   "dependencies": {
     "@capyup/pi-goal": "0.6.0",
     "@earendil-works/pi-coding-agent": "0.79.7",

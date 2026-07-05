@@ -1,8 +1,8 @@
-const BROWSER_SESSION_KEY = 'makerspaceBrowserSession';
-const PROJECT_KEY = 'makerspaceSelectedProject';
+const BROWSER_SESSION_KEY = 'workbenchBrowserSession';
+const PROJECT_KEY = 'workbenchSelectedProject';
 const ACTIVE_THREAD_STATUSES = ['launching', 'starting', 'queued', 'running'];
 const FINISHED_THREAD_STATUSES = ['completed', 'ready', 'failed'];
-const API_BASE = String(import.meta.env?.VITE_MAKERSPACE_API_BASE || '').trim().replace(/\/+$/, '');
+const API_BASE = String(import.meta.env?.VITE_WORKBENCH_API_BASE || '').trim().replace(/\/+$/, '');
 
 let loadedThreadSnapshot = false;
 let knownThreadStatuses = new Map();
@@ -19,7 +19,7 @@ function getBrowserSessionId() {
 }
 
 function authHeaders() {
-  return { 'x-makerspace-session': getBrowserSessionId() };
+  return { 'x-workbench-session': getBrowserSessionId() };
 }
 
 async function fetchJson(path) {

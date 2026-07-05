@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   diagramImageArtifactPaths,
   excalidrawArtifactPaths,
+  htmlImageArtifactPaths,
   normalizeDiagramImageArtifactPath,
   normalizeExcalidrawArtifactPath,
 } from '../frontend/src/runtime/excalidraw-artifacts.js';
@@ -61,4 +62,11 @@ test('diagramImageArtifactPaths ignores generic static asset mentions', () => {
   assert.equal(normalizeDiagramImageArtifactPath('../secret.png'), '');
   assert.equal(normalizeDiagramImageArtifactPath('https://example.com/a.png'), '');
   assert.equal(normalizeDiagramImageArtifactPath('public/logos/*.svg'), '');
+});
+
+test('htmlImageArtifactPaths finds embedded relative image sources for duplicate suppression', () => {
+  assert.deepEqual(
+    htmlImageArtifactPaths('<section><img src="output/playwright/demo.png"><img src="https://example.com/demo.png"><img src="../secret.png"><img src="output/playwright/demo.png"></section>'),
+    ['output/playwright/demo.png'],
+  );
 });

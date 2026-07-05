@@ -1,17 +1,17 @@
 [Unit]
-Description=Makerspace control backend
+Description=Workbench control backend
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=/opt/makerspace
-EnvironmentFile=/etc/makerspace.env
+WorkingDirectory=/opt/workbench
+EnvironmentFile=/etc/workbench.env
 ExecStart=/usr/bin/npm start
 Restart=always
 RestartSec=5
-User=makerspace
-Group=makerspace
+User=workbench
+Group=workbench
 
 [Install]
 WantedBy=multi-user.target

@@ -7,20 +7,20 @@ import path from 'node:path';
 import { prepareBuildContext } from '../src/image-builder.js';
 import { createPiResourceOptions, piDefaultsResourcePaths } from '../src/pi-defaults-package.js';
 
-const packageDir = path.resolve('packages/makerspace-pi-defaults');
+const packageDir = path.resolve('packages/workbench-pi-defaults');
 
-test('makerspace Pi defaults package exposes pi resources', async () => {
+test('workbench Pi defaults package exposes pi resources', async () => {
   const manifest = JSON.parse(await readFile(path.join(packageDir, 'package.json'), 'utf8'));
-  const skill = await readFile(path.join(packageDir, 'skills/makerspace-implementation-notes/SKILL.md'), 'utf8');
-  const extension = await readFile(path.join(packageDir, 'extensions/makerspace-defaults.ts'), 'utf8');
+  const skill = await readFile(path.join(packageDir, 'skills/workbench-implementation-notes/SKILL.md'), 'utf8');
+  const extension = await readFile(path.join(packageDir, 'extensions/workbench-defaults.ts'), 'utf8');
 
-  assert.equal(manifest.name, '@makerspace/pi-defaults');
+  assert.equal(manifest.name, '@workbench/pi-defaults');
   assert.deepEqual(manifest.pi, {
     extensions: ['extensions/*.ts'],
     skills: ['skills'],
     prompts: ['prompts/*.md'],
   });
-  assert.match(skill, /name: makerspace-implementation-notes/);
+  assert.match(skill, /name: workbench-implementation-notes/);
   assert.match(skill, /description: Keep concise append-only implementation notes/);
   assert.match(extension, /before_agent_start/);
   assert.match(extension, /context\/AGENTS\.md/);
@@ -111,7 +111,7 @@ test('createPiResourceOptions applies extension provider registrations', async (
 });
 
 test('prepareBuildContext copies defaults package into docker ctx', async () => {
-  const dir = await mkdtemp(path.join(os.tmpdir(), 'makerspace-defaults-image-'));
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'workbench-defaults-image-'));
   const imageDir = path.join(dir, 'image');
   const packageSource = path.join(dir, 'defaults');
 
@@ -127,7 +127,7 @@ test('prepareBuildContext copies defaults package into docker ctx', async () => 
 
   try {
     assert.equal(
-      await readFile(path.join(prepared.contextDir, 'ctx/makerspace-pi-defaults/package.json'), 'utf8'),
+      await readFile(path.join(prepared.contextDir, 'ctx/workbench-pi-defaults/package.json'), 'utf8'),
       '{"name":"defaults"}\n',
     );
   } finally {
@@ -137,5 +137,5 @@ test('prepareBuildContext copies defaults package into docker ctx', async () => 
 });
 
 test('piDefaultsResourcePaths returns null for absent package', () => {
-  assert.equal(piDefaultsResourcePaths('/definitely/missing/makerspace-pi-defaults'), null);
+  assert.equal(piDefaultsResourcePaths('/definitely/missing/workbench-pi-defaults'), null);
 });

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 220" role="img" aria-labelledby="title desc">
-  <title id="title">Makerspace logo</title>
-  <desc id="desc">A blue workshop tile with an angular M beside the makerspace wordmark.</desc>
+  <title id="title">Workbench logo</title>
+  <desc id="desc">A blue workshop tile with an angular M beside the workbench wordmark.</desc>
   <rect width="720" height="220" fill="none"/>
   <g transform="translate(40 40)">
     <rect width="140" height="140" rx="16" fill="#1F5E9C"/>
@@ -9,7 +9,7 @@
     <path d="M28 126h84" stroke="#FAF8F3" stroke-width="8" stroke-linecap="square" opacity=".95"/>
   </g>
   <g font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
-    <text x="214" y="105" fill="#241A12" font-size="56" font-weight="850" letter-spacing="-3">makerspace</text>
+    <text x="214" y="105" fill="#241A12" font-size="56" font-weight="850" letter-spacing="-3">workbench</text>
     <text x="218" y="139" fill="#1F5E9C" font-family="Hack, JetBrains Mono, 'SF Mono', ui-monospace, monospace" font-size="15" font-weight="700" letter-spacing="2.5">AGENT WORKBENCH</text>
   </g>
 </svg>

@@ -7,10 +7,10 @@ const settingsJs = readFileSync(new URL('../frontend/src/runtime/settings.js', i
 
 test('settings page omits URL query token backend controls', () => {
   assert.doesNotMatch(settingsJs, /const connectionParams = new URLSearchParams\(location\.search\);/);
-  assert.doesNotMatch(settingsJs, /apiFromUrl|tokenFromUrl|makerspaceApiBase|makerspaceApiToken/);
+  assert.doesNotMatch(settingsJs, /apiFromUrl|tokenFromUrl|workbenchApiBase|workbenchApiToken/);
   assert.doesNotMatch(settingsPage, /id="api-base"|id="api-token"|id="connection-summary"/);
   assert.doesNotMatch(settingsJs, /connectionSummary/);
-  assert.match(settingsJs, /import\.meta\.env\?\.VITE_MAKERSPACE_API_BASE/);
+  assert.match(settingsJs, /import\.meta\.env\?\.VITE_WORKBENCH_API_BASE/);
 });
 
 test('settings page exposes Pi profile editor wiring', () => {

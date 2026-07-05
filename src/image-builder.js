@@ -49,7 +49,7 @@ export function deriveNpmPackageManifest(settingsText) {
   }
 
   return {
-    name: 'makerspace-image-packages',
+    name: 'workbench-image-packages',
     private: true,
     dependencies,
   };
@@ -104,7 +104,7 @@ async function copyIfExists(source, destination) {
 }
 
 export async function prepareBuildContext(config) {
-  const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'makerspace-image-'));
+  const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'workbench-image-'));
   const contextDir = path.join(tempRoot, 'image');
 
   await cp(config.imageAssetsDir, contextDir, { recursive: true });
@@ -121,8 +121,8 @@ export async function prepareBuildContext(config) {
   await mkdir(ctxDir, { recursive: true });
 
   const defaultsPackageDir = config.piDefaultsPackageDir || defaultPiDefaultsPackageDir(config.rootDir);
-  if (!(await copyIfExists(defaultsPackageDir, path.join(ctxDir, 'makerspace-pi-defaults')))) {
-    await mkdir(path.join(ctxDir, 'makerspace-pi-defaults'), { recursive: true });
+  if (!(await copyIfExists(defaultsPackageDir, path.join(ctxDir, 'workbench-pi-defaults')))) {
+    await mkdir(path.join(ctxDir, 'workbench-pi-defaults'), { recursive: true });
   }
 
   return {

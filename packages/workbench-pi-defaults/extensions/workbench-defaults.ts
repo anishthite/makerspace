@@ -23,8 +23,8 @@ function contextHasAgents(event: any): boolean {
 
 function promptBlock(event: any): string {
   return [
-    agents && !contextHasAgents(event) && `<makerspace-instructions>\n${agents}\n</makerspace-instructions>`,
-    rules && `<makerspace-rules>\n${rules}\n</makerspace-rules>`,
+    agents && !contextHasAgents(event) && `<workbench-instructions>\n${agents}\n</workbench-instructions>`,
+    rules && `<workbench-rules>\n${rules}\n</workbench-rules>`,
   ].filter(Boolean).join('\n\n');
 }
 
@@ -54,7 +54,7 @@ function registerInferenceProvider(pi: any) {
   });
 }
 
-export default function makerspaceDefaults(pi: any) {
+export default function workbenchDefaults(pi: any) {
   registerInferenceProvider(pi);
 
   if (!agents && !rules) return;

@@ -7,7 +7,7 @@ import path from 'node:path';
 import { listRecentProjects, MAX_RECENT_PROJECTS, saveRecentProject } from '../src/recent-projects.js';
 
 async function withStore(fn) {
-  const dir = await mkdtemp(path.join(os.tmpdir(), 'makerspace-recents-'));
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'workbench-recents-'));
   try {
     return await fn(path.join(dir, 'recent-projects.json'));
   } finally {

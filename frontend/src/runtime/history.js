@@ -1,9 +1,9 @@
 import './appearance.js?v=palette-2';
 
-const BROWSER_SESSION_KEY = 'makerspaceBrowserSession';
-const PROJECT_KEY = 'makerspaceSelectedProject';
+const BROWSER_SESSION_KEY = 'workbenchBrowserSession';
+const PROJECT_KEY = 'workbenchSelectedProject';
 const ACTIVE_STATUSES = new Set(['launching', 'queued', 'starting', 'running', 'reconnecting']);
-const API_BASE = String(import.meta.env?.VITE_MAKERSPACE_API_BASE || '').trim().replace(/\/+$/, '');
+const API_BASE = String(import.meta.env?.VITE_WORKBENCH_API_BASE || '').trim().replace(/\/+$/, '');
 const doc = globalThis.document;
 const storage = globalThis.localStorage && typeof globalThis.localStorage.getItem === 'function' ? globalThis.localStorage : null;
 
@@ -91,7 +91,7 @@ export function filterSessionsByProject(sessions = [], project = null) {
 }
 
 function authHeaders() {
-  const headers = { 'x-makerspace-session': getBrowserSessionId() };
+  const headers = { 'x-workbench-session': getBrowserSessionId() };
   const token = getApiToken();
   if (token) headers.authorization = `Bearer ${token}`;
   return headers;
@@ -203,7 +203,7 @@ export function filterHistoryRows(rows = [], query = '') {
 function renderProject(provider) {
   const project = provider?.project || {};
   const name = String(project.name || '').trim();
-  const visible = name && name !== 'makerspace';
+  const visible = name && name !== 'workbench';
   if (!projectLabel) return;
   projectLabel.hidden = !visible;
   projectLabel.textContent = visible ? name : '';

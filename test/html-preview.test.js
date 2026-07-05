@@ -18,7 +18,7 @@ test('htmlPreviewDocument wraps fragments with no-scroll app defaults', () => {
   const doc = htmlPreviewDocument('<section><h1>Hello</h1><p>World</p></section>');
   assert.match(doc, /^<!doctype html>/);
   assert.match(doc, /Content-Security-Policy/);
-  assert.match(doc, /data-makerspace-preview/);
+  assert.match(doc, /data-workbench-preview/);
   assert.match(doc, /overflow: hidden !important/);
   assert.match(doc, /family=Inter/);
   assert.doesNotMatch(doc, /Hack/);

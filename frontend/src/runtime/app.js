@@ -2,14 +2,14 @@ import './appearance.js?v=palette-2';
 import { bindImageDropZone, clearImageInput, filesToImageAttachments, imageInputFiles, updateImageStatus } from './image-attachments.js';
 import { submitOnEnter } from './submit-on-enter.js';
 
-const BROWSER_SESSION_KEY = 'makerspaceBrowserSession';
-const MODEL_REF_KEY = 'makerspaceModelRef';
-const THINKING_LEVEL_KEY = 'makerspaceThinkingLevel';
-const PROJECT_KEY = 'makerspaceSelectedProject';
-const SEEN_FINISHED_THREADS_KEY = 'makerspaceSeenFinishedThreads';
+const BROWSER_SESSION_KEY = 'workbenchBrowserSession';
+const MODEL_REF_KEY = 'workbenchModelRef';
+const THINKING_LEVEL_KEY = 'workbenchThinkingLevel';
+const PROJECT_KEY = 'workbenchSelectedProject';
+const SEEN_FINISHED_THREADS_KEY = 'workbenchSeenFinishedThreads';
 const THINKING_LEVELS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh'];
 const ARCHIVEABLE_THREAD_STATUSES = ['completed', 'ready', 'failed'];
-const API_BASE = String(import.meta.env?.VITE_MAKERSPACE_API_BASE || '').trim().replace(/\/+$/, '');
+const API_BASE = String(import.meta.env?.VITE_WORKBENCH_API_BASE || '').trim().replace(/\/+$/, '');
 
 const providerBanner = document.querySelector('#provider-banner');
 const projectLabel = document.querySelector('#project-label');
@@ -164,7 +164,7 @@ function loadRunControls() {
 }
 
 function authHeaders() {
-  const headers = { 'x-makerspace-session': getBrowserSessionId() };
+  const headers = { 'x-workbench-session': getBrowserSessionId() };
   const token = getApiToken();
   if (token) headers.authorization = `Bearer ${token}`;
   return headers;
@@ -256,12 +256,12 @@ function sameSelectedProject(thread) {
 function renderProject(provider) {
   const project = provider?.project || {};
   const name = String(project.name || '').trim();
-  const visible = name && name !== 'makerspace';
+  const visible = name && name !== 'workbench';
   if (!projectLabel) return;
   projectLabel.hidden = !visible;
   projectLabel.textContent = visible ? name : '';
   projectLabel.title = project.home ? `Project state: ${project.home}` : `Project: ${name}`;
-  document.title = visible ? `Makerspace · ${name}` : 'Makerspace';
+  document.title = visible ? `Workbench · ${name}` : 'Workbench';
 }
 
 function providerSummary(provider) {
@@ -276,9 +276,9 @@ function providerSummary(provider) {
 }
 
 async function loadLastLocalFolder() {
-  if (!globalThis.makerspaceDesktop?.getLastFolder || repoUrlInput.value.trim()) return;
+  if (!globalThis.workbenchDesktop?.getLastFolder || repoUrlInput.value.trim()) return;
   try {
-    const folder = await globalThis.makerspaceDesktop.getLastFolder();
+    const folder = await globalThis.workbenchDesktop.getLastFolder();
     if (!folder || repoUrlInput.value.trim()) return;
     repoUrlInput.value = folder;
     repoHint.textContent = 'Last local folder.';
@@ -288,7 +288,7 @@ async function loadLastLocalFolder() {
 function applyProviderMode(provider) {
   localProvider = provider?.kind === 'local';
   repoUrlInput.placeholder = localProvider ? '/Users/you/project' : 'github.com/you/repo';
-  chooseFolder.hidden = !localProvider || !globalThis.makerspaceDesktop?.chooseFolder;
+  chooseFolder.hidden = !localProvider || !globalThis.workbenchDesktop?.chooseFolder;
 
   if (localProvider) {
     repoPicker.disabled = true;
@@ -700,7 +700,7 @@ repoRefresh.addEventListener('click', async () => {
 });
 
 chooseFolder.addEventListener('click', async () => {
-  const folder = await globalThis.makerspaceDesktop?.chooseFolder?.(repoUrlInput.value.trim());
+  const folder = await globalThis.workbenchDesktop?.chooseFolder?.(repoUrlInput.value.trim());
   if (!folder) return;
   repoUrlInput.value = folder;
   resetRepoSelection('Local folder selected.');
@@ -751,7 +751,7 @@ threadForm.addEventListener('submit', async (event) => {
     });
     if (localProject) {
       try {
-        await globalThis.makerspaceDesktop?.rememberFolder?.(repoInput);
+        await globalThis.workbenchDesktop?.rememberFolder?.(repoInput);
       } catch {}
     }
     clearImageInput(imageInput);

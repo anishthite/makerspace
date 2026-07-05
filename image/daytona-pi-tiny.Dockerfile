@@ -1,4 +1,4 @@
-# Tiny Daytona snapshot for makerspace bridge runs.
+# Tiny Daytona snapshot for workbench bridge runs.
 # ponytail: one npm prefix does Pi CLI, bridge SDK, and cloud packages.
 
 FROM node:22-bookworm-slim

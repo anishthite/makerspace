@@ -1,5 +1,5 @@
 {
-  "name": "makerspace",
+  "name": "workbench",
   "version": "0.0.7",
   "private": true,
   "type": "module",
@@ -18,9 +18,9 @@
     "frontend:dev": "vite --host 127.0.0.1",
     "build": "vite build",
     "test": "node --test test/*.test.js",
-    "desktop:dev": "VITE_MAKERSPACE_API_BASE= npm run build && electron desktop/main.js",
+    "desktop:dev": "VITE_WORKBENCH_API_BASE= npm run build && electron desktop/main.js",
     "desktop:package": "bash scripts/package-desktop.sh",
-    "desktop:release": "SIGN_IDENTITY=\"Developer ID Application: Mahesh Thite (2EJKM9WA68)\" TEAM_ID=2EJKM9WA68 NOTARY_PROFILE=makerspace-notary bash scripts/package-desktop.sh",
+    "desktop:release": "SIGN_IDENTITY=\"Developer ID Application: Mahesh Thite (2EJKM9WA68)\" TEAM_ID=2EJKM9WA68 NOTARY_PROFILE=workbench-notary bash scripts/package-desktop.sh",
     "release:push": "bash scripts/release-push.sh",
     "desktop:install": "bash scripts/install-desktop-app.sh"
   },
@@ -60,6 +60,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "date-fns": "^4.4.0",
+    "diff2html": "^3.4.56",
     "embla-carousel-react": "^8.6.0",
     "input-otp": "^1.4.2",
     "next-themes": "^0.4.6",

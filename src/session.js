@@ -114,6 +114,11 @@ function normalizeImageField(body = {}) {
   return images.length ? { images } : {};
 }
 
+function normalizeDeliveryMode(body = {}) {
+  if (body.deliveryMode === 'none' || body.autoPullRequest === false || body.autoPr === false) return '';
+  return body.deliveryMode === 'draft-pr' || body.autoPullRequest === true || body.autoPr === true || body.repoSource === 'github' ? 'draft-pr' : '';
+}
+
 export function normalizeCreateRequest(body, config) {
   const repoUrl = String(body.repoUrl || '').trim();
   const branch = String(body.branch || '').trim();
@@ -124,7 +129,7 @@ export function normalizeCreateRequest(body, config) {
   const normalizedSharePort = Number.isFinite(sharePort) && sharePort > 0 ? sharePort : null;
   const requestedName = String(body.name || '').trim();
   const fallbackName = buildGeneratedName(inferBaseName(repoUrl));
-  const name = slugify(requestedName || fallbackName) || buildGeneratedName('makerspace');
+  const name = slugify(requestedName || fallbackName) || buildGeneratedName('workbench');
 
   return {
     name,
@@ -206,6 +211,7 @@ export function normalizeThreadRequest(body, config) {
     ),
     repoUrl,
     initialPrompt: prompt,
+    ...(normalizeDeliveryMode(body) ? { deliveryMode: normalizeDeliveryMode(body) } : {}),
     ...modeFields,
     ...(repoSource ? { repoSource } : {}),
     threadBridge: true,

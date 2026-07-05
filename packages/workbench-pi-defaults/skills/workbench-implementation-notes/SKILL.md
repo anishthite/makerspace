@@ -1,9 +1,9 @@
 ---
-name: makerspace-implementation-notes
-description: Keep concise append-only implementation notes for non-trivial Makerspace changes. Use when implementing features, migrations, multi-file bug fixes, packaging changes, or remote/runtime behavior changes.
+name: workbench-implementation-notes
+description: Keep concise append-only implementation notes for non-trivial Workbench changes. Use when implementing features, migrations, multi-file bug fixes, packaging changes, or remote/runtime behavior changes.
 ---
 
-# Makerspace Implementation Notes
+# Workbench Implementation Notes
 
 Use this skill when a task is non-trivial or changes runtime/package/deploy behavior.
 

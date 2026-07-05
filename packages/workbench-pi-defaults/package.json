@@ -1,7 +1,7 @@
 {
-  "name": "@makerspace/pi-defaults",
+  "name": "@workbench/pi-defaults",
   "version": "0.1.0",
-  "description": "Makerspace default Pi skills, prompts, and prompt policy.",
+  "description": "Workbench default Pi skills, prompts, and prompt policy.",
   "keywords": ["pi-package"],
   "type": "module",
   "pi": {

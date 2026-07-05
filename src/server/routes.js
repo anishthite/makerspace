@@ -52,6 +52,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
     unarchiveThreadSession,
     stopThreadSession,
     threadDiffPayload,
+    createThreadPullRequestPayload,
     threadWorkflowPayload,
     threadArtifactPayload,
     threadImageArtifactPayload,
@@ -314,6 +315,14 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
       if (request.method === 'GET' && threadDiffMatch) {
         const name = decodeURIComponent(threadDiffMatch[1]);
         sendJson(response, 200, await threadDiffPayload(name, viewerSessionId, trusted, user));
+        return;
+      }
+
+      const threadPullRequestMatch = pathname.match(/^\/api\/threads\/([^/]+)\/pull-request$/);
+      if (request.method === 'POST' && threadPullRequestMatch) {
+        const name = decodeURIComponent(threadPullRequestMatch[1]);
+        const body = await readJsonBody(request);
+        sendJson(response, 200, await createThreadPullRequestPayload(name, body, viewerSessionId, trusted, user));
         return;
       }
 

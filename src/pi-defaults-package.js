@@ -4,15 +4,15 @@ import path from 'node:path';
 
 import { piProfileResourceOverrides } from './pi-profile.js';
 
-export const PI_DEFAULTS_PACKAGE_NAME = '@makerspace/pi-defaults';
-export const REMOTE_PI_DEFAULTS_PACKAGE_DIR = '/home/daytona/.pi/agent/makerspace-pi-defaults';
+export const PI_DEFAULTS_PACKAGE_NAME = '@workbench/pi-defaults';
+export const REMOTE_PI_DEFAULTS_PACKAGE_DIR = '/home/daytona/.pi/agent/workbench-pi-defaults';
 
 export function defaultPiDefaultsPackageDir(rootDir = process.cwd()) {
-  return path.join(rootDir, 'packages', 'makerspace-pi-defaults');
+  return path.join(rootDir, 'packages', 'workbench-pi-defaults');
 }
 
 export function resolvePiDefaultsPackageDir(config = {}) {
-  return config.piDefaultsPackageDir || process.env.MAKERSPACE_PI_DEFAULTS_PACKAGE_DIR || defaultPiDefaultsPackageDir(config.rootDir);
+  return config.piDefaultsPackageDir || process.env.WORKBENCH_PI_DEFAULTS_PACKAGE_DIR || defaultPiDefaultsPackageDir(config.rootDir);
 }
 
 export function piDefaultsResourcePaths(packageDir) {

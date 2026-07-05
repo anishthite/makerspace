@@ -1,5 +1,6 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 
+import { createDraftPullRequestForThread } from '../git-delivery.js';
 import { buildThreadResumeEntries } from '../host-pi-runner.js';
 import { buildPiProfileSyncPayload } from '../pi-profile.js';
 import { readSavedSettings } from '../settings.js';
@@ -21,6 +22,7 @@ export function createBridgeService({ config, provider, auth, runState }) {
   const readGitHubAuthForSession = auth.readGitHubAuthForSession || (async () => null);
   const { readLocalPiSettings } = auth;
   const {
+    activeRuns,
     ensureRunState,
     setRunState,
     resetRunState,
@@ -30,6 +32,7 @@ export function createBridgeService({ config, provider, auth, runState }) {
     performancePatchForSession,
     persistRunStatus,
     persistThreadAssistantMessage,
+    mergeTrackedChanges,
   } = runState;
   const warmLaunches = new Set();
 
@@ -139,7 +142,7 @@ export function createBridgeService({ config, provider, auth, runState }) {
     try {
       sessions = await listStoredSessions(config.sessionFile);
     } catch (error) {
-      console.warn(`[makerspace] failed to list sessions for idle bridge pruning: ${error.message}`);
+      console.warn(`[workbench] failed to list sessions for idle bridge pruning: ${error.message}`);
       return;
     }
 
@@ -149,7 +152,7 @@ export function createBridgeService({ config, provider, auth, runState }) {
         await removeStoredSession(config.sessionFile, session.name);
         activeRuns.delete(session.name);
       } catch (error) {
-        console.warn(`[makerspace] failed to destroy expired idle sandbox ${session.name}: ${error.message}`);
+        console.warn(`[workbench] failed to destroy expired idle sandbox ${session.name}: ${error.message}`);
       }
     }
   }
@@ -193,6 +196,62 @@ export function createBridgeService({ config, provider, auth, runState }) {
       });
       setRunState(sessionName, { runStatus: 'ready', warning: null });
     }, 5000);
+  }
+
+  function pullRequestPatch(result, existing = {}) {
+    return {
+      prStatus: result.noChanges && !existing.prUrl ? 'no-changes' : 'created',
+      prUrl: result.pullRequest?.url || existing.prUrl || '',
+      prNumber: result.pullRequest?.number || existing.prNumber || null,
+      prBranch: result.branch || existing.prBranch || '',
+      prCommit: result.commit || existing.prCommit || '',
+      prFiles: result.files || existing.prFiles || [],
+      prUpdatedAt: new Date().toISOString(),
+      prError: '',
+    };
+  }
+
+  async function maybeCreateCompletedPullRequest(sessionName) {
+    const session = await getStoredSession(config.sessionFile, sessionName);
+    if (session?.deliveryMode !== 'draft-pr' || session.prStatus === 'creating') return;
+
+    appendRunOutput(sessionName, '[system] Creating draft pull request from tracked changes.\n', 'completed');
+    await upsertSession(config.sessionFile, {
+      ...session,
+      prStatus: 'creating',
+      prError: '',
+      updatedAt: new Date().toISOString(),
+    });
+
+    try {
+      const token = await auth.githubTokenForUser?.(session.ownerUserId ? { id: session.ownerUserId } : null)
+        || auth.readBrowserSession?.(session.githubOwnerSessionId)?.githubToken
+        || '';
+      const run = ensureRunState(sessionName);
+      const changes = mergeTrackedChanges(session.trackedChanges, run.trackedChanges || []);
+      const result = await createDraftPullRequestForThread({ session, provider, token, changes });
+      const updated = await upsertSession(config.sessionFile, {
+        ...((await getStoredSession(config.sessionFile, sessionName)) || session),
+        ...pullRequestPatch(result, session),
+        updatedAt: new Date().toISOString(),
+      });
+      appendRunOutput(
+        sessionName,
+        result.noChanges
+          ? '[system] No tracked Git changes to put in a pull request.\n'
+          : `[system] Draft pull request created: ${updated.prUrl}\n`,
+        'completed',
+      );
+    } catch (error) {
+      await upsertSession(config.sessionFile, {
+        ...((await getStoredSession(config.sessionFile, sessionName)) || session),
+        prStatus: 'failed',
+        prError: error.message,
+        prUpdatedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      appendRunOutput(sessionName, `[system] Draft pull request failed: ${error.message}\n`, 'completed');
+    }
   }
 
   async function followBridgeRun(sessionName) {
@@ -292,6 +351,7 @@ export function createBridgeService({ config, provider, auth, runState }) {
               if (event.done || runStatus === 'completed' || runStatus === 'failed') {
                 await persistThreadAssistantMessage(sessionName);
                 if (runStatus === 'completed') {
+                  await maybeCreateCompletedPullRequest(sessionName);
                   scheduleBridgeRelease(sessionName);
                 }
                 done = true;

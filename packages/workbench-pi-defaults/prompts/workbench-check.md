@@ -1,8 +1,8 @@
 ---
-description: Run the smallest relevant Makerspace check for the current change
+description: Run the smallest relevant Workbench check for the current change
 argument-hint: "[focus]"
 ---
-Run the smallest relevant check for this Makerspace change.
+Run the smallest relevant check for this Workbench change.
 
 Focus area: ${1:-general change} ${@:2}.
 

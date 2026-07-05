@@ -38,7 +38,7 @@ applyAppearance();
 const root = document.querySelector('#root');
 const page = document.body?.dataset?.reactPage || 'project';
 if (page !== 'workspace') startAgentToastWatcher();
-const reactRoot = root.__makerspaceRoot || createRoot(root);
-root.__makerspaceRoot = reactRoot;
+const reactRoot = root.__workbenchRoot || createRoot(root);
+root.__workbenchRoot = reactRoot;
 
 reactRoot.render(<App page={page} />);

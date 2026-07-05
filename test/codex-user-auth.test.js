@@ -25,13 +25,13 @@ function config(root) {
     authFile: path.join(root, 'auth.json'),
     authSecret: 'test-secret',
     authRequired: true,
-    authCookieName: 'makerspace_auth',
+    authCookieName: 'workbench_auth',
     authSessionDays: 30,
   };
 }
 
 test('hosted Codex and Claude Code auth are stored per user and formatted for Pi auth.json', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'makerspace-codex-auth-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'workbench-codex-auth-'));
   try {
     const auth = createAuthService({ config: config(root), http: testHttp() });
     const user = await auth.authStore.upsertUser({ githubId: '1', login: 'octo' });
@@ -113,7 +113,7 @@ test('readGitHubAuthForSession falls back to the server token in single-user mod
 });
 
 test('hosted Codex auth populates model picker defaults', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'makerspace-codex-models-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'workbench-codex-models-'));
   try {
     const auth = createAuthService({ config: config(root), http: testHttp() });
     const user = await auth.authStore.upsertUser({ githubId: '1', login: 'octo' });

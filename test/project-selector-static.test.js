@@ -14,9 +14,12 @@ test('project selector offers desktop local folders', () => {
   assert.match(pages, /project-choose-folder/);
   assert.match(pages, /choose local folder/i);
   assert.match(pages, /className="project-target repo-input"[\s\S]*project-choose-folder/);
+  assert.match(pages, /id="project-status" className="status-line" aria-live="polite"><\/p>/);
   assert.doesNotMatch(pages, /project-provider-banner/);
-  assert.match(project, /makerspaceDesktop\?\.chooseFolder/);
-  assert.match(project, /makerspaceSelectedProject/);
+  assert.match(project, /const repoTray = document\.querySelector\('#project-repo-tray'\)/);
+  assert.match(project, /repoTray\.hidden = local && canChooseFolder/);
+  assert.match(project, /workbenchDesktop\?\.chooseFolder/);
+  assert.match(project, /workbenchSelectedProject/);
   assert.match(project, /\/api\/recent-projects/);
   assert.match(project, /project-running-badge/);
   assert.match(project, /cache: 'no-store'/);
@@ -35,6 +38,9 @@ test('project selector offers desktop local folders', () => {
   assert.match(settingsJs, /\/api\/auth\/claude-code/);
   assert.match(settingsJs, /globalThis\.open\?\.\('about:blank', '_blank'\)/);
   assert.match(styles, /\.home-actions \.auth-pill \{[^}]*border-color: transparent;/);
+  assert.match(styles, /\.project-shell \{[^}]*width: min\(900px, calc\(100% - clamp\(40px, 12vw, 280px\)\)\)/);
+  assert.match(styles, /\.project-grid \{[^}]*grid-template-columns: 1fr/);
+  assert.match(styles, /#project-form \{[^}]*display: grid;[^}]*gap: 12px;/);
   assert.match(app, /readSelectedProject/);
   assert.match(app, /repoPath: repoInput/);
 });

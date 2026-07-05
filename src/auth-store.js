@@ -62,11 +62,11 @@ function mutateFileStore(filePath, fn) {
 function authSecret(config = {}) {
   return String(
     config.authSecret ||
-    process.env.MAKERSPACE_AUTH_SECRET ||
+    process.env.WORKBENCH_AUTH_SECRET ||
     process.env.AUTH_SECRET ||
     config.controlApiToken ||
     config.githubClientSecret ||
-    'makerspace-dev-auth-secret',
+    'workbench-dev-auth-secret',
   );
 }
 

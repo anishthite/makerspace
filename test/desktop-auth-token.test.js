@@ -20,7 +20,7 @@ test('desktop sends local API token as a request header', () => {
 });
 
 test('desktop package build keeps frontend on same-origin API', () => {
-  assert.match(packageScript, /VITE_MAKERSPACE_API_BASE= npm run build/);
+  assert.match(packageScript, /VITE_WORKBENCH_API_BASE= npm run build/);
   assert.match(packageScript, /frontend\/public\/logo-mark\.svg/);
   assert.doesNotMatch(packageScript, /desktop src public dist/);
 });
@@ -29,28 +29,28 @@ test('packaged desktop app checks public GitHub releases for updates', () => {
   assert.match(desktopMain, /if \(app\.isPackaged\)/);
   assert.match(desktopMain, /updateElectronApp/);
   assert.match(desktopMain, /UpdateSourceType\.ElectronPublicUpdateService/);
-  assert.match(desktopMain, /repo: 'anishthite\/makerspace-downloads'/);
+  assert.match(desktopMain, /repo: 'anishthite\/workbench-downloads'/);
 });
 
 test('downloaded desktop updates apply silently on next launch', () => {
   assert.match(desktopMain, /notifyUser: false/);
   assert.match(desktopMain, /autoUpdater\.on\('update-downloaded', announceUpdateDownloaded\)/);
-  assert.match(desktopMain, /install the next time Makerspace starts/);
-  assert.doesNotMatch(desktopMain, /makerspace:update-downloaded/);
-  assert.doesNotMatch(desktopMain, /makerspace:get-pending-update/);
-  assert.doesNotMatch(desktopMain, /makerspace:restart-to-update/);
+  assert.match(desktopMain, /install the next time Workbench starts/);
+  assert.doesNotMatch(desktopMain, /workbench:update-downloaded/);
+  assert.doesNotMatch(desktopMain, /workbench:get-pending-update/);
+  assert.doesNotMatch(desktopMain, /workbench:restart-to-update/);
   assert.doesNotMatch(desktopPreload, /onUpdateDownloaded/);
   assert.doesNotMatch(desktopPreload, /getPendingUpdate/);
   assert.doesNotMatch(desktopPreload, /restartToUpdate/);
-  assert.doesNotMatch(frontendEntry, /restart to update|makerspaceUpdateDismissed:/);
-  assert.doesNotMatch(frontendRouteManifest, /makerspaceUpdateDismissed:/);
+  assert.doesNotMatch(frontendEntry, /restart to update|workbenchUpdateDismissed:/);
+  assert.doesNotMatch(frontendRouteManifest, /workbenchUpdateDismissed:/);
   assert.doesNotMatch(frontendStyles, /\.desktop-update-banner/);
 });
 
 test('settings can manually check desktop updates', () => {
-  assert.match(desktopMain, /makerspace:check-for-updates/);
+  assert.match(desktopMain, /workbench:check-for-updates/);
   assert.match(desktopMain, /autoUpdater\.checkForUpdates\(\)/);
-  assert.match(desktopMain, /makerspace:update-status/);
+  assert.match(desktopMain, /workbench:update-status/);
   assert.match(desktopPreload, /checkForUpdates/);
   assert.match(desktopPreload, /onUpdateStatus/);
   assert.match(frontendPages, /id="desktop-updates"/);
@@ -60,7 +60,7 @@ test('settings can manually check desktop updates', () => {
 });
 
 test('desktop package build emits the signed app OTA zip', () => {
-  assert.match(packageScript, /OTA_ZIP_PATH="\$OUT_DIR\/makerspace-mac-\$ARCH\.zip"/);
+  assert.match(packageScript, /OTA_ZIP_PATH="\$OUT_DIR\/workbench-mac-\$ARCH\.zip"/);
   assert.match(packageScript, /ditto -c -k --sequesterRsrc --keepParent "\$APP_DIR" "\$OTA_ZIP_PATH"/);
   assert.match(packageScript, /sign_app\ncreate_ota_zip/);
 });

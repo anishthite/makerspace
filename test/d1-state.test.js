@@ -12,18 +12,18 @@ function makeFakeFetch() {
     calls.push({ sql, params });
     if (/^CREATE TABLE|^CREATE INDEX/i.test(sql)) return { success: true, results: [] };
 
-    if (/INSERT INTO makerspace_sessions/i.test(sql)) {
+    if (/INSERT INTO workbench_sessions/i.test(sql)) {
       const [name, data, createdAt, updatedAt] = params;
       sessions.set(name, { name, data, created_at: createdAt, updated_at: updatedAt });
       return { success: true, results: [] };
     }
 
-    if (/SELECT data FROM makerspace_sessions WHERE name/i.test(sql)) {
+    if (/SELECT data FROM workbench_sessions WHERE name/i.test(sql)) {
       const row = sessions.get(params[0]);
       return { success: true, results: row ? [{ data: row.data }] : [] };
     }
 
-    if (/SELECT data FROM makerspace_sessions ORDER BY/i.test(sql)) {
+    if (/SELECT data FROM workbench_sessions ORDER BY/i.test(sql)) {
       return {
         success: true,
         results: [...sessions.values()]
@@ -32,18 +32,18 @@ function makeFakeFetch() {
       };
     }
 
-    if (/DELETE FROM makerspace_sessions/i.test(sql)) {
+    if (/DELETE FROM workbench_sessions/i.test(sql)) {
       sessions.delete(params[0]);
       return { success: true, results: [] };
     }
 
-    if (/INSERT INTO makerspace_kv/i.test(sql)) {
+    if (/INSERT INTO workbench_kv/i.test(sql)) {
       const [key, value, updatedAt] = params;
       kv.set(key, { key, value, updated_at: updatedAt });
       return { success: true, results: [] };
     }
 
-    if (/SELECT value FROM makerspace_kv/i.test(sql)) {
+    if (/SELECT value FROM workbench_kv/i.test(sql)) {
       const row = kv.get(params[0]);
       return { success: true, results: row ? [{ value: row.value }] : [] };
     }
@@ -61,7 +61,7 @@ function makeFakeFetch() {
 }
 
 test('d1StateRequested recognizes explicit D1 mode', () => {
-  assert.equal(d1StateRequested({ MAKERSPACE_STATE_STORE: 'd1' }), true);
+  assert.equal(d1StateRequested({ WORKBENCH_STATE_STORE: 'd1' }), true);
   assert.equal(d1StateRequested({ STATE_STORE: 'cloudflare-d1' }), true);
   assert.equal(d1StateRequested({}), false);
 });

@@ -10,7 +10,7 @@ import {
 
 test('interactive artifact blocks parse, normalize, and strip safely', () => {
   const text = `Before
-\`\`\`makerspace-ui
+\`\`\`workbench-ui
 {"version":1,"title":"Tune","controls":[{"id":"detail","type":"slider","label":"Detail","min":1,"max":10,"default":7}],"actions":[{"id":"apply","label":"Apply","delivery":"followUp","prompt":"Revise with detail={{detail}}."}]}
 \`\`\`
 After`;
@@ -37,7 +37,7 @@ test('interactive artifacts fail closed on invalid actions', () => {
     title: 'Bad',
     actions: [{ id: 'send', label: 'Send', delivery: 'now', prompt: 'Nope' }],
   }), null);
-  assert.equal(extractInteractiveArtifacts('```makerspace-ui\nnot json\n```').length, 0);
+  assert.equal(extractInteractiveArtifacts('```workbench-ui\nnot json\n```').length, 0);
 });
 
 test('interactive action prompts interpolate visible values', () => {

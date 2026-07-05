@@ -22,11 +22,12 @@ function runStateStub() {
     performancePatchForSession() { return {}; },
     persistRunStatus: async (session) => session,
     persistThreadAssistantMessage: async () => {},
+    mergeTrackedChanges: (...groups) => groups.flat().filter(Boolean),
   };
 }
 
 test('ready bridge reuse syncs current Codex auth before running', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'makerspace-bridge-auth-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'workbench-bridge-auth-'));
   const previousFetch = globalThis.fetch;
   const requests = [];
 
@@ -59,6 +60,12 @@ test('ready bridge reuse syncs current Codex auth before running', async () => {
       auth: {
         readPiAuthForSession: async (session) => `auth-for-${session.ownerUserId}`,
         readLocalPiSettings: async () => null,
+        readGitHubAuthForSession: async (session) => ({
+          token: `github-for-${session.ownerUserId}`,
+          login: 'octo',
+          name: 'Octo Cat',
+          email: 'octo@example.test',
+        }),
       },
       runState: runStateStub(),
     });
@@ -74,6 +81,12 @@ test('ready bridge reuse syncs current Codex auth before running', async () => {
     assert.equal(requests.length, 1);
     assert.equal(requests[0].url, 'https://bridge.example/auth');
     assert.equal(requests[0].body.authText, 'auth-for-github-1');
+    assert.deepEqual(requests[0].body.github, {
+      token: 'github-for-github-1',
+      login: 'octo',
+      name: 'Octo Cat',
+      email: 'octo@example.test',
+    });
   } finally {
     globalThis.fetch = previousFetch;
     await rm(root, { recursive: true, force: true });

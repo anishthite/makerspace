@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
+import { createDraftPullRequestForThread } from '../git-delivery.js';
 import { runLocalPiSession } from '../host-pi-runner.js';
 import { analyzePiTraceText, summarizeThreadPerformanceList } from '../performance.js';
 import { normalizeImageAttachments, normalizeModelOptions, normalizeThreadRequest } from '../session.js';
@@ -14,7 +15,7 @@ export function createThreadService({ config, provider, http, auth, runState, br
   const localRunControllers = new Map();
   const localRunMessageControls = new Map();
   const STOPPED_WARNING = 'Stopped by user.';
-  const { enrichGitHubRepoSession, canAccessSession, loadPiDefaults } = auth;
+  const { enrichGitHubRepoSession, canAccessSession, loadPiDefaults, githubTokenForUser, readBrowserSession } = auth;
   const {
     activeRuns,
     liveLocalRuns,
@@ -311,6 +312,70 @@ export function createThreadService({ config, provider, http, auth, runState, br
       throw clientError(`Main agent ${name} belongs to a different user.`, 403);
     }
     return trackedChangesPayloadForThread(session);
+  }
+
+  function pullRequestPatch(result, existing = {}, status = 'created') {
+    return {
+      prStatus: result.noChanges && !existing.prUrl ? 'no-changes' : status,
+      prUrl: result.pullRequest?.url || existing.prUrl || '',
+      prNumber: result.pullRequest?.number || existing.prNumber || null,
+      prBranch: result.branch || existing.prBranch || '',
+      prCommit: result.commit || existing.prCommit || '',
+      prFiles: result.files || existing.prFiles || [],
+      prUpdatedAt: new Date().toISOString(),
+      prError: '',
+    };
+  }
+
+  async function createThreadPullRequestPayload(name, body = {}, viewerSessionId = '', trusted = false, user = null) {
+    const session = await getThreadSession(name);
+    if (!canAccessSession(session, viewerSessionId, trusted, user)) {
+      throw clientError(`Main agent ${name} belongs to a different user.`, 403);
+    }
+    if (session.localMode) throw clientError('Draft PR delivery is only available for GitHub cloud workspaces.', 400);
+
+    const owner = session.ownerUserId ? { id: session.ownerUserId } : user;
+    const token = await githubTokenForUser?.(owner) || readBrowserSession?.(viewerSessionId)?.githubToken || '';
+    if (!token) throw clientError('Reconnect GitHub before creating a pull request.', 401);
+
+    const files = trackedChangesPayloadForThread(session).files;
+    await upsertSession(config.sessionFile, {
+      ...session,
+      prStatus: 'creating',
+      prError: '',
+      updatedAt: new Date().toISOString(),
+    });
+
+    try {
+      const result = await createDraftPullRequestForThread({
+        session,
+        provider,
+        token,
+        changes: files,
+        options: body,
+      });
+      const updated = await upsertSession(config.sessionFile, {
+        ...((await getStoredSession(config.sessionFile, name)) || session),
+        ...pullRequestPatch(result, session),
+        updatedAt: new Date().toISOString(),
+      });
+      return {
+        provider: provider.info(),
+        thread: decorateLiveSession(updated),
+        pullRequest: result.pullRequest,
+        noChanges: Boolean(result.noChanges),
+        files: result.files || [],
+      };
+    } catch (error) {
+      await upsertSession(config.sessionFile, {
+        ...((await getStoredSession(config.sessionFile, name)) || session),
+        prStatus: 'failed',
+        prError: error.message,
+        prUpdatedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      throw error;
+    }
   }
 
   async function getThreadSession(name) {
@@ -611,6 +676,7 @@ export function createThreadService({ config, provider, http, auth, runState, br
     listThreadPerformancePayload,
     trackedChangesPayloadForThread,
     threadDiffPayload,
+    createThreadPullRequestPayload,
     threadWorkflowPayload,
     threadArtifactPayload,
     threadImageArtifactPayload,

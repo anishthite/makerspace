@@ -9,7 +9,7 @@ import { resolvePiSdkPackageDir } from '../src/pi-sdk-package.js';
 const packageParts = ['node_modules', '@earendil-works', 'pi-coding-agent'];
 
 test('resolvePiSdkPackageDir prefers the bundled app node_modules package', async () => {
-  const dir = await mkdtemp(path.join(os.tmpdir(), 'makerspace-pi-sdk-'));
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'workbench-pi-sdk-'));
   const packageDir = path.join(dir, ...packageParts);
 
   try {
@@ -17,7 +17,7 @@ test('resolvePiSdkPackageDir prefers the bundled app node_modules package', asyn
     await writeFile(path.join(packageDir, 'dist', 'index.js'), 'export {}\n');
 
     assert.equal(
-      resolvePiSdkPackageDir({ cwd: dir, execPath: '/Applications/Makerspace.app/Contents/MacOS/Makerspace' }),
+      resolvePiSdkPackageDir({ cwd: dir, execPath: '/Applications/Workbench.app/Contents/MacOS/Workbench' }),
       packageDir,
     );
   } finally {
@@ -27,7 +27,7 @@ test('resolvePiSdkPackageDir prefers the bundled app node_modules package', asyn
 
 test('resolvePiSdkPackageDir falls back to a node global package path', () => {
   assert.equal(
-    resolvePiSdkPackageDir({ cwd: '/definitely/missing/makerspace', execPath: '/opt/node/bin/node' }),
+    resolvePiSdkPackageDir({ cwd: '/definitely/missing/workbench', execPath: '/opt/node/bin/node' }),
     path.join('/opt/node/lib', ...packageParts),
   );
 });

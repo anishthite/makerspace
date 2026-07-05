@@ -1,5 +1,5 @@
-const BROWSER_SESSION_KEY = 'makerspaceBrowserSession';
-const API_BASE = String(import.meta.env?.VITE_MAKERSPACE_API_BASE || '').trim().replace(/\/+$/, '');
+const BROWSER_SESSION_KEY = 'workbenchBrowserSession';
+const API_BASE = String(import.meta.env?.VITE_WORKBENCH_API_BASE || '').trim().replace(/\/+$/, '');
 const codexLogin = document.querySelector('#codex-login');
 const codexStatus = document.querySelector('#codex-status');
 const codexDevice = document.querySelector('#codex-device');
@@ -70,7 +70,7 @@ function getApiToken() {
 }
 
 function authHeaders() {
-  const headers = { 'x-makerspace-session': getBrowserSessionId() };
+  const headers = { 'x-workbench-session': getBrowserSessionId() };
   const token = getApiToken();
   if (token) headers.authorization = `Bearer ${token}`;
   return headers;
@@ -133,14 +133,14 @@ function writeAuthTab(authTab, title, body) {
 }
 
 function openWebCodexTab() {
-  if (globalThis.makerspaceDesktop) return null;
+  if (globalThis.workbenchDesktop) return null;
   const codexTab = globalThis.open?.('about:blank', '_blank') || null;
   if (codexTab) writeAuthTab(codexTab, 'Codex sign-in', 'Opening Codex sign-in…');
   return codexTab;
 }
 
 function openWebClaudeCodeTab() {
-  if (globalThis.makerspaceDesktop) return null;
+  if (globalThis.workbenchDesktop) return null;
   const claudeTab = globalThis.open?.('about:blank', '_blank') || null;
   if (claudeTab) writeAuthTab(claudeTab, 'Claude Code sign-in', 'Opening Claude Code sign-in…');
   return claudeTab;
@@ -303,7 +303,7 @@ function showDesktopUpdateStatus(info = {}) {
 }
 
 function initDesktopUpdates() {
-  const desktop = globalThis.makerspaceDesktop;
+  const desktop = globalThis.workbenchDesktop;
   if (!desktopUpdates || !desktopCheckUpdates || !desktopUpdateStatus || !desktop?.checkForUpdates) return;
   desktopUpdates.hidden = false;
   desktopUpdateStatus.textContent = 'Ready to check for desktop updates.';

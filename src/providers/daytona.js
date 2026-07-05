@@ -4,11 +4,11 @@ import path from 'node:path';
 import { collectForwardedEnv } from '../config.js';
 import { buildSetupScript } from '../setup-script.js';
 
-const APP_LABEL_KEY = 'makerspace';
+const APP_LABEL_KEY = 'workbench';
 const APP_LABEL_VALUE = '1';
-const SESSION_LABEL_KEY = 'makerspaceSession';
-const OWNER_LABEL_KEY = 'makerspaceOwner';
-const DEFAULT_SETUP_PATH = '/tmp/makerspace-setup.sh';
+const SESSION_LABEL_KEY = 'workbenchSession';
+const OWNER_LABEL_KEY = 'workbenchOwner';
+const DEFAULT_SETUP_PATH = '/tmp/workbench-setup.sh';
 
 function shellQuote(value) {
   const escaped = String(value).replace(/'/g, `'\\''`);
@@ -57,8 +57,8 @@ function normalizeSandbox(raw, fallbackName, extra = {}) {
     bridgeUrl: extra.bridgeUrl || extra.httpsUrl || null,
     previewToken: extra.previewToken || null,
     connectCommand: connectTarget ? `daytona ssh ${connectTarget}` : null,
-    runAgentCommand: connectTarget ? `daytona ssh ${connectTarget} -- bash ${extra.remoteControlDir || '/srv/makerspace'}/run-pi.sh` : null,
-    tailLogCommand: connectTarget ? `daytona ssh ${connectTarget} -- tail -n 120 ${extra.remoteControlDir || '/srv/makerspace'}/pi.log` : null,
+    runAgentCommand: connectTarget ? `daytona ssh ${connectTarget} -- bash ${extra.remoteControlDir || '/srv/workbench'}/run-pi.sh` : null,
+    tailLogCommand: connectTarget ? `daytona ssh ${connectTarget} -- tail -n 120 ${extra.remoteControlDir || '/srv/workbench'}/pi.log` : null,
     daytonaSandboxId: sandbox.id || null,
     daytonaSandboxName: sandbox.name || name || null,
     daytonaState: sandbox.state || null,
@@ -246,8 +246,8 @@ export function createDaytonaProvider(config, options = {}) {
       },
       envVars: {
         ...envVars,
-        MAKERSPACE_SESSION_NAME: session.name,
-        ...(session.ownerUserId ? { MAKERSPACE_OWNER_USER_ID: session.ownerUserId } : {}),
+        WORKBENCH_SESSION_NAME: session.name,
+        ...(session.ownerUserId ? { WORKBENCH_OWNER_USER_ID: session.ownerUserId } : {}),
       },
       user: config.remoteUser || 'daytona',
       public: false,
@@ -297,7 +297,7 @@ export function createDaytonaProvider(config, options = {}) {
     );
 
     if (canStream) {
-      const sessionId = `makerspace-${randomUUID()}`;
+      const sessionId = `workbench-${randomUUID()}`;
       try {
         await processApi.createSession(sessionId).catch((error) => {
           if (!/already exists/i.test(String(error?.message || error))) throw error;

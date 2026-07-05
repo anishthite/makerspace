@@ -31,7 +31,7 @@ async function stopServer(child) {
 }
 
 test('thread workflow route returns workflow agents for a local thread', async () => {
-  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'makerspace-workflow-'));
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'workbench-workflow-'));
   const sessionFile = path.join(tempDir, 'sessions.json');
   const settingsFile = path.join(tempDir, 'settings.json');
   const runId = 'mqu123-abc456';

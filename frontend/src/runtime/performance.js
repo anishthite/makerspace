@@ -1,7 +1,7 @@
 import './appearance.js?v=palette-2';
 
-const BROWSER_SESSION_KEY = 'makerspaceBrowserSession';
-const API_BASE = String(import.meta.env?.VITE_MAKERSPACE_API_BASE || '').trim().replace(/\/+$/, '');
+const BROWSER_SESSION_KEY = 'workbenchBrowserSession';
+const API_BASE = String(import.meta.env?.VITE_WORKBENCH_API_BASE || '').trim().replace(/\/+$/, '');
 
 const isLocalTelemetry = location.pathname.includes('local-telemetry') || new URLSearchParams(location.search).get('source') === 'local';
 
@@ -40,7 +40,7 @@ function getApiToken() {
 }
 
 function authHeaders() {
-  const headers = { 'x-makerspace-session': getBrowserSessionId() };
+  const headers = { 'x-workbench-session': getBrowserSessionId() };
   const token = getApiToken();
   if (token) headers.authorization = `Bearer ${token}`;
   return headers;

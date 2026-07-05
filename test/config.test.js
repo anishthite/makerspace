@@ -49,14 +49,14 @@ test('collectForwardedEnv only forwards shared GitHub tokens in single-user mode
 });
 
 test('getConfig names the visible project from env or explicit home', () => {
-  withEnv({ INFRA_PROVIDER: 'local', MAKERSPACE_PROJECT: 'site-ui', MAKERSPACE_NAME: undefined, MAKERSPACE_HOME: '/tmp/makerspace/site', RECENT_PROJECTS_DATA_PATH: undefined }, () => {
+  withEnv({ INFRA_PROVIDER: 'local', WORKBENCH_PROJECT: 'site-ui', WORKBENCH_NAME: undefined, WORKBENCH_HOME: '/tmp/workbench/site', RECENT_PROJECTS_DATA_PATH: undefined }, () => {
     assert.equal(getConfig().projectName, 'site-ui');
   });
 
-  withEnv({ INFRA_PROVIDER: 'local', MAKERSPACE_PROJECT: undefined, MAKERSPACE_NAME: undefined, MAKERSPACE_HOME: '/tmp/makerspace/api', RECENT_PROJECTS_DATA_PATH: undefined }, () => {
+  withEnv({ INFRA_PROVIDER: 'local', WORKBENCH_PROJECT: undefined, WORKBENCH_NAME: undefined, WORKBENCH_HOME: '/tmp/workbench/api', RECENT_PROJECTS_DATA_PATH: undefined }, () => {
     const config = getConfig();
     assert.equal(config.projectName, 'api');
-    assert.equal(config.recentProjectsFile, '/tmp/makerspace/api/recent-projects.json');
+    assert.equal(config.recentProjectsFile, '/tmp/workbench/api/recent-projects.json');
   });
 });
 
@@ -71,13 +71,13 @@ test('host dispatch is opt-in for remote providers', () => {
 });
 
 test('workspace mode extends default Daytona autodelete', () => {
-  withEnv({ MAKERSPACE_WORKSPACE_MODE: '1', DAYTONA_AUTODELETE_MINUTES: undefined }, () => {
+  withEnv({ WORKBENCH_WORKSPACE_MODE: '1', DAYTONA_AUTODELETE_MINUTES: undefined }, () => {
     const config = getConfig();
     assert.equal(config.workspaceMode, true);
     assert.equal(config.daytonaAutodeleteMinutes, 10080);
   });
 
-  withEnv({ MAKERSPACE_WORKSPACE_MODE: undefined, DAYTONA_AUTODELETE_MINUTES: undefined }, () => {
+  withEnv({ WORKBENCH_WORKSPACE_MODE: undefined, DAYTONA_AUTODELETE_MINUTES: undefined }, () => {
     assert.equal(getConfig().daytonaAutodeleteMinutes, 120);
   });
 });

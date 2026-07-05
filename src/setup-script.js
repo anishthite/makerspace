@@ -232,8 +232,8 @@ function buildBridgeScriptSource(session, config) {
     '  if (!token) return;',
     `  const home = process.env.HOME || ${JSON.stringify(remoteHomeDir)};`,
     '  const login = String(github?.login || "").trim();',
-    '  const name = String(github?.name || "").trim() || login || "Makerspace Agent";',
-    '  const email = String(github?.email || "").trim() || (login ? `${login}@users.noreply.github.com` : "makerspace-agent@users.noreply.github.com");',
+    '  const name = String(github?.name || "").trim() || login || "Workbench Agent";',
+    '  const email = String(github?.email || "").trim() || (login ? `${login}@users.noreply.github.com` : "workbench-agent@users.noreply.github.com");',
     '  process.env.GH_TOKEN = token;',
     '  process.env.GITHUB_TOKEN = token;',
     '  const credentialsPath = path.join(home, ".git-credentials");',
@@ -243,7 +243,7 @@ function buildBridgeScriptSource(session, config) {
     '}',
     '',
     'function defaultsResourceOptions() {',
-    '  const packageDir = process.env.MAKERSPACE_PI_DEFAULTS_PACKAGE_DIR || path.join(authDir, "makerspace-pi-defaults");',
+    '  const packageDir = process.env.WORKBENCH_PI_DEFAULTS_PACKAGE_DIR || path.join(authDir, "workbench-pi-defaults");',
     '  if (!existsSync(packageDir)) return {};',
     '  return {',
     '    additionalExtensionPaths: [packageDir],',
@@ -252,6 +252,7 @@ function buildBridgeScriptSource(session, config) {
     '  };',
     '}',
     '',
+
     'function safeRunCwd(v=""){',
     'const root=path.resolve(workspaceDir);',
     'const cwd=path.resolve(String(v||"").trim()||root);',
@@ -714,7 +715,7 @@ export function buildSetupScript(session, config) {
   const remoteHomeDir = config.remoteHomeDir || `/home/${remoteUser}`;
   const authDir = `${remoteHomeDir}/.pi/agent`;
   const bridgePackageDir = `${authDir}/npm`;
-  const piDefaultsPackageDir = config.remotePiDefaultsPackageDir || `${authDir}/makerspace-pi-defaults`;
+  const piDefaultsPackageDir = config.remotePiDefaultsPackageDir || `${authDir}/workbench-pi-defaults`;
   const aptPackages = ['git', 'curl', 'ca-certificates'];
   const aptCommands = ['git', 'curl'];
 
@@ -753,13 +754,13 @@ export function buildSetupScript(session, config) {
     '    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list',
     '    apt-get update',
     '    apt-get install -y gh',
-    '  ) || echo "[makerspace] gh install failed; continuing without gh" >&2',
+    '  ) || echo "[workbench] gh install failed; continuing without gh" >&2',
     'fi',
     'git config --system credential.helper store || true',
     `git config --system --add credential.helper '!gh auth git-credential' || true`,
     `git config --system --add safe.directory '*' || true`,
-    `git config --system user.name 'Makerspace Agent' || true`,
-    `git config --system user.email 'makerspace-agent@users.noreply.github.com' || true`,
+    `git config --system user.name 'Workbench Agent' || true`,
+    `git config --system user.email 'workbench-agent@users.noreply.github.com' || true`,
     'installed_bridge_sdk=0',
     `if [ ! -d ${shellQuote(`${bridgePackageDir}/node_modules/@earendil-works/pi-coding-agent`)} ]; then`,
     '  PI_VERSION="$(pi --version | tr -d "[:space:]")"',
@@ -785,7 +786,7 @@ export function buildSetupScript(session, config) {
     `printf 'export PI_BRIDGE_CONTROL_DIR=%s\\n' ${shellQuote(controlDir)} >> ${shellQuote(bridgeEnvPath)}`,
     `printf 'export PI_BRIDGE_WORKSPACE_DIR=%s\\n' ${shellQuote(workspaceDir)} >> ${shellQuote(bridgeEnvPath)}`,
     `printf 'export PI_BRIDGE_PACKAGE_DIR=%s\\n' ${shellQuote(bridgePackageDir)} >> ${shellQuote(bridgeEnvPath)}`,
-    `printf 'export MAKERSPACE_PI_DEFAULTS_PACKAGE_DIR=%s\\n' ${shellQuote(piDefaultsPackageDir)} >> ${shellQuote(bridgeEnvPath)}`,
+    `printf 'export WORKBENCH_PI_DEFAULTS_PACKAGE_DIR=%s\\n' ${shellQuote(piDefaultsPackageDir)} >> ${shellQuote(bridgeEnvPath)}`,
   ];
 
   for (const key of config.forwardEnvKeys || []) {

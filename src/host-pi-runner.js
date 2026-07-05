@@ -277,8 +277,8 @@ function resumeMessageEntry(session, message, parentId, index) {
       ? {
           role: 'assistant',
           content: [{ type: 'text', text }],
-          api: 'makerspace-resume',
-          provider: 'makerspace',
+          api: 'workbench-resume',
+          provider: 'workbench',
           model: 'thread-history',
           usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
           stopReason: 'stop',
@@ -322,15 +322,15 @@ function restoreThreadSessionFile(config, session, cwd) {
   return filePath;
 }
 
-function makerspaceRuntimeAgentDir(config, session = {}) {
+function workbenchRuntimeAgentDir(config, session = {}) {
   if (!config.authRequired) return undefined;
   return path.join(config.localDataDir || path.join(config.rootDir || process.cwd(), 'data'), 'pi-agents', safeSessionFileName(session.ownerUserId || 'anonymous'));
 }
 
-async function createMakerspaceResourceOptions(config, sdk, cwd, session = {}) {
+async function createWorkbenchResourceOptions(config, sdk, cwd, session = {}) {
   return createPiResourceOptions(sdk, {
     cwd,
-    agentDir: makerspaceRuntimeAgentDir(config, session),
+    agentDir: workbenchRuntimeAgentDir(config, session),
     packageDir: resolvePiDefaultsPackageDir(config),
     piProfile: await readPiProfile(config, session.ownerUserId ? { id: session.ownerUserId } : null),
   });
@@ -339,7 +339,7 @@ async function createMakerspaceResourceOptions(config, sdk, cwd, session = {}) {
 async function createHostPiSession(config, session, remoteReadyPromise, provider) {
   const sdk = await loadSdk(config);
   const customTools = await createRemoteToolDefinitions(config, remoteReadyPromise, provider);
-  const resourceOptions = await createMakerspaceResourceOptions(config, sdk, config.rootDir, session);
+  const resourceOptions = await createWorkbenchResourceOptions(config, sdk, config.rootDir, session);
   const { options } = await resolvePiOptions(config, session, resourceOptions);
   const sessionFile = restoreThreadSessionFile(config, session, config.rootDir);
   return sdk.createAgentSession({
@@ -354,7 +354,7 @@ async function createHostPiSession(config, session, remoteReadyPromise, provider
 
 async function createLocalPiSession(config, session) {
   const sdk = await loadSdk(config);
-  const resourceOptions = await createMakerspaceResourceOptions(config, sdk, session.repoPath, session);
+  const resourceOptions = await createWorkbenchResourceOptions(config, sdk, session.repoPath, session);
   const { options } = await resolvePiOptions(config, session, resourceOptions);
   const sessionFile = restoreThreadSessionFile(config, session, session.repoPath);
   return sdk.createAgentSession({

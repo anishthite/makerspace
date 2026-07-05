@@ -1,9 +1,9 @@
 import './appearance.js?v=palette-2';
 
-const BROWSER_SESSION_KEY = 'makerspaceBrowserSession';
-const PROJECT_KEY = 'makerspaceSelectedProject';
-const RECENT_PROJECTS_KEY = 'makerspaceRecentProjects';
-const API_BASE = String(import.meta.env?.VITE_MAKERSPACE_API_BASE || '').trim().replace(/\/+$/, '');
+const BROWSER_SESSION_KEY = 'workbenchBrowserSession';
+const PROJECT_KEY = 'workbenchSelectedProject';
+const RECENT_PROJECTS_KEY = 'workbenchRecentProjects';
+const API_BASE = String(import.meta.env?.VITE_WORKBENCH_API_BASE || '').trim().replace(/\/+$/, '');
 
 const codexAuthPill = document.querySelector('#codex-auth-pill');
 const codexAuthLabel = document.querySelector('#codex-auth-label');
@@ -14,6 +14,7 @@ const repoInput = document.querySelector('#project-repo-url');
 const repoSourceInput = document.querySelector('#project-repo-source');
 const branchInput = document.querySelector('#project-branch');
 const repoPicker = document.querySelector('#project-repo-picker');
+const repoTray = document.querySelector('#project-repo-tray');
 const repoRefresh = document.querySelector('#project-repo-refresh');
 const chooseFolder = document.querySelector('#project-choose-folder');
 const repoHint = document.querySelector('#project-repo-hint');
@@ -44,7 +45,7 @@ function getApiToken() {
 }
 
 function authHeaders() {
-  const headers = { 'x-makerspace-session': getBrowserSessionId() };
+  const headers = { 'x-workbench-session': getBrowserSessionId() };
   const token = getApiToken();
   if (token) headers.authorization = `Bearer ${token}`;
   return headers;
@@ -238,9 +239,9 @@ function resetRepoSelection(message) {
 }
 
 async function loadLastFolder() {
-  if (!globalThis.makerspaceDesktop?.getLastFolder || repoInput.value.trim()) return;
+  if (!globalThis.workbenchDesktop?.getLastFolder || repoInput.value.trim()) return;
   try {
-    const folder = await globalThis.makerspaceDesktop.getLastFolder();
+    const folder = await globalThis.workbenchDesktop.getLastFolder();
     if (!folder || repoInput.value.trim()) return;
     repoInput.value = folder;
     repoHint.textContent = 'Last local folder loaded.';
@@ -250,12 +251,14 @@ async function loadLastFolder() {
 function renderProvider(provider) {
   providerKind = provider?.kind || '';
   const local = providerKind === 'local';
+  const canChooseFolder = Boolean(globalThis.workbenchDesktop?.chooseFolder);
   repoInput.placeholder = local ? '/Users/you/project' : 'github.com/you/repo or /Users/you/project';
+  repoTray.hidden = local && canChooseFolder;
   repoPicker.hidden = local;
   repoRefresh.hidden = local;
-  chooseFolder.hidden = !globalThis.makerspaceDesktop?.chooseFolder;
+  chooseFolder.hidden = !canChooseFolder;
   if (local) {
-    resetRepoSelection(globalThis.makerspaceDesktop?.chooseFolder ? '' : 'Paste a local folder path.');
+    resetRepoSelection(canChooseFolder ? '' : 'Paste a local folder path.');
     void loadLastFolder();
   }
 }
@@ -282,8 +285,9 @@ async function refreshProjectThreads() {
 async function loadStatus() {
   getBrowserSessionId();
   renderRecentProjects();
-  if (globalThis.makerspaceDesktop?.chooseFolder) {
+  if (globalThis.workbenchDesktop?.chooseFolder) {
     chooseFolder.hidden = false;
+    repoTray.hidden = true;
     repoHint.textContent = 'Choose a local folder or paste a repo.';
     void loadLastFolder();
   }
@@ -314,7 +318,7 @@ async function openWorkspace(project) {
   await saveProject(project);
   if (project.kind === 'local') {
     try {
-      await globalThis.makerspaceDesktop?.rememberFolder?.(project.value);
+      await globalThis.workbenchDesktop?.rememberFolder?.(project.value);
     } catch {}
   }
   location.href = '/workspace.html';
@@ -335,7 +339,7 @@ repoRefresh.addEventListener('click', async () => {
 
 chooseFolder.addEventListener('click', async () => {
   try {
-    const folder = await globalThis.makerspaceDesktop?.chooseFolder?.(repoInput.value.trim());
+    const folder = await globalThis.workbenchDesktop?.chooseFolder?.(repoInput.value.trim());
     if (!folder) return;
     repoInput.value = folder;
     resetRepoSelection('Local folder selected.');

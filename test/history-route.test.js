@@ -32,7 +32,7 @@ async function stopServer(child) {
 }
 
 test('trusted history includes sessions from previous browser session ids', async () => {
-  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'makerspace-history-'));
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'workbench-history-'));
   const sessionFile = path.join(tempDir, 'sessions.json');
   const settingsFile = path.join(tempDir, 'settings.json');
   let server;

@@ -46,7 +46,7 @@ test('static public pages stay in frontend/public for Vite copy', () => {
 });
 
 test('active storage keys and deploy aliases are listed', () => {
-  for (const key of ['makerspaceBrowserSession', 'makerspaceSelectedProject', 'makerspaceModelRef', 'makerspaceThinkingLevel', 'makerspaceSeenFinishedThreads', 'makerspaceRecentProjects']) {
+  for (const key of ['workbenchBrowserSession', 'workbenchSelectedProject', 'workbenchModelRef', 'workbenchThinkingLevel', 'workbenchSeenFinishedThreads', 'workbenchRecentProjects']) {
     assert.ok(manifest.storageKeys.includes(key), key);
   }
 
@@ -54,6 +54,6 @@ test('active storage keys and deploy aliases are listed', () => {
   assert.ok(manifest.aliases.some((alias) => alias.route === '/thread' && alias.target === '/thread.html'));
   assert.ok(manifest.aliases.some((alias) => alias.route === '/telemetry' && alias.target === '/telemetry.html'));
   assert.ok(manifest.aliases.some((alias) => alias.route === '/local-telemetry' && alias.target === '/local-telemetry.html'));
-  assert.match(read('src/server.js'), /const publicDir = process\.env\.MAKERSPACE_STATIC_DIR \|\| distDir;/);
+  assert.match(read('src/server.js'), /const publicDir = process\.env\.WORKBENCH_STATIC_DIR \|\| distDir;/);
   assert.doesNotMatch(read('src/server.js'), /rootDir, 'public'/);
 });

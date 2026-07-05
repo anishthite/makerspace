@@ -146,6 +146,11 @@
       "mode": "copy"
     },
     {
+      "route": "/workbench-logo-options.html",
+      "file": "workbench-logo-options.html",
+      "mode": "copy"
+    },
+    {
       "route": "/thread.html",
       "file": "thread.html",
       "mode": "react"
@@ -179,11 +184,11 @@
     }
   ],
   "storageKeys": [
-    "makerspaceBrowserSession",
-    "makerspaceSelectedProject",
-    "makerspaceModelRef",
-    "makerspaceThinkingLevel",
-    "makerspaceSeenFinishedThreads",
-    "makerspaceRecentProjects"
+    "workbenchBrowserSession",
+    "workbenchSelectedProject",
+    "workbenchModelRef",
+    "workbenchThinkingLevel",
+    "workbenchSeenFinishedThreads",
+    "workbenchRecentProjects"
   ]
 }

@@ -1,4 +1,4 @@
-# makerspace v0
+# workbench v0
 
 A tiny control plane for talking to `pi` inside fresh Daytona sandboxes.
 
@@ -30,11 +30,11 @@ That is deliberate. The goal is one prompt in, one real sandbox-backed run out.
 4. the agent page reads `GET /api/threads/:name`, mirrors output from `GET /api/sessions/:name/stream`, and sends follow-up prompts to `POST /api/threads/:name/messages`
 5. after each run completes, the same bridge sandbox returns to `ready` so the next prompt can reuse the repo workspace
 
-For deployment, put the built React/Vite static UI (`npm run build` → `dist/`) on Vercel and this Node control backend on a server with Daytona credentials. Set the frontend env `VITE_MAKERSPACE_API_BASE=https://api.example.com` in Vercel; the browser no longer accepts `?api=` or `?token=` bootstrap links. The backend keeps Daytona credentials server-side.
+For deployment, put the built React/Vite static UI (`npm run build` → `dist/`) on Vercel and this Node control backend on a server with Daytona credentials. Set the frontend env `VITE_WORKBENCH_API_BASE=https://api.example.com` in Vercel; the browser no longer accepts `?api=` or `?token=` bootstrap links. The backend keeps Daytona credentials server-side.
 
-Hosted users sign in with GitHub for their Makerspace account. Settings → Codex stores their own ChatGPT Plus/Pro Codex OAuth for Pi; Settings → Claude Code stores their Claude Pro/Max OAuth. Do not set shared model API keys in Vercel or DigitalOcean for hosted OAuth runs.
+Hosted users sign in with GitHub for their Workbench account. Settings → Codex stores their own ChatGPT Plus/Pro Codex OAuth for Pi; Settings → Claude Code stores their Claude Pro/Max OAuth. Do not set shared model API keys in Vercel or DigitalOcean for hosted OAuth runs.
 
-DigitalOcean App Platform can build the root `Dockerfile` for the control backend. Keep the source directory at `/`, use the Dockerfile build strategy, and set the public HTTP port to `8080`. `image/Dockerfile` is still the separate Daytona sandbox image. Set backend env `MAKERSPACE_ALLOWED_ORIGIN=https://your-vercel-app.vercel.app` so cross-origin GitHub-auth cookies work.
+DigitalOcean App Platform can build the root `Dockerfile` for the control backend. Keep the source directory at `/`, use the Dockerfile build strategy, and set the public HTTP port to `8080`. `image/Dockerfile` is still the separate Daytona sandbox image. Set backend env `WORKBENCH_ALLOWED_ORIGIN=https://your-vercel-app.vercel.app` so cross-origin GitHub-auth cookies work.
 
 To repeat the cold intent-prep measurement without relying on an existing warm bridge, start the server with an empty `SESSION_DATA_PATH`, then run:
 
@@ -95,8 +95,8 @@ npm run desktop:dev
 Run multiple local projects by giving each process its own port and state folder:
 
 ```bash
-INFRA_PROVIDER=local MAKERSPACE_PROJECT=site MAKERSPACE_HOME=~/.makerspace/site PORT=8787 npm start
-INFRA_PROVIDER=local MAKERSPACE_PROJECT=api  MAKERSPACE_HOME=~/.makerspace/api  PORT=8788 npm start
+INFRA_PROVIDER=local WORKBENCH_PROJECT=site WORKBENCH_HOME=~/.workbench/site PORT=8787 npm start
+INFRA_PROVIDER=local WORKBENCH_PROJECT=api  WORKBENCH_HOME=~/.workbench/api  PORT=8788 npm start
 ```
 
 Desktop dev accepts a folder argument and uses that folder name in the header:
@@ -116,24 +116,24 @@ npm run desktop:release
 npm run desktop:install
 ```
 
-The installer copies `output/desktop-package/Makerspace.app` into `/Applications`. Pass a path when needed: `npm run desktop:install -- output/desktop-package/makerspace.dmg`.
-The DMG lands at `output/desktop-package/makerspace.dmg`; publish it as `makerspace.dmg` in the public `anishthite/makerspace-downloads` repo. The release script also writes `output/desktop-package/makerspace-mac-$ARCH.zip`; attach that ZIP to the same SemVer GitHub Release (`v0.0.2`, etc.) for OTA updates. Users need one manual install of a build containing the updater before later releases download automatically and apply on the next launch. The `/desktop` landing page downloads from `https://github.com/anishthite/makerspace-downloads/releases/latest/download/makerspace.dmg`, so do not commit the 270MB binary to this source repo.
+The installer copies `output/desktop-package/Workbench.app` into `/Applications`. Pass a path when needed: `npm run desktop:install -- output/desktop-package/workbench.dmg`.
+The DMG lands at `output/desktop-package/workbench.dmg`; publish it as `workbench.dmg` in the public `anishthite/workbench-downloads` repo. The release script also writes `output/desktop-package/workbench-mac-$ARCH.zip`; attach that ZIP to the same SemVer GitHub Release (`v0.0.2`, etc.) for OTA updates. Users need one manual install of a build containing the updater before later releases download automatically and apply on the next launch. The `/desktop` landing page downloads from `https://github.com/anishthite/workbench-downloads/releases/latest/download/workbench.dmg`, so do not commit the 270MB binary to this source repo.
 
 Optional env vars:
 
 ```bash
 PORT=8787
-MAKERSPACE_PROJECT=site
-MAKERSPACE_HOME=~/.makerspace/site
+WORKBENCH_PROJECT=site
+WORKBENCH_HOME=~/.workbench/site
 CONTROL_API_TOKEN=
-VITE_MAKERSPACE_API_BASE= # frontend build env only; backend HTTPS origin
-MAKERSPACE_AUTH_REQUIRED= # set true to require GitHub sign-in even outside hosted mode
-MAKERSPACE_AUTH_SECRET= # stable secret for signed auth cookies and encrypted OAuth tokens
-MAKERSPACE_ALLOWED_ORIGIN= # set to the static frontend origin for cross-origin cookie auth
-MAKERSPACE_AUTH_SAMESITE= # defaults to None when MAKERSPACE_ALLOWED_ORIGIN is set, otherwise Lax
+VITE_WORKBENCH_API_BASE= # frontend build env only; backend HTTPS origin
+WORKBENCH_AUTH_REQUIRED= # set true to require GitHub sign-in even outside hosted mode
+WORKBENCH_AUTH_SECRET= # stable secret for signed auth cookies and encrypted OAuth tokens
+WORKBENCH_ALLOWED_ORIGIN= # set to the static frontend origin for cross-origin cookie auth
+WORKBENCH_AUTH_SAMESITE= # defaults to None when WORKBENCH_ALLOWED_ORIGIN is set, otherwise Lax
 AUTH_DATA_PATH=./data/auth.json
-MAKERSPACE_STATE_STORE=file # set d1 for hosted Cloudflare D1 persistence
-MAKERSPACE_WORKSPACE_MODE= # set true to reuse one remote workspace per signed-in user + repo
+WORKBENCH_STATE_STORE=file # set d1 for hosted Cloudflare D1 persistence
+WORKBENCH_WORKSPACE_MODE= # set true to reuse one remote workspace per signed-in user + repo
 CLOUDFLARE_ACCOUNT_ID=
 CLOUDFLARE_D1_DATABASE_ID=
 CLOUDFLARE_API_TOKEN=
@@ -156,10 +156,10 @@ RECENT_PROJECTS_DATA_PATH=./data/recent-projects.json
 PI_SESSION_TRACE_DIR=./data/pi-sessions
 PI_CODING_AGENT_DIR=~/.pi/agent
 PI_PROFILE_DATA_PATH=./data/pi-profile.json
-MAKERSPACE_PI_DEFAULTS_PACKAGE_DIR=./packages/makerspace-pi-defaults
+WORKBENCH_PI_DEFAULTS_PACKAGE_DIR=./packages/workbench-pi-defaults
 REMOTE_WORKSPACE_DIR=/srv/workspace
-REMOTE_CONTROL_DIR=/srv/makerspace
-REMOTE_PI_DEFAULTS_PACKAGE_DIR=/home/daytona/.pi/agent/makerspace-pi-defaults
+REMOTE_CONTROL_DIR=/srv/workbench
+REMOTE_PI_DEFAULTS_PACKAGE_DIR=/home/daytona/.pi/agent/workbench-pi-defaults
 PI_BRIDGE_PORT=4310
 PI_BRIDGE_READY_TIMEOUT_MS=240000
 PI_BRIDGE_READY_POLL_MS=1000
@@ -178,15 +178,15 @@ Sandboxes get full `git` and `gh` CLI auth so agents can push branches and open 
 - On every bridge auth sync, the server forwards a GitHub token to the sandbox: the signed-in user's GitHub OAuth token in multi-user mode, or `GH_TOKEN`/`GITHUB_TOKEN` from the server environment otherwise. The bridge writes `~/.git-credentials` and `~/.gitconfig` (commit identity from the GitHub profile) and exports `GH_TOKEN`/`GITHUB_TOKEN` for agent commands.
 - `GH_TOKEN`/`GITHUB_TOKEN` are also in the default `FORWARD_ENV_KEYS`, so self-hosted single-user deployments can drop a PAT in the server env and get working `git push` + `gh` in every sandbox.
 
-For hosted App Platform deployments, set `MAKERSPACE_STATE_STORE=d1` plus the three Cloudflare values above. D1 stores sessions, settings, recent projects, Dockerfile text, and Pi profile choices/text; repo files still live in Git/Daytona/local disk.
+For hosted App Platform deployments, set `WORKBENCH_STATE_STORE=d1` plus the three Cloudflare values above. D1 stores sessions, settings, recent projects, Dockerfile text, and Pi profile choices/text; repo files still live in Git/Daytona/local disk.
 
 ## Pi defaults package
 
-Makerspace ships a starter Pi package at `packages/makerspace-pi-defaults`. Local and host-dispatch SDK runs load it directly when the directory exists. Custom Daytona image builds copy it into the sandbox at `REMOTE_PI_DEFAULTS_PACKAGE_DIR`, and the remote bridge loads that baked copy without touching user dotfiles.
+Workbench ships a starter Pi package at `packages/workbench-pi-defaults`. Local and host-dispatch SDK runs load it directly when the directory exists. Custom Daytona image builds copy it into the sandbox at `REMOTE_PI_DEFAULTS_PACKAGE_DIR`, and the remote bridge loads that baked copy without touching user dotfiles.
 
-The package contains a prompt-injecting extension, the `inference/nvidia/nemotron3-super` provider registration, starter skills, and prompts. Set `INFERENCE_API_KEY` to use Inference.net. Publish the same package later for online installs with `pi install npm:@makerspace/pi-defaults@0.1.0`.
+The package contains a prompt-injecting extension, the `inference/nvidia/nemotron3-super` provider registration, starter skills, and prompts. Set `INFERENCE_API_KEY` to use Inference.net. Publish the same package later for online installs with `pi install npm:@workbench/pi-defaults@0.1.0`.
 
-The settings page exposes the Makerspace Pi profile from `packages/makerspace-pi-defaults/context/AGENTS.md` plus package skills, extensions, and prompts. In multi-user mode, profile edits are stored per user in the app state store; remote bridge runs sync selected profile files per run without reading personal `~/.pi/agent` files.
+The settings page exposes the Workbench Pi profile from `packages/workbench-pi-defaults/context/AGENTS.md` plus package skills, extensions, and prompts. In multi-user mode, profile edits are stored per user in the app state store; remote bridge runs sync selected profile files per run without reading personal `~/.pi/agent` files.
 
 ## API
 

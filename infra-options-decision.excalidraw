@@ -3,7 +3,7 @@
   "version": 2,
   "source": "https://excalidraw.com",
   "elements": [
-    {"id":"title","type":"text","x":60,"y":32,"width":1500,"height":48,"text":"Makerspace infra choice: do not choose a machine, choose a lifecycle","originalText":"Makerspace infra choice: do not choose a machine, choose a lifecycle","fontSize":34,"fontFamily":3,"strokeColor":"#1e40af","backgroundColor":"transparent","lineHeight":1.25},
+    {"id":"title","type":"text","x":60,"y":32,"width":1500,"height":48,"text":"Workbench infra choice: do not choose a machine, choose a lifecycle","originalText":"Workbench infra choice: do not choose a machine, choose a lifecycle","fontSize":34,"fontFamily":3,"strokeColor":"#1e40af","backgroundColor":"transparent","lineHeight":1.25},
     {"id":"subtitle","type":"text","x":62,"y":82,"width":1300,"height":28,"text":"The product win is durable workspaces + isolated tasks. Daytona vs VPS is just the provider behind that contract.","originalText":"The product win is durable workspaces + isolated tasks. Daytona vs VPS is just the provider behind that contract.","fontSize":18,"fontFamily":3,"strokeColor":"#64748b","backgroundColor":"transparent","lineHeight":1.25},
 
     {"id":"cp_box","type":"rectangle","x":70,"y":150,"width":250,"height":125,"strokeColor":"#1e3a5f","backgroundColor":"#dbeafe","fillStyle":"solid","strokeWidth":2,"roughness":0,"roundness":{"type":3}},

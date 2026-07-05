@@ -1,12 +1,12 @@
-const SESSION_TABLE = 'makerspace_sessions';
-const KV_TABLE = 'makerspace_kv';
+const SESSION_TABLE = 'workbench_sessions';
+const KV_TABLE = 'workbench_kv';
 
 function clean(value) {
   return String(value || '').trim();
 }
 
 export function d1StateRequested(env = process.env) {
-  return ['d1', 'cloudflare-d1'].includes(clean(env.MAKERSPACE_STATE_STORE || env.STATE_STORE).toLowerCase());
+  return ['d1', 'cloudflare-d1'].includes(clean(env.WORKBENCH_STATE_STORE || env.STATE_STORE).toLowerCase());
 }
 
 function d1Config(env = process.env) {
@@ -24,7 +24,7 @@ function requireD1Config(env = process.env) {
   if (!config.accountId) missing.push('CLOUDFLARE_ACCOUNT_ID');
   if (!config.databaseId) missing.push('CLOUDFLARE_D1_DATABASE_ID');
   if (!config.apiToken) missing.push('CLOUDFLARE_API_TOKEN');
-  if (missing.length) throw new Error(`MAKERSPACE_STATE_STORE=d1 needs ${missing.join(', ')}.`);
+  if (missing.length) throw new Error(`WORKBENCH_STATE_STORE=d1 needs ${missing.join(', ')}.`);
   return config;
 }
 
@@ -88,7 +88,7 @@ export function createD1StateClient({ env = process.env, fetchImpl = globalThis.
             params: [],
           },
           {
-            sql: `CREATE INDEX IF NOT EXISTS makerspace_sessions_created_at_idx ON ${SESSION_TABLE} (created_at DESC)`,
+            sql: `CREATE INDEX IF NOT EXISTS workbench_sessions_created_at_idx ON ${SESSION_TABLE} (created_at DESC)`,
             params: [],
           },
         ],

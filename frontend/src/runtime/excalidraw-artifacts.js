@@ -3,6 +3,8 @@ const DIAGRAM_IMAGE_TOKEN_RE = /(?:^|[\s([`'"])([^\s`'"<>]+\.(?:gif|jpe?g|png|sv
 const EXCALIDRAW_IGNORE_CONTEXT_RE = /\b(?:could not load|does not exist|failed to load|fake|missing|placeholder|sample|unreferenced|unrelated|unstaged|untracked|left\s+unstaged|left\s+unpushed|do\s+not\s+(?:open|push|render|view)|don't\s+(?:open|push|render|view)|example\s+paths?|not\s+automatically)\b/i;
 const DIAGRAM_IMAGE_CONTEXT_RE = /\b(?:architecture|artifact|chart|diagram|excalidraw|figure|flow|inline|mockup|preview|rendered?|saved|screenshot|tour|wireframe)\b|<img\b/i;
 const IMAGE_EXT_RE = /\.(?:gif|jpe?g|png|svg|webp)$/i;
+const IMG_TAG_RE = /<img\b[^>]*>/gi;
+const SRC_ATTR_RE = /\ssrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/i;
 
 function normalizeRelativeArtifactPath(value, extensionRe) {
   let text = String(value || '').trim().replace(/^(?:\.\/)+/, '').replaceAll('\\', '/');
@@ -60,6 +62,20 @@ export function diagramImageArtifactPaths(value) {
     const start = match.index + match[0].length - rawPath.length;
     const path = normalizeDiagramImageArtifactPath(rawPath);
     if (!path || seen.has(path) || ignoredArtifactContext(text, start, start + rawPath.length) || !diagramImageContext(text, start, start + rawPath.length)) continue;
+    seen.add(path);
+    paths.push(path);
+  }
+  return paths;
+}
+
+export function htmlImageArtifactPaths(value) {
+  const text = String(value || '');
+  const seen = new Set();
+  const paths = [];
+  for (const tag of text.matchAll(IMG_TAG_RE)) {
+    const srcMatch = String(tag[0] || '').match(SRC_ATTR_RE);
+    const path = normalizeDiagramImageArtifactPath(srcMatch?.[1] ?? srcMatch?.[2] ?? srcMatch?.[3] ?? '');
+    if (!path || seen.has(path)) continue;
     seen.add(path);
     paths.push(path);
   }

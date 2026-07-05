@@ -141,6 +141,12 @@ test('thread messages render stored image attachments', () => {
   assert.match(css, /\.message-attachment-image/);
 });
 
+test('html assistant messages still render mentioned image artifacts', () => {
+  assert.match(js, /htmlImageArtifactPaths/);
+  assert.match(js, /renderExcalidrawArtifacts\(node, raw, \{ skipImagePaths: htmlImageArtifactPaths\(displayText\) \}\)/);
+  assert.doesNotMatch(js, /renderExcalidrawArtifacts\(node, raw, \{ includeImages: false \}\)/);
+});
+
 test('opening a populated thread scrolls back to the latest user turn', () => {
   assert.match(js, /let initialResumeScrollDone = false/);
   assert.match(js, /function restoreInitialThreadPosition\(\)/);

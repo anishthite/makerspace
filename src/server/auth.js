@@ -51,7 +51,7 @@ function piAuthText(credentialsByProvider = {}) {
 
 export function createAuthService({ config, http }) {
   const { sendJson, requestToken, originFor, clientError } = http;
-  const BROWSER_SESSION_HEADER = 'x-makerspace-session';
+  const BROWSER_SESSION_HEADER = 'x-workbench-session';
   const authLogins = new Map();
   const githubLogins = new Map();
   const authStore = createAuthStore(config);
@@ -64,17 +64,17 @@ export function createAuthService({ config, http }) {
   }
 
   function cookieName() {
-    return config.authCookieName || 'makerspace_auth';
+    return config.authCookieName || 'workbench_auth';
   }
 
   function authSecret() {
     return String(
       config.authSecret ||
-      process.env.MAKERSPACE_AUTH_SECRET ||
+      process.env.WORKBENCH_AUTH_SECRET ||
       process.env.AUTH_SECRET ||
       config.controlApiToken ||
       config.githubClientSecret ||
-      'makerspace-dev-auth-secret',
+      'workbench-dev-auth-secret',
     );
   }
 
@@ -690,6 +690,8 @@ export function createAuthService({ config, http }) {
       ...session,
       branch: session.branch || repo.defaultBranch || '',
       repoProvider: 'github',
+      repoFullName: repo.fullName || session.repoFullName || '',
+      repoDefaultBranch: repo.defaultBranch || '',
       repoVisibility: repo.private ? 'private' : 'public',
       repoAuthHeader: repo.private ? buildGitHubCloneAuthHeader(token) : '',
     };
@@ -830,6 +832,7 @@ export function createAuthService({ config, http }) {
     publicAuthLogin,
     getAuthLogin,
     isGitHubAuthConfigured,
+    githubTokenForUser,
     publicGitHubAuth,
     githubRepoPayload,
     enrichGitHubRepoSession,

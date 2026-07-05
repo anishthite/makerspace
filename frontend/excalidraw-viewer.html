@@ -47,7 +47,7 @@
 
   const artifactPath = safeArtifactPath(rawArtifactPath);
 
-  const API_BASE = String(import.meta.env.VITE_MAKERSPACE_API_BASE || '').trim().replace(/\/+$/, '');
+  const API_BASE = String(import.meta.env.VITE_WORKBENCH_API_BASE || '').trim().replace(/\/+$/, '');
 
   function apiUrl(path) {
     return `${API_BASE}${path}`;
@@ -55,8 +55,8 @@
 
   function authHeaders() {
     const headers = {};
-    const session = localStorage.getItem('makerspaceBrowserSession') || '';
-    if (session) headers['x-makerspace-session'] = session;
+    const session = localStorage.getItem('workbenchBrowserSession') || '';
+    if (session) headers['x-workbench-session'] = session;
     return headers;
   }
 

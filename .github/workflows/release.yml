@@ -52,8 +52,8 @@ jobs:
           : "${APPLE_ID:?Set APPLE_ID}"
           : "${APPLE_APP_SPECIFIC_PASSWORD:?Set APPLE_APP_SPECIFIC_PASSWORD}"
 
-          CERTIFICATE_PATH="$RUNNER_TEMP/makerspace-signing.p12"
-          KEYCHAIN_PATH="$RUNNER_TEMP/makerspace-signing.keychain-db"
+          CERTIFICATE_PATH="$RUNNER_TEMP/workbench-signing.p12"
+          KEYCHAIN_PATH="$RUNNER_TEMP/workbench-signing.keychain-db"
 
           printf '%s' "$MACOS_CERTIFICATE_BASE64" | base64 -D > "$CERTIFICATE_PATH"
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
@@ -63,12 +63,12 @@ jobs:
           security list-keychains -d user -s "$KEYCHAIN_PATH"
           security default-keychain -s "$KEYCHAIN_PATH"
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          xcrun notarytool store-credentials makerspace-notary --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_SPECIFIC_PASSWORD"
+          xcrun notarytool store-credentials workbench-notary --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_SPECIFIC_PASSWORD"
           security find-identity -v -p codesigning "$KEYCHAIN_PATH"
 
       - name: Build, tag, push, and publish release
         env:
           GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
         run: |
-          : "${GH_TOKEN:?Set RELEASE_GITHUB_TOKEN with contents:write access to anishthite/makerspace-downloads}"
+          : "${GH_TOKEN:?Set RELEASE_GITHUB_TOKEN with contents:write access to anishthite/workbench-downloads}"
           npm run release:push

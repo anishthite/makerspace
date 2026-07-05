@@ -1,14 +1,15 @@
+import 'diff2html/bundles/css/diff2html.min.css';
 import './appearance.js?v=palette-2';
 import { htmlPreviewDocument } from './html-preview.js';
 import { renderInteractiveArtifacts, stripInteractiveArtifactBlocks } from './interactive-artifacts.js';
 import { submitOnEnter } from './submit-on-enter.js';
 import { bindImageDropZone, clearImageInput, filesToImageAttachments, imageAttachmentSrc, imageAttachmentText, imageInputFiles, updateImageStatus } from './image-attachments.js';
 import { implementationNoteFromToolEvent, implementationNotesFromToolEvent } from './implementation-notes.js';
-import { diagramImageArtifactPaths, excalidrawArtifactPaths, normalizeDiagramImageArtifactPath } from './excalidraw-artifacts.js';
+import { diagramImageArtifactPaths, excalidrawArtifactPaths, htmlImageArtifactPaths, normalizeDiagramImageArtifactPath } from './excalidraw-artifacts.js';
 
-const BROWSER_SESSION_KEY = 'makerspaceBrowserSession';
-const MODEL_REF_KEY = 'makerspaceModelRef';
-const THINKING_LEVEL_KEY = 'makerspaceThinkingLevel';
+const BROWSER_SESSION_KEY = 'workbenchBrowserSession';
+const MODEL_REF_KEY = 'workbenchModelRef';
+const THINKING_LEVEL_KEY = 'workbenchThinkingLevel';
 const THINKING_LEVELS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh'];
 const ARCHIVEABLE_THREAD_STATUSES = ['completed', 'ready', 'failed'];
 const COPY_FEEDBACK_MS = 1200;
@@ -16,7 +17,7 @@ const PHOSPHOR_COPY_ICON = '<svg viewBox="0 0 256 256" aria-hidden="true" focusa
 const MAX_INLINE_EXCALIDRAW_ARTIFACTS = 3;
 const MAX_INLINE_DIAGRAM_IMAGE_ARTIFACTS = 4;
 
-const API_BASE = String(import.meta.env?.VITE_MAKERSPACE_API_BASE || '').trim().replace(/\/+$/, '');
+const API_BASE = String(import.meta.env?.VITE_WORKBENCH_API_BASE || '').trim().replace(/\/+$/, '');
 const params = new URLSearchParams(location.search);
 const name = params.get('name');
 
@@ -51,6 +52,11 @@ const diffBox = document.querySelector('#diff-box');
 const diffCount = document.querySelector('#diff-count');
 const diffFiles = document.querySelector('#diff-files');
 const diffEditor = document.querySelector('#diff-editor');
+const diffDialog = document.querySelector('#diff-dialog');
+const diffDialogTitle = document.querySelector('#diff-dialog-title');
+const diffDialogFiles = document.querySelector('#diff-dialog-files');
+const diffDialogBody = document.querySelector('#diff-dialog-body');
+const diffDialogClose = document.querySelector('#diff-dialog-close');
 
 let activeStream = null;
 let currentThread = null;
@@ -79,6 +85,8 @@ let initialPromptRendered = false;
 let historyRendered = false;
 let graphStatus = 'waiting';
 let selectedDiffPath = '';
+let diffDialogPath = '__all__';
+let lastDiffPayload = null;
 let diffRefreshTimer = null;
 let diffBoxOpenedOnce = false;
 let assistantChunkBuffer = '';
@@ -282,7 +290,7 @@ function renderPiDefaults(defaults = {}) {
 }
 
 function authHeaders() {
-  const headers = { 'x-makerspace-session': getBrowserSessionId() };
+  const headers = { 'x-workbench-session': getBrowserSessionId() };
   const token = getApiToken();
   if (token) headers.authorization = `Bearer ${token}`;
   return headers;
@@ -451,7 +459,7 @@ function appendExcalidrawArtifactCard(section, artifactPath) {
     button.textContent = label;
     button.addEventListener('click', () => fillComposerFromInteractiveAction({
       delivery: 'followUp',
-      prompt: `[Diagram action: ${label}]\nFor ${artifactPath}: ${instruction}\nMention the new artifact path as plain text so Makerspace renders it inline.`,
+      prompt: `[Diagram action: ${label}]\nFor ${artifactPath}: ${instruction}\nMention the new artifact path as plain text so Workbench renders it inline.`,
     }));
     actions.append(button);
   });
@@ -493,7 +501,10 @@ function renderExcalidrawArtifacts(node, text, options = {}) {
   node.querySelector('.excalidraw-artifacts')?.remove();
   if (!name || !node.closest('.message-item.assistant')) return;
 
-  const imagePaths = options.includeImages === false ? [] : diagramImageArtifactPaths(text).slice(0, MAX_INLINE_DIAGRAM_IMAGE_ARTIFACTS);
+  const skippedImagePaths = new Set((options.skipImagePaths || []).map(normalizeDiagramImageArtifactPath).filter(Boolean));
+  const imagePaths = options.includeImages === false ? [] : diagramImageArtifactPaths(text)
+    .filter((artifactPath) => !skippedImagePaths.has(artifactPath))
+    .slice(0, MAX_INLINE_DIAGRAM_IMAGE_ARTIFACTS);
   const imageStems = new Set(imagePaths.map(artifactStem));
   const excalidrawPaths = excalidrawArtifactPaths(text)
     .filter((artifactPath) => !imageStems.has(artifactStem(artifactPath)))
@@ -670,7 +681,7 @@ function setStatus(text, tone = 'info', active = false) {
 function renderProject(provider) {
   const project = provider?.project || {};
   const name = String(project.name || '').trim();
-  const visible = name && name !== 'makerspace';
+  const visible = name && name !== 'workbench';
   currentProjectName = visible ? name : '';
   if (!projectLabel) return;
   projectLabel.hidden = !visible;
@@ -684,7 +695,7 @@ function renderThread(thread) {
   const displayTitle = threadDisplayTitle(thread);
   title.textContent = displayTitle;
   thinkingTitle.textContent = displayTitle;
-  document.title = currentProjectName ? `${displayTitle} · ${currentProjectName} · Makerspace` : `${displayTitle} · Makerspace`;
+  document.title = currentProjectName ? `${displayTitle} · ${currentProjectName} · Workbench` : `${displayTitle} · Workbench`;
   meta.textContent = '';
   const rawStatus = effectiveStatus(thread) || 'unknown';
   if (String(rawStatus).toLowerCase() !== 'running') {
@@ -1098,6 +1109,86 @@ function fallbackDiffText(file) {
   return `${label} ${path}\n\nNo captured preview for this file.`;
 }
 
+function diffTextForFile(file, payload = {}) {
+  const text = file?.diff || fallbackDiffText(file);
+  return `${text}${payload.truncated || file?.truncated ? '\n\n… changes truncated' : ''}`;
+}
+
+function fullDiffText(payload = {}) {
+  const files = diffFileRows(payload);
+  return payload.diff || files.map((file) => diffTextForFile(file, payload)).join('\n\n');
+}
+
+function selectedDiffText(payload = {}) {
+  const files = diffFileRows(payload);
+  const selected = files.find((file) => file.path === selectedDiffPath) || files[0];
+  return selected ? diffTextForFile(selected, payload) : '';
+}
+
+function isUnifiedDiff(text = '') {
+  return /(^diff --git |^@@\s+-\d)/m.test(String(text));
+}
+
+function renderPlainDiff(node, text = '') {
+  const pre = document.createElement('pre');
+  pre.className = 'diff-plain-preview';
+  pre.textContent = text;
+  node.replaceChildren(pre);
+}
+
+async function renderFullDiffBody(text = '') {
+  if (!diffDialogBody) return;
+  diffDialogBody.textContent = 'Loading diff…';
+  const truncated = /\n\n… changes truncated\s*$/.test(text);
+  const diffText = truncated ? text.replace(/\n\n… changes truncated\s*$/, '') : text;
+  if (!isUnifiedDiff(diffText)) {
+    renderPlainDiff(diffDialogBody, text);
+    return;
+  }
+  try {
+    const Diff2Html = await import('diff2html');
+    diffDialogBody.innerHTML = `${truncated ? '<p class="diff-truncated-warning">… changes truncated</p>' : ''}${Diff2Html.html(diffText, {
+      colorScheme: 'dark',
+      drawFileList: false,
+      matching: 'lines',
+      outputFormat: 'line-by-line',
+    })}`;
+  } catch {
+    renderPlainDiff(diffDialogBody, text);
+  }
+}
+
+function renderDiffDialog() {
+  if (!diffDialog || !diffDialogTitle || !diffDialogFiles || !diffDialogBody || !lastDiffPayload) return;
+  const files = diffFileRows(lastDiffPayload);
+  const activeFile = files.find((file) => file.path === diffDialogPath);
+  const activeText = diffDialogPath === '__all__' ? fullDiffText(lastDiffPayload) : diffTextForFile(activeFile || files[0], lastDiffPayload);
+  diffDialogTitle.textContent = diffDialogPath === '__all__' ? 'Full diff' : activeFile?.path || files[0]?.path || 'Full diff';
+  diffDialogFiles.replaceChildren();
+
+  const addButton = (label, pathValue) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `diff-file${diffDialogPath === pathValue ? ' is-active' : ''}`;
+    button.textContent = label;
+    button.addEventListener('click', () => {
+      diffDialogPath = pathValue;
+      renderDiffDialog();
+    });
+    diffDialogFiles.append(button);
+  };
+  addButton(`all files · ${files.length}`, '__all__');
+  files.forEach((file) => addButton(`${file.label || file.code || 'changed'} · ${file.path}`, file.path));
+  void renderFullDiffBody(activeText);
+}
+
+function openDiffDialog(pathValue = '__all__') {
+  if (!diffDialog || !lastDiffPayload) return;
+  diffDialogPath = pathValue;
+  renderDiffDialog();
+  if (!diffDialog.open) diffDialog.showModal();
+}
+
 function ensureDiffCopyButton() {
   const workbench = diffEditor?.closest('.diff-workbench');
   if (!workbench || workbench.querySelector('.diff-copy-button')) return;
@@ -1106,8 +1197,24 @@ function ensureDiffCopyButton() {
   workbench.append(button);
 }
 
+function ensureDiffOpenButton() {
+  const workbench = diffEditor?.closest('.diff-workbench');
+  if (!workbench || workbench.querySelector('.diff-open-button')) return;
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'diff-open-button';
+  button.textContent = 'open full diff';
+  button.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    openDiffDialog('__all__');
+  });
+  workbench.append(button);
+}
+
 function renderDiffBox(payload = {}) {
   if (!diffBox || !diffCount || !diffFiles || !diffEditor) return;
+  lastDiffPayload = payload;
   const files = diffFileRows(payload);
   diffBox.hidden = !files.length;
   diffCount.textContent = String(files.length);
@@ -1131,9 +1238,9 @@ function renderDiffBox(payload = {}) {
     diffFiles.append(button);
   }
 
-  const selected = files.find((file) => file.path === selectedDiffPath) || files[0];
-  diffEditor.value = `${selected.diff || fallbackDiffText(selected)}${payload.truncated ? '\n\n… changes truncated' : ''}`;
+  diffEditor.value = selectedDiffText(payload);
   ensureDiffCopyButton();
+  ensureDiffOpenButton();
   if (!diffBoxOpenedOnce) {
     diffBox.open = true;
     diffBoxOpenedOnce = true;
@@ -1312,7 +1419,7 @@ function renderMessageBody(node, text, allowHtml = false, images = []) {
   iframe.style.height = '1px';
   iframe.srcdoc = preview;
   renderMessageAttachments(node, images);
-  renderExcalidrawArtifacts(node, raw, { includeImages: false });
+  renderExcalidrawArtifacts(node, raw, { skipImagePaths: htmlImageArtifactPaths(displayText) });
   renderInteractiveArtifacts(node, raw, fillComposerFromInteractiveAction);
 }
 
@@ -1874,6 +1981,16 @@ agentRail?.addEventListener('keydown', (event) => {
 });
 diffBox?.addEventListener('click', (event) => event.stopPropagation());
 diffBox?.addEventListener('keydown', (event) => event.stopPropagation());
+diffEditor?.addEventListener('click', () => openDiffDialog(selectedDiffPath || '__all__'));
+diffEditor?.addEventListener('keydown', (event) => {
+  if (event.key !== 'Enter' && event.key !== ' ') return;
+  event.preventDefault();
+  openDiffDialog(selectedDiffPath || '__all__');
+});
+diffDialogClose?.addEventListener('click', () => diffDialog?.close());
+diffDialog?.addEventListener('click', (event) => {
+  if (event.target === diffDialog) diffDialog.close();
+});
 agentActivityClose?.addEventListener('click', () => setAgentActivityOpen(false));
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && isAgentActivityOpen()) setAgentActivityOpen(false);

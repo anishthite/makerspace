@@ -1,7 +1,7 @@
 function githubHeaders(token, extra = {}) {
   return {
     accept: 'application/vnd.github+json',
-    'user-agent': 'makerspace',
+    'user-agent': 'workbench',
     ...(token ? { authorization: `Bearer ${token}` } : {}),
     ...extra,
   };
@@ -110,6 +110,37 @@ export async function fetchGitHubRepo(token, repoUrl) {
   if (!parsed) return null;
   const repo = await fetchGitHubJson(`https://api.github.com/repos/${parsed.owner}/${parsed.repo}`, { token });
   return normalizeGitHubRepo(repo);
+}
+
+export async function createGitHubPullRequest(token, repoPath, pullRequest = {}) {
+  const owner = String(repoPath?.owner || '').trim();
+  const repo = String(repoPath?.repo || '').trim();
+  if (!owner || !repo) throw new Error('GitHub repository owner and name are required.');
+
+  const payload = await fetchGitHubJson(`https://api.github.com/repos/${owner}/${repo}/pulls`, {
+    token,
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      title: pullRequest.title,
+      head: pullRequest.head,
+      base: pullRequest.base,
+      body: pullRequest.body || '',
+      draft: pullRequest.draft !== false,
+      maintainer_can_modify: true,
+    }),
+  });
+
+  return {
+    number: payload.number,
+    url: payload.html_url,
+    apiUrl: payload.url,
+    title: payload.title,
+    state: payload.state,
+    draft: Boolean(payload.draft),
+    head: payload.head?.ref || pullRequest.head,
+    base: payload.base?.ref || pullRequest.base,
+  };
 }
 
 export function buildGitHubCloneAuthHeader(token) {

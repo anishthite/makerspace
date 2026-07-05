@@ -34,7 +34,7 @@ async function stopServer(child) {
 }
 
 test('thread list does not count stale local runs as live after restart', async () => {
-  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'makerspace-stale-local-'));
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'workbench-stale-local-'));
   const sessionFile = path.join(tempDir, 'sessions.json');
   const settingsFile = path.join(tempDir, 'settings.json');
   const createdAt = '2026-06-25T01:00:00.000Z';
@@ -85,7 +85,7 @@ test('thread list does not count stale local runs as live after restart', async 
 });
 
 test('message route restarts stale and failed local threads', async () => {
-  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'makerspace-local-restart-'));
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'workbench-local-restart-'));
   const sessionFile = path.join(tempDir, 'sessions.json');
   const settingsFile = path.join(tempDir, 'settings.json');
   const createdAt = '2026-06-25T02:00:00.000Z';
@@ -137,7 +137,7 @@ test('message route restarts stale and failed local threads', async () => {
 });
 
 test('stop route marks a launching bridge thread failed', async () => {
-  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'makerspace-stop-thread-'));
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'workbench-stop-thread-'));
   const sessionFile = path.join(tempDir, 'sessions.json');
   const settingsFile = path.join(tempDir, 'settings.json');
   const createdAt = '2026-06-25T03:00:00.000Z';
@@ -184,7 +184,7 @@ test('stop route marks a launching bridge thread failed', async () => {
 });
 
 test('archive route accepts finished threads but rejects running threads', async () => {
-  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'makerspace-archive-'));
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'workbench-archive-'));
   const sessionFile = path.join(tempDir, 'sessions.json');
   const settingsFile = path.join(tempDir, 'settings.json');
   const createdAt = '2026-06-24T20:00:00.000Z';

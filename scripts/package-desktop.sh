@@ -2,21 +2,21 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-APP_NAME="${APP_NAME:-Makerspace}"
-BUNDLE_ID="${BUNDLE_ID:-com.makerspace.desktop}"
+APP_NAME="${APP_NAME:-Workbench}"
+BUNDLE_ID="${BUNDLE_ID:-com.workbench.desktop}"
 OUT_DIR="${OUT_DIR:-$ROOT/output/desktop-package}"
 APP_DIR="$OUT_DIR/$APP_NAME.app"
 APP_RESOURCES="$APP_DIR/Contents/Resources/app"
 DMG_ROOT="$OUT_DIR/dmg-root"
-DMG_PATH="$OUT_DIR/makerspace.dmg"
-ICON_NAME="${ICON_NAME:-makerspace}"
+DMG_PATH="$OUT_DIR/workbench.dmg"
+ICON_NAME="${ICON_NAME:-workbench}"
 ICON_SOURCE="${ICON_SOURCE:-$ROOT/frontend/public/logo-mark.svg}"
 SIGN_IDENTITY="${SIGN_IDENTITY:-}"
 TEAM_ID="${TEAM_ID:-}"
 NOTARY_PROFILE="${NOTARY_PROFILE:-}"
 VERSION="$(cd "$ROOT" && node -p "require('./package.json').version")"
 ARCH="${ARCH:-$(cd "$ROOT" && node -p "process.arch")}"
-OTA_ZIP_PATH="$OUT_DIR/makerspace-mac-$ARCH.zip"
+OTA_ZIP_PATH="$OUT_DIR/workbench-mac-$ARCH.zip"
 ELECTRON_APP="$(cd "$ROOT" && node -e "const path = require('node:path'); console.log(path.join(path.dirname(require.resolve('electron')), 'dist', 'Electron.app'))")"
 
 if [[ ! -d "$ELECTRON_APP" ]]; then
@@ -25,7 +25,7 @@ if [[ ! -d "$ELECTRON_APP" ]]; then
   exit 1
 fi
 
-(cd "$ROOT" && VITE_MAKERSPACE_API_BASE= npm run build)
+(cd "$ROOT" && VITE_WORKBENCH_API_BASE= npm run build)
 
 if [[ -n "$NOTARY_PROFILE" && -z "$SIGN_IDENTITY" ]]; then
   echo "SIGN_IDENTITY is required when NOTARY_PROFILE is set." >&2

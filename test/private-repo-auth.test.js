@@ -26,7 +26,7 @@ function runStateStub() {
 }
 
 test('thread bridge launch strips private clone auth before persisting session', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'makerspace-private-auth-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'workbench-private-auth-'));
   const sessionFile = path.join(root, 'sessions.json');
   try {
     const config = {
@@ -34,7 +34,7 @@ test('thread bridge launch strips private clone auth before persisting session',
       sessionFile,
       settingsFile: path.join(root, 'settings.json'),
       remoteWorkspaceDir: '/srv/workspace',
-      remoteControlDir: '/srv/makerspace',
+      remoteControlDir: '/srv/workbench',
       bridgePort: 4310,
       bridgeReadyTimeoutMs: 1000,
       bridgeReadyPollMs: 10,

@@ -250,13 +250,13 @@
       "updated": 1,
       "link": null,
       "locked": false,
-      "text": "Makerspace backend",
+      "text": "Workbench backend",
       "fontSize": 20,
       "fontFamily": 3,
       "textAlign": "left",
       "verticalAlign": "top",
       "containerId": null,
-      "originalText": "Makerspace backend",
+      "originalText": "Workbench backend",
       "lineHeight": 1.25
     },
     {
@@ -830,13 +830,13 @@
       "updated": 1,
       "link": null,
       "locked": false,
-      "text": "writeUserSecret\nencrypted by\nMAKERSPACE_AUTH_SECRET",
+      "text": "writeUserSecret\nencrypted by\nWORKBENCH_AUTH_SECRET",
       "fontSize": 14,
       "fontFamily": 3,
       "textAlign": "center",
       "verticalAlign": "middle",
       "containerId": null,
-      "originalText": "writeUserSecret\nencrypted by\nMAKERSPACE_AUTH_SECRET",
+      "originalText": "writeUserSecret\nencrypted by\nWORKBENCH_AUTH_SECRET",
       "lineHeight": 1.25
     },
     {

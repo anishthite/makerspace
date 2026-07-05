@@ -53,7 +53,7 @@ test('CONTROL_API_TOKEN is optional user auth bypass when multi-user auth is on'
 });
 
 test('thread list payload returns only the signed-in user sessions', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'makerspace-thread-scope-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'workbench-thread-scope-'));
   try {
     const sessionFile = path.join(root, 'sessions.json');
     await writeFile(sessionFile, `${JSON.stringify([

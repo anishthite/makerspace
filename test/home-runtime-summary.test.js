@@ -57,7 +57,7 @@ test('recently finished rows stack finished and runtime copy in the top right', 
 });
 
 test('recently finished success indicators can be dismissed locally', () => {
-  assert.ok(js.includes("const SEEN_FINISHED_THREADS_KEY = 'makerspaceSeenFinishedThreads';"));
+  assert.ok(js.includes("const SEEN_FINISHED_THREADS_KEY = 'workbenchSeenFinishedThreads';"));
   assert.ok(js.includes("return !active && ['completed', 'ready'].includes(rawStatus);"));
   assert.ok(js.includes('data-finished-indicator="${escapeHtml(indicatorKey)}"'));
   assert.ok(js.includes('data-finished-thread="${escapeHtml(indicatorKey)}"'));

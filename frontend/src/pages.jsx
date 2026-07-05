@@ -19,10 +19,10 @@ function AuthPills() {
   </>;
 }
 
-function Brand({ href = '/', label = 'Makerspace home', children }) {
+function Brand({ href = '/', label = 'Workbench home', children }) {
   return <a className="brand" href={href} aria-label={label}>
     <img className="brand-logo" src="/logo-mark.svg" alt="" aria-hidden="true" />
-    <span>makerspace</span>
+    <span>workbench</span>
     {children ?? <span id="project-label" className="project-pill" hidden></span>}
   </a>;
 }
@@ -45,8 +45,8 @@ function RunControls({ launch = false }) {
 }
 
 function WorkspaceNav({ active = 'workspace' }) {
-  return <nav className="home-topbar" aria-label="Makerspace navigation">
-    <Brand href="/workspace.html" label="Makerspace workspace" />
+  return <nav className="home-topbar" aria-label="Workbench navigation">
+    <Brand href="/workspace.html" label="Workbench workspace" />
     <div className="workspace-chip" aria-label="Selected workspace"><strong id="workspace-label">loading…</strong><Button as="a" variant="ghost" size="sm" href="/">switch</Button></div>
     <div className="header-actions home-actions">
       {active === 'workspace' && <AuthPills />}
@@ -59,8 +59,8 @@ function WorkspaceNav({ active = 'workspace' }) {
 
 export function ProjectPage() {
   return <main className="project-shell">
-    <nav className="home-topbar" aria-label="Makerspace navigation">
-      <Brand href="/" label="Makerspace projects" />
+    <nav className="home-topbar" aria-label="Workbench navigation">
+      <Brand href="/" label="Workbench projects" />
       <div className="header-actions home-actions"><AuthPills /><Button as="a" variant="ghost" href="/settings.html">settings</Button></div>
     </nav>
 
@@ -84,7 +84,7 @@ export function ProjectPage() {
           <p id="project-repo-hint" className="muted">Choose a local folder or paste a repo.</p>
         </div>
         <Button id="project-submit" variant="primary" type="submit">open workspace</Button>
-        <p id="project-status" className="status-line">Select a project to continue.</p>
+        <p id="project-status" className="status-line" aria-live="polite"></p>
       </Surface>
       <Surface className="project-card recent-projects" aria-label="Recent projects">
         <div className="section-row"><div><h2>Recent projects</h2><p className="muted">One click back into a workspace.</p></div></div>
@@ -154,6 +154,13 @@ export function ThreadPage() {
         </InputMessage>
       </section>
     </section>
+    <dialog id="diff-dialog" className="diff-dialog" aria-labelledby="diff-dialog-title">
+      <div className="diff-dialog-shell">
+        <header className="diff-dialog-head"><div><p className="eyebrow">changes</p><h2 id="diff-dialog-title">Full diff</h2></div><Button id="diff-dialog-close" variant="ghost" type="button">close</Button></header>
+        <div id="diff-dialog-files" className="diff-dialog-files" role="list"></div>
+        <div id="diff-dialog-body" className="diff-dialog-body" aria-label="Full diff"></div>
+      </div>
+    </dialog>
   </main>;
 }
 
@@ -169,7 +176,7 @@ export function HistoryPage() {
 export function PerformancePage() {
   const isLocal = globalThis.location?.pathname?.includes('local-telemetry');
   return <main className="home-shell performance-shell">
-    <nav className="home-topbar" aria-label="Makerspace navigation"><Brand href="/" /><div className="header-actions home-actions"><Button as="a" variant="ghost" href="/workspace.html">agents</Button><Button as="a" variant="ghost" href="/history.html">history</Button><Button as="a" variant="ghost" href={isLocal ? '/telemetry.html' : '/local-telemetry.html'}>{isLocal ? 'db telemetry' : 'local sessions'}</Button><Button as="a" variant="ghost" href="/settings.html">settings</Button></div></nav>
+    <nav className="home-topbar" aria-label="Workbench navigation"><Brand href="/" /><div className="header-actions home-actions"><Button as="a" variant="ghost" href="/workspace.html">agents</Button><Button as="a" variant="ghost" href="/history.html">history</Button><Button as="a" variant="ghost" href={isLocal ? '/telemetry.html' : '/local-telemetry.html'}>{isLocal ? 'db telemetry' : 'local sessions'}</Button><Button as="a" variant="ghost" href="/settings.html">settings</Button></div></nav>
     <section className="performance-hero"><p className="eyebrow">telemetry</p><h1>{isLocal ? 'Local session telemetry' : 'Agent telemetry'}</h1><p id="performance-status" className="muted">Loading {isLocal ? 'local session' : 'DB-derived'} agent metrics…</p><p className="muted">{isLocal ? 'Reads the desktop/local sessions file and ignores old browser-session IDs.' : 'Estimated from the session DB plus live run events. No extra product tracking.'}</p></section>
     <section id="performance-stats" className="performance-stats" aria-label="Telemetry summary"></section>
     <section className="performance-grid"><div className="performance-side-stack"><Surface className="performance-panel"><div className="section-row"><h2>Signals</h2><Button id="refresh-performance" variant="ghost" type="button">refresh</Button></div><ul id="performance-insights" className="signal-list"></ul></Surface><Surface className="performance-panel"><div className="section-row"><h2>What this can show</h2></div><ul id="telemetry-sources" className="signal-list telemetry-source-list"></ul></Surface></div><Surface className="performance-panel table-panel"><div className="section-row"><h2>Main agents</h2><p id="performance-count" className="muted"></p></div><ScrollArea className="performance-table-wrap"><table className="performance-table"><thead><tr><th>main agent</th><th>status</th><th>first llm</th><th>duration</th><th>tools</th><th>tokens</th><th>cache</th><th>analysis</th><th>flags</th></tr></thead><tbody id="performance-rows"></tbody></table></ScrollArea></Surface></section>
@@ -178,12 +185,12 @@ export function PerformancePage() {
 
 export function SettingsPage() {
   return <><div className="crt-vignette" aria-hidden="true"></div><div className="crt-scanlines" aria-hidden="true"></div><main className="shell console-grid">
-    <nav className="topbar panel-lite" aria-label="Settings controls"><a className="brand-mark has-logo" href="/" aria-label="Makerspace home"><img className="brand-logo" src="/logo-mark.svg" alt="" aria-hidden="true" /><strong>settings</strong></a><div className="topbar-actions"><Button as="a" variant="ghost" href="/">agents</Button></div></nav>
+    <nav className="topbar panel-lite" aria-label="Settings controls"><a className="brand-mark has-logo" href="/" aria-label="Workbench home"><img className="brand-logo" src="/logo-mark.svg" alt="" aria-hidden="true" /><strong>settings</strong></a><div className="topbar-actions"><Button as="a" variant="ghost" href="/">agents</Button></div></nav>
     <header className="hero panel stack-lg"><h1>Settings</h1><Tabs items={[{ href: '#github', label: 'GitHub' }, { href: '#codex', label: 'Codex' }, { href: '#claude-code', label: 'Claude Code' }, { href: '#pi-profile', label: 'Pi profile' }, { href: '#sandbox', label: 'Sandbox' }]} /></header>
     <Surface as="section" id="github" className="panel stack-lg"><div className="panel-header"><div><h2>GitHub</h2></div><div className="inline-actions"><Button id="github-login" variant="primary" type="button">Sign in</Button><Button id="github-logout" variant="ghost" type="button">Sign out</Button></div></div><p id="github-status" className="muted">Checking…</p></Surface>
     <Surface as="section" id="codex" className="panel stack-lg"><div className="panel-header"><div><h2>Codex</h2></div><Button id="codex-login" variant="primary" type="button">Sign in</Button></div><p id="codex-status" className="muted">Checking…</p><div id="codex-device" className="notice hidden"></div></Surface>
     <Surface as="section" id="claude-code" className="panel stack-lg"><div className="panel-header"><div><h2>Claude Code</h2></div><Button id="claude-code-login" variant="primary" type="button">Sign in</Button></div><p id="claude-code-status" className="muted">Checking…</p><div id="claude-code-auth" className="notice hidden"></div><form id="claude-code-code-form" className="stack-lg hidden"><label className="full-width"><span>Redirect URL or code</span><input id="claude-code-code" name="code" placeholder="http://localhost:53692/callback?code=…" autoComplete="off" /></label><div className="form-actions"><Button id="claude-code-code-submit" variant="primary" type="submit">Finish sign in</Button></div></form></Surface>
-    <Surface as="section" id="pi-profile" className="panel stack-lg"><div className="panel-header"><div><h2>Pi profile</h2></div></div><form id="pi-profile-form" className="stack-lg"><label className="full-width"><span>AGENTS.md</span><textarea id="pi-agents" rows="12" spellCheck="false" placeholder="Makerspace Pi instructions"></textarea><small id="pi-agents-path" className="muted">Loading…</small></label><Switch id="pi-sync-remote" label="Sync selected profile to remote sandboxes " help="Per run; not baked into public images." /><div className="profile-resource-grid"><div><h3>Skills</h3><div id="pi-skills" className="resource-list muted">Loading…</div></div><div><h3>Extensions</h3><div id="pi-extensions" className="resource-list muted">Loading…</div></div><div><h3>Prompts</h3><div id="pi-prompts" className="resource-list muted">Loading…</div></div></div><div className="form-actions"><Button id="pi-profile-submit" variant="primary" type="submit">Save profile</Button><p id="pi-profile-status" className="muted">Loading…</p></div></form></Surface>
+    <Surface as="section" id="pi-profile" className="panel stack-lg"><div className="panel-header"><div><h2>Pi profile</h2></div></div><form id="pi-profile-form" className="stack-lg"><label className="full-width"><span>AGENTS.md</span><textarea id="pi-agents" rows="12" spellCheck="false" placeholder="Workbench Pi instructions"></textarea><small id="pi-agents-path" className="muted">Loading…</small></label><Switch id="pi-sync-remote" label="Sync selected profile to remote sandboxes " help="Per run; not baked into public images." /><div className="profile-resource-grid"><div><h3>Skills</h3><div id="pi-skills" className="resource-list muted">Loading…</div></div><div><h3>Extensions</h3><div id="pi-extensions" className="resource-list muted">Loading…</div></div><div><h3>Prompts</h3><div id="pi-prompts" className="resource-list muted">Loading…</div></div></div><div className="form-actions"><Button id="pi-profile-submit" variant="primary" type="submit">Save profile</Button><p id="pi-profile-status" className="muted">Loading…</p></div></form></Surface>
     <Surface as="section" id="sandbox" className="panel stack-lg"><div className="panel-header"><div><h2>Sandbox</h2></div></div><form id="settings-form" className="stack-lg"><div className="form-grid"><label className="full-width"><span>Image ref</span><input id="image-ref" name="imageRef" placeholder="image ref" /><small>Blank = default.</small></label><label><span>Registry username</span><input id="registry-username" name="registryUsername" placeholder="username" autoComplete="username" /></label><label><span>Registry token</span><input id="registry-password" name="registryPassword" type="password" placeholder="token" autoComplete="current-password" /><small>Blank keeps current.</small></label><label className="full-width"><span>Anthropic API key</span><input id="anthropic-api-key" name="anthropicApiKey" type="password" placeholder="API key" autoComplete="off" /><small>Blank keeps current.</small></label></div><div className="form-actions"><Button id="settings-submit" variant="primary" type="submit">Save</Button><p id="settings-status" className="muted">Loading…</p></div></form></Surface>
     <Surface as="section" id="desktop-updates" className="panel stack-lg" hidden><div className="panel-header"><div><h2>Desktop updates</h2><p className="muted">Check GitHub Releases for a newer desktop build.</p></div><Button id="desktop-check-updates" variant="ghost" type="button">Check for updates</Button></div><p id="desktop-update-status" className="muted">Desktop only.</p></Surface>
   </main></>;

@@ -87,7 +87,7 @@
 
   <main class="shell console-grid">
     <nav class="topbar panel-lite" aria-label="Guide navigation">
-      <a class="brand-mark" href="index.html" aria-label="Makerspace home">
+      <a class="brand-mark" href="index.html" aria-label="Workbench home">
         <span class="brand-kicker">NERV-MKSP</span>
         <strong>PROVIDER OPS</strong>
         <span class="jp-label">実行基盤</span>
@@ -147,7 +147,7 @@ Provider adapter
           <p class="eyebrow">local provider</p>
           <strong>Runs on this computer</strong>
           <span>Creates a repo worktree, starts the same Pi bridge on <code>127.0.0.1</code>, and streams through the backend.</span>
-          <pre class="code-box">~/.makerspace/
+          <pre class="code-box">~/.workbench/
   repos/&lt;repo-hash&gt;.git
   worktrees/&lt;agent&gt;/
   control/&lt;agent&gt;/
@@ -159,7 +159,7 @@ Provider adapter
           <span>Creates or reuses a Daytona sandbox, starts the sandbox-local Pi bridge, and reaches it through a preview URL.</span>
           <pre class="code-box">Daytona sandbox
   /srv/workspace
-  /srv/makerspace
+  /srv/workbench
   preview :4310
   autostop/autodelete</pre>
         </div>
@@ -174,9 +174,9 @@ Provider adapter
       </div>
       <ol class="flow">
         <li class="flow-step"><span>Backend receives <code>POST /api/threads</code> with repo, branch, agent name, and prompt.</span></li>
-        <li class="flow-step"><span>Local provider keeps a bare repo cache at <code>~/.makerspace/repos/&lt;repo-hash&gt;.git</code>.</span></li>
-        <li class="flow-step"><span>It runs <code>git fetch</code>, then creates <code>git worktree add ~/.makerspace/worktrees/&lt;agent&gt;</code>.</span></li>
-        <li class="flow-step"><span>It creates <code>~/.makerspace/control/&lt;agent&gt;</code> for status files, logs, bridge auth, and run state.</span></li>
+        <li class="flow-step"><span>Local provider keeps a bare repo cache at <code>~/.workbench/repos/&lt;repo-hash&gt;.git</code>.</span></li>
+        <li class="flow-step"><span>It runs <code>git fetch</code>, then creates <code>git worktree add ~/.workbench/worktrees/&lt;agent&gt;</code>.</span></li>
+        <li class="flow-step"><span>It creates <code>~/.workbench/control/&lt;agent&gt;</code> for status files, logs, bridge auth, and run state.</span></li>
         <li class="flow-step"><span>It starts the bridge as a child process with <code>PI_BRIDGE_WORKSPACE_DIR</code> pointing at the worktree.</span></li>
         <li class="flow-step"><span>Backend talks to <code>http://127.0.0.1:&lt;port&gt;</code>, then relays output to the browser over the existing SSE route.</span></li>
       </ol>

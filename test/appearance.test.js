@@ -6,7 +6,7 @@ import { applyAppearance } from '../frontend/src/runtime/appearance.js';
 
 test('applies the fixed app appearance', (t) => {
   const oldDocument = globalThis.document;
-  const oldDesktop = globalThis.makerspaceDesktop;
+  const oldDesktop = globalThis.workbenchDesktop;
   const oldStorage = globalThis.localStorage;
   const toggles = [];
   globalThis.document = {
@@ -19,8 +19,8 @@ test('applies the fixed app appearance', (t) => {
   t.after(() => {
     if (oldDocument === undefined) delete globalThis.document;
     else globalThis.document = oldDocument;
-    if (oldDesktop === undefined) delete globalThis.makerspaceDesktop;
-    else globalThis.makerspaceDesktop = oldDesktop;
+    if (oldDesktop === undefined) delete globalThis.workbenchDesktop;
+    else globalThis.workbenchDesktop = oldDesktop;
     if (oldStorage === undefined) delete globalThis.localStorage;
     else globalThis.localStorage = oldStorage;
   });
@@ -29,7 +29,7 @@ test('applies the fixed app appearance', (t) => {
   assert.deepEqual(globalThis.document.documentElement.dataset, { theme: 'dark', font: 'inter', palette: 'slate' });
   assert.deepEqual(toggles, [['dark', true]]);
 
-  globalThis.makerspaceDesktop = {};
+  globalThis.workbenchDesktop = {};
   assert.deepEqual(applyAppearance(), { theme: 'dark', font: 'inter', palette: 'slate' });
   assert.deepEqual(globalThis.document.documentElement.dataset, { theme: 'dark', font: 'inter', palette: 'slate', desktop: 'true' });
 });

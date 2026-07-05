@@ -20,12 +20,12 @@ let mainWindow = null;
 function sendUpdateStatus(message) {
   BrowserWindow.getAllWindows().forEach((window) => {
     if (!window || window.isDestroyed()) return;
-    window.webContents.send('makerspace:update-status', { message });
+    window.webContents.send('workbench:update-status', { message });
   });
 }
 
 function announceUpdateDownloaded() {
-  sendUpdateStatus('Update downloaded. It will install the next time Makerspace starts.');
+  sendUpdateStatus('Update downloaded. It will install the next time Workbench starts.');
 }
 
 function slugify(value) {
@@ -42,16 +42,16 @@ function initialFolderArg() {
 const initialFolder = initialFolderArg();
 
 function projectName() {
-  const explicit = cleanFolder(process.env.MAKERSPACE_PROJECT);
+  const explicit = cleanFolder(process.env.WORKBENCH_PROJECT);
   if (explicit) return explicit;
   const normalized = initialFolder.replace(/[\\/]+$/, '');
   return path.basename(normalized) || '';
 }
 
 function projectHomeDir() {
-  if (process.env.MAKERSPACE_HOME) return process.env.MAKERSPACE_HOME;
+  if (process.env.WORKBENCH_HOME) return process.env.WORKBENCH_HOME;
   const name = projectName();
-  // ponytail: same-name folders share state; set MAKERSPACE_HOME to split duplicates.
+  // ponytail: same-name folders share state; set WORKBENCH_HOME to split duplicates.
   return name ? path.join(userDataDir(), 'projects', slugify(name)) : '';
 }
 
@@ -80,7 +80,7 @@ async function waitForServer(port) {
 }
 
 function backendCommand() {
-  if (process.env.MAKERSPACE_NODE) return { command: process.env.MAKERSPACE_NODE, args: ['src/server.js'], env: {} };
+  if (process.env.WORKBENCH_NODE) return { command: process.env.WORKBENCH_NODE, args: ['src/server.js'], env: {} };
   if (app.isPackaged) return { command: process.execPath, args: ['src/server.js'], env: { ELECTRON_RUN_AS_NODE: '1' } };
   return { command: 'node', args: ['src/server.js'], env: {} };
 }
@@ -100,8 +100,8 @@ async function startBackend() {
       PORT: String(port),
       CONTROL_API_TOKEN: token,
       INFRA_PROVIDER: 'local',
-      ...(name ? { MAKERSPACE_PROJECT: name } : {}),
-      ...(homeDir ? { MAKERSPACE_HOME: homeDir } : {}),
+      ...(name ? { WORKBENCH_PROJECT: name } : {}),
+      ...(homeDir ? { WORKBENCH_HOME: homeDir } : {}),
     },
     stdio: ['ignore', 'inherit', 'inherit', 'ipc'],
   });
@@ -120,7 +120,7 @@ function createWindow(port, token) {
   mainWindow = new BrowserWindow({
     width: 1180,
     height: 840,
-    title: name ? `Makerspace · ${name}` : 'Makerspace',
+    title: name ? `Workbench · ${name}` : 'Workbench',
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -138,11 +138,11 @@ function userDataDir() {
   return app.getPath('userData');
 }
 
-ipcMain.handle('makerspace:get-last-folder', () => initialFolder || readLastFolder(userDataDir()));
+ipcMain.handle('workbench:get-last-folder', () => initialFolder || readLastFolder(userDataDir()));
 
-ipcMain.handle('makerspace:remember-folder', (_event, folder) => writeLastFolder(userDataDir(), folder));
+ipcMain.handle('workbench:remember-folder', (_event, folder) => writeLastFolder(userDataDir(), folder));
 
-ipcMain.handle('makerspace:choose-folder', async (_event, folder) => {
+ipcMain.handle('workbench:choose-folder', async (_event, folder) => {
   const defaultPath = cleanFolder(folder) || initialFolder || readLastFolder(userDataDir());
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openDirectory'],
@@ -153,7 +153,7 @@ ipcMain.handle('makerspace:choose-folder', async (_event, folder) => {
   return selected;
 });
 
-ipcMain.handle('makerspace:check-for-updates', () => {
+ipcMain.handle('workbench:check-for-updates', () => {
   if (!app.isPackaged) return { ok: false, message: 'Update checks work in the packaged app.' };
   if (!['darwin', 'win32'].includes(process.platform)) return { ok: false, message: 'Electron updates are macOS/Windows only.' };
   try {
@@ -175,7 +175,7 @@ if (app.isPackaged) {
   updateElectronApp({
     updateSource: {
       type: UpdateSourceType.ElectronPublicUpdateService,
-      repo: 'anishthite/makerspace-downloads',
+      repo: 'anishthite/workbench-downloads',
     },
     notifyUser: false,
   });

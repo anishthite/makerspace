@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 220" role="img" aria-labelledby="title desc">
-  <title id="title">Makerspace logo option 2 — Thread</title>
-  <desc id="desc">A connected node path forming an M next to a makerspace wordmark.</desc>
+  <title id="title">Workbench logo option 2 — Thread</title>
+  <desc id="desc">A connected node path forming an M next to a workbench wordmark.</desc>
   <rect width="720" height="220" fill="none"/>
   <g transform="translate(38 42)" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <path d="M28 114V28h32l28 50 28-50h32v86" stroke="#1F5E9C" stroke-width="13"/>
@@ -12,7 +12,7 @@
     <circle cx="148" cy="114" r="12" fill="#0F766E"/>
   </g>
   <g font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
-    <text x="214" y="105" fill="#241A12" font-size="56" font-weight="850" letter-spacing="-3">makerspace</text>
+    <text x="214" y="105" fill="#241A12" font-size="56" font-weight="850" letter-spacing="-3">workbench</text>
     <text x="218" y="139" fill="#0F766E" font-family="Hack, JetBrains Mono, 'SF Mono', ui-monospace, monospace" font-size="15" font-weight="700" letter-spacing="2.5">THREADS THAT BUILD</text>
   </g>
 </svg>
