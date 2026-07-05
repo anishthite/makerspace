@@ -626,6 +626,10 @@ export function createAuthService({ config, http }) {
       }
     }
 
+    // In multi-user mode every sandbox belongs to a specific user; never
+    // hand out the server-level token as a shared fallback.
+    if (authRequired()) return null;
+
     const envToken = String(process.env.GH_TOKEN || process.env.GITHUB_TOKEN || '').trim();
     return envToken ? { token: envToken, login: '', name: '', email: '' } : null;
   }

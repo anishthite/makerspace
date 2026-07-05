@@ -62,6 +62,56 @@ test('hosted Codex and Claude Code auth are stored per user and formatted for Pi
   }
 });
 
+test('readGitHubAuthForSession keeps GitHub tokens per user in multi-user mode', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'makerspace-github-auth-'));
+  const savedGhToken = process.env.GH_TOKEN;
+  const savedGithubToken = process.env.GITHUB_TOKEN;
+  process.env.GH_TOKEN = 'server-shared-token';
+  delete process.env.GITHUB_TOKEN;
+
+  try {
+    const auth = createAuthService({ config: config(root), http: testHttp() });
+    const user = await auth.authStore.upsertUser({ githubId: '1', login: 'octo', name: 'Octo Cat' });
+    const other = await auth.authStore.upsertUser({ githubId: '2', login: 'mona' });
+    await auth.authStore.upsertOAuthToken({ userId: user.id, provider: 'github', accessToken: 'octo-token', scopes: ['repo'] });
+
+    const owned = await auth.readGitHubAuthForSession({ ownerUserId: user.id });
+    assert.equal(owned.token, 'octo-token');
+    assert.equal(owned.login, 'octo');
+    assert.equal(owned.name, 'Octo Cat');
+    assert.equal(owned.email, '1+octo@users.noreply.github.com');
+
+    // A user without GitHub connected must not inherit the server token.
+    assert.equal(await auth.readGitHubAuthForSession({ ownerUserId: other.id }), null);
+    // Unowned sessions (e.g. warm bridges) get nothing in multi-user mode.
+    assert.equal(await auth.readGitHubAuthForSession({}), null);
+  } finally {
+    if (savedGhToken === undefined) delete process.env.GH_TOKEN;
+    else process.env.GH_TOKEN = savedGhToken;
+    if (savedGithubToken !== undefined) process.env.GITHUB_TOKEN = savedGithubToken;
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('readGitHubAuthForSession falls back to the server token in single-user mode', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'makerspace-github-auth-single-'));
+  const savedGhToken = process.env.GH_TOKEN;
+  const savedGithubToken = process.env.GITHUB_TOKEN;
+  process.env.GH_TOKEN = 'server-shared-token';
+  delete process.env.GITHUB_TOKEN;
+
+  try {
+    const auth = createAuthService({ config: { ...config(root), authRequired: false }, http: testHttp() });
+    const fallback = await auth.readGitHubAuthForSession({});
+    assert.equal(fallback.token, 'server-shared-token');
+  } finally {
+    if (savedGhToken === undefined) delete process.env.GH_TOKEN;
+    else process.env.GH_TOKEN = savedGhToken;
+    if (savedGithubToken !== undefined) process.env.GITHUB_TOKEN = savedGithubToken;
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('hosted Codex auth populates model picker defaults', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'makerspace-codex-models-'));
   try {

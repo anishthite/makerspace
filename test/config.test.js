@@ -29,6 +29,25 @@ test('collectForwardedEnv prefers saved Anthropic key', () => {
   assert.deepEqual(env, [{ key: 'ANTHROPIC_API_KEY', value: 'fake-anthropic-key' }]);
 });
 
+test('collectForwardedEnv only forwards shared GitHub tokens in single-user mode', () => {
+  withEnv({ GH_TOKEN: 'server-shared-token', GITHUB_TOKEN: 'server-shared-token' }, () => {
+    const multiUser = collectForwardedEnv(
+      { forwardEnvKeys: ['GH_TOKEN', 'GITHUB_TOKEN', 'ANTHROPIC_API_KEY'], authRequired: true },
+      { anthropicApiKey: 'fake-anthropic-key' },
+    );
+    assert.deepEqual(multiUser, [{ key: 'ANTHROPIC_API_KEY', value: 'fake-anthropic-key' }]);
+
+    const singleUser = collectForwardedEnv(
+      { forwardEnvKeys: ['GH_TOKEN', 'GITHUB_TOKEN'], authRequired: false },
+      {},
+    );
+    assert.deepEqual(singleUser, [
+      { key: 'GH_TOKEN', value: 'server-shared-token' },
+      { key: 'GITHUB_TOKEN', value: 'server-shared-token' },
+    ]);
+  });
+});
+
 test('getConfig names the visible project from env or explicit home', () => {
   withEnv({ INFRA_PROVIDER: 'local', MAKERSPACE_PROJECT: 'site-ui', MAKERSPACE_NAME: undefined, MAKERSPACE_HOME: '/tmp/makerspace/site', RECENT_PROJECTS_DATA_PATH: undefined }, () => {
     assert.equal(getConfig().projectName, 'site-ui');
