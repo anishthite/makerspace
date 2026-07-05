@@ -8,6 +8,8 @@ try {
 }
 
 const DEFAULT_FORWARD_ENV_KEYS = [
+  'GH_TOKEN',
+  'GITHUB_TOKEN',
   'ANTHROPIC_API_KEY',
   'OPENAI_API_KEY',
   'GOOGLE_API_KEY',
@@ -91,6 +93,7 @@ export function getConfig() {
     bridgePort: Number(process.env.PI_BRIDGE_PORT || 4310),
     bridgeReadyTimeoutMs: Number(process.env.PI_BRIDGE_READY_TIMEOUT_MS || 240000),
     bridgeReadyPollMs: Number(process.env.PI_BRIDGE_READY_POLL_MS || 1000),
+    bridgeStreamStallMs: Number(process.env.PI_BRIDGE_STREAM_STALL_MS || 60000),
     warmBridgePoolSize: Number(process.env.WARM_BRIDGE_POOL_SIZE || 0),
     idleBridgeTtlMs: Number(process.env.IDLE_BRIDGE_TTL_MS || 60 * 60 * 1000),
     hostDispatchEnabled: provider !== 'local' && ['1', 'true', 'yes'].includes(String(process.env.PI_HOST_DISPATCH || process.env.PI_LOCAL_DISPATCH || '').toLowerCase()),

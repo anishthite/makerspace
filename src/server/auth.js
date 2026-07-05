@@ -610,6 +610,26 @@ export function createAuthService({ config, http }) {
     return (await authStore.getOAuthToken(user.id, 'github'))?.accessToken || '';
   }
 
+  async function readGitHubAuthForSession(session = {}) {
+    if (session?.ownerUserId) {
+      const token = await githubTokenForUser({ id: session.ownerUserId });
+      if (token) {
+        const user = await authStore.getUser(session.ownerUserId);
+        return {
+          token,
+          login: user?.login || '',
+          name: user?.name || user?.login || '',
+          email: user?.githubId && user?.login
+            ? `${user.githubId}+${user.login}@users.noreply.github.com`
+            : '',
+        };
+      }
+    }
+
+    const envToken = String(process.env.GH_TOKEN || process.env.GITHUB_TOKEN || '').trim();
+    return envToken ? { token: envToken, login: '', name: '', email: '' } : null;
+  }
+
   async function publicGitHubAuth(sessionOrUser) {
     const maybeUser = sessionOrUser?.id ? sessionOrUser : null;
     if (maybeUser) {
@@ -828,6 +848,7 @@ export function createAuthService({ config, http }) {
     requireSessionAccess,
     readLocalPiAuth,
     readPiAuthForSession,
+    readGitHubAuthForSession,
     authStorageForSession,
     readLocalPiSettings,
     authStore,

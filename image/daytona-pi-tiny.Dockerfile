@@ -9,7 +9,7 @@ ENV HOME=/home/daytona \
 
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-      ca-certificates curl git && \
+      ca-certificates curl git gh && \
     rm -rf /var/lib/apt/lists/* && \
     mkdir -p /home/daytona/.pi/agent/npm /home/daytona/.pi/agent/git/github.com/DietrichGebert /workspace /srv
 
