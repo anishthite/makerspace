@@ -1,13 +1,15 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
-export function createHttpHelpers({ publicDir }) {
-  const allowedOrigin = process.env.WORKBENCH_ALLOWED_ORIGIN || process.env.PUBLIC_APP_ORIGIN || '*';
+import { allowedOriginFromEnv } from '../config.js';
+
+export function createHttpHelpers({ publicDir, allowedOrigin = allowedOriginFromEnv() }) {
+  const corsOrigin = allowedOrigin || '*';
   const corsHeaders = {
-    'access-control-allow-origin': allowedOrigin,
+    'access-control-allow-origin': corsOrigin,
     'access-control-allow-methods': 'GET,POST,OPTIONS',
     'access-control-allow-headers': 'content-type,authorization,x-api-token,x-workbench-session',
-    ...(allowedOrigin === '*' ? {} : { 'access-control-allow-credentials': 'true' }),
+    ...(corsOrigin === '*' ? {} : { 'access-control-allow-credentials': 'true' }),
   };
 
   function sendJson(response, statusCode, payload) {

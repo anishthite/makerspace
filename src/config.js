@@ -30,6 +30,10 @@ function truthy(value) {
   return ['1', 'true', 'yes', 'on'].includes(String(value || '').trim().toLowerCase());
 }
 
+export function allowedOriginFromEnv(env = process.env) {
+  return String(env.WORKBENCH_ALLOWED_ORIGIN || env.MAKERSPACE_ALLOWED_ORIGIN || env.PUBLIC_APP_ORIGIN || '').trim();
+}
+
 function projectNameFromEnv(localDataDir) {
   const explicit = String(process.env.WORKBENCH_PROJECT || process.env.WORKBENCH_NAME || '').trim();
   if (explicit) return explicit;
@@ -65,7 +69,7 @@ export function getConfig() {
     authCookieSameSite: process.env.WORKBENCH_AUTH_SAMESITE || '',
     authSessionDays: Number(process.env.WORKBENCH_AUTH_SESSION_DAYS || 30),
     allowHostedLocalProvider: truthy(process.env.WORKBENCH_ALLOW_HOSTED_LOCAL_PROVIDER),
-    allowedOrigin: process.env.WORKBENCH_ALLOWED_ORIGIN || process.env.PUBLIC_APP_ORIGIN || '',
+    allowedOrigin: allowedOriginFromEnv(),
     stateStore: process.env.WORKBENCH_STATE_STORE || process.env.STATE_STORE || 'file',
     daytonaApiKey: process.env.DAYTONA_API_KEY || '',
     daytonaApiUrl: process.env.DAYTONA_API_URL || 'https://app.daytona.io/api',

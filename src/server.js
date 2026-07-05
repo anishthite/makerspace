@@ -17,7 +17,7 @@ const provider = createProvider(config);
 const distDir = path.join(config.rootDir, 'dist');
 const publicDir = process.env.WORKBENCH_STATIC_DIR || distDir;
 
-const httpHelpers = createHttpHelpers({ publicDir });
+const httpHelpers = createHttpHelpers({ publicDir, allowedOrigin: config.allowedOrigin });
 const auth = createAuthService({ config, http: httpHelpers });
 const runState = createRunState({
   config,
