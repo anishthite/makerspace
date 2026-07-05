@@ -13,6 +13,12 @@ test('settings page omits URL query token backend controls', () => {
   assert.match(settingsJs, /import\.meta\.env\?\.VITE_WORKBENCH_API_BASE/);
 });
 
+test('settings API wrapper reports non-JSON backend responses clearly', () => {
+  assert.match(settingsJs, /const text = await response\.text\(\);/);
+  assert.match(settingsJs, /Set VITE_WORKBENCH_API_BASE to the backend URL and redeploy/);
+  assert.doesNotMatch(settingsJs, /const payload = await response\.json\(\);/);
+});
+
 test('settings page exposes Pi profile editor wiring', () => {
   assert.match(settingsPage, /id="pi-profile"/);
   assert.match(settingsPage, /id="pi-agents"/);

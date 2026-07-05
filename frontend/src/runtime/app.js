@@ -14,7 +14,6 @@ const API_BASE = String(import.meta.env?.VITE_WORKBENCH_API_BASE || '').trim().r
 const providerBanner = document.querySelector('#provider-banner');
 const projectLabel = document.querySelector('#project-label');
 const workspaceLabel = document.querySelector('#workspace-label');
-const actionSummary = document.querySelector('#action-summary');
 const codexAuthPill = document.querySelector('#codex-auth-pill');
 const codexAuthLabel = document.querySelector('#codex-auth-label');
 const githubAuthPill = document.querySelector('#github-auth-pill');
@@ -517,33 +516,6 @@ function runtimeStart(thread) {
   return thread.createdAt || thread.updatedAt || '';
 }
 
-function formatRunningTotal(starts, endValue = Date.now()) {
-  const end = typeof endValue === 'number' ? endValue : Date.parse(endValue || '');
-  if (Number.isNaN(end)) return '';
-  let totalMs = 0;
-  for (const startValue of starts) {
-    const start = Date.parse(startValue || '');
-    if (!Number.isNaN(start)) totalMs += Math.max(0, end - start);
-  }
-  return totalMs ? formatDurationSeconds(Math.floor(totalMs / 1000), true) : '';
-}
-
-function renderActionSummary(runningCount, doneCount, runningStarts = []) {
-  actionSummary.dataset.runningCount = String(runningCount);
-  actionSummary.dataset.doneCount = String(doneCount);
-  actionSummary.dataset.runningStarts = JSON.stringify(runningStarts);
-  const total = formatRunningTotal(runningStarts);
-  actionSummary.textContent = `${runningCount} running${total ? ` for ${total} total` : ''} · ${doneCount} recently finished`;
-}
-
-function updateActionSummary() {
-  let runningStarts = [];
-  try {
-    runningStarts = JSON.parse(actionSummary.dataset.runningStarts || '[]');
-  } catch {}
-  renderActionSummary(Number(actionSummary.dataset.runningCount || 0), Number(actionSummary.dataset.doneCount || 0), runningStarts);
-}
-
 function threadLane(thread) {
   return isActiveThread(thread) ? 'running' : 'done';
 }
@@ -594,7 +566,6 @@ function updateRuntimeLabels() {
   for (const label of labels) {
     label.textContent = `running ${formatElapsed(label.dataset.runtimeStart, Date.now(), true)}`;
   }
-  updateActionSummary();
   if (!labels.length && runtimeTickTimer) {
     clearInterval(runtimeTickTimer);
     runtimeTickTimer = null;
@@ -631,9 +602,7 @@ function renderThreads(threads) {
   for (const thread of threads) grouped[threadLane(thread)].push(thread);
   grouped.done.sort((left, right) => finishedAtMs(right) - finishedAtMs(left));
 
-  const runningStarts = grouped.running.filter(isActiveThread).map(runtimeStart).filter(Boolean);
   finishedThreadNames = grouped.done.filter(canArchiveThread).map((thread) => thread.name);
-  renderActionSummary(grouped.running.length, grouped.done.length, runningStarts);
   threadsList.innerHTML = lanes.map((lane) => `
     <section class="action-lane" aria-label="${escapeHtml(lane.title)} agents">
       <div class="action-lane-head">

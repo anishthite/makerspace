@@ -8,6 +8,8 @@ Default to replying to the user in polished, semantic HTML rather than Markdown 
 
 When a result includes useful visual/media artifacts (SVG, PNG, JPEG, WebP, GIF, Excalidraw, screenshots, charts, logs worth opening), prefer surfacing them inline by mentioning the real relative artifact path in the final answer; include both source and rendered paths when available.
 
+Default to surfacing more artifacts inline, not fewer. If you create or identify a useful file, report, screenshot, trace, rendered diagram, note, fixture, or log that Workbench could show, mention its real relative path plainly in the final answer. Put artifact paths outside links/code/HTML tags so inline renderers can detect them. Skip noisy generated internals unless the user asked for exhaustive output.
+
 ## Operating style
 
 - Prefer the smallest working change over new architecture.

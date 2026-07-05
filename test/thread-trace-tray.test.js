@@ -160,10 +160,20 @@ test('final turn status colors the matching assistant message', () => {
   assert.match(js, /function finalTurnStatus\(thread = currentThread\)/);
   assert.match(js, /function applyThreadTurnStatus\(thread = currentThread\)/);
   assert.match(js, /item\.dataset\.runId === turn\.runId/);
-  assert.match(js, /event\.type === 'title' \|\| event\.type === 'answer_summary' \|\| event\.type === 'turn_status'/);
+  assert.match(js, /event\.type === 'title' \|\| event\.type === 'answer_summary' \|\| event\.type === 'turn_status' \|\| event\.type === 'suggested_next_steps'/);
   assert.match(css, /\.message-item\.assistant\[data-turn-color="green"\] \.timeline-dot/);
   assert.match(css, /\.message-item\.assistant\[data-turn-color="amber"\] \.timeline-dot/);
   assert.match(css, /\.message-item\.assistant\[data-turn-color="gray"\] \.timeline-dot/);
+});
+
+test('suggested next steps render as bottom composer prompts', () => {
+  assert.match(pages, /id="suggested-next-steps"/);
+  assert.match(pages, /id="suggested-next-steps-list"/);
+  assert.match(js, /function renderSuggestedNextSteps\(thread = currentThread\)/);
+  assert.match(js, /data-next-step-prompt="\$\{escapeHtml\(step\.prompt\)\}"/);
+  assert.match(js, /fillComposerFromInteractiveAction\(\{ prompt: button\.dataset\.nextStepPrompt \|\| '' \}\)/);
+  assert.match(css, /\.next-steps-main/);
+  assert.match(css, /\.next-step-btn/);
 });
 
 test('inline trace uses a subtle marker without overlay behavior', () => {

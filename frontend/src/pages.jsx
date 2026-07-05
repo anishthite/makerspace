@@ -116,7 +116,7 @@ export function WorkspacePage() {
       <p id="thread-status" className="status-line"></p>
     </InputMessage>
     <Surface className="home-recent action-center" aria-label="Agents">
-      <div className="section-row"><div><h2>Agents</h2><p id="action-summary" className="muted">Loading agent status…</p></div><div className="inline-actions"><Button as="a" variant="ghost" href="/history.html">history</Button><Button id="refresh-threads" variant="ghost" type="button">refresh</Button></div></div>
+      <div className="section-row"><div><h2>Agents</h2></div><div className="inline-actions"><Button as="a" variant="ghost" href="/history.html">history</Button><Button id="refresh-threads" variant="ghost" type="button">refresh</Button></div></div>
       <ScrollArea id="threads-list" className="action-lanes"></ScrollArea>
     </Surface>
   </main>;
@@ -147,6 +147,7 @@ export function ThreadPage() {
             <ScrollArea id="trace-timeline" className="timeline-flow" aria-live="polite"></ScrollArea>
           </aside>
         </section>
+        <Surface id="suggested-next-steps" className="next-steps-main flow-card" aria-label="Suggested next steps" hidden><div className="rail-head"><span>suggested next steps</span><strong>prompts</strong></div><div id="suggested-next-steps-list" className="next-steps-list"></div></Surface>
         <Surface className="notes-main flow-card" aria-label="Implementation notes" hidden><div className="rail-head"><span>implementation notes</span><strong id="notes-count">0</strong></div><div id="notes-list" className="notes-list"></div></Surface>
         <InputMessage as="form" id="prompt-form" className="flow-composer">
           <div className="composer-field"><label className="sr-only" htmlFor="prompt">Prompt</label><textarea id="prompt" rows="3" placeholder="Next task…"></textarea><small id="composer-hint" className="composer-hint muted">Enter sends · Shift+Enter adds a line</small><RunControls /></div>

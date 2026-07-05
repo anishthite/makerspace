@@ -3,7 +3,7 @@ import { applyPerformanceEvent } from '../performance.js';
 import { appendRetainedOutput, retainedOutputChunk } from '../resource-utils.js';
 import { appendThreadMessages, decorateSession, threadMessage } from '../session.js';
 import { getStoredSession, listStoredSessions, upsertSession } from '../store.js';
-import { fallbackThreadTitle, generateFinalAnswerSummary, generateFinalTurnStatus, generateThreadTitle } from '../thread-title.js';
+import { fallbackThreadTitle, generateFinalAnswerSummary, generateFinalTurnStatus, generateSuggestedNextSteps, generateThreadTitle } from '../thread-title.js';
 import { sleep } from './utils.js';
 
 export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAccessSession, authStorageForSession = null }) {
@@ -11,6 +11,7 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
   const liveLocalRuns = new Set();
   const finalAnswerSummaryRuns = new Set();
   const finalTurnStatusRuns = new Set();
+  const suggestedNextStepRuns = new Set();
   const runSubscribers = new Map();
   const polishQueue = [];
   let polishQueueRunning = false;
@@ -315,6 +316,10 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
       finalTurnStatusRunId: undefined,
       finalTurnStatusModel: undefined,
       finalTurnStatusUpdatedAt: undefined,
+      suggestedNextSteps: undefined,
+      suggestedNextStepsRunId: undefined,
+      suggestedNextStepsModel: undefined,
+      suggestedNextStepsUpdatedAt: undefined,
     };
   }
 
@@ -501,6 +506,11 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
     return Number.isFinite(value) && value > 0 ? value : 15000;
   }
 
+  function threadNextStepsTimeoutMs() {
+    const value = Number(config.threadNextStepsTimeoutMs || config.threadSummaryTimeoutMs);
+    return Number.isFinite(value) && value > 0 ? value : 15000;
+  }
+
   function enqueuePolishJob(job) {
     polishQueue.push(job);
     if (polishQueueRunning) return;
@@ -617,6 +627,53 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
     });
   }
 
+  function scheduleSuggestedNextStepsGeneration(session, finalOutput, runId = threadRunId(session)) {
+    const modelRef = String(config.threadNextStepsModel || config.threadSummaryModel || config.threadTitleModel || '').trim();
+    const latestAssistantTurn = String(finalOutput || '').trim();
+    const key = `${session?.name || ''}:${runId || 'latest'}`;
+    if (!session?.name || !latestAssistantTurn || !modelRef || modelRef.toLowerCase() === 'off') return;
+    if (Array.isArray(session.suggestedNextSteps) && session.suggestedNextSteps.length && (!runId || session.suggestedNextStepsRunId === runId)) return;
+    if (suggestedNextStepRuns.has(key)) return;
+
+    suggestedNextStepRuns.add(key);
+    enqueuePolishJob(async () => {
+      try {
+        const current = await getStoredSession(config.sessionFile, session.name);
+        if (!current?.threadBridge) return;
+        const currentRunId = threadRunId(current);
+        if (runId && currentRunId && currentRunId !== runId) return;
+        if (!latestAssistantThreadMessage(current, runId)) return;
+
+        const steps = await generateSuggestedNextSteps(current, latestAssistantTurn, {
+          loadPiSdk,
+          loadPiAi,
+          modelRef,
+          authStorage: authStorageForSession ? await authStorageForSession(current) : null,
+          signal: AbortSignal.timeout(threadNextStepsTimeoutMs()),
+        });
+        if (!steps?.length) return;
+
+        const updated = await upsertSession(config.sessionFile, {
+          ...current,
+          suggestedNextSteps: steps,
+          suggestedNextStepsRunId: runId || '',
+          suggestedNextStepsModel: modelRef,
+          suggestedNextStepsUpdatedAt: new Date().toISOString(),
+        });
+        recordRunEvent(session.name, {
+          type: 'suggested_next_steps',
+          steps,
+          runStatus: ensureRunState(session.name).runStatus,
+          session: decorateLiveSession(updated),
+        });
+      } catch (error) {
+        console.warn(`[workbench] skipped suggested next steps for ${session.name}: ${error.message}`);
+      } finally {
+        suggestedNextStepRuns.delete(key);
+      }
+    });
+  }
+
   async function persistThreadAssistantMessage(sessionName) {
     const session = await getStoredSession(config.sessionFile, sessionName);
     if (!session?.threadBridge) return;
@@ -626,6 +683,7 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
     if (existingAssistant) {
       scheduleFinalAnswerSummaryGeneration(session, existingAssistant.text, runId);
       scheduleFinalTurnStatusClassification(session, existingAssistant, runId);
+      scheduleSuggestedNextStepsGeneration(session, existingAssistant.text, runId);
       return;
     }
 
@@ -639,6 +697,7 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
     });
     scheduleFinalAnswerSummaryGeneration(updated, text, runId);
     scheduleFinalTurnStatusClassification(updated, { text }, runId);
+    scheduleSuggestedNextStepsGeneration(updated, text, runId);
   }
 
   function withFallbackThreadTitle(session) {

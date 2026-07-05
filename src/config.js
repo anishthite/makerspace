@@ -122,6 +122,8 @@ export function getConfig() {
     threadSummaryTimeoutMs: Number(process.env.THREAD_SUMMARY_TIMEOUT_MS || 15000),
     threadTurnStatusModel: process.env.THREAD_TURN_STATUS_MODEL || process.env.THREAD_SUMMARY_MODEL || process.env.THREAD_TITLE_MODEL || 'openai-codex/gpt-5.4-mini',
     threadTurnStatusTimeoutMs: Number(process.env.THREAD_TURN_STATUS_TIMEOUT_MS || 15000),
+    threadNextStepsModel: process.env.THREAD_NEXT_STEPS_MODEL || process.env.THREAD_SUMMARY_MODEL || process.env.THREAD_TITLE_MODEL || 'openai-codex/gpt-5.4-mini',
+    threadNextStepsTimeoutMs: Number(process.env.THREAD_NEXT_STEPS_TIMEOUT_MS || 15000),
     sessionFile:
       process.env.SESSION_DATA_PATH || path.join(defaultDataDir, 'sessions.json'),
     piSessionTraceDir:

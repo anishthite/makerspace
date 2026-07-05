@@ -2,6 +2,9 @@ export const DEFAULT_THREAD_TITLE_MODEL = 'openai-codex/gpt-5.4-mini';
 const MAX_TITLE_LENGTH = 64;
 const MAX_SUMMARY_LENGTH = 140;
 const MAX_STATUS_REASON_LENGTH = 96;
+const MAX_NEXT_STEPS = 3;
+const MAX_NEXT_STEP_LABEL_LENGTH = 56;
+const MAX_NEXT_STEP_PROMPT_LENGTH = 700;
 const SUMMARY_OUTPUT_CHARS = 8_000;
 const TURN_STATUS_USER_CHARS = 4_000;
 const TURN_STATUS_ASSISTANT_CHARS = 8_000;
@@ -106,6 +109,75 @@ export function buildFinalAnswerSummaryPrompt(session, finalOutput) {
   ].join('\n');
 }
 
+function jsonPayload(value) {
+  const text = String(value ?? '').replace(/^```(?:json)?\s*/i, '').replace(/```$/i, '').trim();
+  for (const candidate of [text, text.match(/\{[\s\S]*\}/)?.[0], text.match(/\[[\s\S]*\]/)?.[0]]) {
+    if (!candidate) continue;
+    try {
+      return JSON.parse(candidate);
+    } catch {}
+  }
+  return null;
+}
+
+function cleanNextStepText(value, maxLength) {
+  let text = String(value ?? '').replaceAll('\r', '\n').trim()
+    .replace(/^[-*\d.)\s]+/, '')
+    .replace(/^(?:label|title|prompt|next step|step)\s*[:\-–—]\s*/i, '')
+    .replace(/^[-–—:;,\.\s"'`“”‘’]+|[-–—:;,\.\s"'`“”‘’]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (text.length > maxLength) {
+    const slice = text.slice(0, maxLength + 1);
+    const boundary = slice.lastIndexOf(' ');
+    text = `${slice.slice(0, boundary >= 20 ? boundary : maxLength).trim()}…`;
+  }
+
+  return text;
+}
+
+function normalizeNextStep(entry) {
+  const source = entry && typeof entry === 'object' ? entry : { prompt: entry };
+  const prompt = cleanNextStepText(source.prompt || source.text || source.next || source.instruction || source.label || '', MAX_NEXT_STEP_PROMPT_LENGTH);
+  if (!prompt) return null;
+  const label = cleanNextStepText(source.label || source.title || source.name || '', MAX_NEXT_STEP_LABEL_LENGTH) || cleanNextStepText(prompt, MAX_NEXT_STEP_LABEL_LENGTH) || 'Next step';
+  return { label, prompt };
+}
+
+export function cleanSuggestedNextSteps(value, maxSteps = MAX_NEXT_STEPS) {
+  const parsed = jsonPayload(value);
+  const rawSteps = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray(parsed?.steps)
+      ? parsed.steps
+      : Array.isArray(parsed?.suggestions)
+        ? parsed.suggestions
+        : String(value || '').split('\n').filter((line) => line.trim());
+  const seen = new Set();
+  const steps = [];
+  for (const entry of rawSteps) {
+    const step = normalizeNextStep(entry);
+    const key = step?.prompt.toLowerCase();
+    if (!step || seen.has(key)) continue;
+    seen.add(key);
+    steps.push(step);
+    if (steps.length >= maxSteps) break;
+  }
+  return steps;
+}
+
+export function buildSuggestedNextStepsPrompt(session, finalOutput) {
+  return [
+    'Suggest useful next-step prompts for this completed coding agent thread.',
+    'Return only JSON shaped exactly like: {"steps":[{"label":"short button label","prompt":"exact prompt to send"}]}.',
+    'Rules: 2-3 steps, label is 2-5 words, prompt is one imperative sentence, no Markdown, no HTML, no quotes around the JSON.',
+    'Prefer verification, review, cleanup, delivery, or natural follow-up work. Do not repeat work already reported done.',
+    `Original task: ${String(session?.taskPrompt || session?.initialPrompt || '').trim().slice(0, 1200)}`,
+    `Latest answer:\n${String(finalOutput || '').trim().slice(-SUMMARY_OUTPUT_CHARS)}`,
+  ].join('\n');
+}
+
 function capPromptText(value, max) {
   const text = String(value || '').trim();
   return text.length > max ? text.slice(-max) : text;
@@ -200,7 +272,7 @@ async function generateShortText(options, settings) {
 
   if (response.stopReason === 'error') throw new Error(response.errorMessage || `${settings.label} generation failed.`);
   const result = settings.clean(assistantText(response));
-  if (!result) throw new Error(`${settings.label} generation returned an empty ${settings.emptyNoun}.`);
+  if (!result || (Array.isArray(result) && !result.length)) throw new Error(`${settings.label} generation returned an empty ${settings.emptyNoun}.`);
   return result;
 }
 
@@ -235,5 +307,16 @@ export function generateFinalTurnStatus(previousUserTurn, latestAssistantTurn, o
     maxTokens: 96,
     reasoning: 'off',
     clean: cleanFinalTurnStatus,
+  });
+}
+
+export function generateSuggestedNextSteps(session, finalOutput, options = {}) {
+  return generateShortText(options, {
+    label: 'Suggested next steps',
+    emptyNoun: 'suggestions',
+    systemPrompt: 'Return only the JSON object.',
+    prompt: buildSuggestedNextStepsPrompt(session, finalOutput),
+    maxTokens: 512,
+    clean: cleanSuggestedNextSteps,
   });
 }

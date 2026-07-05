@@ -9,13 +9,12 @@ const agentToasts = readFileSync(new URL('../frontend/src/runtime/agent-toasts.j
 const runState = readFileSync(new URL('../src/server/run-state.js', import.meta.url), 'utf8');
 const threads = readFileSync(new URL('../src/server/threads.js', import.meta.url), 'utf8');
 
-test('home agents summary shows total active runtime', () => {
+test('home agents header omits aggregate status line', () => {
   assert.match(pages, /export function WorkspacePage\(\)/);
-  assert.match(js, /function formatRunningTotal\(starts, endValue = Date\.now\(\)\)/);
-  assert.match(js, /totalMs \+= Math\.max\(0, end - start\)/);
-  assert.match(js, /running\$\{total \? ` for \$\{total\} total` : ''\}/);
-  assert.match(js, /grouped\.running\.filter\(isActiveThread\)\.map\(runtimeStart\)/);
-  assert.match(js, /updateActionSummary\(\);/);
+  assert.doesNotMatch(pages, /id="action-summary"/);
+  assert.doesNotMatch(js, /function formatRunningTotal/);
+  assert.doesNotMatch(js, /recently finished`/);
+  assert.doesNotMatch(js, /updateActionSummary\(\);/);
 });
 
 test('home running lane only uses active thread statuses', () => {
@@ -54,6 +53,7 @@ test('recently finished rows stack finished and runtime copy in the top right', 
   assert.match(js, /grouped\.done\.sort\(\(left, right\) => finishedAtMs\(right\) - finishedAtMs\(left\)\);/);
   assert.match(runState, /scheduleFinalAnswerSummaryGeneration\(updated, text, runId\);/);
   assert.match(runState, /scheduleFinalTurnStatusClassification\(updated, \{ text \}, runId\);/);
+  assert.match(runState, /scheduleSuggestedNextStepsGeneration\(updated, text, runId\);/);
 });
 
 test('recently finished success indicators can be dismissed locally', () => {
@@ -90,6 +90,7 @@ test('new runs clear stale terminal runtime fields', () => {
   assert.match(runState, /runEndedAtMs: undefined/);
   assert.match(runState, /finalAnswerSummary: undefined/);
   assert.match(runState, /finalTurnStatus: undefined/);
+  assert.match(runState, /suggestedNextSteps: undefined/);
   assert.match(threads, /\.\.\.activeRunResetPatch\(\),\n\s+taskPrompt: prompt/);
 });
 

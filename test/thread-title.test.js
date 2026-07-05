@@ -4,12 +4,15 @@ import assert from 'node:assert/strict';
 import {
   buildFinalAnswerSummaryPrompt,
   buildFinalTurnStatusPrompt,
+  buildSuggestedNextStepsPrompt,
   cleanFinalAnswerSummary,
   cleanFinalTurnStatus,
+  cleanSuggestedNextSteps,
   cleanThreadTitle,
   fallbackThreadTitle,
   generateFinalAnswerSummary,
   generateFinalTurnStatus,
+  generateSuggestedNextSteps,
   generateThreadTitle,
   parseThreadTitleModelRef,
   resolveThreadTitleModel,
@@ -37,6 +40,25 @@ test('buildFinalAnswerSummaryPrompt caps output to the tail', () => {
   assert.match(prompt, /Fix UI/);
   assert.doesNotMatch(prompt, /start/);
   assert.match(prompt, /end$/);
+});
+
+test('cleanSuggestedNextSteps parses JSON steps and caps to three', () => {
+  assert.deepEqual(
+    cleanSuggestedNextSteps('{"steps":[{"label":"Run tests","prompt":"Run the focused tests."},{"label":"Open PR","prompt":"Open a draft PR."},{"label":"Polish UI","prompt":"Polish the spacing."},{"label":"Ignored","prompt":"Ignored."}]}'),
+    [
+      { label: 'Run tests', prompt: 'Run the focused tests' },
+      { label: 'Open PR', prompt: 'Open a draft PR' },
+      { label: 'Polish UI', prompt: 'Polish the spacing' },
+    ],
+  );
+});
+
+test('buildSuggestedNextStepsPrompt asks for button labels and exact prompts', () => {
+  const prompt = buildSuggestedNextStepsPrompt({ taskPrompt: 'Fix UI' }, 'Done. Tests pass.');
+  assert.match(prompt, /Return only JSON shaped exactly like/);
+  assert.match(prompt, /"label":"short button label"/);
+  assert.match(prompt, /"prompt":"exact prompt to send"/);
+  assert.match(prompt, /Latest answer:\nDone\. Tests pass\./);
 });
 
 const turnStatusCases = [
@@ -139,6 +161,39 @@ test('generateFinalTurnStatus uses a no-thinking JSON classifier completion', as
   );
 
   assert.deepEqual(status, { status: 'done', color: 'green', reason: 'completed' });
+});
+
+test('generateSuggestedNextSteps uses a JSON completion and cleans prompts', async () => {
+  const model = { provider: 'openai-codex', id: 'gpt-5.4-mini' };
+  const steps = await generateSuggestedNextSteps(
+    { taskPrompt: 'Fix the checkout flow.' },
+    'Done. Fixed totals and added a smoke test.',
+    {
+      modelRef: 'openai-codex/gpt-5.4-mini',
+      loadPiSdk: async () => ({
+        AuthStorage: {
+          create: () => ({
+            getApiKey: async () => 'fake-token',
+            getProviderEnv: () => ({ FOO: 'bar' }),
+          }),
+        },
+        ModelRegistry: { create: () => ({ find: () => model }) },
+      }),
+      loadPiAi: async () => ({
+        completeSimple: async (receivedModel, context, options) => {
+          assert.equal(receivedModel, model);
+          assert.equal(context.systemPrompt, 'Return only the JSON object.');
+          assert.match(context.messages[0].content, /Suggested useful next-step prompts|Suggest useful next-step prompts/);
+          assert.equal(options.apiKey, 'fake-token');
+          assert.equal(options.reasoning, 'minimal');
+          assert.equal(options.maxTokens, 512);
+          return { stopReason: 'stop', content: [{ type: 'text', text: '{"steps":[{"label":"Run tests","prompt":"Run the focused tests."}]}' }] };
+        },
+      }),
+    },
+  );
+
+  assert.deepEqual(steps, [{ label: 'Run tests', prompt: 'Run the focused tests' }]);
 });
 
 test('generateThreadTitle uses a minimal no-tool completion and cleans the response', async () => {

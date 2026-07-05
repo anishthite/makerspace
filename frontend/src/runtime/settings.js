@@ -83,10 +83,17 @@ function apiUrl(path) {
 async function fetchJson(path, options = {}) {
   const response = await fetch(apiUrl(path), {
     credentials: 'include',
+    cache: 'no-store',
     ...options,
     headers: { ...authHeaders(), ...(options.headers || {}) },
   });
-  const payload = await response.json();
+  const text = await response.text();
+  let payload;
+  try {
+    payload = text ? JSON.parse(text) : {};
+  } catch {
+    throw new Error('Backend unavailable. Set VITE_WORKBENCH_API_BASE to the backend URL and redeploy.');
+  }
   if (!response.ok) throw new Error(payload.error || `Request failed: ${response.status}`);
   return payload;
 }

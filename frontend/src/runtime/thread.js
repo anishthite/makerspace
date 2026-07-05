@@ -37,6 +37,8 @@ const agentGraphCount = document.querySelector('#agent-graph-count');
 const activityNote = document.querySelector('#activity-note');
 const notesList = document.querySelector('#notes-list');
 const notesCount = document.querySelector('#notes-count');
+const nextStepsSection = document.querySelector('#suggested-next-steps');
+const nextStepsList = document.querySelector('#suggested-next-steps-list');
 const promptForm = document.querySelector('#prompt-form');
 const promptInput = document.querySelector('#prompt');
 const composerHint = document.querySelector('#composer-hint');
@@ -605,6 +607,27 @@ function renderComposerState(thread = currentThread) {
   }
 }
 
+function normalizedSuggestedNextSteps(thread = currentThread) {
+  const runId = currentRunId(thread);
+  if (thread?.suggestedNextStepsRunId && runId && String(thread.suggestedNextStepsRunId) !== runId) return [];
+  return (Array.isArray(thread?.suggestedNextSteps) ? thread.suggestedNextSteps : [])
+    .map((step) => ({ label: String(step?.label || '').trim(), prompt: String(step?.prompt || '').trim() }))
+    .filter((step) => step.label && step.prompt)
+    .slice(0, 3);
+}
+
+function renderSuggestedNextSteps(thread = currentThread) {
+  if (!nextStepsSection || !nextStepsList) return;
+  const steps = normalizedSuggestedNextSteps(thread);
+  nextStepsSection.hidden = !steps.length;
+  nextStepsList.innerHTML = steps.map((step) => `
+    <button class="next-step-btn" type="button" data-next-step-prompt="${escapeHtml(step.prompt)}">
+      <strong>${escapeHtml(step.label)}</strong>
+      <span>${escapeHtml(step.prompt)}</span>
+    </button>
+  `).join('');
+}
+
 function updateQueueState(event = {}) {
   queuedSteeringCount = Array.isArray(event.steering) ? event.steering.length : queuedSteeringCount;
   queuedFollowUpCount = Array.isArray(event.followUp) ? event.followUp.length : queuedFollowUpCount;
@@ -708,6 +731,7 @@ function renderThread(thread) {
   renderStopButton(thread);
   renderArchiveButton(thread);
   renderAgentGraph();
+  renderSuggestedNextSteps(thread);
   renderComposerState(thread);
 }
 
@@ -1854,7 +1878,7 @@ function renderEvent(event, { appendTranscript = false } = {}) {
   updateLastEventId(event);
   if (event.type === 'usage') return;
 
-  if (event.type === 'title' || event.type === 'answer_summary' || event.type === 'turn_status') {
+  if (event.type === 'title' || event.type === 'answer_summary' || event.type === 'turn_status' || event.type === 'suggested_next_steps') {
     const key = eventKey(event);
     const isNewEvent = !seenEvents.has(key);
     seenEvents.add(key);
@@ -2026,6 +2050,12 @@ archiveButton?.addEventListener('click', async () => {
     setStatus(error.message, 'error');
   }
 });
+nextStepsList?.addEventListener('click', (event) => {
+  const button = event.target?.closest?.('[data-next-step-prompt]');
+  if (!button) return;
+  fillComposerFromInteractiveAction({ prompt: button.dataset.nextStepPrompt || '' });
+  setStatus('review suggested prompt, then send', 'info');
+});
 imageInput?.addEventListener('change', () => updateImageStatus(imageInput, imageStatus));
 bindImageDropZone(promptForm, imageInput, imageStatus);
 promptInput?.addEventListener('keydown', (event) => {
@@ -2072,6 +2102,7 @@ promptForm.addEventListener('submit', async (event) => {
     promptInput.value = '';
     clearImageInput(imageInput);
     updateImageStatus(imageInput, imageStatus);
+    if (!activeDelivery) renderSuggestedNextSteps({ ...currentThread, suggestedNextSteps: [] });
     if (!activeDelivery) renderEvent({ type: 'status', runStatus: 'queued', timestamp: new Date(submittedAtMs).toISOString(), submittedAtMs });
 
     const payload = await fetchJson(`/api/threads/${encodeURIComponent(name)}/messages`, {
