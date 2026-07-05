@@ -39,11 +39,17 @@ test('buildSetupScript clones a repo and auto-runs pi when requested', () => {
   );
   const bridgeScript = extractBridgeScript(script);
 
-  assert.ok(Buffer.byteLength(script, 'utf8') < 13 * 1024);
+  assert.ok(Buffer.byteLength(script, 'utf8') < 15 * 1024);
   assert.match(script, /if \[ "\$\(id -u\)" -ne 0 \]; then exec sudo -E \/bin\/bash "\$0" "\$@"; fi/);
   assert.match(script, /export GIT_TERMINAL_PROMPT=0/);
   assert.match(script, /git -c 'http.extraHeader=AUTHORIZATION: basic abc123' clone --depth=1 --branch 'main' 'https:\/\/github.com\/acme\/demo\.git' '\/srv\/workspace'/);
   assert.match(script, /\|\| \{ rm -rf '\/srv\/workspace'; git -c 'http.extraHeader=AUTHORIZATION: basic abc123' clone --depth=1 'https:\/\/github.com\/acme\/demo\.git' '\/srv\/workspace'; \}/);
+  assert.match(script, /apt-get install -y gh/);
+  assert.match(script, /githubcli-archive-keyring\.gpg/);
+  assert.match(script, /git config --system credential\.helper store/);
+  assert.match(script, /git config --system --add credential\.helper '!gh auth git-credential'/);
+  assert.match(script, /git config --system --add safe\.directory '\*'/);
+  assert.match(script, /git config --system user\.email 'makerspace-agent@users\.noreply\.github\.com'/);
   assert.match(script, /base64 -d<<'E'\|gzip -d>'\/srv\/makerspace\/pi-bridge\.mjs'/);
   assert.match(script, /if \[ ! -d '\/home\/daytona\/\.pi\/agent\/npm\/node_modules\/@earendil-works\/pi-coding-agent' \]; then\n  PI_VERSION=/);
   assert.match(script, /PI_SDK_SPEC='@earendil-works\/pi-coding-agent'/);
@@ -151,7 +157,7 @@ test('buildSetupScript skips direct pi auto-run for bridge-backed chat sessions'
     config,
   );
 
-  assert.ok(Buffer.byteLength(script, 'utf8') < 13 * 1024);
+  assert.ok(Buffer.byteLength(script, 'utf8') < 15 * 1024);
   assert.match(script, /printf 'export PI_BRIDGE_TOKEN=%s\\n' 'secret-token'/);
   assert.match(script, /printf 'export PI_BRIDGE_PACKAGE_DIR=%s\\n' '\/home\/daytona\/\.pi\/agent\/npm'/);
   assert.match(script, /printf 'export MAKERSPACE_PI_DEFAULTS_PACKAGE_DIR=%s\\n' '\/home\/daytona\/\.pi\/agent\/makerspace-pi-defaults'/);
@@ -161,6 +167,14 @@ test('buildSetupScript skips direct pi auto-run for bridge-backed chat sessions'
   assert.match(bridgeScript, /writeFile\(authPath, authText, "utf8"\)/);
   assert.match(bridgeScript, /const piProfile = body\.piProfile/);
   assert.match(bridgeScript, /await writePiProfile\(piProfile\)/);
+  assert.match(bridgeScript, /async function writeGitAuth\(github\)/);
+  assert.match(bridgeScript, /const github = body\.github && typeof body\.github === "object" \? body\.github : null;/);
+  assert.match(bridgeScript, /await writeGitAuth\(github\)/);
+  assert.match(bridgeScript, /process\.env\.GH_TOKEN = token/);
+  assert.match(bridgeScript, /\.git-credentials/);
+  assert.match(bridgeScript, /x-access-token/);
+  assert.match(bridgeScript, /setInterval\(\(\) => \{ response\.write\(": ping\\n\\n"\); \}, 15000\)/);
+  assert.match(bridgeScript, /clearInterval\(heartbeat\)/);
   assert.match(bridgeScript, /rm\(path\.join\(authDir, name\), \{ recursive: true, force: true \}\)/);
   assert.match(bridgeScript, /submittedAtMs = Number\(body\.submittedAtMs\)/);
   assert.match(bridgeScript, /modelRef = String\(body\.modelRef \|\| ""\)\.trim\(\)/);

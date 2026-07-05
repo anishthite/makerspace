@@ -271,46 +271,65 @@ export function createDaytonaProvider(config, options = {}) {
     return ensureStarted(sandbox);
   }
 
+  async function waitForSessionCommandExit(processApi, sessionId, cmdId) {
+    if (!processApi.getSessionCommand) return { exitCode: 0 };
+
+    let info = null;
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      info = await processApi.getSessionCommand(sessionId, cmdId);
+      const exitCode = Number(info?.exitCode);
+      if (Number.isFinite(exitCode)) return { ...info, exitCode };
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+    return { ...(info || {}), exitCode: 0 };
+  }
+
   async function executeScriptInSandbox(sandbox, script, options = {}) {
     const cwd = options.cwd || '/';
     const timeoutSec = Math.max(1, Math.ceil((options.timeoutMs || 120_000) / 1000));
     const command = buildCommand(script, cwd);
+    const processApi = sandbox.process;
+    const canStream = Boolean(
+      options.onData &&
+      processApi.createSession &&
+      processApi.executeSessionCommand &&
+      processApi.getSessionCommandLogs,
+    );
 
-    if (options.onData && sandbox.process.createSession && sandbox.process.executeSessionCommand) {
+    if (canStream) {
       const sessionId = `makerspace-${randomUUID()}`;
       try {
-        await sandbox.process.createSession(sessionId).catch((error) => {
+        await processApi.createSession(sessionId).catch((error) => {
           if (!/already exists/i.test(String(error?.message || error))) throw error;
         });
-        const started = await sandbox.process.executeSessionCommand(sessionId, { command, runAsync: true }, timeoutSec);
+        const started = await processApi.executeSessionCommand(sessionId, { command, runAsync: true }, timeoutSec);
         const cmdId = started?.cmdId || started?.id;
+        if (!cmdId) {
+          throw new Error(`Daytona did not return a command id for: ${command}`);
+        }
+
         let stdout = '';
         let stderr = '';
-
-        if (cmdId && sandbox.process.getSessionCommandLogs) {
-          await sandbox.process.getSessionCommandLogs(
-            sessionId,
-            cmdId,
-            (chunk) => {
-              stdout += chunk;
-              options.onData(Buffer.from(String(chunk)));
-            },
-            (chunk) => {
-              stderr += chunk;
-              options.onData(Buffer.from(String(chunk)));
-            },
-          );
-          const final = sandbox.process.getSessionCommand
-            ? await sandbox.process.getSessionCommand(sessionId, cmdId)
-            : { exitCode: 0, stdout, stderr };
-          return ensureOk({ ...final, stdout, stderr, output: stdout + (stderr ? `\n${stderr}` : '') }, command);
-        }
+        await processApi.getSessionCommandLogs(
+          sessionId,
+          cmdId,
+          (chunk) => {
+            stdout += chunk;
+            options.onData(Buffer.from(String(chunk)));
+          },
+          (chunk) => {
+            stderr += chunk;
+            options.onData(Buffer.from(String(chunk)));
+          },
+        );
+        const final = await waitForSessionCommandExit(processApi, sessionId, cmdId);
+        return ensureOk({ ...final, stdout, stderr, output: stdout + (stderr ? `\n${stderr}` : '') }, command);
       } finally {
-        await sandbox.process.deleteSession?.(sessionId).catch(() => {});
+        await processApi.deleteSession?.(sessionId).catch(() => {});
       }
     }
 
-    const result = await sandbox.process.executeCommand(command, cwd, undefined, timeoutSec);
+    const result = await processApi.executeCommand(command, cwd, undefined, timeoutSec);
     const normalized = ensureOk(result, command);
     if (normalized.output && options.onData) options.onData(Buffer.from(normalized.output));
     return normalized;

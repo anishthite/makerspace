@@ -218,6 +218,90 @@ test('createSession falls back to existing sandbox lookup on duplicate create', 
   assert.equal(remote.bridgeUrl, 'https://preview.example/4310');
 });
 
+function makeStreamingProcess(calls, overrides = {}) {
+  return {
+    async executeCommand(command) {
+      calls.push(['executeCommand', command]);
+      return { exitCode: 0, result: '' };
+    },
+    async createSession(sessionId) {
+      calls.push(['createSession', sessionId]);
+    },
+    async executeSessionCommand(sessionId, request, timeout) {
+      calls.push(['executeSessionCommand', request.command, request.runAsync, timeout]);
+      return { cmdId: 'cmd-1' };
+    },
+    async getSessionCommandLogs(sessionId, cmdId, onStdout, onStderr) {
+      calls.push(['getSessionCommandLogs', cmdId]);
+      onStdout('hello ');
+      onStderr('warn ');
+      onStdout('world');
+    },
+    async getSessionCommand(sessionId, cmdId) {
+      calls.push(['getSessionCommand', cmdId]);
+      return { exitCode: 0 };
+    },
+    async deleteSession(sessionId) {
+      calls.push(['deleteSession', sessionId]);
+    },
+    ...overrides,
+  };
+}
+
+test('runRemoteScript streams session command logs without re-running the command', async () => {
+  const calls = [];
+  const sandbox = makeSandbox({ process: makeStreamingProcess(calls) });
+  const provider = createProvider(config, {
+    daytonaClient: {
+      async list() { return [sandbox]; },
+      async get() { return sandbox; },
+    },
+  });
+
+  const chunks = [];
+  const result = await provider.runRemoteScript(
+    { name: 'thread-one', daytonaSandboxId: 'sandbox-123' },
+    'echo hi',
+    { onData: (buffer) => chunks.push(String(buffer)) },
+  );
+
+  assert.equal(result.exitCode, 0);
+  assert.equal(result.stdout, 'hello world');
+  assert.equal(result.stderr, 'warn ');
+  assert.deepEqual(chunks, ['hello ', 'warn ', 'world']);
+  assert.equal(calls.some((call) => call[0] === 'executeCommand'), false);
+  assert.equal(calls.filter((call) => call[0] === 'executeSessionCommand').length, 1);
+  assert.equal(calls.some((call) => call[0] === 'deleteSession'), true);
+});
+
+test('runRemoteScript fails fast when Daytona omits the streaming command id', async () => {
+  const calls = [];
+  const sandbox = makeSandbox({
+    process: makeStreamingProcess(calls, {
+      async executeSessionCommand(sessionId, request, timeout) {
+        calls.push(['executeSessionCommand', request.command, request.runAsync, timeout]);
+        return {};
+      },
+    }),
+  });
+  const provider = createProvider(config, {
+    daytonaClient: {
+      async list() { return [sandbox]; },
+      async get() { return sandbox; },
+    },
+  });
+
+  await assert.rejects(
+    () => provider.runRemoteScript(
+      { name: 'thread-one', daytonaSandboxId: 'sandbox-123' },
+      'echo hi',
+      { onData: () => {} },
+    ),
+    /command id/,
+  );
+  assert.equal(calls.some((call) => call[0] === 'executeCommand'), false);
+});
+
 test('readOutput returns launching before a sandbox id is known', async () => {
   const provider = createProvider(config, { daytonaClient: { list: async () => [] } });
   const output = await provider.readOutput({}, { offset: 0 });

@@ -18,6 +18,7 @@ import { normalizeBridgeClientId, normalizeSubmittedAtMs, sleep, trimTrailingSla
 
 export function createBridgeService({ config, provider, auth, runState }) {
   const readPiAuthForSession = auth.readPiAuthForSession || auth.readLocalPiAuth || (async () => null);
+  const readGitHubAuthForSession = auth.readGitHubAuthForSession || (async () => null);
   const { readLocalPiSettings } = auth;
   const {
     ensureRunState,
@@ -88,11 +89,12 @@ export function createBridgeService({ config, provider, auth, runState }) {
     throw new Error(`Timed out waiting for the bridge at ${getBridgeBaseUrl(session)}.`);
   }
 
-  async function consumeSse(response, onEvent) {
+  async function consumeSse(response, onEvent, onActivity) {
     const decoder = new TextDecoder();
     let buffer = '';
 
     for await (const chunk of response.body) {
+      onActivity?.();
       buffer += decoder.decode(chunk, { stream: true });
 
       while (true) {
@@ -208,11 +210,21 @@ export function createBridgeService({ config, provider, auth, runState }) {
           return;
         }
 
+        const stallController = new AbortController();
+        let stallTimer = null;
+        const stallMs = Number(config.bridgeStreamStallMs) > 0 ? Number(config.bridgeStreamStallMs) : 60_000;
+        const resetStallTimer = () => {
+          clearTimeout(stallTimer);
+          stallTimer = setTimeout(() => stallController.abort(), stallMs);
+        };
+
         try {
+          resetStallTimer();
           const response = await fetch(
             `${getBridgeBaseUrl(session)}/runs/${encodeURIComponent(session.bridgeRunId)}/stream?after=${after}`,
             {
               headers: bridgeHeaders(session, { accept: 'text/event-stream' }),
+              signal: stallController.signal,
             },
           );
 
@@ -285,16 +297,20 @@ export function createBridgeService({ config, provider, auth, runState }) {
                 done = true;
               }
             }
-          });
+          }, resetStallTimer);
 
           if (!done) {
             await sleep(500);
           }
         } catch (error) {
-          setRunState(sessionName, { warning: error.message });
+          if (!stallController.signal.aborted) {
+            setRunState(sessionName, { warning: error.message });
+          }
           if (!done) {
             await sleep(1000);
           }
+        } finally {
+          clearTimeout(stallTimer);
         }
       }
     } finally {
@@ -305,14 +321,20 @@ export function createBridgeService({ config, provider, auth, runState }) {
   async function pushBridgeAuth(session, authText) {
     const settingsText = await readLocalPiSettings();
     const piProfile = await buildPiProfileSyncPayload(config, session?.ownerUserId ? { id: session.ownerUserId } : null);
-    if (!authText && !settingsText && !piProfile?.files?.length) return false;
+    const github = await readGitHubAuthForSession(session).catch(() => null);
+    if (!authText && !settingsText && !piProfile?.files?.length && !github?.token) return false;
 
     await fetchBridgeJson(session, '/auth', {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
       },
-      body: JSON.stringify({ authText: authText || '', settingsText: settingsText || '', piProfile }),
+      body: JSON.stringify({
+        authText: authText || '',
+        settingsText: settingsText || '',
+        piProfile,
+        github: github?.token ? github : null,
+      }),
     });
 
     return true;

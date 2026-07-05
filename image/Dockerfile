@@ -9,7 +9,7 @@ ENV MAKERSPACE_DAYTONA_IMAGE=1
 
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-      ca-certificates curl git jq sudo openssh-client openssh-server \
+      ca-certificates curl git gh jq sudo openssh-client openssh-server \
       systemd systemd-sysv dbus-user-session && \
     curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends nodejs && \

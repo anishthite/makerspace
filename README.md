@@ -165,9 +165,18 @@ PI_BRIDGE_READY_TIMEOUT_MS=240000
 PI_BRIDGE_READY_POLL_MS=1000
 IDLE_BRIDGE_TTL_MS=3600000
 WARM_BRIDGE_POOL_SIZE=0
-FORWARD_ENV_KEYS=ANTHROPIC_API_KEY,OPENAI_API_KEY,GOOGLE_API_KEY,GEMINI_API_KEY,OPENROUTER_API_KEY,INFERENCE_API_KEY
+PI_BRIDGE_STREAM_STALL_MS=60000
+FORWARD_ENV_KEYS=GH_TOKEN,GITHUB_TOKEN,ANTHROPIC_API_KEY,OPENAI_API_KEY,GOOGLE_API_KEY,GEMINI_API_KEY,OPENROUTER_API_KEY,INFERENCE_API_KEY
 PI_INSTALL_COMMAND=npm install -g --ignore-scripts @earendil-works/pi-coding-agent
 ```
+
+### Git auth inside sandboxes
+
+Sandboxes get full `git` and `gh` CLI auth so agents can push branches and open PRs:
+
+- The setup script installs the GitHub CLI (`gh`) and configures system-level git credential helpers (`store` plus `gh auth git-credential`), `safe.directory`, and a fallback commit identity.
+- On every bridge auth sync, the server forwards a GitHub token to the sandbox: the signed-in user's GitHub OAuth token in multi-user mode, or `GH_TOKEN`/`GITHUB_TOKEN` from the server environment otherwise. The bridge writes `~/.git-credentials` and `~/.gitconfig` (commit identity from the GitHub profile) and exports `GH_TOKEN`/`GITHUB_TOKEN` for agent commands.
+- `GH_TOKEN`/`GITHUB_TOKEN` are also in the default `FORWARD_ENV_KEYS`, so self-hosted single-user deployments can drop a PAT in the server env and get working `git push` + `gh` in every sandbox.
 
 For hosted App Platform deployments, set `MAKERSPACE_STATE_STORE=d1` plus the three Cloudflare values above. D1 stores sessions, settings, recent projects, Dockerfile text, and Pi profile choices/text; repo files still live in Git/Daytona/local disk.
 
