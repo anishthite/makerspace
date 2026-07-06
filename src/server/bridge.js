@@ -101,11 +101,12 @@ export function createBridgeService({ config, provider, auth, runState }) {
       buffer += decoder.decode(chunk, { stream: true });
 
       while (true) {
-        const boundary = buffer.indexOf('\n\n');
+        const boundary = buffer.search(/\r?\n\r?\n/);
         if (boundary === -1) break;
 
         const rawEvent = buffer.slice(0, boundary);
-        buffer = buffer.slice(boundary + 2);
+        const separator = buffer.slice(boundary).match(/^\r?\n\r?\n/)?.[0] || '\n\n';
+        buffer = buffer.slice(boundary + separator.length);
         const data = rawEvent
           .split(/\r?\n/)
           .filter((line) => line.startsWith('data:'))

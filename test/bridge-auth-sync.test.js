@@ -92,3 +92,32 @@ test('ready bridge reuse syncs current Codex auth before running', async () => {
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test('bridge SSE consumer parses CRLF-delimited remote events', async () => {
+  const bridge = createBridgeService({
+    config: {},
+    provider: {},
+    auth: {},
+    runState: runStateStub(),
+  });
+  const encoder = new TextEncoder();
+  const chunks = [
+    'data: {"type":"tool","phase":"start"}\r\n',
+    '\r\n',
+    'data: {"done":true}\r\n\r\n',
+  ].map((chunk) => encoder.encode(chunk));
+  const response = new Response(new ReadableStream({
+    start(controller) {
+      for (const chunk of chunks) controller.enqueue(chunk);
+      controller.close();
+    },
+  }));
+  const events = [];
+
+  await bridge.consumeSse(response, (event) => events.push(event));
+
+  assert.deepEqual(events, [
+    { type: 'tool', phase: 'start' },
+    { done: true },
+  ]);
+});
