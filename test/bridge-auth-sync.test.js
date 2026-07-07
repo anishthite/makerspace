@@ -8,14 +8,22 @@ import { createBridgeService } from '../src/server/bridge.js';
 
 function runStateStub() {
   const runs = new Map();
+  const ensureRunState = (name) => {
+    if (!runs.has(name)) runs.set(name, { runStatus: 'unknown', events: [] });
+    return runs.get(name);
+  };
   return {
     activeRuns: runs,
-    ensureRunState(name) {
-      if (!runs.has(name)) runs.set(name, { runStatus: 'unknown', events: [] });
-      return runs.get(name);
-    },
-    setRunState(name, patch) { return Object.assign(this.ensureRunState(name), patch); },
+    ensureRunState,
+    setRunState(name, patch) { return Object.assign(ensureRunState(name), patch); },
     resetRunState(name, runStatus) { runs.set(name, { runStatus, events: [] }); return runs.get(name); },
+    recordRunEvent(name, event) {
+      const run = ensureRunState(name);
+      run.events.push(event);
+      if (event.runStatus) run.runStatus = event.runStatus;
+      if (Object.prototype.hasOwnProperty.call(event, 'warning')) run.warning = event.warning || null;
+      return event;
+    },
     appendRunOutput() {},
     appendRunStatus() {},
     activeRunResetPatch() { return {}; },
@@ -125,4 +133,49 @@ test('bridge SSE consumer parses CRLF-delimited remote events', async () => {
 test('browser SSE route disables proxy buffering', async () => {
   const source = await readFile(new URL('../src/server/routes.js', import.meta.url), 'utf8');
   assert.match(source, /'x-accel-buffering': 'no'/);
+});
+
+test('bridge follower records structured remote events', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'workbench-bridge-events-'));
+  const sessionFile = path.join(root, 'sessions.json');
+  const previousFetch = globalThis.fetch;
+  const encoder = new TextEncoder();
+
+  globalThis.fetch = async () => new Response(new ReadableStream({
+    start(controller) {
+      for (const event of [
+        { index: 1, type: 'tool', phase: 'start', toolName: 'bash', runStatus: 'running' },
+        { index: 2, type: 'status', runStatus: 'failed', warning: 'done for test', done: true },
+      ]) {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+      }
+      controller.close();
+    },
+  }), { status: 200, headers: { 'content-type': 'text/event-stream' } });
+
+  try {
+    await writeFile(sessionFile, `${JSON.stringify([{
+      name: 'remote-thread',
+      bridgeUrl: 'https://bridge.example.test',
+      bridgeRunId: 'run-1',
+      bridgeToken: 'secret',
+      status: 'running',
+      runStatus: 'running',
+    }])}\n`);
+    const runState = runStateStub();
+    const bridge = createBridgeService({
+      config: { sessionFile },
+      provider: { bridgeHeaders: () => ({}) },
+      auth: {},
+      runState,
+    });
+
+    await bridge.followBridgeRun('remote-thread');
+
+    assert.equal(runState.activeRuns.get('remote-thread').events[0].type, 'tool');
+    assert.equal(runState.activeRuns.get('remote-thread').warning, 'done for test');
+  } finally {
+    globalThis.fetch = previousFetch;
+    await rm(root, { recursive: true, force: true });
+  }
 });

@@ -32,6 +32,7 @@ export function createBridgeService({ config, provider, auth, runState }) {
     performancePatchForSession,
     persistRunStatus,
     persistThreadAssistantMessage,
+    recordRunEvent,
     mergeTrackedChanges,
   } = runState;
   const warmLaunches = new Set();
