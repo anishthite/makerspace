@@ -47,6 +47,7 @@ test('buildSetupScript clones a repo and auto-runs pi when requested', () => {
   assert.match(script, new RegExp(`\\|\\| \\{ rm -rf '\\/srv\\/workspace'; git -c 'http.extraHeader=${authHeader.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}' clone --depth=1 'https:\\/\\/github.com\\/acme\\/demo\\.git' '\\/srv\\/workspace'; \\}`));
   assert.match(script, /https:\/\/x-access-token:secret-token@github\.com/);
   assert.match(script, /oauth_token: "secret-token"/);
+  assert.match(script, /chown -R 'daytona:daytona' '\/home\/daytona\/\.git-credentials' '\/home\/daytona\/\.config'/);
   assert.match(script, /apt-get install -y gh/);
   assert.match(script, /githubcli-archive-keyring\.gpg/);
   assert.match(script, /git config --system credential\.helper store/);

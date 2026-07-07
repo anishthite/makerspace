@@ -118,7 +118,9 @@ function buildInitialGitAuthLines(session, config) {
   const remoteHomeDir = config.remoteHomeDir || '/home/daytona';
   const credentialsPath = `${remoteHomeDir}/.git-credentials`;
   const ghConfigDir = `${remoteHomeDir}/.config/gh`;
+  const ghParentDir = `${remoteHomeDir}/.config`;
   const hostsPath = `${ghConfigDir}/hosts.yml`;
+  const remoteUser = config.remoteUser || 'daytona';
   return [
     `mkdir -p ${shellQuote(remoteHomeDir)} ${shellQuote(ghConfigDir)}`,
     `cat > ${shellQuote(credentialsPath)} <<'GITCRED'`,
@@ -132,6 +134,7 @@ function buildInitialGitAuthLines(session, config) {
     '    git_protocol: https',
     'GH_HOSTS',
     `chmod 600 ${shellQuote(hostsPath)}`,
+    `if id ${shellQuote(remoteUser)} >/dev/null 2>&1; then chown -R ${shellQuote(`${remoteUser}:${remoteUser}`)} ${shellQuote(credentialsPath)} ${shellQuote(ghParentDir)} ${shellQuote(ghConfigDir)} ${shellQuote(hostsPath)}; fi`,
   ];
 }
 
