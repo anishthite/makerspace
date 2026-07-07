@@ -104,6 +104,17 @@ function buildCommand(script, cwd = '/') {
   return `cd ${shellQuote(cwd)} && bash -lc ${shellQuote(script)}`;
 }
 
+async function emitLaunchLog(session, imageSettings, phase, details = {}) {
+  const payload = { session: session?.name || '', phase, ...details };
+  console.info('[workbench][daytona]', JSON.stringify(payload));
+  if (typeof imageSettings?.onLaunchLog !== 'function') return;
+  try {
+    await imageSettings.onLaunchLog(phase, details);
+  } catch (error) {
+    console.warn(`[workbench][daytona] launch log callback failed for ${session?.name || 'session'}: ${error.message}`);
+  }
+}
+
 export function createDaytonaProvider(config, options = {}) {
   let clientPromise = null;
   const sandboxCache = new Map();
@@ -371,23 +382,53 @@ export function createDaytonaProvider(config, options = {}) {
       }));
     },
     async createSession(session, imageSettings = {}) {
-      const sandbox = await createSandbox(session, imageSettings);
-      await safeUploadFile(sandbox, DEFAULT_SETUP_PATH, buildSetupScript(session, {
-        ...config,
-        forwardedEnv: collectForwardedEnv(config, imageSettings),
-      }));
-      await executeScriptInSandbox(sandbox, `chmod +x ${shellQuote(DEFAULT_SETUP_PATH)} && ${shellQuote(DEFAULT_SETUP_PATH)}`, {
-        timeoutMs: 15 * 60 * 1000,
-      });
+      try {
+        await emitLaunchLog(session, imageSettings, 'daytona:create:start', {
+          bridgeMode: Boolean(session.bridgeMode),
+          hasImage: Boolean(imageSettings.imageRef || config.image),
+          sharePort: session.sharePort || null,
+        });
+        const sandbox = await createSandbox(session, imageSettings);
+        await emitLaunchLog(session, imageSettings, 'daytona:create:done', {
+          sandboxId: sandbox.id || null,
+          state: sandbox.state || null,
+        });
+        await emitLaunchLog(session, imageSettings, 'daytona:setup:upload', { path: DEFAULT_SETUP_PATH });
+        await safeUploadFile(sandbox, DEFAULT_SETUP_PATH, buildSetupScript(session, {
+          ...config,
+          forwardedEnv: collectForwardedEnv(config, imageSettings),
+        }));
+        await emitLaunchLog(session, imageSettings, 'daytona:setup:run', { timeoutMs: 15 * 60 * 1000 });
+        await executeScriptInSandbox(sandbox, `chmod +x ${shellQuote(DEFAULT_SETUP_PATH)} && ${shellQuote(DEFAULT_SETUP_PATH)}`, {
+          timeoutMs: 15 * 60 * 1000,
+        });
+        await emitLaunchLog(session, imageSettings, 'daytona:setup:done');
 
-      const preview = session.bridgeMode || session.sharePort
-        ? await previewFor(sandbox, session.bridgeMode ? config.bridgePort : session.sharePort)
-        : {};
+        const previewPort = session.bridgeMode ? config.bridgePort : session.sharePort;
+        let preview = {};
+        if (session.bridgeMode || session.sharePort) {
+          await emitLaunchLog(session, imageSettings, 'daytona:preview:start', { port: previewPort });
+          preview = await previewFor(sandbox, previewPort);
+          await emitLaunchLog(session, imageSettings, 'daytona:preview:done', {
+            hasPreviewUrl: Boolean(preview.bridgeUrl || preview.httpsUrl),
+            hasPreviewToken: Boolean(preview.previewToken),
+            port: previewPort,
+          });
+        }
 
-      return normalizeSandbox(sandbox, session.name, {
-        ...preview,
-        remoteControlDir: config.remoteControlDir,
-      });
+        const normalized = normalizeSandbox(sandbox, session.name, {
+          ...preview,
+          remoteControlDir: config.remoteControlDir,
+        });
+        await emitLaunchLog(session, imageSettings, 'daytona:session:ready', {
+          daytonaState: normalized.daytonaState || '',
+          hasBridgeUrl: Boolean(normalized.bridgeUrl),
+        });
+        return normalized;
+      } catch (error) {
+        await emitLaunchLog(session, imageSettings, 'daytona:error', { error: error.message });
+        throw error;
+      }
     },
     async setShare(name, options = {}) {
       const sandbox = await ensureStarted(await getSandboxBySession(name));

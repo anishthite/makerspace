@@ -17,6 +17,8 @@ import {
 } from '../workspaces.js';
 import { normalizeBridgeClientId, normalizeSubmittedAtMs, sleep, trimTrailingSlash } from './utils.js';
 
+const MAX_BRIDGE_LAUNCH_LOG_ENTRIES = 40;
+
 export function createBridgeService({ config, provider, auth, runState }) {
   const readPiAuthForSession = auth.readPiAuthForSession || auth.readLocalPiAuth || (async () => null);
   const readGitHubAuthForSession = auth.readGitHubAuthForSession || (async () => null);
@@ -36,6 +38,50 @@ export function createBridgeService({ config, provider, auth, runState }) {
     mergeTrackedChanges,
   } = runState;
   const warmLaunches = new Set();
+
+  function safeLaunchLogDetails(details = {}) {
+    const redactedKeys = new Set(['authorization', 'authText', 'bridgeToken', 'github', 'previewToken', 'repoAuthHeader', 'settingsText', 'token']);
+    const safe = {};
+    for (const [key, value] of Object.entries(details || {})) {
+      if (redactedKeys.has(key)) continue;
+      if (value == null || typeof value === 'boolean' || typeof value === 'number') {
+        safe[key] = value;
+      } else {
+        safe[key] = String(value).slice(0, 240);
+      }
+    }
+    return safe;
+  }
+
+  async function recordBridgeLaunchLog(sessionOrName, phase, details = {}) {
+    const name = typeof sessionOrName === 'string' ? sessionOrName : sessionOrName?.name;
+    const entry = { at: new Date().toISOString(), phase, ...safeLaunchLogDetails(details) };
+    console.info('[workbench][bridge]', JSON.stringify({ session: name || '', ...entry }));
+    if (!name || !config.sessionFile) return entry;
+
+    try {
+      const current = await getStoredSession(config.sessionFile, name);
+      if (!current) return entry;
+      const bridgeLaunchLog = [...(Array.isArray(current.bridgeLaunchLog) ? current.bridgeLaunchLog : []), entry].slice(-MAX_BRIDGE_LAUNCH_LOG_ENTRIES);
+      await upsertSession(config.sessionFile, {
+        name,
+        bridgeLaunchLog,
+        bridgeLaunchStage: phase,
+        bridgeLaunchUpdatedAt: entry.at,
+        updatedAt: entry.at,
+      });
+    } catch (error) {
+      console.warn(`[workbench][bridge] failed to persist launch log for ${name}: ${error.message}`);
+    }
+    return entry;
+  }
+
+  function bridgeLaunchSettings(session, imageSettings = {}) {
+    return {
+      ...imageSettings,
+      onLaunchLog: (phase, details) => recordBridgeLaunchLog(session, phase, details),
+    };
+  }
 
   function getBridgeBaseUrl(session) {
     const baseUrl = trimTrailingSlash(session.bridgeUrl || session.httpsUrl || '');
@@ -473,13 +519,18 @@ export function createBridgeService({ config, provider, auth, runState }) {
       warning: message,
       updatedAt: new Date().toISOString(),
     });
+    await recordBridgeLaunchLog(name, 'launch:failed', { error: message });
   }
 
   async function startClaimedBridgeRun(name, current, readyMessage) {
     if (!current.bridgeClaimed || !current.taskPrompt) return false;
     appendRunOutput(name, readyMessage, 'launching');
+    await recordBridgeLaunchLog(current, 'auth_sync:start', { hasBridgeUrl: Boolean(current.bridgeUrl) });
     await syncBridgeAuth(current);
+    await recordBridgeLaunchLog(current, 'auth_sync:done');
+    await recordBridgeLaunchLog(current, 'run:start', { runId: current.bridgeRunId || '' });
     await startBridgeRun(current);
+    await recordBridgeLaunchLog(current, 'run:sent', { runId: current.bridgeRunId || '' });
     const running = await upsertSession(config.sessionFile, {
       ...current,
       ...activeRunResetPatch(),
@@ -513,8 +564,9 @@ export function createBridgeService({ config, provider, auth, runState }) {
 
     void (async () => {
       try {
+        await recordBridgeLaunchLog(session, 'warm_launch:worker_start');
         const piAuthText = await readPiAuthForSession(session);
-        const remote = await provider.createSession(session, imageSettings);
+        const remote = await provider.createSession(session, bridgeLaunchSettings(session, imageSettings));
         const bridgeUrl = trimTrailingSlash(remote.bridgeUrl || remote.httpsUrl || '');
         const updated = await upsertSession(config.sessionFile, {
           ...session,
@@ -567,8 +619,9 @@ export function createBridgeService({ config, provider, auth, runState }) {
 
     void (async () => {
       try {
+        await recordBridgeLaunchLog(session, 'intent_launch:worker_start');
         const piAuthText = await readPiAuthForSession(session);
-        const remote = await provider.createSession(session, imageSettings);
+        const remote = await provider.createSession(session, bridgeLaunchSettings(session, imageSettings));
         const bridgeUrl = trimTrailingSlash(remote.bridgeUrl || remote.httpsUrl || '');
         const latest = (await getStoredSession(config.sessionFile, session.name)) || session;
         const updated = await upsertSession(config.sessionFile, {
@@ -748,7 +801,8 @@ export function createBridgeService({ config, provider, auth, runState }) {
 
     await saveWorkspaceIndex(identity, workspace);
     const launchSession = repoAuthHeader ? { ...workspace, repoAuthHeader } : workspace;
-    const remote = await provider.createSession(launchSession, imageSettings);
+    await recordBridgeLaunchLog(workspace, 'workspace_launch:create_session');
+    const remote = await provider.createSession(launchSession, bridgeLaunchSettings(workspace, imageSettings));
     const bridgeUrl = trimTrailingSlash(remote.bridgeUrl || remote.httpsUrl || workspace.bridgeUrl || '');
     const updated = await upsertSession(config.sessionFile, {
       ...workspace,
@@ -877,6 +931,11 @@ export function createBridgeService({ config, provider, auth, runState }) {
 
     resetRunState(stored.name, 'launching');
     appendRunOutput(stored.name, `[system] Creating cloud main agent for ${stored.repoUrl}.\n`, 'launching');
+    await recordBridgeLaunchLog(stored, 'thread_launch:queued', {
+      bridgeClaimed: Boolean(stored.bridgeClaimed),
+      hasImage: Boolean(imageSettings.imageRef || config.image),
+      repoMode: stored.repoMode || '',
+    });
 
     void (async () => {
       try {
@@ -887,9 +946,11 @@ export function createBridgeService({ config, provider, auth, runState }) {
         } else {
           appendRunOutput(stored.name, '[system] Using the default image.\n', 'launching');
         }
+        await recordBridgeLaunchLog(prepared, 'thread_launch:worker_start', { hasRepoAuth: Boolean(repoAuthHeader) });
 
         const piAuthText = await readPiAuthForSession(prepared);
-        const remote = await provider.createSession(repoAuthHeader ? { ...prepared, repoAuthHeader } : prepared, imageSettings);
+        const launchSession = repoAuthHeader ? { ...prepared, repoAuthHeader } : prepared;
+        const remote = await provider.createSession(launchSession, bridgeLaunchSettings(prepared, imageSettings));
         const bridgeUrl = trimTrailingSlash(remote.bridgeUrl || remote.httpsUrl || '');
         const latest = (await getStoredSession(config.sessionFile, prepared.name)) || prepared;
         const updated = await upsertSession(config.sessionFile, {
@@ -936,7 +997,8 @@ export function createBridgeService({ config, provider, auth, runState }) {
 
     appendRunOutput(session.name, '[system] Waking the idle main agent sandbox...\n', 'launching');
     const imageSettings = await readSavedSettings(config.settingsFile);
-    const remote = await provider.createSession(session, imageSettings);
+    await recordBridgeLaunchLog(session, 'refresh:create_session');
+    const remote = await provider.createSession(session, bridgeLaunchSettings(session, imageSettings));
     const bridgeUrl = trimTrailingSlash(remote.bridgeUrl || remote.httpsUrl || session.bridgeUrl || '');
     const updated = await upsertSession(config.sessionFile, {
       ...session,

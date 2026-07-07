@@ -6,6 +6,16 @@ import path from 'node:path';
 
 import { createBridgeService } from '../src/server/bridge.js';
 import { createSessionService } from '../src/server/sessions.js';
+import { getStoredSession } from '../src/store.js';
+
+async function waitForValue(fn) {
+  for (let attempt = 0; attempt < 80; attempt += 1) {
+    const value = await fn();
+    if (value) return value;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error('Timed out waiting for value.');
+}
 
 function runStateStub() {
   const runs = new Map();
@@ -196,6 +206,58 @@ test('thread output sync does not create a dead run before bridge URL exists', a
   assert.equal(runState.activeRuns.has('remote-thread'), false);
   assert.equal(run.runStatus, 'launching');
   assert.equal(run.events[0].message, 'waiting for remote bridge');
+});
+
+test('thread bridge launch persists safe diagnostics', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'workbench-bridge-diagnostics-'));
+  const sessionFile = path.join(root, 'sessions.json');
+
+  try {
+    const bridge = createBridgeService({
+      config: {
+        sessionFile,
+        image: '',
+        remoteWorkspaceDir: '/workspace',
+        bridgePort: 4310,
+      },
+      provider: {
+        kind: 'test',
+        createSession: async (_session, imageSettings) => {
+          await imageSettings.onLaunchLog('provider:test_step', { bridgeToken: 'secret', ok: true });
+          throw new Error('sandbox boom');
+        },
+      },
+      auth: {
+        readPiAuthForSession: async () => null,
+        readLocalPiSettings: async () => null,
+      },
+      runState: runStateStub(),
+    });
+
+    await bridge.startThreadBridgeLaunch({
+      name: 'diagnostic-thread',
+      repoUrl: 'https://github.com/acme/repo.git',
+      repoMode: 'git',
+      taskPrompt: 'work',
+      threadBridge: true,
+      bridgeMode: true,
+      sharePort: 4310,
+    }, {});
+
+    const stored = await waitForValue(async () => {
+      const session = await getStoredSession(sessionFile, 'diagnostic-thread');
+      return session?.warning === 'sandbox boom' ? session : null;
+    });
+    const phases = stored.bridgeLaunchLog.map((entry) => entry.phase);
+
+    assert.ok(phases.includes('thread_launch:queued'));
+    assert.ok(phases.includes('thread_launch:worker_start'));
+    assert.ok(phases.includes('provider:test_step'));
+    assert.ok(phases.includes('launch:failed'));
+    assert.equal(stored.bridgeLaunchLog.some((entry) => Object.prototype.hasOwnProperty.call(entry, 'bridgeToken')), false);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test('bridge follower records structured remote events', async () => {
