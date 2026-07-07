@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import { createAuthService } from '../src/server/auth.js';
 
@@ -28,6 +29,50 @@ function config(root) {
     authCookieName: 'workbench_auth',
     authSessionDays: 30,
   };
+}
+
+async function writeFakePiSdk(root) {
+  const packageDir = path.join(root, 'fake-pi-sdk');
+  const distDir = path.join(packageDir, 'dist');
+  await mkdir(distDir, { recursive: true });
+  const modulePath = path.join(distDir, 'index.js');
+  await writeFile(modulePath, `
+export const events = [];
+function createStorage(initial = {}) {
+  const data = { ...initial };
+  return {
+    async login(provider, callbacks) {
+      const method = callbacks.onSelect ? await callbacks.onSelect({
+        message: 'Select login method',
+        options: [
+          { id: 'browser', label: 'Browser login (default)' },
+          { id: 'device_code', label: 'Device code login (headless)' },
+        ],
+      }) : 'browser';
+      events.push({ provider, method });
+      if (method === 'device_code') {
+        callbacks.onDeviceCode({ userCode: '123-456', verificationUri: 'https://auth.openai.com/codex/device' });
+        throw new Error('device code selected');
+      }
+      callbacks.onAuth({ url: 'https://auth.example.test/' + provider, instructions: 'Sign in.' });
+      events.push({ provider, input: await callbacks.onManualCodeInput() });
+      data[provider] = {
+        type: 'oauth',
+        access: provider + '-access',
+        refresh: provider + '-refresh',
+        expires: Date.now() + 60000,
+        ...(provider === 'openai-codex' ? { accountId: 'acct' } : {}),
+      };
+    },
+    get(provider) { return data[provider]; },
+    getAuthStatus(provider) { return { configured: Boolean(data[provider]) }; },
+    async getApiKey(provider) { return data[provider]?.access || ''; },
+  };
+}
+export const AuthStorage = { create: () => createStorage(), inMemory: (initial) => createStorage(initial) };
+export const ModelRegistry = { create: () => ({ getAvailable: () => [] }) };
+`, 'utf8');
+  return { packageDir, modulePath };
 }
 
 test('hosted Codex and Claude Code auth are stored per user and formatted for Pi auth.json', async () => {
@@ -57,6 +102,37 @@ test('hosted Codex and Claude Code auth are stored per user and formatted for Pi
     const authText = await auth.readPiAuthForSession({ ownerUserId: user.id });
     assert.deepEqual(JSON.parse(authText), { 'openai-codex': credential, anthropic: claudeCredential });
     assert.equal(await auth.readPiAuthForSession({ ownerUserId: other.id }), null);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('hosted Codex login uses browser OAuth and pasted redirect URL', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'workbench-codex-browser-auth-'));
+  try {
+    const fakeSdk = await writeFakePiSdk(root);
+    const auth = createAuthService({ config: { ...config(root), piSdkPackageDir: fakeSdk.packageDir }, http: testHttp() });
+    const user = await auth.authStore.upsertUser({ githubId: '1', login: 'octo' });
+
+    const login = await auth.startCodexLogin(user);
+    assert.equal(login.auth.url, 'https://auth.example.test/openai-codex');
+    assert.equal(login.device, null);
+    assert.equal(login.manual, true);
+
+    const submitted = auth.submitCodexLoginCode(login.id, user, { code: 'http://localhost:1455/auth/callback?code=abc' });
+    assert.equal(submitted.status, 'exchanging');
+
+    for (let i = 0; i < 20 && auth.getAuthLogin(login.id, user)?.status !== 'complete'; i += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+
+    assert.equal(auth.getAuthLogin(login.id, user)?.status, 'complete');
+    const stored = await auth.authStore.readUserSecret(user.id, 'openai-codex-auth');
+    assert.equal(JSON.parse(stored.value).access, 'openai-codex-access');
+
+    const fakeModule = await import(pathToFileURL(fakeSdk.modulePath).href);
+    assert.equal(fakeModule.events[0].method, 'browser');
+    assert.ok(!fakeModule.events.some((event) => event.method === 'device_code'));
   } finally {
     await rm(root, { recursive: true, force: true });
   }

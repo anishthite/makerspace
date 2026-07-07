@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Browser OAuth for provider sign-in</title>
+<meta name="task" content="Remove Codex device-code sign-in and use browser OAuth with pasted redirect fallback.">
+<meta name="date-started" content="2026-07-06">
+<meta name="date-updated" content="2026-07-06">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="makerspace,auth,codex,claude-code,oauth,settings">
+<meta name="related" content="2026-06-29-user-codex-auth.html,2026-07-02-claude-code-oauth-main.html,2026-07-01-codex-model-picker.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-med{color:#b85c00}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Browser OAuth for provider sign-in</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-06 · status <b class="status-shipped">shipped</b> · blast <span class="blast-med">medium</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Make Settings sign-in use browser OAuth for <code>openai-codex</code> and <code>anthropic</code> instead of Codex device-code numbers.</div><b>Source</b><div>User request: remove the device-code flow for both provider sign-ins and push.</div><b>Surface</b><div><code>POST /api/auth/openai-codex/login</code>, <code>POST /api/auth/openai-codex/login/:id/code</code>, <code>/settings.html#codex</code>, <code>/settings.html#claude-code</code>.</div><b>Schema</b><div>None; stored OAuth credentials keep the existing per-user secret keys.</div><b>Open Qs</b><div>0.</div></div>
+<h2>API contract</h2>
+<h3>Request</h3>
+<pre>POST /api/auth/openai-codex/login/:id/code
+{ "code": "http://localhost:1455/auth/callback?code=..." }</pre>
+<h3>Response</h3>
+<pre>{ id: string, status: "exchanging" | "complete" | "failed", auth: object | null, manual: boolean }</pre>
+<h2>UI layout</h2>
+<ol><li><b>Codex</b>: open the browser authorization URL and show one pasted redirect/code input.</li><li><b>Claude Code</b>: keep the existing browser authorization URL and pasted redirect/code input.</li></ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>src/server/auth.js</code></td><td>touch</td><td>Select browser OAuth, reject provider device-code callbacks, and share pasted-code completion for Codex and Claude Code.</td></tr><tr><td><code>src/server/routes.js</code></td><td>touch</td><td>Add the Codex pasted-code endpoint.</td></tr><tr><td><code>frontend/src/runtime/settings.js</code></td><td>touch</td><td>Render Codex browser sign-in with a pasted redirect/code form.</td></tr><tr><td><code>test/codex-user-auth.test.js</code>, <code>test/project-selector-static.test.js</code></td><td>touch</td><td>Pin browser selection and the absence of the device-code UI copy.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Prefer the provider option whose id or label says <code>browser</code>. Pi already exposes browser OAuth as the Codex default.</td></tr><tr><td>D-002</td><td>Use pasted redirect/code fallback for hosted runs. The OAuth redirect target is localhost and may be on the user machine, not the backend.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>One provider-login helper over separate Codex and Claude Code flows. It keeps both sign-ins on the same non-device behavior.</td></tr></table>
+<h2>Validation</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>node --check src/server/auth.js &amp;&amp; node --check src/server/routes.js &amp;&amp; node --check frontend/src/runtime/settings.js</code></td><td>Passed.</td></tr><tr><td><code>node --test test/codex-user-auth.test.js test/project-selector-static.test.js</code></td><td>Passed 6/6 focused tests.</td></tr><tr><td><code>npm run build</code></td><td>Passed.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Revert the auth helper, Codex code route, Settings Codex form, and focused tests; existing stored credentials remain valid.</p>
+<h2>Definition of done</h2>
+<ul><li>Codex sign-in opens browser OAuth and no longer displays user-code numbers.</li><li>Codex and Claude Code accept pasted redirect URLs/codes.</li><li>Focused auth/static tests pass.</li><li>Branch is pushed.</li></ul>
+</body>
+</html>

@@ -19,7 +19,8 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
     completeGitHubLogin,
     githubRepoPayload,
     codexAuthStatus,
-    startCodexDeviceLogin,
+    startCodexLogin,
+    submitCodexLoginCode,
     claudeCodeAuthStatus,
     startClaudeCodeLogin,
     submitClaudeCodeLoginCode,
@@ -182,7 +183,14 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
       }
 
       if (request.method === 'POST' && pathname === '/api/auth/openai-codex/login') {
-        sendJson(response, 202, await startCodexDeviceLogin(user));
+        sendJson(response, 202, await startCodexLogin(user));
+        return;
+      }
+
+      if (request.method === 'POST' && pathname.startsWith('/api/auth/openai-codex/login/') && pathname.endsWith('/code')) {
+        const id = pathname.split('/').at(-2);
+        const body = await readJsonBody(request);
+        sendJson(response, 200, submitCodexLoginCode(id, user, body));
         return;
       }
 

@@ -2,7 +2,7 @@ const BROWSER_SESSION_KEY = 'workbenchBrowserSession';
 const API_BASE = String(import.meta.env?.VITE_WORKBENCH_API_BASE || '').trim().replace(/\/+$/, '');
 const codexLogin = document.querySelector('#codex-login');
 const codexStatus = document.querySelector('#codex-status');
-const codexDevice = document.querySelector('#codex-device');
+const codexAuth = document.querySelector('#codex-device');
 const claudeCodeLogin = document.querySelector('#claude-code-login');
 const claudeCodeStatus = document.querySelector('#claude-code-status');
 const claudeCodeAuth = document.querySelector('#claude-code-auth');
@@ -33,6 +33,7 @@ const desktopCheckUpdates = document.querySelector('#desktop-check-updates');
 const desktopUpdateStatus = document.querySelector('#desktop-update-status');
 let currentSettings = null;
 let currentPiProfile = null;
+let activeCodexLoginId = '';
 let activeClaudeCodeLoginId = '';
 
 function escapeHtml(value) {
@@ -168,17 +169,36 @@ function navigateClaudeCodeTab(claudeTab, url) {
   navigateAuthTab(claudeTab, 'Claude Code sign-in', 'Claude Code', url);
 }
 
-function renderCodexDevice(login, codexTab = null) {
-  const device = login.device;
-  if (!device) {
+function renderCodexAuth(login, codexTab = null) {
+  const auth = login.auth;
+  if (!auth?.url) {
     codexTab?.close?.();
     return;
   }
-  navigateCodexTab(codexTab, device.verificationUri);
-  const verificationUri = escapeHtml(device.verificationUri);
-  const userCode = escapeHtml(device.userCode);
-  codexDevice.classList.remove('hidden');
-  codexDevice.innerHTML = `If Codex sign-in does not open, go to <a href="${verificationUri}" target="_blank" rel="noreferrer">${verificationUri}</a> and enter <code>${userCode}</code>.`;
+  navigateCodexTab(codexTab, auth.url);
+  codexAuth.classList.remove('hidden');
+  codexAuth.innerHTML = `<p><a href="${escapeHtml(auth.url)}" target="_blank" rel="noreferrer">Codex</a>: approve access, then paste the final localhost redirect URL below.</p><form id="codex-code-form" class="stack-lg"><label class="full-width"><span>Redirect URL or code</span><input id="codex-code" name="code" placeholder="http://localhost:1455/auth/callback?code=…" autocomplete="off" /></label><div class="form-actions"><button id="codex-code-submit" class="primary" type="submit">Finish sign in</button></div></form>`;
+  codexAuth.querySelector('form')?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!activeCodexLoginId) {
+      codexStatus.textContent = 'Start Codex sign-in first.';
+      return;
+    }
+    const submit = codexAuth.querySelector('#codex-code-submit');
+    submit.disabled = true;
+    codexStatus.textContent = 'Exchanging…';
+    try {
+      await fetchJson(`/api/auth/openai-codex/login/${encodeURIComponent(activeCodexLoginId)}/code`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ code: codexAuth.querySelector('#codex-code')?.value || '' }),
+      });
+    } catch (error) {
+      codexStatus.textContent = error.message;
+    } finally {
+      submit.disabled = false;
+    }
+  });
 }
 
 function renderClaudeCodeAuth(login, claudeTab = null) {
@@ -198,7 +218,8 @@ async function pollCodexLogin(id) {
     const login = await fetchJson(`/api/auth/openai-codex/login/${encodeURIComponent(id)}`);
     if (login.status === 'complete') {
       codexStatus.textContent = 'Signed in';
-      codexDevice.classList.add('hidden');
+      codexAuth.classList.add('hidden');
+      activeCodexLoginId = '';
       await loadCodexAuth();
       return;
     }
@@ -337,11 +358,13 @@ codexLogin.addEventListener('click', async () => {
   await persistConnectionInputs();
   codexLogin.disabled = true;
   codexStatus.textContent = 'Starting…';
-  codexDevice.classList.add('hidden');
+  codexAuth.classList.add('hidden');
+  codexAuth.innerHTML = '';
   try {
     const login = await fetchJson('/api/auth/openai-codex/login', { method: 'POST' });
-    renderCodexDevice(login, codexTab);
-    codexStatus.textContent = 'Waiting…';
+    activeCodexLoginId = login.id;
+    renderCodexAuth(login, codexTab);
+    codexStatus.textContent = 'Waiting for Codex…';
     await pollCodexLogin(login.id);
   } catch (error) {
     codexTab?.close?.();

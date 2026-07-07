@@ -34,6 +34,9 @@ test('project selector offers desktop local folders', () => {
   assert.match(pages, /id="github"/);
   assert.match(settingsJs, /function openWebCodexTab\(\)/);
   assert.match(settingsJs, /function navigateCodexTab\(codexTab, url\)/);
+  assert.match(settingsJs, /function renderCodexAuth\(login, codexTab = null\)/);
+  assert.match(settingsJs, /\/api\/auth\/openai-codex\/login\/\$\{encodeURIComponent\(activeCodexLoginId\)\}\/code/);
+  assert.doesNotMatch(settingsJs, /renderCodexDevice|enter <code>/);
   assert.match(settingsJs, /function openWebClaudeCodeTab\(\)/);
   assert.match(settingsJs, /\/api\/auth\/claude-code/);
   assert.match(settingsJs, /globalThis\.open\?\.\('about:blank', '_blank'\)/);
