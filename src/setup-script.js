@@ -101,6 +101,40 @@ function buildRepoLines(session, config) {
   ];
 }
 
+function tokenFromRepoAuthHeader(header) {
+  const match = String(header || '').match(/^AUTHORIZATION:\s*basic\s+(.+)$/i);
+  if (!match) return '';
+  try {
+    const decoded = Buffer.from(match[1], 'base64').toString('utf8');
+    return decoded.startsWith('x-access-token:') ? decoded.slice('x-access-token:'.length) : '';
+  } catch {
+    return '';
+  }
+}
+
+function buildInitialGitAuthLines(session, config) {
+  const token = tokenFromRepoAuthHeader(session.repoAuthHeader);
+  if (!token) return [];
+  const remoteHomeDir = config.remoteHomeDir || '/home/daytona';
+  const credentialsPath = `${remoteHomeDir}/.git-credentials`;
+  const ghConfigDir = `${remoteHomeDir}/.config/gh`;
+  const hostsPath = `${ghConfigDir}/hosts.yml`;
+  return [
+    `mkdir -p ${shellQuote(remoteHomeDir)} ${shellQuote(ghConfigDir)}`,
+    `cat > ${shellQuote(credentialsPath)} <<'GITCRED'`,
+    `https://x-access-token:${encodeURIComponent(token)}@github.com`,
+    'GITCRED',
+    `chmod 600 ${shellQuote(credentialsPath)}`,
+    `cat > ${shellQuote(hostsPath)} <<'GH_HOSTS'`,
+    'github.com:',
+    '    user: x-access-token',
+    `    oauth_token: ${JSON.stringify(token)}`,
+    '    git_protocol: https',
+    'GH_HOSTS',
+    `chmod 600 ${shellQuote(hostsPath)}`,
+  ];
+}
+
 function wrapBase64(value, width = 100000) {
   const lines = [];
 
@@ -776,6 +810,7 @@ export function buildSetupScript(session, config) {
     `git config --system --add safe.directory '*' || true`,
     `git config --system user.name 'Workbench Agent' || true`,
     `git config --system user.email 'workbench-agent@users.noreply.github.com' || true`,
+    ...buildInitialGitAuthLines(session, config),
     'installed_bridge_sdk=0',
     `if [ ! -d ${shellQuote(`${bridgePackageDir}/node_modules/@earendil-works/pi-coding-agent`)} ]; then`,
     '  PI_VERSION="$(pi --version | tr -d "[:space:]")"',

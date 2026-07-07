@@ -9,7 +9,7 @@ import { getStoredSession, upsertSession } from '../store.js';
 import { trimTrailingSlash } from './utils.js';
 
 export function createSessionService({ config, provider, auth, runState, bridge }) {
-  const { readLocalPiAuth } = auth;
+  const { readLocalPiAuth, enrichGitHubRepoSession = async (session) => session } = auth;
   const { claimReusableBridgeSession, waitForBridge, pushBridgeAuth, startBridgeRun, followBridgeRun } = bridge;
   const {
     activeRuns,
@@ -40,8 +40,9 @@ export function createSessionService({ config, provider, auth, runState, bridge 
         }
       : { ...session, submittedAtMs };
 
+    const persistedSession = preparedSession.repoAuthHeader ? { ...preparedSession, repoAuthHeader: '' } : preparedSession;
     const stored = await upsertSession(config.sessionFile, {
-      ...preparedSession,
+      ...persistedSession,
       provider: provider.kind,
       imageRef: imageSettings.imageRef || config.image || '',
       status: 'launching',
@@ -336,11 +337,11 @@ export function createSessionService({ config, provider, auth, runState, bridge 
       : startSessionLaunch(session, imageSettings);
   }
 
-  async function createManualSession(body, user = null) {
-    const session = {
+  async function createManualSession(body, browserSession = null, browserSessionIdValue = '', user = null) {
+    const session = await enrichGitHubRepoSession({
       ...normalizeCreateRequest(body, config),
-      ...(user?.id ? { ownerUserId: user.id } : {}),
-    };
+      ...(user?.id ? { ownerUserId: user.id } : browserSessionIdValue ? { githubOwnerSessionId: browserSessionIdValue } : {}),
+    }, browserSession, user);
     const existing = await getStoredSession(config.sessionFile, session.name);
 
     if (existing) {

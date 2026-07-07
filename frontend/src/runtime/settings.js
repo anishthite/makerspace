@@ -11,6 +11,7 @@ const claudeCodeCodeInput = document.querySelector('#claude-code-code');
 const claudeCodeCodeSubmit = document.querySelector('#claude-code-code-submit');
 const githubLogin = document.querySelector('#github-login');
 const githubLogout = document.querySelector('#github-logout');
+const githubAppInstall = document.querySelector('#github-app-install');
 const githubStatus = document.querySelector('#github-status');
 const settingsForm = document.querySelector('#settings-form');
 const piProfileForm = document.querySelector('#pi-profile-form');
@@ -231,16 +232,22 @@ function renderGitHubAuth(status) {
     githubLogin.hidden = true;
     githubLogout.disabled = true;
     githubLogout.hidden = true;
+    githubAppInstall.disabled = true;
+    githubAppInstall.hidden = true;
     return;
   }
 
   const connected = Boolean(status.connected);
+  const app = status.app || {};
+  const appAccounts = (app.installations || []).map((entry) => entry.accountLogin).filter(Boolean).join(', ');
   githubLogin.disabled = false;
   githubLogin.hidden = connected;
   githubLogout.disabled = !connected;
   githubLogout.hidden = !connected;
+  githubAppInstall.disabled = !connected || !app.installable;
+  githubAppInstall.hidden = !app.configured;
   githubStatus.textContent = connected
-    ? `Signed in · ${status.user?.login || 'GitHub'}`
+    ? `Signed in · ${status.user?.login || 'GitHub'}${app.installed ? ` · App installed for ${appAccounts || 'GitHub'}` : app.configured ? ' · Install app for private repo git' : ''}`
     : 'Signed out';
 }
 
@@ -410,6 +417,23 @@ githubLogin.addEventListener('click', async () => {
   }
 });
 
+githubAppInstall.addEventListener('click', async () => {
+  await persistConnectionInputs();
+  githubAppInstall.disabled = true;
+  githubStatus.textContent = 'Opening app install…';
+  try {
+    const payload = await fetchJson('/api/auth/github/app/install', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ returnTo: location.href }),
+    });
+    location.href = payload.installUrl;
+  } catch (error) {
+    githubStatus.textContent = error.message;
+    githubAppInstall.disabled = false;
+  }
+});
+
 githubLogout.addEventListener('click', async () => {
   githubLogout.disabled = true;
   githubStatus.textContent = 'Signing out…';
@@ -484,6 +508,10 @@ if (params.get('github') === 'connected') {
 }
 if (params.get('github') === 'error') {
   githubStatus.textContent = params.get('message') || 'GitHub failed';
+  history.replaceState({}, '', location.pathname);
+}
+if (params.get('githubApp') === 'installed') {
+  githubStatus.textContent = 'GitHub App installed';
   history.replaceState({}, '', location.pathname);
 }
 

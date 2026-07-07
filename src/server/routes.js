@@ -17,6 +17,8 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
     isGitHubAuthConfigured,
     startGitHubLogin,
     completeGitHubLogin,
+    startGitHubAppInstall,
+    completeGitHubAppInstall,
     githubRepoPayload,
     codexAuthStatus,
     startCodexDeviceLogin,
@@ -79,7 +81,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
       }
 
       if (requireApiToken(request, response, url)) return;
-      if (pathname.startsWith('/api/') && pathname !== '/api/auth/github/callback' && requireTrustedBrowserRequest(request, response)) return;
+      if (pathname.startsWith('/api/') && !['/api/auth/github/callback', '/api/auth/github/app/callback'].includes(pathname) && requireTrustedBrowserRequest(request, response)) return;
 
       const viewerSessionId = browserSessionId(request);
       const trusted = hasTrustedControlToken(request, url);
@@ -87,6 +89,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
         || pathname === '/api/auth/github'
         || pathname === '/api/auth/github/login'
         || pathname === '/api/auth/github/callback'
+        || pathname === '/api/auth/github/app/callback'
         || pathname === '/api/auth/github/logout'
         || pathname === '/api/auth/logout';
       let user = await currentUser(request);
@@ -158,6 +161,24 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
           return;
         }
         sendText(response, 302, '', 'text/plain; charset=utf-8', { location: result.location, ...(result.headers || {}) });
+        return;
+      }
+
+      if (request.method === 'POST' && pathname === '/api/auth/github/app/install') {
+        const context = user ? { user } : await requireUser(request, response, url);
+        if (!context) return;
+        const body = await readJsonBody(request);
+        sendJson(response, 200, startGitHubAppInstall(request, context.user, body));
+        return;
+      }
+
+      if (request.method === 'GET' && pathname === '/api/auth/github/app/callback') {
+        const result = await completeGitHubAppInstall(request, url);
+        if (result.text) {
+          sendText(response, result.statusCode, result.text);
+          return;
+        }
+        sendText(response, 302, '', 'text/plain; charset=utf-8', { location: result.location });
         return;
       }
 
@@ -401,7 +422,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
 
       if (request.method === 'POST' && pathname === '/api/sessions') {
         const body = await readJsonBody(request);
-        const session = await createManualSession(body, user);
+        const session = await createManualSession(body, readBrowserSession(viewerSessionId), viewerSessionId, user);
         sendJson(response, 202, {
           provider: provider.info(),
           session: decorateLiveSession(session),

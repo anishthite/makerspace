@@ -131,6 +131,11 @@ WORKBENCH_AUTH_REQUIRED= # set true to require GitHub sign-in even outside hoste
 WORKBENCH_AUTH_SECRET= # stable secret for signed auth cookies and encrypted OAuth tokens
 WORKBENCH_ALLOWED_ORIGIN= # set to the static frontend origin for cross-origin cookie auth
 WORKBENCH_AUTH_SAMESITE= # defaults to None when WORKBENCH_ALLOWED_ORIGIN is set, otherwise Lax
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+GITHUB_APP_ID= # optional; enables short-lived installation tokens for sandbox git
+GITHUB_APP_SLUG= # e.g. your-app-name; setup URL should be /api/auth/github/app/callback
+GITHUB_APP_PRIVATE_KEY= # PEM, or PEM with \n escapes
 AUTH_DATA_PATH=./data/auth.json
 WORKBENCH_STATE_STORE=file # set d1 for hosted Cloudflare D1 persistence
 WORKBENCH_WORKSPACE_MODE= # set true to reuse one remote workspace per signed-in user + repo
@@ -175,7 +180,8 @@ PI_INSTALL_COMMAND=npm install -g --ignore-scripts @earendil-works/pi-coding-age
 Sandboxes get full `git` and `gh` CLI auth so agents can push branches and open PRs:
 
 - The setup script installs the GitHub CLI (`gh`) and configures system-level git credential helpers (`store` plus `gh auth git-credential`), `safe.directory`, and a fallback commit identity.
-- On every bridge auth sync, the server forwards a GitHub token to the sandbox: the signed-in user's GitHub OAuth token in multi-user mode, or `GH_TOKEN`/`GITHUB_TOKEN` from the server environment otherwise. The bridge writes `~/.git-credentials` and `~/.gitconfig` (commit identity from the GitHub profile) and exports `GH_TOKEN`/`GITHUB_TOKEN` for agent commands.
+- On every bridge auth sync, the server forwards a GitHub token to the sandbox: a short-lived GitHub App installation token when the repo owner has installed the app, otherwise the signed-in user's GitHub OAuth token in multi-user mode, or `GH_TOKEN`/`GITHUB_TOKEN` from the server environment otherwise. The bridge writes `~/.git-credentials` and `~/.gitconfig` (commit identity from the GitHub profile) and exports `GH_TOKEN`/`GITHUB_TOKEN` for agent commands.
+- Private GitHub clones use the same per-user token during Daytona setup, including pasted `github.com` URLs; the raw token is stripped before sessions are persisted.
 - `GH_TOKEN`/`GITHUB_TOKEN` are also in the default `FORWARD_ENV_KEYS`, so self-hosted single-user deployments can drop a PAT in the server env and get working `git push` + `gh` in every sandbox.
 
 For hosted App Platform deployments, set `WORKBENCH_STATE_STORE=d1` plus the three Cloudflare values above. D1 stores sessions, settings, recent projects, Dockerfile text, and Pi profile choices/text; repo files still live in Git/Daytona/local disk.
@@ -197,6 +203,8 @@ The settings page exposes the Workbench Pi profile from `packages/workbench-pi-d
 - `GET /api/auth/github`
 - `POST /api/auth/github/login`
 - `GET /api/auth/github/callback`
+- `POST /api/auth/github/app/install`
+- `GET /api/auth/github/app/callback`
 - `POST /api/auth/logout`
 - `GET /api/settings`
 - `POST /api/settings`

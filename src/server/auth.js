@@ -10,10 +10,19 @@ import {
   buildGitHubCloneAuthHeader,
   exchangeGitHubCode,
   fetchGitHubRepo,
+  parseGitHubRepoUrl,
   fetchGitHubUser,
   githubAuthConfigured,
   listGitHubRepos,
 } from '../github.js';
+import {
+  buildGitHubAppInstallUrl,
+  createGitHubAppInstallationToken,
+  fetchGitHubAppInstallation,
+  githubAppConfigured,
+  githubAppInstallConfigured,
+  githubRepoOwner,
+} from '../github-app.js';
 import { resolvePiSdkPackageDir } from '../pi-sdk-package.js';
 import { pruneBrowserSessions } from '../resource-utils.js';
 
@@ -22,6 +31,7 @@ const CODEX_USER_SECRET_KEY = 'openai-codex-auth';
 const CLAUDE_CODE_AUTH_PROVIDER = 'anthropic';
 const CLAUDE_CODE_USER_SECRET_KEY = 'claude-code-auth';
 const USER_PI_AUTH_PROVIDERS = [CODEX_AUTH_PROVIDER, CLAUDE_CODE_AUTH_PROVIDER];
+const GITHUB_APP_INSTALLATIONS_KEY = 'githubAppInstallations';
 
 function normalizeOAuthCredential(raw, provider = '') {
   let parsed;
@@ -55,6 +65,7 @@ export function createAuthService({ config, http }) {
   const BROWSER_SESSION_HEADER = 'x-workbench-session';
   const authLogins = new Map();
   const githubLogins = new Map();
+  const githubAppInstalls = new Map();
   const authStore = createAuthStore(config);
   let browserSessions = new Map();
   let sdkPromise = null;
@@ -611,20 +622,40 @@ export function createAuthService({ config, http }) {
     return (await authStore.getOAuthToken(user.id, 'github'))?.accessToken || '';
   }
 
+  async function githubAppInstallationsForUser(userId) {
+    return await authStore.readUserKv(userId, GITHUB_APP_INSTALLATIONS_KEY, {}) || {};
+  }
+
+  function githubAuthIdentity(user, token) {
+    return token ? {
+      token,
+      login: user?.login || '',
+      name: user?.name || user?.login || '',
+      email: user?.githubId && user?.login
+        ? `${user.githubId}+${user.login}@users.noreply.github.com`
+        : '',
+    } : null;
+  }
+
+  async function githubOAuthAuthForUser(user) {
+    return githubAuthIdentity(user, await githubTokenForUser(user));
+  }
+
+  async function githubAppAuthForSession(session = {}, user = null) {
+    if (!githubAppConfigured(config) || !session?.repoUrl || !user?.id) return null;
+    const owner = githubRepoOwner(session.repoUrl);
+    if (!owner) return null;
+    const installations = await githubAppInstallationsForUser(user.id);
+    const installation = installations[owner] || installations[owner.toLowerCase()];
+    if (!installation?.id) return null;
+    const { token } = await createGitHubAppInstallationToken(config, installation.id);
+    return githubAuthIdentity(user, token);
+  }
+
   async function readGitHubAuthForSession(session = {}) {
     if (session?.ownerUserId) {
-      const token = await githubTokenForUser({ id: session.ownerUserId });
-      if (token) {
-        const user = await authStore.getUser(session.ownerUserId);
-        return {
-          token,
-          login: user?.login || '',
-          name: user?.name || user?.login || '',
-          email: user?.githubId && user?.login
-            ? `${user.githubId}+${user.login}@users.noreply.github.com`
-            : '',
-        };
-      }
+      const user = await authStore.getUser(session.ownerUserId);
+      return await githubAppAuthForSession(session, user) || await githubOAuthAuthForUser(user);
     }
 
     // In multi-user mode every sandbox belongs to a specific user; never
@@ -635,6 +666,22 @@ export function createAuthService({ config, http }) {
     return envToken ? { token: envToken, login: '', name: '', email: '' } : null;
   }
 
+  async function publicGitHubAppAuth(user) {
+    if (!githubAppConfigured(config)) return { configured: false, installable: false, installed: false, installations: [] };
+    const installations = user?.id ? await githubAppInstallationsForUser(user.id) : {};
+    const entries = Object.values(installations || {}).map((entry) => ({
+      id: String(entry.id || ''),
+      accountLogin: String(entry.accountLogin || ''),
+      accountType: String(entry.accountType || ''),
+    })).filter((entry) => entry.id);
+    return {
+      configured: true,
+      installable: githubAppInstallConfigured(config),
+      installed: Boolean(entries.length),
+      installations: entries,
+    };
+  }
+
   async function publicGitHubAuth(sessionOrUser) {
     const maybeUser = sessionOrUser?.id ? sessionOrUser : null;
     if (maybeUser) {
@@ -642,6 +689,7 @@ export function createAuthService({ config, http }) {
         configured: githubAuthConfigured(config),
         connected: Boolean(await githubTokenForUser(maybeUser)),
         user: publicUser(maybeUser),
+        app: await publicGitHubAppAuth(maybeUser),
       };
     }
     const session = sessionOrUser;
@@ -649,6 +697,7 @@ export function createAuthService({ config, http }) {
       configured: githubAuthConfigured(config),
       connected: Boolean(session?.githubToken),
       user: session?.githubUser || null,
+      app: await publicGitHubAppAuth(null),
     };
   }
 
@@ -669,32 +718,35 @@ export function createAuthService({ config, http }) {
   }
 
   async function enrichGitHubRepoSession(session, browserSession, user = null) {
-    if (session.repoSource !== 'github') return session;
+    const parsed = parseGitHubRepoUrl(session.repoUrl);
+    const explicitGitHubPick = session.repoSource === 'github';
+    if (!explicitGitHubPick && !parsed) return session;
 
-    const token = user ? await githubTokenForUser(user) : browserSession?.githubToken;
-    if (!token) {
-      throw clientError('Reconnect GitHub and pick the repo again.', 401);
+    const githubAuth = user?.id
+      ? await githubAppAuthForSession(session, user) || await githubOAuthAuthForUser(user)
+      : browserSession?.githubToken ? { token: browserSession.githubToken } : null;
+
+    if (!githubAuth?.token) {
+      if (explicitGitHubPick) throw clientError('Reconnect GitHub and pick the repo again.', 401);
+      return session;
     }
 
     let repo = null;
-    if (user?.id) {
-      repo = await fetchGitHubRepo(token, session.repoUrl);
-    } else {
-      repo = (browserSession.githubRepos || []).find((entry) => entry.cloneUrl === session.repoUrl);
-    }
-
-    if (!repo) {
-      throw clientError('Pick the GitHub repo again from the repo list before creating the main agent.', 400);
+    try {
+      repo = await fetchGitHubRepo(githubAuth.token, session.repoUrl);
+    } catch (error) {
+      if (explicitGitHubPick) throw clientError(`GitHub cannot access this repo: ${error.message}`, 403);
     }
 
     return {
       ...session,
-      branch: session.branch || repo.defaultBranch || '',
+      repoUrl: parsed ? `https://github.com/${parsed.owner}/${parsed.repo}.git` : session.repoUrl,
+      branch: session.branch || repo?.defaultBranch || '',
       repoProvider: 'github',
-      repoFullName: repo.fullName || session.repoFullName || '',
-      repoDefaultBranch: repo.defaultBranch || '',
-      repoVisibility: repo.private ? 'private' : 'public',
-      repoAuthHeader: repo.private ? buildGitHubCloneAuthHeader(token) : '',
+      repoFullName: repo?.fullName || session.repoFullName || (parsed ? `${parsed.owner}/${parsed.repo}` : ''),
+      repoDefaultBranch: repo?.defaultBranch || '',
+      repoVisibility: repo ? (repo.private ? 'private' : 'public') : session.repoVisibility || '',
+      repoAuthHeader: buildGitHubCloneAuthHeader(githubAuth.token),
     };
   }
 
@@ -778,6 +830,61 @@ export function createAuthService({ config, http }) {
     return githubAuthConfigured(config);
   }
 
+  function isGitHubAppConfigured() {
+    return githubAppConfigured(config);
+  }
+
+  function startGitHubAppInstall(request, user, body = {}) {
+    if (!user?.id) throw clientError('Sign in with GitHub before installing the GitHub App.', 401);
+    if (!githubAppInstallConfigured(config)) throw clientError('Missing GITHUB_APP_ID, GITHUB_APP_SLUG, or GITHUB_APP_PRIVATE_KEY.', 400);
+    const state = randomUUID();
+    githubAppInstalls.set(state, {
+      userId: user.id,
+      returnTo: trimReturnTo(body.returnTo, request),
+    });
+    return { installUrl: buildGitHubAppInstallUrl(config, state) };
+  }
+
+  async function rememberGitHubAppInstallation(userId, installationId) {
+    const installation = await fetchGitHubAppInstallation(config, installationId);
+    const accountLogin = String(installation?.account?.login || '').trim();
+    if (!accountLogin) throw new Error('GitHub App installation has no account login.');
+    const key = accountLogin.toLowerCase();
+    const installations = await githubAppInstallationsForUser(userId);
+    const next = {
+      ...installations,
+      [key]: {
+        id: String(installationId),
+        accountLogin,
+        accountType: String(installation?.account?.type || ''),
+        updatedAt: new Date().toISOString(),
+      },
+    };
+    await authStore.writeUserKv(userId, GITHUB_APP_INSTALLATIONS_KEY, next);
+    return next[key];
+  }
+
+  async function completeGitHubAppInstall(request, url) {
+    const state = String(url.searchParams.get('state') || '').trim();
+    const installationId = String(url.searchParams.get('installation_id') || '').trim();
+    const pending = githubAppInstalls.get(state);
+    githubAppInstalls.delete(state);
+    const userId = pending?.userId || '';
+    const returnTo = pending?.returnTo || `${originFor(request)}/settings.html`;
+
+    if (!githubAppConfigured(config)) return { statusCode: 400, text: 'GitHub App is not configured.' };
+    if (!pending || !userId || !installationId) return { statusCode: 400, text: 'GitHub App install expired or failed.' };
+
+    try {
+      await rememberGitHubAppInstallation(userId, installationId);
+      const redirect = new URL(returnTo);
+      redirect.searchParams.set('githubApp', 'installed');
+      return { statusCode: 302, location: redirect.toString() };
+    } catch (error) {
+      return { statusCode: 400, text: error.message };
+    }
+  }
+
   function startGitHubLogin(request, sessionId, body = {}) {
     const state = randomUUID();
     githubLogins.set(state, {
@@ -853,6 +960,9 @@ export function createAuthService({ config, http }) {
     publicAuthLogin,
     getAuthLogin,
     isGitHubAuthConfigured,
+    isGitHubAppConfigured,
+    startGitHubAppInstall,
+    completeGitHubAppInstall,
     githubTokenForUser,
     publicGitHubAuth,
     githubRepoPayload,

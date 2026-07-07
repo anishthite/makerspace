@@ -25,13 +25,14 @@ function extractBridgeScript(script) {
 }
 
 test('buildSetupScript clones a repo and auto-runs pi when requested', () => {
+  const authHeader = `AUTHORIZATION: basic ${Buffer.from('x-access-token:secret-token').toString('base64')}`;
   const script = buildSetupScript(
     {
       name: 'landing-agent',
       repoMode: 'git',
       repoUrl: 'https://github.com/acme/demo.git',
       branch: 'main',
-      repoAuthHeader: 'AUTHORIZATION: basic abc123',
+      repoAuthHeader: authHeader,
       taskPrompt: 'Build the thing.',
       autoRunAgent: true,
     },
@@ -42,8 +43,10 @@ test('buildSetupScript clones a repo and auto-runs pi when requested', () => {
   assert.ok(Buffer.byteLength(script, 'utf8') < 15 * 1024);
   assert.match(script, /if \[ "\$\(id -u\)" -ne 0 \]; then exec sudo -E \/bin\/bash "\$0" "\$@"; fi/);
   assert.match(script, /export GIT_TERMINAL_PROMPT=0/);
-  assert.match(script, /git -c 'http.extraHeader=AUTHORIZATION: basic abc123' clone --depth=1 --branch 'main' 'https:\/\/github.com\/acme\/demo\.git' '\/srv\/workspace'/);
-  assert.match(script, /\|\| \{ rm -rf '\/srv\/workspace'; git -c 'http.extraHeader=AUTHORIZATION: basic abc123' clone --depth=1 'https:\/\/github.com\/acme\/demo\.git' '\/srv\/workspace'; \}/);
+  assert.match(script, new RegExp(`git -c 'http.extraHeader=${authHeader.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}' clone --depth=1 --branch 'main' 'https:\\/\\/github.com\\/acme\\/demo\\.git' '\\/srv\\/workspace'`));
+  assert.match(script, new RegExp(`\\|\\| \\{ rm -rf '\\/srv\\/workspace'; git -c 'http.extraHeader=${authHeader.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}' clone --depth=1 'https:\\/\\/github.com\\/acme\\/demo\\.git' '\\/srv\\/workspace'; \\}`));
+  assert.match(script, /https:\/\/x-access-token:secret-token@github\.com/);
+  assert.match(script, /oauth_token: "secret-token"/);
   assert.match(script, /apt-get install -y gh/);
   assert.match(script, /githubcli-archive-keyring\.gpg/);
   assert.match(script, /git config --system credential\.helper store/);

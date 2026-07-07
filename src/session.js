@@ -124,6 +124,7 @@ export function normalizeCreateRequest(body, config) {
   const branch = String(body.branch || '').trim();
   const taskPrompt = String(body.taskPrompt || '').trim() || config.defaultTaskPrompt;
   const visibility = body.visibility === 'public' ? 'public' : 'private';
+  const repoSource = body.repoSource === 'github' ? 'github' : '';
   const autoRunAgent = body.autoRunAgent !== false;
   const sharePort = Number(body.sharePort);
   const normalizedSharePort = Number.isFinite(sharePort) && sharePort > 0 ? sharePort : null;
@@ -138,6 +139,7 @@ export function normalizeCreateRequest(body, config) {
     branch,
     taskPrompt,
     visibility,
+    ...(repoSource ? { repoSource } : {}),
     sharePort: normalizedSharePort,
     autoRunAgent,
     ...normalizeModelOptions(body),
