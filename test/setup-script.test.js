@@ -163,6 +163,9 @@ test('buildSetupScript skips direct pi auto-run for bridge-backed chat sessions'
   assert.match(script, /printf 'export WORKBENCH_PI_DEFAULTS_PACKAGE_DIR=%s\\n' '\/home\/daytona\/\.pi\/agent\/workbench-pi-defaults'/);
   assert.match(script, /systemctl enable --now pi-bridge\.service/);
   const bridgeScript = extractBridgeScript(script);
+  assert.match(bridgeScript, /readFile, rm, writeFile/);
+  assert.match(bridgeScript, /request\.method === "GET" && url\.pathname === "\/auth"/);
+  assert.match(bridgeScript, /sendJson\(response, 200, \{ authText \}\)/);
   assert.match(bridgeScript, /url\.pathname === "\/auth"/);
   assert.match(bridgeScript, /writeFile\(authPath, authText, "utf8"\)/);
   assert.match(bridgeScript, /const piProfile = body\.piProfile/);
@@ -174,6 +177,9 @@ test('buildSetupScript skips direct pi auto-run for bridge-backed chat sessions'
   assert.match(bridgeScript, /process\.env\.GITHUB_TOKEN = token/);
   assert.match(bridgeScript, /\.git-credentials/);
   assert.match(bridgeScript, /x-access-token/);
+  assert.match(bridgeScript, /hosts\.yml/);
+  assert.match(bridgeScript, /oauth_token/);
+  assert.match(bridgeScript, /git_protocol: https/);
   assert.match(bridgeScript, /"x-accel-buffering": "no"/);
   assert.ok(bridgeScript.indexOf('run.clients.add(response);') < bridgeScript.indexOf('for (const event of run.events)'));
   assert.match(bridgeScript, /setInterval\(\(\) => \{ response\.write\(": ping\\n\\n"\); \}, 15000\)/);

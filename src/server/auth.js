@@ -21,6 +21,7 @@ const CODEX_AUTH_PROVIDER = 'openai-codex';
 const CODEX_USER_SECRET_KEY = 'openai-codex-auth';
 const CLAUDE_CODE_AUTH_PROVIDER = 'anthropic';
 const CLAUDE_CODE_USER_SECRET_KEY = 'claude-code-auth';
+const USER_PI_AUTH_PROVIDERS = [CODEX_AUTH_PROVIDER, CLAUDE_CODE_AUTH_PROVIDER];
 
 function normalizeOAuthCredential(raw, provider = '') {
   let parsed;
@@ -730,6 +731,26 @@ export function createAuthService({ config, http }) {
     };
   }
 
+  async function syncPiAuthForSession(session = {}, authText = '') {
+    if (!authRequired() || !session?.ownerUserId || !String(authText || '').trim()) return 0;
+
+    let parsed;
+    try {
+      parsed = JSON.parse(authText);
+    } catch {
+      throw new Error('Remote Pi auth JSON is invalid.');
+    }
+
+    let updated = 0;
+    for (const provider of USER_PI_AUTH_PROVIDERS) {
+      const credential = normalizeOAuthCredential(parsed, provider);
+      if (!credential) continue;
+      await authStore.writeUserSecret(session.ownerUserId, providerSecretKey(provider), JSON.stringify(credential));
+      updated += 1;
+    }
+    return updated;
+  }
+
   async function readPiAuthForSession(session = {}) {
     if (!authRequired()) return readLocalPiAuth();
     if (!session?.ownerUserId) return null;
@@ -855,6 +876,7 @@ export function createAuthService({ config, http }) {
     requireSessionAccess,
     readLocalPiAuth,
     readPiAuthForSession,
+    syncPiAuthForSession,
     readGitHubAuthForSession,
     authStorageForSession,
     readLocalPiSettings,

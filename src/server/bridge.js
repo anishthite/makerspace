@@ -397,6 +397,8 @@ export function createBridgeService({ config, provider, auth, runState }) {
                 await persistRunStatus(current, runStatus);
               }
               if (event.done || runStatus === 'completed' || runStatus === 'failed') {
+                const terminalSession = current || session;
+                await syncBridgeAuthBack(terminalSession).catch((error) => recordBridgeLaunchLog(terminalSession || sessionName, 'auth_back_sync:failed', { error: error.message }));
                 await persistThreadAssistantMessage(sessionName);
                 if (runStatus === 'completed') {
                   await maybeCreateCompletedPullRequest(sessionName);
@@ -450,6 +452,14 @@ export function createBridgeService({ config, provider, auth, runState }) {
 
   async function syncBridgeAuth(session) {
     return pushBridgeAuth(session, await readPiAuthForSession(session));
+  }
+
+  async function syncBridgeAuthBack(session) {
+    if (!session?.ownerUserId || typeof auth.syncPiAuthForSession !== 'function') return false;
+    const payload = await fetchBridgeJson(session, '/auth');
+    const updated = await auth.syncPiAuthForSession(session, payload?.authText || '');
+    if (updated) await recordBridgeLaunchLog(session, 'auth_back_sync:done', { providers: updated });
+    return Boolean(updated);
   }
 
   async function startBridgeRun(session) {
@@ -1030,6 +1040,7 @@ export function createBridgeService({ config, provider, auth, runState }) {
     followBridgeRun,
     pushBridgeAuth,
     syncBridgeAuth,
+    syncBridgeAuthBack,
     startBridgeRun,
     makeWarmBridgeSession,
     makeIntentBridgeSession,

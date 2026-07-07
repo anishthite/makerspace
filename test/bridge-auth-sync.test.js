@@ -113,6 +113,61 @@ test('ready bridge reuse syncs current Codex auth before running', async () => {
   }
 });
 
+test('bridge follower back-syncs refreshed remote Pi auth on terminal runs', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'workbench-bridge-auth-back-sync-'));
+  const sessionFile = path.join(root, 'sessions.json');
+  const previousFetch = globalThis.fetch;
+  const encoder = new TextEncoder();
+  let synced = null;
+
+  globalThis.fetch = async (url) => {
+    const text = String(url);
+    if (text.endsWith('/auth')) {
+      return new Response(JSON.stringify({ authText: '{"openai-codex":{"type":"oauth","access":"new","refresh":"new-refresh","expires":9999999999999,"accountId":"acct"}}' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+    return new Response(new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode('data: {"index":1,"type":"status","runStatus":"failed","done":true}\n\n'));
+        controller.close();
+      },
+    }), { status: 200, headers: { 'content-type': 'text/event-stream' } });
+  };
+
+  try {
+    await writeFile(sessionFile, `${JSON.stringify([{
+      name: 'remote-thread',
+      ownerUserId: 'github-1',
+      bridgeUrl: 'https://bridge.example.test',
+      bridgeRunId: 'run-1',
+      bridgeToken: 'secret',
+      status: 'running',
+      runStatus: 'running',
+    }])}\n`);
+    const bridge = createBridgeService({
+      config: { sessionFile },
+      provider: { bridgeHeaders: () => ({}) },
+      auth: {
+        syncPiAuthForSession: async (session, authText) => {
+          synced = { session, authText };
+          return 1;
+        },
+      },
+      runState: runStateStub(),
+    });
+
+    await bridge.followBridgeRun('remote-thread');
+
+    assert.equal(synced.session.ownerUserId, 'github-1');
+    assert.match(synced.authText, /new-refresh/);
+  } finally {
+    globalThis.fetch = previousFetch;
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('bridge SSE consumer parses CRLF-delimited remote events', async () => {
   const bridge = createBridgeService({
     config: {},

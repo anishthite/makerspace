@@ -62,6 +62,23 @@ test('hosted Codex and Claude Code auth are stored per user and formatted for Pi
   }
 });
 
+test('remote Pi auth back-sync updates hosted Codex credentials', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'workbench-codex-auth-back-sync-'));
+  try {
+    const auth = createAuthService({ config: config(root), http: testHttp() });
+    const user = await auth.authStore.upsertUser({ githubId: '1', login: 'octo' });
+    const stale = { type: 'oauth', access: 'old-access', refresh: 'old-refresh', expires: Date.now() + 60_000, accountId: 'acct' };
+    const fresh = { type: 'oauth', access: 'new-access', refresh: 'new-refresh', expires: Date.now() + 120_000, accountId: 'acct' };
+
+    await auth.authStore.writeUserSecret(user.id, 'openai-codex-auth', JSON.stringify(stale));
+
+    assert.equal(await auth.syncPiAuthForSession({ ownerUserId: user.id }, JSON.stringify({ 'openai-codex': fresh })), 1);
+    assert.deepEqual(JSON.parse(await auth.readPiAuthForSession({ ownerUserId: user.id })), { 'openai-codex': fresh });
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('readGitHubAuthForSession keeps GitHub tokens per user in multi-user mode', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'makerspace-github-auth-'));
   const savedGhToken = process.env.GH_TOKEN;
