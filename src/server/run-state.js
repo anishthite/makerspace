@@ -335,13 +335,14 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
   function inactiveStoredRunStatus(session) {
     const terminalStatus = terminalStoredRunStatus(session);
     if (terminalStatus) return terminalStatus;
-    return session?.localMode && isActiveRunStatus(effectiveStoredRunStatus(session)) ? 'failed' : '';
+    return isActiveRunStatus(effectiveStoredRunStatus(session)) ? 'failed' : '';
   }
 
   function decorateInactiveStoredSession(session) {
     const runStatus = inactiveStoredRunStatus(session);
     if (!runStatus) return session;
 
+    const lostActiveRun = runStatus === 'failed' && isActiveRunStatus(effectiveStoredRunStatus(session)) && !terminalStoredRunStatus(session);
     const endedAt = session.endedAt || session.completedAt || session.updatedAt || session.createdAt;
     const runEndedAtMs = Number(session.runEndedAtMs) || Date.parse(endedAt || '');
     return {
@@ -350,6 +351,7 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
       runStatus,
       endedAt,
       runEndedAtMs: Number.isFinite(runEndedAtMs) ? runEndedAtMs : undefined,
+      warning: lostActiveRun ? session.warning || 'Run state is no longer active; start a new main agent.' : session.warning,
       completedAt: runStatus === 'completed' ? session.completedAt || endedAt : undefined,
     };
   }

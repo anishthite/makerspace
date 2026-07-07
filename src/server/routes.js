@@ -434,14 +434,15 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
         response.write('retry: 1000\n\n');
 
         if (!run) {
+          const decorated = decorateLiveSession(session);
           const runStatus = inactiveStoredRunStatus(session);
           sendSse(response, {
             id: lastId + 1,
             type: 'status',
             runStatus: runStatus || 'failed',
             done: true,
-            warning: runStatus ? null : 'Run state is no longer active; reload to resync.',
-            session: decorateLiveSession(session),
+            warning: decorated.warning || (runStatus ? null : 'Run state is no longer active; reload to resync.'),
+            session: decorated,
           });
           response.end();
           return;
