@@ -422,7 +422,12 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
 
         const after = Number(url.searchParams.get('after'));
         const lastId = Number.isFinite(after) && after > 0 ? after : 0;
-        const run = activeRuns.get(name);
+        let run = activeRuns.get(name);
+        let inactiveSnapshot = null;
+        if (!run && session.bridgeMode) {
+          inactiveSnapshot = await syncRunOutput(session);
+          run = activeRuns.get(name);
+        }
 
         response.writeHead(200, {
           'content-type': 'text/event-stream; charset=utf-8',
@@ -432,6 +437,26 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
           ...corsHeaders,
         });
         response.write('retry: 1000\n\n');
+
+        if (!run && inactiveSnapshot) {
+          const events = inactiveSnapshot.events?.length ? inactiveSnapshot.events : [{ type: 'status', runStatus: inactiveSnapshot.runStatus }];
+          events.forEach((event, index) => {
+            const runStatus = event.runStatus || inactiveSnapshot.runStatus || session.runStatus || session.status || 'launching';
+            sendSse(response, {
+              ...event,
+              id: lastId + index + 1,
+              runStatus,
+              session: {
+                ...(event.session || session),
+                status: statusFromRunStatus(runStatus, session.status),
+                runStatus,
+                warning: event.warning || session.warning || null,
+              },
+            });
+          });
+          response.end();
+          return;
+        }
 
         if (!run) {
           const decorated = decorateLiveSession(session);

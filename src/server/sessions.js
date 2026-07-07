@@ -10,8 +10,9 @@ import { trimTrailingSlash } from './utils.js';
 
 export function createSessionService({ config, provider, auth, runState, bridge }) {
   const { readLocalPiAuth } = auth;
-  const { claimReusableBridgeSession, waitForBridge, pushBridgeAuth, startBridgeRun } = bridge;
+  const { claimReusableBridgeSession, waitForBridge, pushBridgeAuth, startBridgeRun, followBridgeRun } = bridge;
   const {
+    activeRuns,
     ensureRunState,
     setRunState,
     resetRunState,
@@ -22,6 +23,7 @@ export function createSessionService({ config, provider, auth, runState, bridge 
     persistHostDispatchMetric,
     persistHostDispatchStatus,
     recordRunEvent,
+    isActiveRunStatus,
   } = runState;
 
   async function startSessionLaunch(session, imageSettings) {
@@ -231,12 +233,55 @@ export function createSessionService({ config, provider, auth, runState, bridge 
     return stored;
   }
 
-  async function syncRunOutput(session) {
-    const run = ensureRunState(session.name);
+  function shouldFollowBridgeRun(session) {
+    return Boolean(
+      session?.bridgeMode &&
+        session.bridgeClaimed &&
+        session.bridgeUrl &&
+        session.bridgeRunId &&
+        session.bridgeToken &&
+        isActiveRunStatus(session.runStatus || session.status),
+    );
+  }
 
-    if (session.bridgeMode || session.hostDispatchMode || !provider.readOutput) {
+  function inactiveRunSnapshot(session) {
+    const runStatus = String(session?.runStatus || session?.status || 'unknown').toLowerCase();
+    const message = session?.bridgeMode && isActiveRunStatus(runStatus) && !session.bridgeUrl
+      ? 'waiting for remote bridge'
+      : '';
+    return {
+      output: '',
+      outputBaseOffset: 0,
+      remoteLogOffset: 0,
+      runStatus,
+      warning: session?.warning || null,
+      events: [{
+        id: 0,
+        timestamp: session?.updatedAt || session?.createdAt || new Date().toISOString(),
+        type: 'status',
+        runStatus,
+        ...(message ? { message } : {}),
+        ...(session?.warning ? { warning: session.warning } : {}),
+        session,
+      }],
+      nextEventId: 1,
+    };
+  }
+
+  async function syncRunOutput(session) {
+    let run = activeRuns.get(session.name);
+
+    if (shouldFollowBridgeRun(session)) {
+      run = ensureRunState(session.name);
+      void followBridgeRun(session.name);
       return run;
     }
+
+    if (session.bridgeMode || session.hostDispatchMode || !provider.readOutput) {
+      return run || inactiveRunSnapshot(session);
+    }
+
+    run = ensureRunState(session.name);
 
     try {
       const remote = await provider.readOutput(session, {

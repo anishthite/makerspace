@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { createBridgeService } from '../src/server/bridge.js';
+import { createSessionService } from '../src/server/sessions.js';
 
 function runStateStub() {
   const runs = new Map();
@@ -31,6 +32,7 @@ function runStateStub() {
     persistRunStatus: async (session) => session,
     persistThreadAssistantMessage: async () => {},
     mergeTrackedChanges: (...groups) => groups.flat().filter(Boolean),
+    isActiveRunStatus: (status) => ['launching', 'queued', 'starting', 'running'].includes(String(status || '').toLowerCase()),
   };
 }
 
@@ -133,6 +135,67 @@ test('bridge SSE consumer parses CRLF-delimited remote events', async () => {
 test('browser SSE route disables proxy buffering', async () => {
   const source = await readFile(new URL('../src/server/routes.js', import.meta.url), 'utf8');
   assert.match(source, /'x-accel-buffering': 'no'/);
+});
+
+test('thread output sync starts the active bridge follower', async () => {
+  const runState = runStateStub();
+  let followed = '';
+  const sessions = createSessionService({
+    config: {},
+    provider: {},
+    auth: { readLocalPiAuth: async () => null },
+    runState,
+    bridge: {
+      claimReusableBridgeSession: async () => null,
+      waitForBridge: async () => {},
+      pushBridgeAuth: async () => {},
+      startBridgeRun: async () => {},
+      followBridgeRun: (name) => { followed = name; },
+    },
+  });
+
+  const run = await sessions.syncRunOutput({
+    name: 'remote-thread',
+    bridgeMode: true,
+    bridgeClaimed: true,
+    bridgeUrl: 'https://bridge.example.test',
+    bridgeRunId: 'run-1',
+    bridgeToken: 'secret',
+    runStatus: 'running',
+  });
+
+  assert.equal(followed, 'remote-thread');
+  assert.equal(run, runState.activeRuns.get('remote-thread'));
+});
+
+test('thread output sync does not create a dead run before bridge URL exists', async () => {
+  const runState = runStateStub();
+  const sessions = createSessionService({
+    config: {},
+    provider: {},
+    auth: { readLocalPiAuth: async () => null },
+    runState,
+    bridge: {
+      claimReusableBridgeSession: async () => null,
+      waitForBridge: async () => {},
+      pushBridgeAuth: async () => {},
+      startBridgeRun: async () => {},
+      followBridgeRun: () => { throw new Error('should not follow before bridge URL exists'); },
+    },
+  });
+
+  const run = await sessions.syncRunOutput({
+    name: 'remote-thread',
+    bridgeMode: true,
+    bridgeClaimed: true,
+    bridgeUrl: null,
+    runStatus: 'launching',
+    status: 'launching',
+  });
+
+  assert.equal(runState.activeRuns.has('remote-thread'), false);
+  assert.equal(run.runStatus, 'launching');
+  assert.equal(run.events[0].message, 'waiting for remote bridge');
 });
 
 test('bridge follower records structured remote events', async () => {
