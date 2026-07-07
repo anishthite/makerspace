@@ -427,6 +427,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
         response.writeHead(200, {
           'content-type': 'text/event-stream; charset=utf-8',
           'cache-control': 'no-cache, no-transform',
+          'x-accel-buffering': 'no',
           connection: 'keep-alive',
           ...corsHeaders,
         });

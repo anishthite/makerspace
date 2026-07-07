@@ -174,6 +174,8 @@ test('buildSetupScript skips direct pi auto-run for bridge-backed chat sessions'
   assert.match(bridgeScript, /process\.env\.GITHUB_TOKEN = token/);
   assert.match(bridgeScript, /\.git-credentials/);
   assert.match(bridgeScript, /x-access-token/);
+  assert.match(bridgeScript, /"x-accel-buffering": "no"/);
+  assert.ok(bridgeScript.indexOf('run.clients.add(response);') < bridgeScript.indexOf('for (const event of run.events)'));
   assert.match(bridgeScript, /setInterval\(\(\) => \{ response\.write\(": ping\\n\\n"\); \}, 15000\)/);
   assert.match(bridgeScript, /clearInterval\(heartbeat\)/);
   assert.match(bridgeScript, /rm\(path\.join\(authDir, name\), \{ recursive: true, force: true \}\)/);

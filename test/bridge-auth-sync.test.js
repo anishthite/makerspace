@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -120,4 +120,9 @@ test('bridge SSE consumer parses CRLF-delimited remote events', async () => {
     { type: 'tool', phase: 'start' },
     { done: true },
   ]);
+});
+
+test('browser SSE route disables proxy buffering', async () => {
+  const source = await readFile(new URL('../src/server/routes.js', import.meta.url), 'utf8');
+  assert.match(source, /'x-accel-buffering': 'no'/);
 });
