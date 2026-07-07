@@ -448,30 +448,77 @@ export function createAuthService({ config, http }) {
     return authRequired() ? hostedProviderAuthStatus(user, CLAUDE_CODE_AUTH_PROVIDER) : localProviderAuthStatus(CLAUDE_CODE_AUTH_PROVIDER);
   }
 
-  function browserLoginMethod(prompt = {}) {
-    const options = Array.isArray(prompt.options) ? prompt.options : [];
-    return (
-      options.find((option) => option.id === 'browser' || /browser/i.test(option.label || '')) ||
-      options.find((option) => !/device/i.test(`${option.id || ''} ${option.label || ''}`))
-    )?.id;
-  }
-
-  async function startProviderBrowserLogin(user = null, { provider, label, secretKey }) {
-    if (authRequired() && !user?.id) throw clientError(`Sign in with GitHub before ${label}.`, 401);
+  async function startCodexDeviceLogin(user = null) {
+    if (authRequired() && !user?.id) throw clientError('Sign in with GitHub before Codex.', 401);
     const { AuthStorage } = await loadPiSdk();
     const authStorage = authRequired() ? AuthStorage.inMemory() : AuthStorage.create();
     const id = randomUUID();
     const controller = new AbortController();
     const job = {
       id,
-      provider,
+      ownerUserId: user?.id || '',
+      status: 'starting',
+      device: null,
+      error: null,
+      controller,
+    };
+    authLogins.set(id, job);
+
+    const deviceReady = new Promise((resolve, reject) => {
+      job.resolveDevice = resolve;
+      job.rejectDevice = reject;
+    });
+
+    authStorage.login(CODEX_AUTH_PROVIDER, {
+      signal: controller.signal,
+      onSelect: async (prompt) => prompt.options.find((option) => /device/i.test(option.label))?.id,
+      onAuth: () => {},
+      onDeviceCode: (info) => {
+        job.status = 'waiting';
+        job.device = info;
+        job.resolveDevice?.();
+      },
+      onPrompt: async (prompt) => {
+        if (prompt.allowEmpty) return '';
+        throw new Error(prompt.message || 'Login needs input.');
+      },
+      onManualCodeInput: async () => {
+        throw new Error('Manual code input is not supported here.');
+      },
+      onProgress: (message) => {
+        job.progress = message;
+      },
+    }).then(async () => {
+      const credential = normalizeOAuthCredential(authStorage.get(CODEX_AUTH_PROVIDER), CODEX_AUTH_PROVIDER);
+      if (authRequired() && credential) {
+        await authStore.writeUserSecret(user.id, CODEX_USER_SECRET_KEY, JSON.stringify(credential));
+      }
+      job.status = 'complete';
+      job.completedAt = new Date().toISOString();
+    }).catch((error) => {
+      job.status = 'failed';
+      job.error = error.message;
+      job.rejectDevice?.(error);
+    });
+
+    await deviceReady;
+    return publicAuthLogin(job);
+  }
+
+  async function startClaudeCodeLogin(user = null) {
+    if (authRequired() && !user?.id) throw clientError('Sign in with GitHub before Claude Code.', 401);
+    const { AuthStorage } = await loadPiSdk();
+    const authStorage = authRequired() ? AuthStorage.inMemory() : AuthStorage.create();
+    const id = randomUUID();
+    const job = {
+      id,
+      provider: CLAUDE_CODE_AUTH_PROVIDER,
       ownerUserId: user?.id || '',
       status: 'starting',
       auth: null,
       device: null,
       manual: false,
       error: null,
-      controller,
     };
     authLogins.set(id, job);
 
@@ -486,16 +533,11 @@ export function createAuthService({ config, http }) {
       }
     };
 
-    authStorage.login(provider, {
-      signal: controller.signal,
-      onSelect: async (prompt) => browserLoginMethod(prompt),
+    authStorage.login(CLAUDE_CODE_AUTH_PROVIDER, {
       onAuth: (info) => {
         job.status = 'waiting';
         job.auth = info;
         maybeReady();
-      },
-      onDeviceCode: () => {
-        throw new Error(`${label} device-code login is disabled. Use browser sign-in.`);
       },
       onPrompt: async (prompt) => {
         if (prompt.allowEmpty) return '';
@@ -516,9 +558,9 @@ export function createAuthService({ config, http }) {
         job.progress = message;
       },
     }).then(async () => {
-      const credential = normalizeOAuthCredential(authStorage.get(provider), provider);
+      const credential = normalizeOAuthCredential(authStorage.get(CLAUDE_CODE_AUTH_PROVIDER), CLAUDE_CODE_AUTH_PROVIDER);
       if (authRequired() && credential) {
-        await authStore.writeUserSecret(user.id, secretKey, JSON.stringify(credential));
+        await authStore.writeUserSecret(user.id, CLAUDE_CODE_USER_SECRET_KEY, JSON.stringify(credential));
       }
       job.resolveManual = null;
       job.status = 'complete';
@@ -534,46 +576,21 @@ export function createAuthService({ config, http }) {
     return publicAuthLogin(job);
   }
 
-  function startCodexLogin(user = null) {
-    return startProviderBrowserLogin(user, {
-      provider: CODEX_AUTH_PROVIDER,
-      label: 'Codex',
-      secretKey: CODEX_USER_SECRET_KEY,
-    });
-  }
-
-  function startClaudeCodeLogin(user = null) {
-    return startProviderBrowserLogin(user, {
-      provider: CLAUDE_CODE_AUTH_PROVIDER,
-      label: 'Claude Code',
-      secretKey: CLAUDE_CODE_USER_SECRET_KEY,
-    });
-  }
-
-  function submitProviderLoginCode(id, user = null, body = {}, { provider, label }) {
+  function submitClaudeCodeLoginCode(id, user = null, body = {}) {
     const job = getAuthLogin(id, user);
-    if (!job || job.provider !== provider) throw clientError('Login not found', 404);
+    if (!job || job.provider !== CLAUDE_CODE_AUTH_PROVIDER) throw clientError('Login not found', 404);
     if (job.status === 'complete' || job.status === 'failed') return publicAuthLogin(job);
 
     const code = String(body.code || body.authorizationCode || body.redirectUrl || '').trim();
-    if (!code) throw clientError(`Paste the ${label} redirect URL or authorization code.`);
-    if (!job.resolveManual) throw clientError(`${label} login is not ready for a pasted code yet.`, 409);
+    if (!code) throw clientError('Paste the Claude Code redirect URL or authorization code.');
+    if (!job.resolveManual) throw clientError('Claude Code login is not ready for a pasted code yet.', 409);
 
     const resolveManual = job.resolveManual;
     job.resolveManual = null;
-    job.rejectManual = null;
     job.status = 'exchanging';
     job.progress = 'Exchanging authorization code for tokens...';
     resolveManual(code);
     return publicAuthLogin(job);
-  }
-
-  function submitCodexLoginCode(id, user = null, body = {}) {
-    return submitProviderLoginCode(id, user, body, { provider: CODEX_AUTH_PROVIDER, label: 'Codex' });
-  }
-
-  function submitClaudeCodeLoginCode(id, user = null, body = {}) {
-    return submitProviderLoginCode(id, user, body, { provider: CLAUDE_CODE_AUTH_PROVIDER, label: 'Claude Code' });
   }
 
   function publicAuthLogin(job) {
@@ -808,8 +825,7 @@ export function createAuthService({ config, http }) {
     loadPiAi,
     loadPiDefaults,
     codexAuthStatus,
-    startCodexLogin,
-    submitCodexLoginCode,
+    startCodexDeviceLogin,
     claudeCodeAuthStatus,
     startClaudeCodeLogin,
     submitClaudeCodeLoginCode,
