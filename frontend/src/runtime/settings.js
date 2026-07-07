@@ -177,7 +177,7 @@ function renderCodexAuth(login, codexTab = null) {
   }
   navigateCodexTab(codexTab, auth.url);
   codexAuth.classList.remove('hidden');
-  codexAuth.innerHTML = `<p><a href="${escapeHtml(auth.url)}" target="_blank" rel="noreferrer">Codex</a>: approve access, then paste the final localhost redirect URL below.</p><form id="codex-code-form" class="stack-lg"><label class="full-width"><span>Redirect URL or code</span><input id="codex-code" name="code" placeholder="http://localhost:1455/auth/callback?code=…" autocomplete="off" /></label><div class="form-actions"><button id="codex-code-submit" class="primary" type="submit">Finish sign in</button></div></form>`;
+  codexAuth.innerHTML = `<p><a href="${escapeHtml(auth.url)}" target="_blank" rel="noreferrer">Codex</a>: approve access. If the tab lands on a localhost error page, copy that full URL and paste it below.</p><form id="codex-code-form" class="stack-lg"><label class="full-width"><span>Redirect URL or code</span><input id="codex-code" name="code" placeholder="http://localhost:1455/auth/callback?code=…" autocomplete="off" /></label><div class="form-actions"><button id="codex-code-submit" class="primary" type="submit">Finish sign in</button></div></form>`;
   codexAuth.querySelector('form')?.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (!activeCodexLoginId) {
@@ -210,7 +210,7 @@ function renderClaudeCodeAuth(login, claudeTab = null) {
   navigateClaudeCodeTab(claudeTab, auth.url);
   claudeCodeAuth.classList.remove('hidden');
   claudeCodeCodeForm.classList.remove('hidden');
-  claudeCodeAuth.innerHTML = `<a href="${escapeHtml(auth.url)}" target="_blank" rel="noreferrer">Claude</a>: approve access, then paste the final localhost redirect URL below.`;
+  claudeCodeAuth.innerHTML = `<a href="${escapeHtml(auth.url)}" target="_blank" rel="noreferrer">Claude</a>: approve access. If the tab lands on a localhost error page, copy that full URL and paste it below.`;
 }
 
 async function pollCodexLogin(id) {
