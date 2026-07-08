@@ -13,15 +13,21 @@ test('project selector offers desktop local folders', () => {
 
   assert.match(pages, /project-choose-folder/);
   assert.match(pages, /choose local folder/i);
-  assert.match(pages, /className="project-target repo-input"[\s\S]*project-choose-folder/);
+  assert.match(pages, /className="project-target repo-input repo-combobox"[\s\S]*project-choose-folder/);
+  assert.match(pages, /id="project-repo-options" className="repo-suggestions" role="listbox" hidden/);
+  assert.doesNotMatch(pages, /project-repo-picker/);
   assert.match(pages, /id="project-status" className="status-line" aria-live="polite"><\/p>/);
   assert.doesNotMatch(pages, /project-provider-banner/);
+  assert.match(project, /const repoOptions = document\.querySelector\('#project-repo-options'\)/);
   assert.match(project, /const repoTray = document\.querySelector\('#project-repo-tray'\)/);
   assert.match(project, /repoTray\.hidden = local && canChooseFolder/);
   assert.match(project, /workbenchDesktop\?\.chooseFolder/);
   assert.match(project, /workbenchSelectedProject/);
   assert.match(project, /\/api\/recent-projects/);
   assert.match(project, /project-running-badge/);
+  assert.match(project, /function filterRepos\(query/);
+  assert.match(project, /function renderRepoSuggestions\(\)/);
+  assert.match(project, /repoInput\.addEventListener\('keydown'/);
   assert.match(project, /cache: 'no-store'/);
   assert.match(project, /function refreshProjectThreads\(\)/);
   assert.match(project, /await refreshProjectThreads\(\);[\s\S]+await loadGitHubRepos\(\);/);
@@ -41,6 +47,8 @@ test('project selector offers desktop local folders', () => {
   assert.match(styles, /\.project-shell \{[^}]*width: min\(900px, calc\(100% - clamp\(40px, 12vw, 280px\)\)\)/);
   assert.match(styles, /\.project-grid \{[^}]*grid-template-columns: 1fr/);
   assert.match(styles, /#project-form \{[^}]*display: grid;[^}]*gap: 12px;/);
+  assert.match(styles, /\.repo-suggestions \{/);
+  assert.match(styles, /\.project-card \.repo-tray \{[^}]*display: flex;/);
   assert.match(app, /readSelectedProject/);
   assert.match(app, /repoPath: repoInput/);
 });

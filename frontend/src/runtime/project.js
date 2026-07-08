@@ -3,6 +3,7 @@ import './appearance.js?v=palette-2';
 const BROWSER_SESSION_KEY = 'workbenchBrowserSession';
 const PROJECT_KEY = 'workbenchSelectedProject';
 const RECENT_PROJECTS_KEY = 'workbenchRecentProjects';
+const MAX_REPO_SUGGESTIONS = 8;
 const API_BASE = String(import.meta.env?.VITE_WORKBENCH_API_BASE || '').trim().replace(/\/+$/, '');
 
 const codexAuthPill = document.querySelector('#codex-auth-pill');
@@ -13,7 +14,7 @@ const form = document.querySelector('#project-form');
 const repoInput = document.querySelector('#project-repo-url');
 const repoSourceInput = document.querySelector('#project-repo-source');
 const branchInput = document.querySelector('#project-branch');
-const repoPicker = document.querySelector('#project-repo-picker');
+const repoOptions = document.querySelector('#project-repo-options');
 const repoTray = document.querySelector('#project-repo-tray');
 const repoRefresh = document.querySelector('#project-repo-refresh');
 const chooseFolder = document.querySelector('#project-choose-folder');
@@ -25,6 +26,9 @@ const projectWelcome = document.querySelector('#project-welcome');
 let providerKind = '';
 let githubRepos = [];
 let selectedRepo = null;
+let repoMatches = [];
+let activeRepoMatchIndex = -1;
+let githubConnected = false;
 let recentProjects = [];
 
 function getBrowserSessionId() {
@@ -110,17 +114,155 @@ function looksLikeLocalPath(value) {
   return /^(~|\/|[A-Za-z]:[\\/]|\\\\)/.test(String(value || '').trim());
 }
 
+function repoFullName(repo) {
+  return String(repo?.fullName || [repo?.owner, repo?.name].filter(Boolean).join('/') || repo?.name || '').trim();
+}
+
+function repoShortName(repo) {
+  return String(repo?.name || repoFullName(repo).split('/').pop() || '').trim();
+}
+
+function repoVisibility(repo) {
+  return repo?.private ? 'private' : 'public';
+}
+
+function repoSelectionLabel(repo) {
+  return `${repoFullName(repo)} · ${repoVisibility(repo)}`;
+}
+
+function normalizeSearch(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\/github\.com\//, '')
+    .replace(/^github\.com\//, '')
+    .replace(/^git@github\.com:/, '')
+    .replace(/\.git$/i, '');
+}
+
+function compactSearch(value) {
+  return normalizeSearch(value).replace(/[^a-z0-9]+/g, '');
+}
+
+function searchTokens(value) {
+  return normalizeSearch(value).split(/[^a-z0-9]+/).filter(Boolean);
+}
+
+function fuzzyScore(haystack, needle) {
+  if (!needle) return 0;
+  let cursor = -1;
+  let gaps = 0;
+  for (const character of needle) {
+    const next = haystack.indexOf(character, cursor + 1);
+    if (next === -1) return 0;
+    gaps += next - cursor - 1;
+    cursor = next;
+  }
+  return Math.max(1, 260 - gaps);
+}
+
+function scoreRepo(repo, query) {
+  const rawQuery = normalizeSearch(query);
+  if (!rawQuery) return 1;
+
+  const fullName = repoFullName(repo).toLowerCase();
+  const shortName = repoShortName(repo).toLowerCase();
+  const owner = String(repo?.owner || fullName.split('/')[0] || '').toLowerCase();
+  const cloneUrl = String(repo?.cloneUrl || '').toLowerCase();
+  const normalizedCloneUrl = normalizeSearch(cloneUrl);
+  const compactQuery = compactSearch(rawQuery);
+  const compactFullName = compactSearch(fullName);
+  const compactShortName = compactSearch(shortName);
+
+  if ([fullName, shortName, cloneUrl, normalizedCloneUrl].includes(rawQuery)) return 1000;
+  if (shortName.startsWith(rawQuery)) return 930;
+  if (fullName.startsWith(rawQuery)) return 900;
+  if (compactQuery && compactShortName.startsWith(compactQuery)) return 860;
+  if (compactQuery && compactFullName.startsWith(compactQuery)) return 830;
+
+  const tokens = searchTokens(rawQuery);
+  if (tokens.length && tokens.every((token) => fullName.includes(token) || shortName.includes(token) || owner.includes(token))) {
+    return 760 - Math.min(120, Math.max(0, fullName.indexOf(tokens[0])));
+  }
+
+  if (shortName.includes(rawQuery)) return 720;
+  if (fullName.includes(rawQuery)) return 700;
+  if (compactQuery && compactShortName.includes(compactQuery)) return 660;
+  if (compactQuery && compactFullName.includes(compactQuery)) return 630;
+
+  const fuzzy = fuzzyScore(compactFullName, compactQuery);
+  return fuzzy ? 420 + fuzzy : -1;
+}
+
+function filterRepos(query, limit = MAX_REPO_SUGGESTIONS) {
+  return githubRepos
+    .map((repo) => ({ repo, score: scoreRepo(repo, query) }))
+    .filter((entry) => entry.score > 0)
+    .sort((left, right) => right.score - left.score || repoFullName(left.repo).localeCompare(repoFullName(right.repo)))
+    .slice(0, limit)
+    .map((entry) => entry.repo);
+}
+
+function repoMatchesInput(repo, value) {
+  const text = cleanProjectValue(value);
+  if (!repo || !text) return false;
+  const normalized = normalizeSearch(text);
+  return [repoFullName(repo), repoShortName(repo), repo.cloneUrl].some((candidate) => normalizeSearch(candidate) === normalized);
+}
+
+function matchingRepoFromInput(value) {
+  const text = cleanProjectValue(value);
+  if (!text || looksLikeLocalPath(text) || !githubRepos.length) return null;
+  const exactMatches = githubRepos.filter((repo) => repoMatchesInput(repo, text));
+  if (exactMatches.length === 1) return exactMatches[0];
+
+  const smartMatches = filterRepos(text, 2);
+  if (smartMatches.length === 1 && scoreRepo(smartMatches[0], text) >= 700) return smartMatches[0];
+  return null;
+}
+
+function looksLikeBareRepoName(value) {
+  return /^[\w.-]+$/i.test(String(value || '').trim());
+}
+
 function projectFromInput() {
   const rawValue = cleanProjectValue(repoInput.value);
   if (!rawValue) return null;
+
   const local = providerKind === 'local' || looksLikeLocalPath(rawValue);
-  const value = local ? rawValue : normalizeRepoUrl(rawValue);
+  if (local) {
+    return {
+      kind: 'local',
+      value: rawValue,
+      label: projectLabel(rawValue),
+      repoSource: '',
+      branch: '',
+    };
+  }
+
+  const matchedRepo = repoMatchesInput(selectedRepo, rawValue) ? selectedRepo : matchingRepoFromInput(rawValue);
+  if (matchedRepo) {
+    selectedRepo = matchedRepo;
+    repoSourceInput.value = 'github';
+    branchInput.value = matchedRepo.defaultBranch || '';
+    return {
+      kind: 'git',
+      value: matchedRepo.cloneUrl || normalizeRepoUrl(repoFullName(matchedRepo)),
+      label: repoFullName(matchedRepo),
+      repoSource: 'github',
+      branch: matchedRepo.defaultBranch || '',
+    };
+  }
+
+  if (githubConnected && looksLikeBareRepoName(rawValue)) return null;
+
+  const value = normalizeRepoUrl(rawValue);
   return {
-    kind: local ? 'local' : 'git',
+    kind: 'git',
     value,
-    label: selectedRepo?.fullName || projectLabel(value),
-    repoSource: local ? '' : repoSourceInput.value,
-    branch: local ? '' : branchInput.value,
+    label: projectLabel(value),
+    repoSource: repoSourceInput.value,
+    branch: branchInput.value,
   };
 }
 
@@ -229,13 +371,80 @@ function renderAuthError(message) {
     pill.dataset.status = 'error';
     pill.title = message;
   }
+  githubConnected = false;
+  repoRefresh.disabled = true;
+  hideRepoSuggestions();
+}
+
+function hideRepoSuggestions() {
+  repoOptions.hidden = true;
+  repoInput.setAttribute('aria-expanded', 'false');
+  repoInput.removeAttribute('aria-activedescendant');
+  activeRepoMatchIndex = -1;
 }
 
 function resetRepoSelection(message) {
   selectedRepo = null;
   repoSourceInput.value = '';
-  repoPicker.value = '';
+  branchInput.value = '';
   if (message !== undefined) repoHint.textContent = message;
+}
+
+function selectRepo(repo) {
+  if (!repo) return;
+  selectedRepo = repo;
+  repoSourceInput.value = 'github';
+  branchInput.value = repo.defaultBranch || '';
+  repoInput.value = repoFullName(repo);
+  repoHint.textContent = repoSelectionLabel(repo);
+  hideRepoSuggestions();
+}
+
+function setActiveRepoMatch(index) {
+  if (!repoMatches.length) {
+    activeRepoMatchIndex = -1;
+    repoInput.removeAttribute('aria-activedescendant');
+    return;
+  }
+  activeRepoMatchIndex = (index + repoMatches.length) % repoMatches.length;
+  renderRepoSuggestions();
+}
+
+function renderRepoSuggestions() {
+  if (providerKind === 'local' || !githubConnected || !githubRepos.length) {
+    hideRepoSuggestions();
+    return;
+  }
+
+  const query = repoInput.value.trim();
+  repoMatches = filterRepos(query);
+  if (!repoMatches.length) {
+    repoOptions.innerHTML = '<div class="repo-suggestion-empty" role="presentation">No matching repos. Paste a full URL to use it anyway.</div>';
+    repoInput.setAttribute('aria-expanded', 'true');
+    repoInput.removeAttribute('aria-activedescendant');
+    repoOptions.hidden = false;
+    activeRepoMatchIndex = -1;
+    return;
+  }
+
+  if (query && activeRepoMatchIndex < 0) activeRepoMatchIndex = 0;
+  if (activeRepoMatchIndex >= repoMatches.length) activeRepoMatchIndex = repoMatches.length - 1;
+
+  repoOptions.innerHTML = repoMatches.map((repo, index) => {
+    const active = index === activeRepoMatchIndex;
+    const branch = repo.defaultBranch ? ` · ${repo.defaultBranch}` : '';
+    return `
+      <button id="project-repo-option-${index}" class="repo-suggestion${active ? ' is-active' : ''}" type="button" role="option" aria-selected="${active ? 'true' : 'false'}" data-repo-index="${index}">
+        <span><strong>${escapeHtml(repoFullName(repo))}</strong><small>${escapeHtml(repo.cloneUrl || '')}</small></span>
+        <em>${escapeHtml(repoVisibility(repo) + branch)}</em>
+      </button>
+    `;
+  }).join('');
+
+  repoInput.setAttribute('aria-expanded', 'true');
+  if (activeRepoMatchIndex >= 0) repoInput.setAttribute('aria-activedescendant', `project-repo-option-${activeRepoMatchIndex}`);
+  else repoInput.removeAttribute('aria-activedescendant');
+  repoOptions.hidden = false;
 }
 
 async function loadLastFolder() {
@@ -252,20 +461,20 @@ function renderProvider(provider) {
   providerKind = provider?.kind || '';
   const local = providerKind === 'local';
   const canChooseFolder = Boolean(globalThis.workbenchDesktop?.chooseFolder);
-  repoInput.placeholder = local ? '/Users/you/project' : 'github.com/you/repo or /Users/you/project';
+  repoInput.placeholder = local ? '/Users/you/project' : 'type repo name, paste URL, or /Users/you/project';
   repoTray.hidden = local && canChooseFolder;
-  repoPicker.hidden = local;
   repoRefresh.hidden = local;
   chooseFolder.hidden = !canChooseFolder;
   if (local) {
+    hideRepoSuggestions();
     resetRepoSelection(canChooseFolder ? '' : 'Paste a local folder path.');
     void loadLastFolder();
   }
 }
 
 function renderRepoOptions(repos) {
-  repoPicker.innerHTML = ['<option value="">GitHub repos</option>', ...repos.map((repo) => `<option value="${escapeHtml(repo.id)}">${escapeHtml(repo.fullName)}${repo.private ? ' · private' : ''}</option>`)].join('');
-  repoHint.textContent = repos.length ? `${repos.length} GitHub repos` : 'No GitHub repos found.';
+  repoHint.textContent = repos.length ? `${repos.length} GitHub repos · type to filter` : 'No GitHub repos found.';
+  if (document.activeElement === repoInput) renderRepoSuggestions();
 }
 
 async function loadGitHubRepos() {
@@ -303,12 +512,16 @@ async function loadStatus() {
     renderAuthPill(codexAuthPill, codexAuthLabel, Boolean(codex.configured), codex.configured ? `Codex: ${codex.source || 'signed in'}` : 'Codex: signed out', 'codex');
     const github = await fetchJson('/api/auth/github');
     const connected = Boolean(github.connected);
+    githubConnected = connected;
     renderWelcome(connected ? github.user : null);
     renderAuthPill(githubAuthPill, githubAuthLabel, connected, connected ? `GitHub: ${github.user?.login || 'connected'}` : github.configured ? 'GitHub: signed out' : 'GitHub: not configured', 'github');
-    repoPicker.disabled = providerKind === 'local' || !connected;
     repoRefresh.disabled = providerKind === 'local' || !connected;
     if (connected && providerKind !== 'local') await loadGitHubRepos();
-    else if (providerKind !== 'local') repoHint.textContent = github.configured ? 'Sign in in Settings, paste a repo, or choose a local folder.' : 'Paste a repo or choose a local folder.';
+    else if (providerKind !== 'local') {
+      githubRepos = [];
+      hideRepoSuggestions();
+      repoHint.textContent = github.configured ? 'Sign in in Settings, paste a repo, or choose a local folder.' : 'Paste a repo or choose a local folder.';
+    }
   } catch (error) {
     renderAuthError(error.message);
   }
@@ -349,29 +562,55 @@ chooseFolder.addEventListener('click', async () => {
   }
 });
 
-repoPicker.addEventListener('change', () => {
-  selectedRepo = githubRepos.find((entry) => String(entry.id) === repoPicker.value) || null;
-  if (!selectedRepo) {
-    resetRepoSelection('Pick a GitHub repo, paste a repo, or choose a local folder.');
-    return;
-  }
-  repoSourceInput.value = 'github';
-  repoInput.value = selectedRepo.cloneUrl;
-  branchInput.value = selectedRepo.defaultBranch || '';
-  repoHint.textContent = `${selectedRepo.fullName}${selectedRepo.private ? ' · private' : ''}`;
-});
+repoInput.addEventListener('focus', renderRepoSuggestions);
 
 repoInput.addEventListener('input', () => {
-  if (!selectedRepo) return;
-  if (repoInput.value.trim() === selectedRepo.cloneUrl) return;
-  resetRepoSelection('Manual project.');
+  const value = repoInput.value.trim();
+  if (!selectedRepo || !repoMatchesInput(selectedRepo, value)) {
+    resetRepoSelection(value ? 'Type to filter GitHub repos, or paste a URL.' : 'Type a repo name, paste a URL, or choose a local folder.');
+  }
+  activeRepoMatchIndex = -1;
+  renderRepoSuggestions();
+});
+
+repoInput.addEventListener('keydown', (event) => {
+  if (event.key === 'ArrowDown') {
+    event.preventDefault();
+    if (repoOptions.hidden) renderRepoSuggestions();
+    setActiveRepoMatch(activeRepoMatchIndex + 1);
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault();
+    if (repoOptions.hidden) renderRepoSuggestions();
+    setActiveRepoMatch(activeRepoMatchIndex < 0 ? repoMatches.length - 1 : activeRepoMatchIndex - 1);
+  } else if (event.key === 'Enter' && !repoOptions.hidden && activeRepoMatchIndex >= 0) {
+    event.preventDefault();
+    selectRepo(repoMatches[activeRepoMatchIndex]);
+  } else if (event.key === 'Escape') {
+    hideRepoSuggestions();
+  }
+});
+
+repoOptions.addEventListener('mousedown', (event) => {
+  event.preventDefault();
+});
+
+repoOptions.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-repo-index]');
+  if (!button) return;
+  selectRepo(repoMatches[Number(button.dataset.repoIndex)]);
+});
+
+document.addEventListener('mousedown', (event) => {
+  if (event.target === repoInput || repoOptions.contains(event.target)) return;
+  hideRepoSuggestions();
 });
 
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
   const project = projectFromInput();
   if (!project) {
-    statusLine.textContent = 'Choose a local folder or enter a repo.';
+    statusLine.textContent = 'Pick a matching GitHub repo, paste owner/repo, or choose a local folder.';
+    renderRepoSuggestions();
     return;
   }
   statusLine.textContent = 'Opening workspace…';

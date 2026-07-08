@@ -74,14 +74,14 @@ export function ProjectPage() {
         <input id="project-repo-source" name="repoSource" type="hidden" value="" readOnly />
         <input id="project-branch" name="branch" type="hidden" value="" readOnly />
         <label className="sr-only" htmlFor="project-repo-url">folder or repo</label>
-        <InputGroup as="div" className="project-target repo-input">
-          <input id="project-repo-url" name="repoUrl" placeholder="/Users/you/project" aria-label="folder or repo" required />
+        <InputGroup as="div" className="project-target repo-input repo-combobox">
+          <input id="project-repo-url" name="repoUrl" placeholder="/Users/you/project" aria-label="folder or repo" autoComplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="project-repo-options" required />
           <Button id="project-choose-folder" variant="ghost" size="sm" className="folder-picker-btn" type="button" hidden aria-label="choose local folder" title="choose local folder">choose folder</Button>
+          <div id="project-repo-options" className="repo-suggestions" role="listbox" hidden></div>
         </InputGroup>
-        <div id="project-repo-tray" className="repo-tray">
-          <Select id="project-repo-picker" className="board-select" disabled><option value="">GitHub repos</option></Select>
-          <Button id="project-repo-refresh" variant="ghost" type="button">refresh</Button>
-          <p id="project-repo-hint" className="muted">Choose a local folder or paste a repo.</p>
+        <div id="project-repo-tray" className="repo-tray project-repo-toolbar">
+          <Button id="project-repo-refresh" variant="ghost" type="button">refresh repos</Button>
+          <p id="project-repo-hint" className="muted">Type a repo name, paste a URL, or choose a local folder.</p>
         </div>
         <Button id="project-submit" variant="primary" type="submit">open workspace</Button>
         <p id="project-status" className="status-line" aria-live="polite"></p>
