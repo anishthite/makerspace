@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createServer } from 'node:http';
 import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -30,6 +31,14 @@ function config(root) {
   };
 }
 
+async function occupyClaudeCallbackPort() {
+  const server = createServer((_, response) => response.end('busy'));
+  return await new Promise((resolve) => {
+    server.once('error', () => resolve(null));
+    server.listen(53692, '127.0.0.1', () => resolve(server));
+  });
+}
+
 test('hosted Codex and Claude Code auth are stored per user and formatted for Pi auth.json', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'workbench-codex-auth-'));
   try {
@@ -58,6 +67,61 @@ test('hosted Codex and Claude Code auth are stored per user and formatted for Pi
     assert.deepEqual(JSON.parse(authText), { 'openai-codex': credential, anthropic: claudeCredential });
     assert.equal(await auth.readPiAuthForSession({ ownerUserId: other.id }), null);
   } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('hosted GitHub status ignores stale browser session auth', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'workbench-github-status-'));
+  try {
+    const auth = createAuthService({ config: config(root), http: testHttp() });
+    auth.writeBrowserSession('browser-session-1234567890', {
+      githubToken: 'other-token',
+      githubUser: { login: 'other' },
+    });
+
+    const status = await auth.publicGitHubAuth(auth.readBrowserSession('browser-session-1234567890'));
+    assert.equal(status.connected, false);
+    assert.equal(status.user, null);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('hosted Claude Code login exchanges pasted redirect without binding fixed callback port', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'workbench-claude-manual-auth-'));
+  const blocker = await occupyClaudeCallbackPort();
+  const previousFetch = globalThis.fetch;
+  try {
+    const auth = createAuthService({ config: config(root), http: testHttp() });
+    const user = await auth.authStore.upsertUser({ githubId: '1', login: 'octo' });
+    globalThis.fetch = async (url, options = {}) => {
+      assert.equal(String(url), 'https://platform.claude.com/v1/oauth/token');
+      const body = JSON.parse(String(options.body || '{}'));
+      assert.equal(body.grant_type, 'authorization_code');
+      assert.equal(body.redirect_uri, 'http://localhost:53692/callback');
+      assert.equal(body.state, body.code_verifier);
+      assert.equal(body.code, 'claude-code');
+      return new Response(JSON.stringify({ access_token: 'claude-access', refresh_token: 'claude-refresh', expires_in: 3600 }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    };
+
+    const login = await auth.startClaudeCodeLogin(user);
+    assert.equal(login.status, 'waiting');
+    assert.equal(login.manual, true);
+    assert.match(login.auth.url, /^https:\/\/claude\.ai\/oauth\/authorize\?/);
+
+    const job = auth.getAuthLogin(login.id, user);
+    auth.submitClaudeCodeLoginCode(login.id, user, { redirectUrl: `http://localhost:53692/callback?code=claude-code&state=${job.verifier}` });
+    await job.exchangePromise;
+
+    const authText = await auth.readPiAuthForSession({ ownerUserId: user.id });
+    assert.equal(JSON.parse(authText).anthropic.access, 'claude-access');
+  } finally {
+    globalThis.fetch = previousFetch;
+    await new Promise((resolve) => blocker?.close(resolve) || resolve());
     await rm(root, { recursive: true, force: true });
   }
 });

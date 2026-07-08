@@ -335,7 +335,8 @@ export function createThreadService({ config, provider, http, auth, runState, br
     if (session.localMode) throw clientError('Draft PR delivery is only available for GitHub cloud workspaces.', 400);
 
     const owner = session.ownerUserId ? { id: session.ownerUserId } : user;
-    const token = await githubTokenForUser?.(owner) || readBrowserSession?.(viewerSessionId)?.githubToken || '';
+    const browserToken = config.authRequired || session.ownerUserId ? '' : readBrowserSession?.(viewerSessionId)?.githubToken || '';
+    const token = await githubTokenForUser?.(owner) || browserToken;
     if (!token) throw clientError('Reconnect GitHub before creating a pull request.', 401);
 
     const files = trackedChangesPayloadForThread(session).files;

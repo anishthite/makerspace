@@ -9,6 +9,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
   const {
     requireApiToken,
     requireTrustedBrowserRequest,
+    requireAuthMutationOrigin,
     browserSessionId,
     hasTrustedControlToken,
     requireBrowserSessionId,
@@ -81,6 +82,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
       }
 
       if (requireApiToken(request, response, url)) return;
+      if (request.method === 'POST' && pathname.startsWith('/api/auth/') && requireAuthMutationOrigin(request, response, url)) return;
       if (pathname.startsWith('/api/') && !['/api/auth/github/callback', '/api/auth/github/app/callback'].includes(pathname) && requireTrustedBrowserRequest(request, response)) return;
 
       const viewerSessionId = browserSessionId(request);
@@ -150,7 +152,8 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
         const sessionId = requireBrowserSessionId(request, response);
         if (!sessionId) return;
         const body = await readJsonBody(request);
-        sendJson(response, 200, startGitHubLogin(request, sessionId, body));
+        const result = startGitHubLogin(request, sessionId, body, user);
+        sendText(response, 200, `${JSON.stringify({ loginUrl: result.loginUrl }, null, 2)}\n`, 'application/json; charset=utf-8', result.headers || {});
         return;
       }
 

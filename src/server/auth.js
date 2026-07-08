@@ -1,4 +1,4 @@
-import { createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import path from 'node:path';
@@ -32,6 +32,11 @@ const CLAUDE_CODE_AUTH_PROVIDER = 'anthropic';
 const CLAUDE_CODE_USER_SECRET_KEY = 'claude-code-auth';
 const USER_PI_AUTH_PROVIDERS = [CODEX_AUTH_PROVIDER, CLAUDE_CODE_AUTH_PROVIDER];
 const GITHUB_APP_INSTALLATIONS_KEY = 'githubAppInstallations';
+const CLAUDE_CODE_CLIENT_ID = Buffer.from('OWQxYzI1MGEtZTYxYi00NGQ5LTg4ZWQtNTk0NGQxOTYyZjVl', 'base64').toString('utf8');
+const CLAUDE_CODE_AUTHORIZE_URL = 'https://claude.ai/oauth/authorize';
+const CLAUDE_CODE_TOKEN_URL = 'https://platform.claude.com/v1/oauth/token';
+const CLAUDE_CODE_REDIRECT_URI = 'http://localhost:53692/callback';
+const CLAUDE_CODE_SCOPES = 'org:create_api_key user:profile user:inference user:sessions:claude_code user:mcp_servers user:file_upload';
 
 function normalizeOAuthCredential(raw, provider = '') {
   let parsed;
@@ -60,6 +65,89 @@ function piAuthText(credentialsByProvider = {}) {
   return Object.keys(credentials).length ? `${JSON.stringify(credentials, null, 2)}\n` : null;
 }
 
+function parseClaudeCodeAuthorizationInput(input) {
+  const value = String(input || '').trim();
+  if (!value) return {};
+
+  try {
+    const url = new URL(value);
+    return {
+      code: url.searchParams.get('code') || undefined,
+      state: url.searchParams.get('state') || undefined,
+    };
+  } catch {}
+
+  if (value.includes('#')) {
+    const [code, state] = value.split('#', 2);
+    return { code, state };
+  }
+
+  if (value.includes('code=')) {
+    const params = new URLSearchParams(value);
+    return {
+      code: params.get('code') || undefined,
+      state: params.get('state') || undefined,
+    };
+  }
+
+  return { code: value };
+}
+
+function buildHostedClaudeCodeAuth() {
+  const verifier = randomBytes(32).toString('base64url');
+  const challenge = createHash('sha256').update(verifier).digest('base64url');
+  const params = new URLSearchParams({
+    code: 'true',
+    client_id: CLAUDE_CODE_CLIENT_ID,
+    response_type: 'code',
+    redirect_uri: CLAUDE_CODE_REDIRECT_URI,
+    scope: CLAUDE_CODE_SCOPES,
+    code_challenge: challenge,
+    code_challenge_method: 'S256',
+    state: verifier,
+  });
+  return { verifier, url: `${CLAUDE_CODE_AUTHORIZE_URL}?${params.toString()}` };
+}
+
+async function exchangeHostedClaudeCode(code, state, verifier) {
+  const response = await fetch(CLAUDE_CODE_TOKEN_URL, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', accept: 'application/json' },
+    body: JSON.stringify({
+      grant_type: 'authorization_code',
+      client_id: CLAUDE_CODE_CLIENT_ID,
+      code,
+      state,
+      redirect_uri: CLAUDE_CODE_REDIRECT_URI,
+      code_verifier: verifier,
+    }),
+    signal: AbortSignal.timeout(30_000),
+  });
+  const text = await response.text();
+  if (!response.ok) throw new Error(`Claude Code token exchange failed: ${response.status} ${text}`);
+
+  let payload;
+  try {
+    payload = JSON.parse(text);
+  } catch {
+    throw new Error('Claude Code token exchange returned invalid JSON.');
+  }
+
+  const access = String(payload.access_token || '');
+  const refresh = String(payload.refresh_token || '');
+  const expiresIn = Number(payload.expires_in || 0);
+  if (!access || !refresh || !Number.isFinite(expiresIn) || expiresIn <= 0) {
+    throw new Error('Claude Code token exchange returned incomplete credentials.');
+  }
+
+  return {
+    type: 'oauth',
+    access,
+    refresh,
+    expires: Date.now() + expiresIn * 1000 - 5 * 60 * 1000,
+  };
+}
+
 export function createAuthService({ config, http }) {
   const { sendJson, requestToken, originFor, clientError } = http;
   const BROWSER_SESSION_HEADER = 'x-workbench-session';
@@ -77,6 +165,10 @@ export function createAuthService({ config, http }) {
 
   function cookieName() {
     return config.authCookieName || 'workbench_auth';
+  }
+
+  function githubNonceCookieName() {
+    return `${cookieName()}_github_oauth`;
   }
 
   function authSecret() {
@@ -162,6 +254,32 @@ export function createAuthService({ config, http }) {
     ].join('; ');
   }
 
+  function githubNonceCookieHeader(request, nonce) {
+    return [
+      `${githubNonceCookieName()}=${encodeURIComponent(signedValue(nonce))}`,
+      'Path=/api/auth/github/callback',
+      'HttpOnly',
+      `SameSite=${cookieSameSite()}`,
+      'Max-Age=600',
+      ...(cookieSecureFlag(request) || cookieSameSite().toLowerCase() === 'none' ? ['Secure'] : []),
+    ].join('; ');
+  }
+
+  function clearGitHubNonceCookieHeader(request) {
+    return [
+      `${githubNonceCookieName()}=`,
+      'Path=/api/auth/github/callback',
+      'HttpOnly',
+      `SameSite=${cookieSameSite()}`,
+      'Max-Age=0',
+      ...(cookieSecureFlag(request) || cookieSameSite().toLowerCase() === 'none' ? ['Secure'] : []),
+    ].join('; ');
+  }
+
+  function githubNonceCookie(request) {
+    return verifySignedValue(parseCookies(request).get(githubNonceCookieName()) || '');
+  }
+
   function githubCallbackUrl(request) {
     return `${originFor(request)}/api/auth/github/callback`;
   }
@@ -221,6 +339,21 @@ export function createAuthService({ config, http }) {
     return true;
   }
 
+  function requireAuthMutationOrigin(request, response, url) {
+    if (!authRequired() || hasTrustedControlToken(request, url)) return false;
+    const fetchSite = String(request.headers['sec-fetch-site'] || '').trim().toLowerCase();
+    if (fetchSite && !['same-origin', 'same-site'].includes(fetchSite)) {
+      sendJson(response, 403, { error: 'Auth changes need a same-origin request.' });
+      return true;
+    }
+    const origin = requestSiteOrigin(request);
+    if (origin && origin !== originFor(request) && origin !== config.allowedOrigin) {
+      sendJson(response, 403, { error: 'Auth changes need a same-origin request.' });
+      return true;
+    }
+    return false;
+  }
+
   function requireBrowserSessionId(request, response) {
     const sessionId = browserSessionId(request);
     if (sessionId) return sessionId;
@@ -267,13 +400,20 @@ export function createAuthService({ config, http }) {
     return Boolean(config.controlApiToken && requestToken(request, url) === config.controlApiToken);
   }
 
+  function userAllowed(user = {}) {
+    const allowed = Array.isArray(config.allowedUsers) ? config.allowedUsers.map((value) => String(value || '').trim().toLowerCase()).filter(Boolean) : [];
+    if (!allowed.length) return true;
+    const values = [user.login, user.githubId, user.id].map((value) => String(value || '').trim().toLowerCase()).filter(Boolean);
+    return values.some((value) => allowed.includes(value));
+  }
+
   async function currentUser(request) {
     const token = authCookieToken(request);
     if (!token) return null;
     const session = await authStore.getAuthSession(hashAuthSessionId(token));
     if (!session?.userId) return null;
     const user = await authStore.getUser(session.userId);
-    return user ? { ...user, authSessionHash: session.idHash } : null;
+    return user && userAllowed(user) ? { ...user, authSessionHash: session.idHash } : null;
   }
 
   function publicUser(user) {
@@ -519,13 +659,15 @@ export function createAuthService({ config, http }) {
 
   async function startClaudeCodeLogin(user = null) {
     if (authRequired() && !user?.id) throw clientError('Sign in with GitHub before Claude Code.', 401);
+    if (authRequired()) return startHostedClaudeCodeLogin(user);
+
     const { AuthStorage } = await loadPiSdk();
-    const authStorage = authRequired() ? AuthStorage.inMemory() : AuthStorage.create();
+    const authStorage = AuthStorage.create();
     const id = randomUUID();
     const job = {
       id,
       provider: CLAUDE_CODE_AUTH_PROVIDER,
-      ownerUserId: user?.id || '',
+      ownerUserId: '',
       status: 'starting',
       auth: null,
       device: null,
@@ -570,10 +712,6 @@ export function createAuthService({ config, http }) {
         job.progress = message;
       },
     }).then(async () => {
-      const credential = normalizeOAuthCredential(authStorage.get(CLAUDE_CODE_AUTH_PROVIDER), CLAUDE_CODE_AUTH_PROVIDER);
-      if (authRequired() && credential) {
-        await authStore.writeUserSecret(user.id, CLAUDE_CODE_USER_SECRET_KEY, JSON.stringify(credential));
-      }
       job.resolveManual = null;
       job.status = 'complete';
       job.completedAt = new Date().toISOString();
@@ -588,10 +726,56 @@ export function createAuthService({ config, http }) {
     return publicAuthLogin(job);
   }
 
+  function startHostedClaudeCodeLogin(user) {
+    const { verifier, url } = buildHostedClaudeCodeAuth();
+    const job = {
+      id: randomUUID(),
+      provider: CLAUDE_CODE_AUTH_PROVIDER,
+      ownerUserId: user.id,
+      status: 'waiting',
+      auth: {
+        url,
+        instructions: 'Approve Claude Code access, then paste the final localhost redirect URL.',
+      },
+      manual: true,
+      hostedManual: true,
+      verifier,
+      error: null,
+    };
+    authLogins.set(job.id, job);
+    return publicAuthLogin(job);
+  }
+
+  function submitHostedClaudeCodeLoginCode(job, body = {}) {
+    const input = String(body.code || body.authorizationCode || body.redirectUrl || '').trim();
+    if (!input) throw clientError('Paste the Claude Code redirect URL or authorization code.');
+    if (job.exchangePromise) return publicAuthLogin(job);
+
+    const parsed = parseClaudeCodeAuthorizationInput(input);
+    if (!parsed.code) throw clientError('Paste a Claude Code redirect URL with a code parameter, or paste the code itself.');
+    if (parsed.state && parsed.state !== job.verifier) throw clientError('Claude Code OAuth state mismatch. Start sign-in again.', 400);
+
+    job.status = 'exchanging';
+    job.progress = 'Exchanging authorization code for tokens...';
+    job.exchangePromise = exchangeHostedClaudeCode(parsed.code, parsed.state || job.verifier, job.verifier)
+      .then(async (credential) => {
+        await authStore.writeUserSecret(job.ownerUserId, CLAUDE_CODE_USER_SECRET_KEY, JSON.stringify(credential));
+        job.status = 'complete';
+        job.progress = null;
+        job.completedAt = new Date().toISOString();
+      })
+      .catch((error) => {
+        job.status = 'failed';
+        job.error = error.message;
+      });
+    return publicAuthLogin(job);
+  }
+
   function submitClaudeCodeLoginCode(id, user = null, body = {}) {
     const job = getAuthLogin(id, user);
     if (!job || job.provider !== CLAUDE_CODE_AUTH_PROVIDER) throw clientError('Login not found', 404);
     if (job.status === 'complete' || job.status === 'failed') return publicAuthLogin(job);
+    if (job.hostedManual) return submitHostedClaudeCodeLoginCode(job, body);
 
     const code = String(body.code || body.authorizationCode || body.redirectUrl || '').trim();
     if (!code) throw clientError('Paste the Claude Code redirect URL or authorization code.');
@@ -690,6 +874,14 @@ export function createAuthService({ config, http }) {
         connected: Boolean(await githubTokenForUser(maybeUser)),
         user: publicUser(maybeUser),
         app: await publicGitHubAppAuth(maybeUser),
+      };
+    }
+    if (authRequired()) {
+      return {
+        configured: githubAuthConfigured(config),
+        connected: false,
+        user: null,
+        app: await publicGitHubAppAuth(null),
       };
     }
     const session = sessionOrUser;
@@ -885,14 +1077,18 @@ export function createAuthService({ config, http }) {
     }
   }
 
-  function startGitHubLogin(request, sessionId, body = {}) {
+  function startGitHubLogin(request, sessionId, body = {}, user = null) {
     const state = randomUUID();
+    const nonce = randomBytes(32).toString('base64url');
     githubLogins.set(state, {
       returnTo: trimReturnTo(body.returnTo, request),
       sessionId,
+      userId: user?.id || '',
+      nonce,
     });
     return {
       loginUrl: buildGitHubAuthorizeUrl(config, githubCallbackUrl(request), state),
+      headers: { 'set-cookie': githubNonceCookieHeader(request, nonce) },
     };
   }
 
@@ -905,19 +1101,36 @@ export function createAuthService({ config, http }) {
     if (!login || !code) {
       return { statusCode: 400, text: 'GitHub login expired or failed.' };
     }
+    if (login.nonce && githubNonceCookie(request) !== login.nonce) {
+      return { statusCode: 400, text: 'GitHub login expired or failed.' };
+    }
+    const clearNonce = clearGitHubNonceCookieHeader(request);
 
     try {
       const token = await exchangeGitHubCode(config, code, githubCallbackUrl(request));
       const githubUser = await fetchGitHubUser(token);
+      const nextUserId = `github-${githubUser.id}`;
+      if (!userAllowed(githubUser)) {
+        const redirectTo = new URL(login.returnTo);
+        redirectTo.searchParams.set('github', 'denied');
+        redirectTo.searchParams.set('message', 'This GitHub account is not enabled for this Workbench.');
+        return { location: redirectTo.toString(), headers: { 'set-cookie': clearNonce } };
+      }
+      if (login.userId && login.userId !== nextUserId) {
+        const redirectTo = new URL(login.returnTo);
+        redirectTo.searchParams.set('github', 'denied');
+        redirectTo.searchParams.set('message', 'Sign out before switching GitHub accounts.');
+        return { location: redirectTo.toString(), headers: { 'set-cookie': clearNonce } };
+      }
       const user = await authStore.upsertUser({
-        id: `github-${githubUser.id}`,
+        id: nextUserId,
         githubId: githubUser.id,
         login: githubUser.login,
         name: githubUser.name,
         avatarUrl: githubUser.avatarUrl,
       });
       await authStore.upsertOAuthToken({ userId: user.id, provider: 'github', accessToken: token, scopes: ['repo', 'read:user'] });
-      writeBrowserSession(login.sessionId, { githubToken: token, githubUser, githubRepos: [] });
+      if (!authRequired()) writeBrowserSession(login.sessionId, { githubToken: token, githubUser, githubRepos: [] });
 
       const sessionToken = randomBytes(32).toString('base64url');
       const expiresAt = new Date(Date.now() + Math.max(1, Number(config.authSessionDays || 30)) * 24 * 60 * 60 * 1000).toISOString();
@@ -925,12 +1138,12 @@ export function createAuthService({ config, http }) {
 
       const redirectTo = new URL(login.returnTo);
       redirectTo.searchParams.set('github', 'connected');
-      return { location: redirectTo.toString(), headers: { 'set-cookie': authCookieHeader(request, sessionToken) } };
+      return { location: redirectTo.toString(), headers: { 'set-cookie': [authCookieHeader(request, sessionToken), clearNonce] } };
     } catch (error) {
       const redirectTo = new URL(login.returnTo);
       redirectTo.searchParams.set('github', 'error');
       redirectTo.searchParams.set('message', error.message);
-      return { location: redirectTo.toString() };
+      return { location: redirectTo.toString(), headers: { 'set-cookie': clearNonce } };
     }
   }
 
@@ -971,6 +1184,7 @@ export function createAuthService({ config, http }) {
     completeGitHubLogin,
     browserSessionId,
     requireTrustedBrowserRequest,
+    requireAuthMutationOrigin,
     requireBrowserSessionId,
     readBrowserSession,
     writeBrowserSession,
