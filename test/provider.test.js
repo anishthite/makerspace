@@ -85,6 +85,7 @@ test('createProvider exposes Daytona metadata without importing the SDK', () => 
   assert.deepEqual(provider.bridgeHeaders({}), {});
   assert.equal(provider.shouldRefreshSession({ updatedAt: '2000-01-01T00:00:00.000Z' }), true);
   assert.equal(provider.shouldRefreshSession({ updatedAt: new Date().toISOString() }), false);
+  assert.equal(provider.shouldRefreshSession({ status: 'ready', daytonaState: 'stopped', updatedAt: new Date().toISOString() }), true);
   assert.deepEqual(provider.info().env, {
     apiKey: true,
     apiUrl: true,

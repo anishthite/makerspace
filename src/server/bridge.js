@@ -18,6 +18,7 @@ import {
 import { normalizeBridgeClientId, normalizeSubmittedAtMs, sleep, trimTrailingSlash } from './utils.js';
 
 const MAX_BRIDGE_LAUNCH_LOG_ENTRIES = 40;
+const BRIDGE_WAKE_ERROR_RE = /fetch failed|ECONNRESET|ECONNREFUSED|ETIMEDOUT|EHOSTUNREACH|ENOTFOUND|timed out|not started|not running|stopped|starting|temporarily unavailable|bad gateway|service unavailable|gateway timeout|\b50[234]\b/i;
 
 export function createBridgeService({ config, provider, auth, runState }) {
   const readPiAuthForSession = auth.readPiAuthForSession || auth.readLocalPiAuth || (async () => null);
@@ -95,6 +96,11 @@ export function createBridgeService({ config, provider, auth, runState }) {
       ...(provider.bridgeHeaders?.(session) || {}),
       ...extra,
     };
+  }
+
+  function isBridgeWakeError(error) {
+    const message = String(error?.message || error || '');
+    return BRIDGE_WAKE_ERROR_RE.test(message);
   }
 
   async function fetchBridgeJson(session, pathname, options = {}) {
@@ -1000,19 +1006,15 @@ export function createBridgeService({ config, provider, auth, runState }) {
     return stored;
   }
 
-  async function refreshBridgeSessionIfNeeded(session, refreshReference = session) {
-    if (!provider.shouldRefreshSession?.(refreshReference)) {
-      await syncBridgeAuth(session);
-      return session;
-    }
-
+  async function recreateBridgeSession(session, reason) {
     appendRunOutput(session.name, '[system] Waking the idle main agent sandbox...\n', 'launching');
     const imageSettings = await readSavedSettings(config.settingsFile);
-    await recordBridgeLaunchLog(session, 'refresh:create_session');
+    await recordBridgeLaunchLog(session, 'refresh:create_session', { reason });
     const remote = await provider.createSession(session, bridgeLaunchSettings(session, imageSettings));
     const bridgeUrl = trimTrailingSlash(remote.bridgeUrl || remote.httpsUrl || session.bridgeUrl || '');
+    const current = (await getStoredSession(config.sessionFile, session.name)) || session;
     const updated = await upsertSession(config.sessionFile, {
-      ...session,
+      ...current,
       ...remote,
       bridgeUrl,
       status: 'launching',
@@ -1023,6 +1025,22 @@ export function createBridgeService({ config, provider, auth, runState }) {
     await waitForBridge(updated);
     await syncBridgeAuth(updated);
     return updated;
+  }
+
+  async function refreshBridgeSessionIfNeeded(session, refreshReference = session) {
+    if (provider.shouldRefreshSession?.(refreshReference)) {
+      return recreateBridgeSession(session, 'stale');
+    }
+
+    try {
+      await fetchBridgeJson(session, '/healthz');
+      await syncBridgeAuth(session);
+      return session;
+    } catch (error) {
+      if (!provider.createSession || !isBridgeWakeError(error)) throw error;
+      await recordBridgeLaunchLog(session, 'refresh:bridge_unreachable', { error: error.message });
+      return recreateBridgeSession(session, 'unreachable');
+    }
   }
 
   return {

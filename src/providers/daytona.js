@@ -368,6 +368,9 @@ export function createDaytonaProvider(config, options = {}) {
       return session?.previewToken ? { 'x-daytona-preview-token': session.previewToken } : {};
     },
     shouldRefreshSession(session) {
+      const statuses = [session?.daytonaState, session?.status].map((value) => String(value || '').toLowerCase());
+      if (statuses.some((status) => ['stopped', 'archived', 'stopping', 'archiving'].includes(status))) return true;
+
       const autostop = Number(config.daytonaAutostopMinutes);
       if (!Number.isFinite(autostop) || autostop <= 0) return false;
       const updatedAtMs = Date.parse(session?.updatedAt || session?.createdAt || '');

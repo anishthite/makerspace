@@ -52,7 +52,10 @@ test('ready bridge reuse syncs current Codex auth before running', async () => {
   const requests = [];
 
   globalThis.fetch = async (url, options = {}) => {
-    requests.push({ url: String(url), body: JSON.parse(String(options.body || '{}')) });
+    requests.push({
+      url: String(url),
+      body: options.body ? JSON.parse(String(options.body)) : null,
+    });
     return new Response('{"ok":true}\n', { status: 200, headers: { 'content-type': 'application/json' } });
   };
 
@@ -98,15 +101,102 @@ test('ready bridge reuse syncs current Codex auth before running', async () => {
     };
 
     assert.equal(await bridge.refreshBridgeSessionIfNeeded(session), session);
-    assert.equal(requests.length, 1);
-    assert.equal(requests[0].url, 'https://bridge.example/auth');
-    assert.equal(requests[0].body.authText, 'auth-for-github-1');
-    assert.deepEqual(requests[0].body.github, {
+    assert.equal(requests.length, 2);
+    assert.equal(requests[0].url, 'https://bridge.example/healthz');
+    assert.equal(requests[1].url, 'https://bridge.example/auth');
+    assert.equal(requests[1].body.authText, 'auth-for-github-1');
+    assert.deepEqual(requests[1].body.github, {
       token: 'github-for-github-1',
       login: 'octo',
       name: 'Octo Cat',
       email: 'octo@example.test',
     });
+  } finally {
+    globalThis.fetch = previousFetch;
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('ready bridge refresh wakes a stopped sandbox when auth sync cannot reach it', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-bridge-wake-'));
+  const sessionFile = path.join(root, 'sessions.json');
+  const settingsFile = path.join(root, 'settings.json');
+  const previousFetch = globalThis.fetch;
+  const requests = [];
+  let createCalls = 0;
+
+  globalThis.fetch = async (url, options = {}) => {
+    requests.push({ url: String(url), method: options.method || 'GET' });
+    const text = String(url);
+    if (text === 'https://old-bridge.example/healthz') {
+      return new Response('sandbox stopped', { status: 503 });
+    }
+    if (text === 'https://new-bridge.example/healthz') {
+      return new Response('{"ok":true}\n', { status: 200, headers: { 'content-type': 'application/json' } });
+    }
+    if (text === 'https://new-bridge.example/auth') {
+      return new Response('{"ok":true}\n', { status: 200, headers: { 'content-type': 'application/json' } });
+    }
+    throw new Error(`unexpected fetch ${text}`);
+  };
+
+  try {
+    await writeFile(settingsFile, '{}\n');
+    await writeFile(sessionFile, `${JSON.stringify([{
+      name: 'thread-a',
+      bridgeUrl: 'https://old-bridge.example',
+      bridgeToken: 'secret',
+      status: 'ready',
+      runStatus: 'ready',
+    }])}\n`);
+
+    const bridge = createBridgeService({
+      config: {
+        rootDir: root,
+        sessionFile,
+        settingsFile,
+        piDefaultsPackageDir: path.join(root, 'missing-defaults'),
+        bridgeReadyTimeoutMs: 1000,
+        bridgeReadyPollMs: 10,
+      },
+      provider: {
+        kind: 'test',
+        shouldRefreshSession: () => false,
+        bridgeHeaders: () => ({}),
+        createSession: async (session) => {
+          createCalls += 1;
+          assert.equal(session.name, 'thread-a');
+          return {
+            name: 'thread-a',
+            bridgeUrl: 'https://new-bridge.example',
+            httpsUrl: 'https://new-bridge.example',
+            daytonaSandboxId: 'sandbox-new',
+          };
+        },
+      },
+      auth: {
+        readPiAuthForSession: async () => '{"token":"fresh"}',
+        readLocalPiSettings: async () => null,
+        readGitHubAuthForSession: async () => null,
+      },
+      runState: runStateStub(),
+    });
+
+    const refreshed = await bridge.refreshBridgeSessionIfNeeded({
+      name: 'thread-a',
+      bridgeUrl: 'https://old-bridge.example',
+      bridgeToken: 'secret',
+    });
+
+    assert.equal(createCalls, 1);
+    assert.equal(refreshed.bridgeUrl, 'https://new-bridge.example');
+    assert.equal(refreshed.daytonaSandboxId, 'sandbox-new');
+    assert.deepEqual(requests.map((request) => request.url), [
+      'https://old-bridge.example/healthz',
+      'https://new-bridge.example/healthz',
+      'https://new-bridge.example/auth',
+    ]);
+    assert.equal((await getStoredSession(sessionFile, 'thread-a')).bridgeUrl, 'https://new-bridge.example');
   } finally {
     globalThis.fetch = previousFetch;
     await rm(root, { recursive: true, force: true });
