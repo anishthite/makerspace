@@ -4,6 +4,7 @@ data/sessions.json
 data/settings.json
 data/recent-projects.json
 data/pi-profile.json
+data/auth.json
 data/pi-sessions/
 .DS_Store
 .env

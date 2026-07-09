@@ -23,9 +23,11 @@ test('home running lane only uses active thread statuses', () => {
   assert.match(js, /function threadLane\(thread\) \{\s*return isActiveThread\(thread\) \? 'running' : 'done';\s*\}/);
 });
 
-test('running rows show activity instead of the workspace folder', () => {
+test('home rows avoid workspace folder details', () => {
   assert.match(js, /function runningActivity\(thread, rawStatus = effectiveThreadStatus\(thread\)\)/);
-  assert.match(js, /const detail = active \? runningActivity\(thread, rawStatus\) : `\$\{repo\}\$\{branch\}`;/);
+  assert.match(js, /const detail = active \? runningActivity\(thread, rawStatus\) : '';/);
+  assert.match(js, /\$\{detail \? `<small>\$\{escapeHtml\(detail\)\}<\/small>` : ''\}/);
+  assert.doesNotMatch(js, /repoLabel\(thread\)/);
   assert.match(runState, /function latestRunActivity\(run\)/);
   assert.match(runState, /latestActivity: latestActivity \|\| undefined/);
 });

@@ -18,6 +18,11 @@ const codexAuthPill = document.querySelector('#codex-auth-pill');
 const codexAuthLabel = document.querySelector('#codex-auth-label');
 const githubAuthPill = document.querySelector('#github-auth-pill');
 const githubAuthLabel = document.querySelector('#github-auth-label');
+const githubSigninCard = document.querySelector('#github-signin-card');
+const githubSigninButtons = Array.from(document.querySelectorAll('[data-github-signin]'));
+const githubSigninCopy = document.querySelector('#github-signin-copy');
+const githubSigninStatus = document.querySelector('#github-signin-status');
+const agentsSection = document.querySelector('#agents-section');
 const repoUrlInput = document.querySelector('input[name="repoUrl"]');
 const promptInput = document.querySelector('textarea[name="prompt"]');
 const imageInput = document.querySelector('#prompt-images');
@@ -358,12 +363,13 @@ function renderGitHubAuth(status) {
   const connected = Boolean(status.connected);
   const login = status.user?.login || '';
   renderAuthPill(githubAuthPill, githubAuthLabel, connected, connected ? `GitHub: ${login || 'connected'}` : status.configured ? 'GitHub: signed out' : 'GitHub: not configured', 'github');
+  renderGitHubSignIn(status);
   repoPicker.disabled = localProvider || !connected;
   repoRefresh.disabled = localProvider || !connected;
   if (!connected && !localProvider) {
     githubRepos = [];
     repoPicker.innerHTML = '<option value="">Sign in first</option>';
-    resetRepoSelection(status.configured ? 'Sign in in Settings.' : 'GitHub OAuth missing.');
+    resetRepoSelection(status.configured ? 'Sign in to continue.' : 'GitHub OAuth missing.');
   }
 }
 
@@ -372,6 +378,9 @@ function renderAuthError(message) {
   githubAuthPill.dataset.status = 'error';
   codexAuthPill.title = message;
   githubAuthPill.title = message;
+  if (githubSigninCard) githubSigninCard.hidden = true;
+  threadForm.hidden = false;
+  if (agentsSection) agentsSection.hidden = false;
   repoPicker.disabled = true;
   repoRefresh.disabled = true;
 }
@@ -402,6 +411,48 @@ async function loadGitHubRepos() {
   renderRepoOptions(githubRepos);
 }
 
+function setSignInBusy(busy) {
+  for (const button of githubSigninButtons) {
+    button.disabled = busy;
+    button.setAttribute('aria-busy', busy ? 'true' : 'false');
+  }
+}
+
+function setSignInStatus(message) {
+  if (githubSigninStatus) githubSigninStatus.textContent = message;
+  threadStatus.textContent = message;
+}
+
+function renderGitHubSignIn(status) {
+  const connected = Boolean(status.connected);
+  const showGate = !localProvider && !connected && status.configured;
+  if (githubSigninCard) githubSigninCard.hidden = !showGate;
+  threadForm.hidden = showGate;
+  if (agentsSection) agentsSection.hidden = showGate;
+  for (const button of githubSigninButtons) {
+    button.hidden = localProvider || connected || !status.configured;
+    button.disabled = !status.configured;
+  }
+  if (githubSigninCopy && status.configured) githubSigninCopy.textContent = 'Sign in once to launch agents against private repos.';
+  if (showGate) setSignInStatus('Sign in with GitHub to launch agents.');
+}
+
+async function startGitHubSignIn() {
+  setSignInBusy(true);
+  setSignInStatus('Opening GitHub sign-in…');
+  try {
+    const payload = await fetchJson('/api/auth/github/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ returnTo: location.href }),
+    });
+    location.href = payload.loginUrl;
+  } catch (error) {
+    setSignInStatus(error.message);
+    setSignInBusy(false);
+  }
+}
+
 function statusClass(value) {
   return String(value || 'unknown').toLowerCase().replace(/[^a-z0-9_-]/g, '-') || 'unknown';
 }
@@ -409,12 +460,6 @@ function statusClass(value) {
 function effectiveThreadStatus(thread) {
   const runStatus = String(thread?.runStatus || '').toLowerCase();
   return runStatus && runStatus !== 'unknown' ? runStatus : String(thread?.status || '').toLowerCase();
-}
-
-function repoLabel(thread) {
-  const value = typeof thread === 'string' ? thread : thread.repoPath || thread.repoUrl;
-  const text = String(value || '').replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/i, '');
-  return text || 'repo';
 }
 
 function formatDurationSeconds(totalSeconds, showSeconds = false) {
@@ -523,12 +568,10 @@ function threadLane(thread) {
 function renderThreadCard(thread) {
   const rawStatus = effectiveThreadStatus(thread) || 'unknown';
   const badgeClass = statusClass(rawStatus);
-  const repo = repoLabel(thread);
-  const branch = thread.branch ? ` · ${thread.branch}` : '';
   const active = isActiveThread(thread);
   const finishedValue = finishedAt(thread);
   const finished = active ? '' : formatFinishedAgo(finishedValue);
-  const detail = active ? runningActivity(thread, rawStatus) : `${repo}${branch}`;
+  const detail = active ? runningActivity(thread, rawStatus) : '';
   const outcome = active ? '' : finishedOutcome(thread, rawStatus);
   const start = runtimeStart(thread);
   const runtimeEnd = active ? Date.now() : finishedValue || start;
@@ -550,7 +593,7 @@ function renderThreadCard(thread) {
       <span class="status-dot${indicatorSeen ? ' is-seen' : ''}" ${indicatorAttrs}></span>
       <a class="inbox-main" href="${escapeHtml(threadUrl(thread.name))}"${indicatorKey ? ` data-finished-thread="${escapeHtml(indicatorKey)}"` : ''}>
         <strong>${escapeHtml(displayTitle)}</strong>
-        <small>${escapeHtml(detail)}</small>
+        ${detail ? `<small>${escapeHtml(detail)}</small>` : ''}
       </a>
       <span class="inbox-side">
         ${archiveButton}
@@ -632,8 +675,8 @@ async function loadThreads() {
 
 async function reloadControlData() {
   try {
-    const github = await loadGitHubAuth();
-    await Promise.all([loadCodexAuth(), loadThreads()]);
+    await loadThreads();
+    await Promise.all([loadCodexAuth(), loadGitHubAuth()]);
   } catch (error) {
     renderAuthError(error.message);
     providerBanner.dataset.tone = 'error';
@@ -742,6 +785,8 @@ refreshThreads.addEventListener('click', async () => {
     refreshThreads.disabled = false;
   }
 });
+
+for (const button of githubSigninButtons) button.addEventListener('click', () => startGitHubSignIn());
 
 threadsList.addEventListener('click', async (event) => {
   const indicator = event.target.closest('[data-finished-indicator]');

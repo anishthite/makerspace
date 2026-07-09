@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Steering delivery hardening</title>
+<meta name="task" content="Stop steering messages from being accepted before the Pi session can receive them.">
+<meta name="date-started" content="2026-07-05">
+<meta name="date-updated" content="2026-07-05">
+<meta name="status" content="ready-for-review">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="makerspace, thread, messages, steering, bridge, local">
+<meta name="related" content="2026-07-02-message-steering-queue.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-med{color:#b85c00}.status-in-progress{color:#b85c00}.status-ready{color:#2a7a2a}</style>
+</head><body>
+<h1>Steering delivery hardening</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-05 · status <b class="status-ready">ready-for-review</b> · blast <span class="blast-med">medium</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Accept <code>steer</code>/<code>followUp</code> only after the target Pi session exposes queue controls.</div><b>Source</b><div>User reports steering is unreliable.</div><b>Surface</b><div><code>POST /api/threads/:name/messages</code>, generated bridge <code>POST /runs</code>, local runner status.</div><b>Schema</b><div>None.</div><b>Mobile</b><div>Untouched.</div><b>Open Qs</b><div>0.</div></div>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>src/server/bridge.js</code></td><td>touch</td><td>Keep bridge runs in <code>starting</code> until remote status proves queue controls are live.</td></tr><tr><td><code>src/server/threads.js</code></td><td>touch</td><td>Start local runs as <code>starting</code> until <code>runLocalPiSession</code> emits <code>running</code>.</td></tr><tr><td><code>src/setup-script.js</code></td><td>touch</td><td>Reject active delivery while the bridge child is still a startup placeholder.</td></tr><tr><td><code>test/setup-script.test.js</code>, <code>test/thread-message-steering.test.js</code>, <code>test/archive-route.test.js</code></td><td>touch/new</td><td>Pin bridge startup rejection, host-side bridge gating, and local restart status.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Gate on <code>runStatus === "running"</code>. Pi queue methods exist only after session creation.</td></tr><tr><td>D-002</td><td>Return <code>409</code> instead of accepting a startup delivery. Silent acceptance loses user instructions.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td><code>starting</code> gate over an extra pre-session queue. Pi already owns queue semantics once live.</td></tr></table>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>node --check src/server/bridge.js src/server/threads.js src/setup-script.js test/thread-message-steering.test.js test/setup-script.test.js</code></td><td>Passed.</td></tr><tr><td><code>node --test test/setup-script.test.js test/thread-message-steering.test.js</code></td><td>Passed 5/5.</td></tr><tr><td><code>node --test test/archive-route.test.js test/home-runtime-summary.test.js test/setup-script.test.js test/thread-message-steering.test.js</code></td><td>Passed 19/19.</td></tr><tr><td><code>npm test</code></td><td>Passed 205/205.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Restore immediate <code>running</code> status and remove the generated bridge <code>409</code> guard.</p>
+<h2>Definition of done</h2>
+<ul><li>Bridge messages cannot be reported accepted before <code>steer()</code>/<code>followUp()</code> exist.</li><li>Local and bridge thread composers stay in starting mode until session controls are ready.</li><li>Focused tests pass.</li></ul>
+</body></html>

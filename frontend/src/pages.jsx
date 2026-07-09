@@ -9,7 +9,6 @@ import {
   Surface,
   Switch,
   Tabs,
-  ThinkingStatus,
 } from './components/ui.jsx';
 
 function AuthPills() {
@@ -17,6 +16,32 @@ function AuthPills() {
     <a id="codex-auth-pill" className="auth-pill" href="/settings.html#codex" data-status="checking" aria-live="polite"><span className="status-dot" aria-hidden="true"></span><span id="codex-auth-label">codex</span></a>
     <a id="github-auth-pill" className="auth-pill" href="/settings.html#github" data-status="checking" aria-live="polite"><span className="status-dot" aria-hidden="true"></span><span id="github-auth-label">github</span></a>
   </>;
+}
+
+function GitHubSignInButton({ id, className = '', children = 'Continue with GitHub' }) {
+  return <Button id={id} className={`github-login-button ${className}`.trim()} variant="primary" type="button" data-github-signin>{children}</Button>;
+}
+
+function GitHubSignInCard({ compact = false }) {
+  return <Surface id="github-signin-card" className={`signin-gate${compact ? ' compact' : ''}`} hidden aria-labelledby="github-signin-title">
+    <div className="signin-copy">
+      <p className="eyebrow">workbench beta</p>
+      <h2 id="github-signin-title">Sign in to Workbench</h2>
+      <p id="github-signin-copy" className="lede">Connect GitHub to launch agents on your repos without sharing credentials with anyone else.</p>
+      <ul className="signin-proof" aria-label="What signing in enables">
+        <li>private repos stay tied to your GitHub account</li>
+        <li>agents run in isolated sandboxes</li>
+        <li>settings and auth stay per-user</li>
+      </ul>
+    </div>
+    <div className="signin-panel" aria-label="Sign in form">
+      <p className="eyebrow">account</p>
+      <h3>Welcome back</h3>
+      <GitHubSignInButton id="github-signin-main" />
+      <p id="github-signin-status" className="status-line" aria-live="polite">Checking GitHub sign-in…</p>
+      <p className="signin-footnote">No shared model keys or repo tokens. GitHub opens in a secure OAuth window.</p>
+    </div>
+  </Surface>;
 }
 
 function Brand({ href = '/', label = 'Workbench home', children }) {
@@ -50,8 +75,8 @@ function WorkspaceNav({ active = 'workspace' }) {
     <div className="workspace-chip" aria-label="Selected workspace"><strong id="workspace-label">loading…</strong><Button as="a" variant="ghost" size="sm" href="/">switch</Button></div>
     <div className="header-actions home-actions">
       {active === 'workspace' && <AuthPills />}
+      {active === 'workspace' && <GitHubSignInButton id="github-signin-nav" className="signin-nav-button">Sign in</GitHubSignInButton>}
       {active !== 'workspace' && <Button as="a" variant="ghost" href="/workspace.html">workspace</Button>}
-      {active !== 'history' && <Button as="a" variant="ghost" href="/history.html">history</Button>}
       {active !== 'settings' && <Button as="a" variant="ghost" href="/settings.html">settings</Button>}
     </div>
   </nav>;
@@ -61,15 +86,16 @@ export function ProjectPage() {
   return <main className="project-shell">
     <nav className="home-topbar" aria-label="Workbench navigation">
       <Brand href="/" label="Workbench projects" />
-      <div className="header-actions home-actions"><AuthPills /><Button as="a" variant="ghost" href="/settings.html">settings</Button></div>
+      <div className="header-actions home-actions"><AuthPills /><GitHubSignInButton id="github-signin-nav" className="signin-nav-button">Sign in</GitHubSignInButton><Button as="a" variant="ghost" href="/settings.html">settings</Button></div>
     </nav>
 
-    <header className="project-hero">
+    <header id="project-hero" className="project-hero">
       <h1 id="project-welcome">Welcome back.</h1>
       <p className="lede">Choose a project to continue.</p>
     </header>
+    <GitHubSignInCard />
 
-    <section className="project-grid">
+    <section id="project-grid" className="project-grid">
       <Surface as="form" id="project-form" className="project-card" aria-label="Select project">
         <input id="project-repo-source" name="repoSource" type="hidden" value="" readOnly />
         <input id="project-branch" name="branch" type="hidden" value="" readOnly />
@@ -98,6 +124,7 @@ export function WorkspacePage() {
   return <main className="home-shell">
     <WorkspaceNav active="workspace" />
     <h1 className="sr-only">Start a main agent</h1>
+    <GitHubSignInCard compact />
     <InputMessage as="form" id="thread-form" className="launch-card" aria-label="Spin up a main agent">
       <input id="repo-url" name="repoUrl" type="hidden" value="" readOnly />
       <input name="branch" type="hidden" value="" readOnly />
@@ -115,7 +142,7 @@ export function WorkspacePage() {
       <div className="advanced-fields launch-details"><input name="name" placeholder="main agent name" /><div id="provider-banner" className="notice" aria-live="polite">Connecting…</div></div>
       <p id="thread-status" className="status-line"></p>
     </InputMessage>
-    <Surface className="home-recent action-center" aria-label="Agents">
+    <Surface id="agents-section" className="home-recent action-center" aria-label="Agents">
       <div className="section-row"><div><h2>Agents</h2></div><div className="inline-actions"><Button as="a" variant="ghost" href="/history.html">history</Button><Button id="refresh-threads" variant="ghost" type="button">refresh</Button></div></div>
       <ScrollArea id="threads-list" className="action-lanes"></ScrollArea>
     </Surface>
@@ -124,22 +151,25 @@ export function WorkspacePage() {
 
 export function ThreadPage() {
   return <main className="thread-flow-shell">
-    <header className="flow-topbar">
-      <div className="flow-top-left"><a className="brand" href="/workspace.html"><span className="brand-box">←</span><span id="project-label" className="project-pill" hidden></span></a></div>
-      <div className="flow-title"><strong id="thread-title">Loading</strong><span id="thread-meta" className="muted"></span></div>
-      <div className="header-actions"><StatusPill id="thread-status">connecting</StatusPill><Button id="stop-thread" variant="ghost" className="thread-stop-btn" type="button" hidden>stop</Button><Button id="archive-thread" variant="primary" className="thread-done-btn" type="button" hidden>mark as done</Button></div>
-    </header>
     <section className="thread-stage" aria-label="Main agent workspace">
+      <header className="thread-main-header">
+        <div className="thread-main-row">
+          <a className="brand" href="/workspace.html" aria-label="Back to workspace"><span className="brand-box">←</span><span id="project-label" className="project-pill" hidden></span></a>
+          <h1 id="thinking-title">Loading</h1>
+          <div className="header-actions"><StatusPill id="thread-status">connecting</StatusPill><Button id="stop-thread" variant="ghost" className="thread-stop-btn" type="button" hidden>stop</Button><Button id="archive-thread" variant="primary" className="thread-done-btn" type="button" hidden>mark as done</Button></div>
+        </div>
+        <p id="thinking-detail" className="muted"></p>
+        <div className="sr-only"><strong id="thread-title">Loading</strong><span id="thread-meta"></span></div>
+      </header>
       <aside className="agent-column" aria-label="Workflow agents">
         <Surface as="div" id="agent-rail" className="agent-rail flow-card" aria-label="Workflow agent trace" role="button" tabIndex="0" aria-controls="agent-trace" aria-expanded="false">
           <div className="rail-head"><span>workflow agents</span><strong id="agent-graph-count">idle</strong></div>
           <p className="rail-hint">click for full workflow trace</p>
           <div id="agent-graph" className="agent-graph"></div>
         </Surface>
-        <details id="diff-box" className="diff-box flow-card" hidden><summary><span>changes</span><strong id="diff-count">0</strong></summary><div className="diff-workbench"><div id="diff-files" className="diff-files" role="list"></div><textarea id="diff-editor" className="diff-editor" readOnly spellCheck="false" aria-label="Selected file changes"></textarea></div></details>
+        <button id="diff-box" className="diff-box flow-card" type="button" hidden><span>changes</span><strong id="diff-count">0 files edited · 0 lines</strong></button>
       </aside>
       <section className="flow-wrap thread-workspace" aria-label="Main agent conversation">
-        <ThinkingStatus titleId="thinking-title" detailId="thinking-detail" />
         <section className="conversation-main flow-card" aria-label="Main agent conversation">
           <ScrollArea id="timeline" className="timeline-flow" aria-live="polite"></ScrollArea>
           <aside id="agent-trace" className="agent-activity agent-trace-inline" aria-label="Full workflow trace" aria-hidden="true" hidden>
@@ -177,7 +207,7 @@ export function HistoryPage() {
 export function PerformancePage() {
   const isLocal = globalThis.location?.pathname?.includes('local-telemetry');
   return <main className="home-shell performance-shell">
-    <nav className="home-topbar" aria-label="Workbench navigation"><Brand href="/" /><div className="header-actions home-actions"><Button as="a" variant="ghost" href="/workspace.html">agents</Button><Button as="a" variant="ghost" href="/history.html">history</Button><Button as="a" variant="ghost" href={isLocal ? '/telemetry.html' : '/local-telemetry.html'}>{isLocal ? 'db telemetry' : 'local sessions'}</Button><Button as="a" variant="ghost" href="/settings.html">settings</Button></div></nav>
+    <nav className="home-topbar" aria-label="Workbench navigation"><Brand href="/" /><div className="header-actions home-actions"><Button as="a" variant="ghost" href="/workspace.html">agents</Button><Button as="a" variant="ghost" href={isLocal ? '/telemetry.html' : '/local-telemetry.html'}>{isLocal ? 'db telemetry' : 'local sessions'}</Button><Button as="a" variant="ghost" href="/settings.html">settings</Button></div></nav>
     <section className="performance-hero"><p className="eyebrow">telemetry</p><h1>{isLocal ? 'Local session telemetry' : 'Agent telemetry'}</h1><p id="performance-status" className="muted">Loading {isLocal ? 'local session' : 'DB-derived'} agent metrics…</p><p className="muted">{isLocal ? 'Reads the desktop/local sessions file and ignores old browser-session IDs.' : 'Estimated from the session DB plus live run events. No extra product tracking.'}</p></section>
     <section id="performance-stats" className="performance-stats" aria-label="Telemetry summary"></section>
     <section className="performance-grid"><div className="performance-side-stack"><Surface className="performance-panel"><div className="section-row"><h2>Signals</h2><Button id="refresh-performance" variant="ghost" type="button">refresh</Button></div><ul id="performance-insights" className="signal-list"></ul></Surface><Surface className="performance-panel"><div className="section-row"><h2>What this can show</h2></div><ul id="telemetry-sources" className="signal-list telemetry-source-list"></ul></Surface></div><Surface className="performance-panel table-panel"><div className="section-row"><h2>Main agents</h2><p id="performance-count" className="muted"></p></div><ScrollArea className="performance-table-wrap"><table className="performance-table"><thead><tr><th>main agent</th><th>status</th><th>first llm</th><th>duration</th><th>tools</th><th>tokens</th><th>cache</th><th>analysis</th><th>flags</th></tr></thead><tbody id="performance-rows"></tbody></table></ScrollArea></Surface></section>

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 
 function waitForServer(child) {
   return new Promise((resolve, reject) => {
@@ -30,26 +30,34 @@ async function stopServer(child) {
   await new Promise((resolve) => child.once('exit', resolve));
 }
 
-test('thread workflow route returns workflow agents for a local thread', async () => {
+test('thread workflow route returns Workbench Pi workflow journal steps', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'workbench-workflow-'));
   const sessionFile = path.join(tempDir, 'sessions.json');
   const settingsFile = path.join(tempDir, 'settings.json');
-  const runId = 'mqu123-abc456';
+  const journalRunId = 'run-mqu123-journal';
   let server;
 
   try {
-    await mkdir(path.join(tempDir, '.pi/workflows/runs'), { recursive: true });
-    await writeFile(path.join(tempDir, '.pi/workflows/runs', `${runId}.json`), `${JSON.stringify({
-      runId,
-      workflowName: 'html-rendering-idea-lab',
+    await mkdir(path.join(tempDir, '.pi/better-workflows/runs'), { recursive: true });
+    await writeFile(path.join(tempDir, '.pi/better-workflows/runs', `${journalRunId}.json`), `${JSON.stringify({
+      runId: journalRunId,
+      name: 'landing-variation-review-loop',
       status: 'running',
-      phases: ['Ideate', 'Judge'],
-      currentPhase: 'Ideate',
-      agents: [
-        { id: 0, label: 'layout scout', phase: 'Ideate', status: 'running', model: 'openai/gpt-5.5', tokens: 1234, prompt: 'Map the HTML rendering options.', resultPreview: 'Found three layout directions.' },
-        { id: 1, label: 'visual judge', phase: 'Judge', status: 'queued' },
+      startedAt: '2026-07-07T00:00:00.000Z',
+      journal: [
+        {
+          index: 0,
+          hash: 'abc123',
+          result: { variations: [{ name: 'Trace First' }, { name: 'Diff Hero' }] },
+          toolCalls: [{ name: 'find_files' }, { name: 'structured_output' }],
+        },
+        {
+          index: 1,
+          hash: 'def456',
+          result: { approved: true, score: 8.5, summary: 'Good enough to show.' },
+          toolCalls: [{ name: 'structured_output' }],
+        },
       ],
-      updatedAt: '2026-07-02T00:00:00.000Z',
     })}\n`);
     await writeFile(sessionFile, `${JSON.stringify([
       {
@@ -77,21 +85,33 @@ test('thread workflow route returns workflow agents for a local thread', async (
         WARM_BRIDGE_POOL_SIZE: '0',
         IDLE_BRIDGE_TTL_MS: '0',
         CONTROL_API_TOKEN: 'test-token',
+        HOME: tempDir,
+        PI_CODING_AGENT_DIR: path.join(tempDir, 'not-used-for-workflows', 'agent'),
       },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
 
     const baseUrl = await waitForServer(server);
     const headers = { authorization: 'Bearer test-token' };
-    const ok = await fetch(`${baseUrl}/api/threads/viewer/workflows/${runId}`, { headers });
-    assert.equal(ok.status, 200);
-    const payload = await ok.json();
-    assert.equal(payload.workflowName, 'html-rendering-idea-lab');
-    assert.equal(payload.agents.length, 2);
-    assert.equal(payload.agents[0].label, 'layout scout');
-    assert.equal(payload.agents[0].tokens, 1234);
-    assert.equal(payload.agents[0].promptPreview, 'Map the HTML rendering options.');
-    assert.equal(payload.agents[0].resultPreview, 'Found three layout directions.');
+    const journalResponse = await fetch(`${baseUrl}/api/threads/viewer/workflows/${journalRunId}`, { headers });
+    assert.equal(journalResponse.status, 200);
+    const journalPayload = await journalResponse.json();
+    assert.equal(journalPayload.workflowName, 'landing-variation-review-loop');
+    assert.equal(journalPayload.source, 'journal');
+    assert.deepEqual(journalPayload.phases, ['Generate', 'Review']);
+    assert.equal(journalPayload.agents.length, 2);
+    assert.equal(journalPayload.agents[0].label, 'generate variations');
+    assert.equal(journalPayload.agents[0].toolPreview, 'find_files, structured_output');
+    assert.equal(journalPayload.agents[0].resultPreview, '2 variations: Trace First, Diff Hero');
+    assert.equal(journalPayload.agents[1].label, 'review alternatives');
+    assert.equal(journalPayload.agents[1].resultPreview, 'Good enough to show.');
+
+    const mirrored = JSON.parse(await readFile(path.join(tempDir, '.workbench/workflows/runs', `${journalRunId}.json`), 'utf8'));
+    assert.equal(mirrored.runId, journalRunId);
+    await rm(path.join(tempDir, '.pi/better-workflows/runs', `${journalRunId}.json`));
+    const mirrorResponse = await fetch(`${baseUrl}/api/threads/viewer/workflows/${journalRunId}`, { headers });
+    assert.equal(mirrorResponse.status, 200);
+    assert.equal((await mirrorResponse.json()).workflowName, 'landing-variation-review-loop');
 
     const missing = await fetch(`${baseUrl}/api/threads/viewer/workflows/missing-run`, { headers });
     assert.equal(missing.status, 200);

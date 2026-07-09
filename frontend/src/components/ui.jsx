@@ -167,8 +167,7 @@ export function Dialog({ id, title, children, className, ...props }) {
 }
 
 export function ThinkingStatus({ titleId, detailId, title = 'Loading', detail = '', className }) {
-  return <section className={cn('now-card flow-card', className)}>
-    <span className="status-dot" aria-hidden="true" />
+  return <section className={cn('now-card', className)}>
     <div>
       <h1 id={titleId}>{title}</h1>
       <p id={detailId} className="muted">{detail}</p>

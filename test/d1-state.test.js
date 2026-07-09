@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { createD1StateClient, d1StateRequested } from '../src/d1-state.js';
+import { createD1StateClient, d1StateRequested, stateStoreFromEnv } from '../src/d1-state.js';
 
 function makeFakeFetch() {
   const sessions = new Map();
@@ -60,9 +60,20 @@ function makeFakeFetch() {
   return { fetchImpl, calls };
 }
 
-test('d1StateRequested recognizes explicit D1 mode', () => {
+test('d1StateRequested recognizes explicit and production D1 mode', () => {
+  const d1Env = {
+    NODE_ENV: 'production',
+    CLOUDFLARE_ACCOUNT_ID: 'acct',
+    CLOUDFLARE_D1_DATABASE_ID: 'db',
+    CLOUDFLARE_API_TOKEN: 'token',
+  };
+
   assert.equal(d1StateRequested({ WORKBENCH_STATE_STORE: 'd1' }), true);
   assert.equal(d1StateRequested({ STATE_STORE: 'cloudflare-d1' }), true);
+  assert.equal(stateStoreFromEnv(d1Env), 'd1');
+  assert.equal(d1StateRequested(d1Env), true);
+  assert.equal(d1StateRequested({ ...d1Env, WORKBENCH_STATE_STORE: 'file' }), false);
+  assert.equal(d1StateRequested({ ...d1Env, NODE_ENV: 'development' }), false);
   assert.equal(d1StateRequested({}), false);
 });
 

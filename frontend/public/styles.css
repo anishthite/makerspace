@@ -230,7 +230,7 @@ p { color: var(--ink-2); }
 }
 .topbar { position: sticky; top: 10px; z-index: 10; }
 .brand,
-.brand-mark { display: inline-flex; align-items: center; gap: 10px; min-width: 0; color: var(--ink); font-weight: 800; letter-spacing: -.03em; }
+.brand-mark { display: inline-flex; align-items: center; gap: 10px; min-width: 0; color: var(--ink); font-weight: 800; line-height: 1; letter-spacing: -.03em; }
 .project-pill {
   max-width: min(32vw, 220px);
   overflow: hidden;
@@ -263,6 +263,7 @@ p { color: var(--ink-2); }
   flex: none;
   width: 32px;
   height: 32px;
+  transform: translateY(-2px);
 }
 .brand-mark.has-logo::before { content: none; }
 .header-actions,
@@ -618,7 +619,7 @@ body[data-home-ui="ops"] .launch-card {
   border-radius: 14px;
   background: linear-gradient(180deg, color-mix(in srgb, var(--paper) 92%, var(--blue-soft)), color-mix(in srgb, var(--paper) 96%, var(--bg)));
 }
-body[data-home-ui="ops"] .launch-card > textarea { min-height: 152px; padding: 24px; line-height: 1.35; }
+body[data-home-ui="ops"] .launch-card > textarea { min-height: 128px; padding: 20px; line-height: 1.35; }
 body[data-home-ui="ops"] .launch-controls { gap: 14px; padding: 0 14px 16px 16px; }
 body[data-home-ui="ops"] .workspace-run-row { padding: 0 16px 16px 0; }
 body[data-home-ui="ops"] .target-input { min-height: 44px; border-radius: 10px; background: color-mix(in srgb, var(--paper) 92%, var(--bg)); }
@@ -631,14 +632,29 @@ body[data-home-ui="ops"] .inbox-item { padding: 18px 14px; }
 .project-shell { width: min(900px, calc(100% - clamp(40px, 12vw, 280px))); margin: 0 auto; padding: 28px 0 72px; display: grid; gap: clamp(16px, 2.4vw, 24px); }
 .project-hero { max-width: 760px; margin: clamp(22px, 5vh, 52px) 0 0; }
 .project-hero h1 { margin-bottom: 8px; font-size: clamp(38px, 6vw, 70px); line-height: .9; letter-spacing: -.07em; }
+.signin-nav-button { min-width: 84px; }
+.signin-gate { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(280px, .7fr); gap: clamp(18px, 3vw, 34px); align-items: stretch; border: 1px solid color-mix(in srgb, var(--blue) 46%, var(--rule)); border-radius: 24px; padding: clamp(18px, 3vw, 34px); background: radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--blue-soft) 82%, transparent), transparent 34rem), linear-gradient(135deg, color-mix(in srgb, var(--paper) 96%, var(--blue-soft)), color-mix(in srgb, var(--paper) 90%, var(--bg))); box-shadow: var(--shadow-xl), var(--shadow); }
+.signin-gate.compact { grid-area: launch; width: min(920px, 100%); margin: 18px auto 14px; }
+.signin-copy { display: grid; align-content: center; gap: 18px; min-height: clamp(360px, 42vh, 520px); }
+.signin-copy h2 { max-width: 720px; margin: 0; font-size: clamp(44px, 7vw, 78px); line-height: .88; letter-spacing: -.075em; }
+.signin-copy .lede { max-width: 620px; font-size: clamp(17px, 2vw, 21px); }
+.signin-proof { display: grid; gap: 10px; max-width: 560px; margin: 0; padding: 0; list-style: none; }
+.signin-proof li { display: flex; gap: 10px; align-items: center; color: var(--ink-2); font-size: 14px; }
+.signin-proof li::before { content: ''; width: 9px; height: 9px; border-radius: 999px; background: var(--green); box-shadow: 0 0 0 5px color-mix(in srgb, var(--green) 14%, transparent); }
+.signin-panel { align-self: center; display: grid; gap: 14px; border: 1px solid color-mix(in srgb, var(--rule) 82%, var(--ink-4)); border-radius: 18px; padding: clamp(18px, 2.4vw, 28px); background: color-mix(in srgb, var(--paper) 96%, white); box-shadow: var(--shadow-md); }
+.signin-panel h3 { margin: 0 0 4px; font-size: clamp(26px, 3vw, 34px); letter-spacing: -.055em; }
+.signin-panel .github-login-button { width: 100%; justify-content: center; min-height: 48px; border-radius: 12px; font-size: 13px; }
+.github-login-button::before { content: '↗'; margin-right: 8px; font-weight: 900; }
+.signin-footnote { margin: 0; color: var(--ink-4); font-size: 12px; line-height: 1.45; }
 .project-grid { display: grid; grid-template-columns: 1fr; gap: 18px; align-items: start; }
 .project-card { min-width: 0; border: 1px solid color-mix(in srgb, var(--rule) 82%, var(--ink-4)); border-radius: 6px; background: color-mix(in srgb, var(--paper) 92%, var(--paper-2)); box-shadow: var(--shadow-md); padding: clamp(18px, 1.8vw, 26px); }
 #project-form { display: grid; gap: 12px; }
 .project-target { position: relative; grid-template-columns: minmax(0, 1fr) auto; gap: 0; min-height: 48px; overflow: visible; padding: 0 0 0 12px; }
 .project-target .folder-picker-btn {
   align-self: stretch;
+  height: auto;
   border-width: 0 0 0 1px;
-  border-radius: 6px;
+  border-radius: 0 6px 6px 0;
   background: transparent;
   color: var(--blue);
   padding: 0 13px;
@@ -782,9 +798,7 @@ body.thread-page {
   --rule: var(--thread-rule);
   --rule-2: var(--thread-rule-strong);
   background-color: var(--bg);
-  background-image:
-    radial-gradient(circle at 14% 0%, color-mix(in srgb, var(--blue-soft) 48%, transparent) 0, transparent 34rem),
-    linear-gradient(180deg, color-mix(in srgb, var(--paper) 18%, var(--bg)), var(--bg) 34rem);
+  background-image: linear-gradient(180deg, color-mix(in srgb, var(--paper) 18%, var(--bg)), var(--bg) 34rem);
   text-rendering: auto;
 }
 html[data-desktop="true"] body.thread-page { background-image: none; }
@@ -792,7 +806,7 @@ html[data-desktop="true"] body.thread-page { background-image: none; }
   width: min(1180px, calc(100% - clamp(24px, 5vw, 64px)));
   min-height: 100vh;
   margin: 0 auto;
-  padding: clamp(14px, 2.4vw, 26px) 0 36px;
+  padding: 0 0 36px;
 }
 .flow-topbar {
   position: sticky;
@@ -828,6 +842,11 @@ html[data-desktop="true"] .flow-topbar,
   margin: 0 auto;
 }
 .flow-wrap { min-width: 0; display: grid; gap: 14px; }
+.thread-main-header { position: sticky; top: 0; z-index: 20; grid-column: 1 / -1; display: grid; gap: 4px; padding: 8px 0; background: var(--bg); }
+.thread-main-row { display: flex; align-items: center; gap: clamp(12px, 2vw, 22px); }
+.thread-main-row h1 { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0; color: var(--blue); font-size: clamp(20px, 2.2vw, 28px); line-height: 1.1; letter-spacing: -.035em; }
+.thread-main-header p { margin: 0; max-width: 620px; font-size: 13px; }
+.thread-main-header .header-actions { flex: 0 0 auto; margin-left: auto; }
 .flow-card { border: 1px solid var(--rule); border-radius: 12px; background: color-mix(in srgb, var(--paper) 96%, var(--bg)); box-shadow: var(--shadow); }
 .agent-column {
   position: sticky;
@@ -888,30 +907,32 @@ html[data-desktop="true"] .flow-topbar,
 .agent-node.tool { border-color: color-mix(in srgb, var(--rule-2) 72%, var(--rule)); }
 .agent-edge { width: 2px; height: 18px; margin-left: 18px; background: linear-gradient(var(--rule-2), transparent); }
 .subagent-stack { display: grid; gap: 7px; margin-left: 18px; padding-left: 12px; border-left: 2px solid var(--rule); }
-.workflow-agent-stack { max-height: min(56vh, 620px); overflow-y: auto; padding-right: 4px; }
-.workflow-map { display: grid; gap: 9px; }
-.workflow-map-head { margin-bottom: 2px; }
-.workflow-phase-strip { display: flex; flex-wrap: wrap; gap: 6px; }
-.workflow-phase-pill { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; border: 1px solid var(--rule); border-radius: 999px; padding: 4px 7px; background: var(--paper-2); color: var(--ink-3); font: 10px/1.1 var(--mono); text-transform: lowercase; }
-.workflow-phase-pill i { display: inline-grid; place-items: center; width: 15px; height: 15px; border-radius: 999px; background: color-mix(in srgb, var(--blue) 18%, var(--paper)); color: var(--blue); font-style: normal; }
-.workflow-phase-pill small { color: var(--ink-4); }
-.workflow-flow { display: grid; gap: 8px; }
-.workflow-terminal { display: grid; gap: 1px; border: 1px dashed var(--rule-2); border-radius: 6px; padding: 6px 8px; background: color-mix(in srgb, var(--paper) 88%, var(--blue-soft)); text-align: center; }
-.workflow-terminal span { color: var(--ink-2); font: 800 11px/1.1 var(--mono); text-transform: lowercase; }
-.workflow-terminal small { color: var(--ink-4); font: 10px/1.2 var(--mono); text-transform: lowercase; }
-.workflow-step-link { justify-self: center; margin: -2px 0; color: var(--ink-4); font: 800 14px/1 var(--mono); }
-.workflow-lane { display: grid; gap: 7px; border: 1px solid color-mix(in srgb, var(--blue) 28%, var(--rule)); border-radius: 6px; padding: 8px; background: color-mix(in srgb, var(--blue-soft) 34%, transparent); }
-.workflow-lane-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--ink-3); font: 800 10px/1.2 var(--mono); text-transform: lowercase; }
-.workflow-lane-head small { color: var(--ink-4); font-weight: 700; }
-.workflow-agent-grid { display: grid; gap: 7px; }
-.workflow-view-node { position: relative; display: grid; gap: 4px; border: 1px solid color-mix(in srgb, var(--green) 42%, var(--rule)); border-radius: 6px; padding: 8px 9px; background: var(--paper); box-shadow: 0 1px 0 var(--inset-highlight); }
-.workflow-node-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.workflow-agent-stack { max-height: none; overflow: visible; padding-right: 0; }
+.workflow-map { display: grid; gap: 10px; }
+.workflow-map-head { margin: 0 0 2px; padding: 2px 0 1px; }
+.workflow-map-head span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); font-weight: 850; font-size: 13px; }
+.workflow-flow { display: grid; gap: 11px; }
+.workflow-lane { display: grid; gap: 5px; border: 0; border-radius: 0; padding: 0; background: transparent; }
+.workflow-lane-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 2px 0 1px; color: var(--ink-3); font: 850 10px/1.2 var(--mono); text-transform: lowercase; }
+.workflow-lane-head span { display: inline-flex; align-items: center; gap: 6px; min-width: 0; color: var(--ink-2); font-size: 11px; letter-spacing: .02em; }
+.workflow-lane-head i { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 999px; background: color-mix(in srgb, var(--blue) 14%, var(--paper)); color: var(--blue); font: 850 9px/1 var(--mono); font-style: normal; }
+.workflow-lane-head small { color: var(--ink-4); font-weight: 750; }
+.workflow-agent-grid { display: grid; gap: 2px; }
+.workflow-view-node,
+.workflow-view-node.running,
+.workflow-view-node.done,
+.workflow-view-node.error { position: relative; display: grid; gap: 2px; border: 0; border-radius: 0; padding: 5px 0 6px 14px; background: transparent; box-shadow: none; }
+.workflow-view-node::before { content: ''; position: absolute; left: 0; top: 11px; width: 6px; height: 6px; border-radius: 999px; background: var(--ink-4); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink-4) 10%, transparent); }
+.workflow-view-node.done::before { background: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 12%, transparent); }
+.workflow-view-node.running::before { background: var(--yellow); box-shadow: 0 0 0 3px color-mix(in srgb, var(--yellow) 14%, transparent); }
+.workflow-view-node.error::before { background: var(--red); box-shadow: 0 0 0 3px color-mix(in srgb, var(--red) 14%, transparent); }
+.workflow-node-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .workflow-node-top span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); font-weight: 800; font-size: 12px; }
-.workflow-node-top b { flex: none; border: 1px solid var(--rule); border-radius: 999px; padding: 2px 5px; color: var(--ink-3); background: var(--paper-2); font: 800 9px/1 var(--mono); text-transform: lowercase; }
-.workflow-view-node small { color: var(--ink-4); font: 10px/1.2 var(--mono); text-transform: lowercase; }
-.workflow-agent-detail { display: grid; gap: 3px; margin-top: 2px; color: var(--ink-3); font: 10px/1.25 var(--mono); text-transform: none; }
-.workflow-agent-detail span { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 5px; min-width: 0; }
-.workflow-agent-detail b { color: var(--ink-4); font-weight: 700; }
+.workflow-node-top b { flex: none; padding: 0; border: 0; border-radius: 0; color: var(--ink-4); background: transparent; font: 750 10px/1 var(--mono); text-transform: lowercase; }
+.workflow-view-node.running .workflow-node-top b { color: var(--yellow); }
+.workflow-view-node.done .workflow-node-top b { color: var(--green); }
+.workflow-view-node.error .workflow-node-top b { color: var(--red); }
+.workflow-view-node small { color: var(--ink-3); font: 11px/1.35 var(--sans); text-transform: none; }
 .notes-list { display: grid; gap: 10px; }
 .notes-main { display: grid; gap: 12px; padding: clamp(14px, 2vw, 18px); }
 .next-steps-main { display: grid; gap: 12px; padding: clamp(14px, 2vw, 18px); border-color: color-mix(in srgb, var(--blue) 32%, var(--rule)); background: linear-gradient(180deg, color-mix(in srgb, var(--blue-soft) 40%, var(--paper)), var(--paper)); }
@@ -929,21 +950,12 @@ html[data-desktop="true"] .flow-topbar,
 .note-html-preview { min-height: 120px; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper); }
 .rail-empty { margin: 0; color: var(--ink-4); font-size: 12px; line-height: 1.35; }
 .hidden-tool-hint { border-top: 1px solid var(--rule); padding-top: 8px; }
-.diff-box { padding: 10px; border-color: color-mix(in srgb, var(--blue) 26%, var(--rule)); border-radius: 12px; background: linear-gradient(180deg, color-mix(in srgb, var(--blue-soft) 44%, var(--paper)), var(--paper)); }
-.diff-box summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--ink-3); font: 800 10px/1 var(--mono); letter-spacing: .09em; text-transform: uppercase; cursor: pointer; list-style: none; }
-.diff-box summary::-webkit-details-marker { display: none; }
-.diff-box summary::before { content: '▸'; display: grid; place-items: center; width: 18px; height: 18px; border: 1px solid var(--rule); border-radius: 999px; color: var(--blue); background: var(--paper); transition: transform 120ms var(--ease-out); }
-.diff-box[open] summary::before { transform: rotate(90deg); }
-.diff-box summary strong { margin-left: auto; border: 1px solid color-mix(in srgb, var(--blue) 38%, var(--rule)); border-radius: 999px; padding: 3px 7px; color: var(--blue); background: var(--blue-soft); font-size: 11px; }
-.diff-workbench { position: relative; display: grid; gap: 9px; margin-top: 10px; }
-.diff-files { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; }
+.diff-box { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; border-color: color-mix(in srgb, var(--blue) 26%, var(--rule)); border-radius: 12px; background: linear-gradient(180deg, color-mix(in srgb, var(--blue-soft) 44%, var(--paper)), var(--paper)); text-align: left; transition: border-color 120ms var(--ease-out), background 120ms var(--ease-out); }
+.diff-box span { color: var(--ink-3); font: 800 10px/1 var(--mono); letter-spacing: .09em; text-transform: uppercase; }
+.diff-box strong { margin-left: auto; border: 1px solid color-mix(in srgb, var(--blue) 38%, var(--rule)); border-radius: 999px; padding: 3px 7px; color: var(--blue); background: var(--blue-soft); font: 800 11px/1 var(--mono); white-space: nowrap; }
+.diff-box:hover, .diff-box:focus-visible { border-color: color-mix(in srgb, var(--blue) 70%, var(--rule)); outline: 0; background: var(--blue-soft); }
 .diff-file { flex: 0 0 auto; max-width: 210px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-color: var(--rule); padding: 6px 8px; background: color-mix(in srgb, var(--paper) 82%, var(--bg)); color: var(--ink-3); font: 700 10px/1.2 var(--mono); letter-spacing: 0; text-transform: none; }
 .diff-file.is-active { border-color: color-mix(in srgb, var(--blue) 68%, var(--rule)); color: var(--blue); background: var(--blue-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--blue) 20%, transparent); }
-.diff-editor { min-height: 118px; max-height: 22vh; resize: none; overflow: auto; white-space: pre; word-break: normal; border-color: color-mix(in srgb, var(--blue) 20%, var(--rule)); border-radius: 12px; padding: 11px 62px 11px 11px; cursor: zoom-in; background: color-mix(in srgb, var(--bg) 88%, black); color: var(--ink-2); box-shadow: inset 0 1px 0 rgba(255,255,255,.04), inset 0 -32px 36px rgba(0,0,0,.22); font: 11px/1.5 var(--mono); tab-size: 2; }
-.diff-editor:hover, .diff-editor:focus { border-color: color-mix(in srgb, var(--blue) 70%, var(--rule)); outline: 0; }
-.diff-open-button { justify-self: stretch; border: 1px solid color-mix(in srgb, var(--blue) 42%, var(--rule)); border-radius: 10px; background: color-mix(in srgb, var(--blue-soft) 72%, var(--paper)); color: var(--blue); padding: 8px 10px; font: 850 10px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; transition: transform 120ms var(--ease-out), border-color 120ms var(--ease-out), background 120ms var(--ease-out); }
-.diff-open-button:hover, .diff-open-button:focus-visible { border-color: var(--blue); background: var(--blue-soft); }
-.diff-open-button:active { transform: scale(.98); }
 .diff-dialog { width: min(1240px, calc(100vw - 28px)); max-width: none; height: min(86vh, 920px); max-height: calc(100vh - 28px); margin: auto; padding: 0; color: var(--ink); border: 1px solid color-mix(in srgb, var(--blue) 28%, var(--rule)); border-radius: 20px; background: var(--paper); box-shadow: 0 28px 90px rgba(0,0,0,.58); }
 .diff-dialog::backdrop { background: color-mix(in srgb, black 72%, transparent); backdrop-filter: blur(8px); }
 .diff-dialog-shell { display: grid; grid-template-columns: minmax(190px, 250px) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); height: 100%; min-height: 0; }
@@ -961,7 +973,8 @@ html[data-desktop="true"] .flow-topbar,
 .diff-dialog-body .d2h-code-wrapper { min-width: max-content; }
 .diff-dialog-body .d2h-diff-table { width: max-content; min-width: 100%; }
 .diff-dialog-body .d2h-code-side-line, .diff-dialog-body .d2h-code-line { width: auto; padding: 0 .75em; white-space: nowrap; }
-.diff-dialog-body .d2h-code-linenumber, .diff-dialog-body .d2h-code-side-linenumber { display: table-cell; position: sticky; left: 0; z-index: 5; background: color-mix(in srgb, var(--d2h-bg-color) 78%, black); color: var(--ink-4); border-color: var(--d2h-line-border-color); box-shadow: 1px 0 0 var(--d2h-line-border-color); }
+/* ponytail: no sticky gutter; browser paints it over code during horizontal scroll. */
+.diff-dialog-body .d2h-diff-table .d2h-code-linenumber, .diff-dialog-body .d2h-diff-table .d2h-code-side-linenumber { display: table-cell; position: static; background: color-mix(in srgb, var(--d2h-bg-color) 78%, black); color: var(--ink-4); border-color: var(--d2h-line-border-color); box-shadow: 1px 0 0 var(--d2h-line-border-color); }
 .diff-dialog-body .d2h-code-linenumber { width: 7.5em; min-width: 7.5em; }
 .diff-dialog-body .d2h-code-side-linenumber { width: 46px; min-width: 46px; }
 .diff-dialog-body .d2h-code-line-ctn { width: auto; color: var(--ink-2); }
@@ -1021,7 +1034,8 @@ html[data-desktop="true"] .flow-topbar,
 }
 .conversation-main .timeline-flow { padding-bottom: 126px; }
 .agent-activity .timeline-flow { padding-bottom: 24px; }
-.now-card { padding: clamp(14px, 2vw, 20px); }
+.now-card { position: relative; padding: clamp(14px, 2vw, 20px); }
+.now-card > .status-dot { position: absolute; top: clamp(10px, 1.4vw, 14px); left: clamp(14px, 2vw, 20px); }
 .now-card h1 { margin: 0 0 4px; color: var(--blue); font-size: clamp(28px, 4vw, 44px); line-height: 1; letter-spacing: -.055em; }
 .status-pill[data-active="true"]::before,
 .tool-card[data-state="running"] .badge::before {
@@ -1162,11 +1176,8 @@ html[data-desktop="true"] .flow-topbar,
 .message-card > .copy-button:focus-visible { color: var(--ink-2); opacity: 1; }
 .copy-button:focus-visible,
 .message-card:hover > .copy-button,
-.message-card:focus-within > .copy-button,
-.diff-workbench:hover > .copy-button,
-.diff-workbench:focus-within > .copy-button { opacity: 1; transform: none; }
+.message-card:focus-within > .copy-button { opacity: 1; transform: none; }
 .copy-button[disabled] { opacity: .72; cursor: default; }
-.diff-copy-button { top: 42px; }
 @media (hover: none) { .copy-button { opacity: 1; transform: none; } }
 .html-preview { display: block; width: 100%; height: 1px; overflow: hidden; border: 0; background: transparent; }
 .excalidraw-artifacts { display: grid; gap: 10px; margin-top: 12px; white-space: normal; }
@@ -1206,6 +1217,24 @@ html[data-desktop="true"] .flow-topbar,
 .interactive-action-button { border: 1px solid color-mix(in srgb, var(--blue) 60%, var(--rule)); border-radius: 6px; background: var(--blue); color: #fff; padding: 8px 11px; font: 800 12px/1 var(--sans); cursor: pointer; }
 .interactive-action-button:hover,
 .interactive-action-button:focus-visible { filter: brightness(1.05); }
+.message-card.openui-rendered { width: 100%; max-width: 100%; overflow: visible; border: 0 !important; background: transparent !important; box-shadow: none; }
+.message-card.openui-rendered .message-body { padding: 0; }
+.openui-artifacts { display: grid; gap: 10px; min-width: 0; max-width: 100%; margin-top: 0; white-space: normal; }
+.openui-artifact-card { min-width: 0; overflow: visible; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.openui-artifact-host { min-width: 0; max-width: 100%; overflow-x: auto; }
+/* ponytail: OpenUI ships font shorthands; force app typography at the mount boundary. */
+.openui-artifact-rendered,
+.openui-artifact-rendered * { font-family: var(--sans) !important; }
+.openui-artifact-rendered { max-width: 100%; min-width: 0; color: var(--ink-1); overflow-wrap: anywhere; }
+.openui-artifact-rendered > .openui-card.openui-card-card { padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.openui-artifact-rendered > .openui-card { max-width: 100%; min-width: 0; }
+.openui-artifact-rendered .openui-markdown-renderer,
+.openui-artifact-rendered .openui-markdown-renderer p,
+.openui-artifact-rendered .openui-table-head-label { max-width: 100%; overflow-wrap: anywhere; }
+.openui-artifact-rendered .openui-table-container { max-width: 100%; }
+.openui-artifact-rendered .openui-table-head,
+.openui-artifact-rendered .openui-table-cell { white-space: normal; overflow-wrap: anywhere; vertical-align: top; }
+.openui-artifact-error { margin: 8px 0 0; color: var(--red); font: 12px/1.35 var(--mono); }
 @media (hover: hover) and (pointer: fine) { .excalidraw-card:hover, .interactive-artifact-card:hover { border-color: color-mix(in srgb, var(--blue) 46%, var(--rule)); } }
 .thinking-card { width: min(650px, 100%); border-color: color-mix(in srgb, var(--yellow) 45%, var(--rule)); background: color-mix(in srgb, var(--yellow) 7%, var(--paper)); }
 .thinking-body { max-height: 180px; overflow: auto; padding: 10px 12px 12px; color: var(--ink-3); font: italic 12px/1.55 var(--mono); white-space: pre-wrap; }
@@ -1369,6 +1398,7 @@ select:focus { border-color: var(--blue); box-shadow: none; outline: none; }
   .subagent-stack { margin-left: 0; }
   body[data-home-ui="ops"] .home-shell { display: block; width: min(900px, calc(100% - 32px)); padding-top: 24px; }
   body[data-home-ui="ops"] .home-recent { margin-top: 24px; }
+  .signin-gate,
   .project-grid,
   .target-row,
   .repo-tray,

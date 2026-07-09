@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Diff scroll overlay</title>
+<meta name="task" content="Stop diff line-number gutter overlay while horizontally scrolling.">
+<meta name="date-started" content="2026-07-05">
+<meta name="date-updated" content="2026-07-05">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="makerspace, ui, thread, diff, scroll">
+<meta name="related" content="2026-07-04-compact-full-diff-view.html,2026-07-05-changes-summary-button.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-shipped{color:#2a7a2a}ul{margin:.3rem 0 .8rem 1.2rem;padding:0}</style>
+</head>
+<body>
+<h1>Diff scroll overlay</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-05 · status <b class="status-shipped">shipped</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Stop diff row text from painting under the line-number gutter during horizontal scroll.</div><b>Source</b><div>User screenshot of the full diff dialog.</div><b>Surface</b><div><code>/thread.html</code> full diff dialog.</div><b>Schema</b><div>No API or data change.</div><b>Open Qs</b><div>0; remove sticky gutter instead of tuning browser paint behavior.</div></div>
+<h2>Files</h2><table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>frontend/public/styles.css</code></td><td>touch</td><td>Make diff line-number cells static table cells.</td></tr><tr><td><code>frontend/thread.html</code></td><td>touch</td><td>Bump the stylesheet query for the thread page.</td></tr><tr><td><code>implementation-notes/2026-07-05-diff-scroll-overlay.html</code></td><td>new</td><td>Record this scope.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr></table>
+<h2>Decisions</h2><table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Disable sticky diff line numbers. Static cells remove the overlay with less CSS than preserving sticky behavior.</td></tr><tr><td>D-002</td><td>Bump only <code>/thread.html</code> CSS query. The affected UI is thread-only.</td></tr></table>
+<h2>Tradeoffs</h2><table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>Static gutter over sticky gutter. Readability beats a convenience that breaks while scrolling.</td></tr></table>
+<h2>Reversibility</h2><p>R-001 · <span class="blast-low">low</span>. Restore sticky positioning and the prior stylesheet query; no state changes.</p>
+<h2>Definition of done</h2><ul><li>Horizontally scrolling a full diff no longer overlays code beneath the gutter.</li><li>The thread page fetches the changed stylesheet URL.</li><li>Build and whitespace checks pass.</li></ul>
+</body>
+</html>

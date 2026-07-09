@@ -1,8 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 140" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" role="img" aria-labelledby="title desc" shape-rendering="crispEdges">
   <title id="title">Workbench mark</title>
-  <desc id="desc">A blue workshop tile with an angular M.</desc>
-  <rect width="140" height="140" rx="16" fill="#1F5E9C"/>
-  <path d="M22 32h96M22 70h96M22 108h96M32 22v96M70 22v96M108 22v96" stroke="#FAF8F3" stroke-width="2" opacity=".18"/>
-  <path d="M28 108V34h24l18 29 18-29h24v74H89V72L70 102 51 72v36H28Z" fill="#FAF8F3"/>
-  <path d="M28 126h84" stroke="#FAF8F3" stroke-width="8" stroke-linecap="square" opacity=".95"/>
+  <desc id="desc">A minimal retro pixel-art workbench sprite optimized for dark headers.</desc>
+  <rect x="2" y="4" width="12" height="2" fill="#1F5E9C"/>
+  <rect x="3" y="8" width="10" height="2" fill="#FAF8F3"/>
+  <rect x="4" y="10" width="2" height="4" fill="#FAF8F3"/>
+  <rect x="10" y="10" width="2" height="4" fill="#FAF8F3"/>
+  <rect x="3" y="14" width="4" height="1" fill="#FAF8F3"/>
+  <rect x="9" y="14" width="4" height="1" fill="#FAF8F3"/>
 </svg>

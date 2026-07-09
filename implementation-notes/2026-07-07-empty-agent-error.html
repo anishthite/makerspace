@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Empty agent error</title>
+<meta name="status" content="shipped">
+<meta name="blast" content="low">
+<meta name="tags" content="makerspace,pi,local,thread,error,auth">
+<meta name="related" content="2026-06-25-bridge-workflow-continuation.html,2026-07-02-codex-temperature-crash.html">
+<style>
+  body { font: 14px/1.5 -apple-system, system-ui, sans-serif; max-width: 980px; margin: 2rem auto; padding: 0 1rem; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+  th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; }
+  code { background: #f6f6f6; padding: 0 3px; border-radius: 3px; }
+  .meta { color: #666; }
+  .blast-low { color: #2a7a2a; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>Empty agent error</h1>
+<p class="meta">main · /Users/anishthite/workspace/makerspace · 2026-07-07 · shipped · <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Surface local Pi provider failures instead of completing a blank assistant turn.</div><b>Source</b><div><code>~/.workbench/pi-sessions/makerspace-20260707204329-e64cc6.jsonl</code> showed empty assistant messages with <code>errorMessage</code>.</div><b>Surface</b><div>Local host Pi runner only.</div><b>Schema</b><div>None.</div><b>Open Qs</b><div>0.</div></div>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>src/host-pi-runner.js</code></td><td>touch</td><td>Extract assistant provider error details and fail empty local runs.</td></tr><tr><td><code>test/host-pi-runner.test.js</code></td><td>new</td><td>Check provider-detail extraction and normal-message ignore behavior.</td></tr><tr><td><code>implementation-notes/2026-07-07-empty-agent-error.html</code></td><td>new</td><td>Record the blank-turn failure mode.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Fail local runs with no assistant text. A blank completed turn hides provider/auth failures.</td></tr><tr><td>D-002</td><td>Parse <code>errorMessage.detail</code> only when present. Existing SDK messages already carry the actionable provider text.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>Runner guard over UI workaround. The backend owns run status and should not persist silent success.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Revert <code>src/host-pi-runner.js</code>, <code>test/host-pi-runner.test.js</code>, and this index row to restore prior blank-complete behavior.</p>
+<h2>Definition of done</h2>
+<ul><li>Local provider error detail can be extracted from an empty assistant error message.</li><li>A local run with no assistant output throws instead of marking completed.</li><li><code>node --test test/host-pi-runner.test.js</code> passes.</li></ul>
+</body>
+</html>

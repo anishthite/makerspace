@@ -35,6 +35,18 @@ test('project selector offers desktop local folders', () => {
   assert.match(project, /runningAgentCount/);
   assert.match(pages, /href="\/settings\.html#codex"/);
   assert.match(pages, /href="\/settings\.html#github"/);
+  assert.match(pages, /id="github-signin-card"/);
+  assert.match(pages, /Continue with GitHub/);
+  assert.match(pages, /data-github-signin/);
+  assert.match(pages, /className=\{`signin-gate/);
+  assert.match(project, /function startGitHubSignIn/);
+  assert.match(project, /\/api\/auth\/github\/login/);
+  assert.match(project, /renderGitHubSignIn\(github\)/);
+  assert.match(project, /projectGrid\.hidden = showGate/);
+  assert.match(app, /function startGitHubSignIn/);
+  assert.match(app, /renderGitHubSignIn\(status\)/);
+  assert.match(app, /threadForm\.hidden = showGate/);
+  assert.match(styles, /\.signin-gate \{[^}]*grid-template-columns: minmax\(0, 1\.05fr\) minmax\(280px, \.7fr\)/);
   assert.match(pages, /id="codex"/);
   assert.match(pages, /id="claude-code"/);
   assert.match(pages, /id="github"/);

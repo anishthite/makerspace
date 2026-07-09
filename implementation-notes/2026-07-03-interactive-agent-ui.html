@@ -28,7 +28,7 @@
 
 <h2>API contract</h2>
 <h3>Artifact</h3>
-<pre>```makerspace-ui
+<pre>```workbench-ui
 {
   "version": 1,
   "title": "Tune this answer",
@@ -84,7 +84,7 @@ Revise with detail=7.</pre>
 <h2>Decisions</h2>
 <table>
   <tr><th>ID</th><th>Choice · Rationale</th></tr>
-  <tr><td>D-001</td><td>Use fenced <code>makerspace-ui</code> JSON. It is parseable without trusting assistant HTML.</td></tr>
+  <tr><td>D-001</td><td>Use fenced <code>workbench-ui</code> JSON and accept legacy <code>makerspace-ui</code>. It is parseable without trusting assistant HTML.</td></tr>
   <tr><td>D-002</td><td>Fill the composer instead of auto-sending. The user sees every generated prompt before it leaves.</td></tr>
   <tr><td>D-003</td><td>Keep widget state in the rendered message only. The transcript stays the durable record.</td></tr>
   <tr><td>D-004</td><td>Add diagram prompt buttons before automating diagram edits. Prompted edits keep workspace changes auditable.</td></tr>
@@ -112,7 +112,7 @@ Revise with detail=7.</pre>
 <h2>Verification</h2>
 <table>
   <tr><th>Check</th><th>Result</th></tr>
-  <tr><td><code>node --check frontend/src/runtime/interactive-artifacts.js &amp;&amp; node --check frontend/src/runtime/thread.js &amp;&amp; node --check src/server/threads.js &amp;&amp; node --check src/server/routes.js &amp;&amp; node --test test/interactive-artifacts.test.js test/html-preview.test.js test/excalidraw-artifacts.test.js test/thread-artifact-route.test.js test/frontend-route-manifest.test.js</code></td><td>Passed 21/21.</td></tr>
+  <tr><td><code>node --check frontend/src/runtime/interactive-artifacts.js &amp;&amp; node --check frontend/src/runtime/thread.js &amp;&amp; node --check src/server/threads.js &amp;&amp; node --check src/server/routes.js &amp;&amp; node --test test/interactive-artifacts.test.js test/html-preview.test.js test/excalidraw-artifacts.test.js test/thread-artifact-route.test.js test/frontend-route-manifest.test.js</code></td><td>Passed 22/22.</td></tr>
   <tr><td><code>node --test test/interactive-artifacts.test.js test/html-preview.test.js test/excalidraw-artifacts.test.js test/thread-artifact-route.test.js test/frontend-route-manifest.test.js test/thread-trace-tray.test.js test/thread-workflow-route.test.js</code></td><td>Passed 39/39.</td></tr>
   <tr><td><code>npm run build</code></td><td>Passed.</td></tr>
 </table>

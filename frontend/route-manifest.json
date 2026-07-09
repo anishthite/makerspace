@@ -46,6 +46,11 @@
       "mode": "copy"
     },
     {
+      "route": "/landing-variations.html",
+      "file": "landing-variations.html",
+      "mode": "copy"
+    },
+    {
       "route": "/",
       "file": "index.html",
       "mode": "react"
@@ -63,6 +68,11 @@
     {
       "route": "/monospace-font-sampler.html",
       "file": "monospace-font-sampler.html",
+      "mode": "copy"
+    },
+    {
+      "route": "/pixel-bench-logo-options.html",
+      "file": "pixel-bench-logo-options.html",
       "mode": "copy"
     },
     {

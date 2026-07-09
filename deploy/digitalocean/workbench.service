@@ -6,6 +6,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 WorkingDirectory=/opt/workbench
+Environment=NODE_ENV=production
 EnvironmentFile=/etc/workbench.env
 ExecStart=/usr/bin/npm start
 Restart=always

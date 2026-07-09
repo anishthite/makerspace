@@ -10,6 +10,12 @@ const codexAuthPill = document.querySelector('#codex-auth-pill');
 const codexAuthLabel = document.querySelector('#codex-auth-label');
 const githubAuthPill = document.querySelector('#github-auth-pill');
 const githubAuthLabel = document.querySelector('#github-auth-label');
+const githubSigninCard = document.querySelector('#github-signin-card');
+const githubSigninButtons = Array.from(document.querySelectorAll('[data-github-signin]'));
+const githubSigninCopy = document.querySelector('#github-signin-copy');
+const githubSigninStatus = document.querySelector('#github-signin-status');
+const projectHero = document.querySelector('#project-hero');
+const projectGrid = document.querySelector('#project-grid');
 const form = document.querySelector('#project-form');
 const repoInput = document.querySelector('#project-repo-url');
 const repoSourceInput = document.querySelector('#project-repo-source');
@@ -374,6 +380,9 @@ function renderAuthError(message) {
   githubConnected = false;
   repoRefresh.disabled = true;
   hideRepoSuggestions();
+  if (githubSigninCard) githubSigninCard.hidden = true;
+  if (projectHero) projectHero.hidden = false;
+  if (projectGrid) projectGrid.hidden = false;
 }
 
 function hideRepoSuggestions() {
@@ -484,6 +493,48 @@ async function loadGitHubRepos() {
   renderRepoOptions(githubRepos);
 }
 
+function setSignInBusy(busy) {
+  for (const button of githubSigninButtons) {
+    button.disabled = busy;
+    button.setAttribute('aria-busy', busy ? 'true' : 'false');
+  }
+}
+
+function setSignInStatus(message) {
+  if (githubSigninStatus) githubSigninStatus.textContent = message;
+  statusLine.textContent = message;
+}
+
+function renderGitHubSignIn(status) {
+  const connected = Boolean(status.connected);
+  const showGate = providerKind !== 'local' && !connected && status.configured;
+  if (githubSigninCard) githubSigninCard.hidden = !showGate;
+  if (projectHero) projectHero.hidden = showGate;
+  if (projectGrid) projectGrid.hidden = showGate;
+  for (const button of githubSigninButtons) {
+    button.hidden = providerKind === 'local' || connected || !status.configured;
+    button.disabled = !status.configured;
+  }
+  if (githubSigninCopy && status.configured) githubSigninCopy.textContent = 'Connect GitHub to launch agents on your repos without sharing credentials with anyone else.';
+  if (showGate) setSignInStatus('Sign in with GitHub to continue.');
+}
+
+async function startGitHubSignIn() {
+  setSignInBusy(true);
+  setSignInStatus('Opening GitHub sign-in…');
+  try {
+    const payload = await fetchJson('/api/auth/github/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ returnTo: location.href }),
+    });
+    location.href = payload.loginUrl;
+  } catch (error) {
+    setSignInStatus(error.message);
+    setSignInBusy(false);
+  }
+}
+
 async function refreshProjectThreads() {
   await loadRecentProjects();
   const payload = await fetchJson('/api/threads');
@@ -515,12 +566,13 @@ async function loadStatus() {
     githubConnected = connected;
     renderWelcome(connected ? github.user : null);
     renderAuthPill(githubAuthPill, githubAuthLabel, connected, connected ? `GitHub: ${github.user?.login || 'connected'}` : github.configured ? 'GitHub: signed out' : 'GitHub: not configured', 'github');
+    renderGitHubSignIn(github);
     repoRefresh.disabled = providerKind === 'local' || !connected;
     if (connected && providerKind !== 'local') await loadGitHubRepos();
     else if (providerKind !== 'local') {
       githubRepos = [];
       hideRepoSuggestions();
-      repoHint.textContent = github.configured ? 'Sign in in Settings, paste a repo, or choose a local folder.' : 'Paste a repo or choose a local folder.';
+      repoHint.textContent = github.configured ? 'Sign in to pick repos.' : 'Paste a repo or choose a local folder.';
     }
   } catch (error) {
     renderAuthError(error.message);
@@ -623,5 +675,7 @@ recentList.addEventListener('click', async (event) => {
   const project = readRecentProjects()[Number(button.dataset.projectIndex)];
   if (project) await openWorkspace(project);
 });
+
+for (const button of githubSigninButtons) button.addEventListener('click', () => startGitHubSignIn());
 
 loadStatus();

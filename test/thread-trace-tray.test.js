@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 
 const pages = readFileSync(new URL('../frontend/src/pages.jsx', import.meta.url), 'utf8');
+const components = readFileSync(new URL('../frontend/src/components/ui.jsx', import.meta.url), 'utf8');
 const threadHtml = readFileSync(new URL('../frontend/thread.html', import.meta.url), 'utf8');
 const js = readFileSync(new URL('../frontend/src/runtime/thread.js', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../frontend/public/styles.css', import.meta.url), 'utf8');
@@ -76,14 +77,65 @@ test('workflow rail renders workflow agents, not generic tool calls', () => {
   assert.match(pages, /click for full workflow trace/);
   assert.match(js, /const workflowRuns = new Map\(\)/);
   assert.match(js, /function renderWorkflowRun/);
-  assert.match(js, /function workflowAgentDetail/);
-  assert.match(js, /workflow-agent-detail/);
+  assert.match(js, /function workflowAgentSummary/);
+  assert.doesNotMatch(js, /workflowAgentDetail|workflowAgentDetail\('tools', agent\.toolPreview\)/);
+  assert.match(js, /function workflowStepDone/);
+  assert.match(js, /waiting for workflow journal/);
+  assert.match(js, /workflow-title/);
   assert.match(js, /workflow-agent-stack/);
+  assert.doesNotMatch(js, /workflow-phase-strip|workflow-phase-pill|workflow-step-link|workflow-terminal|workflow run → journal/);
+  assert.match(css, /workflow-view-node::before/);
+  assert.match(css, /workflow-view-node\.running \.workflow-node-top b/);
+  assert.doesNotMatch(css, /workflow-agent-stack \{[^}]*overflow-y: auto|workflow-phase-pill|workflow-agent-detail|workflow-terminal|workflow-step-link/);
   assert.match(js, /workflow agents appear here when a workflow starts/);
   assert.match(js, /\/workflows\/\$\{encodeURIComponent\(runId\)\}/);
   assert.doesNotMatch(js, /const processHtml = graphItems\.map/);
   assert.doesNotMatch(js, /item\.kind \|\| 'tool'/);
   assert.doesNotMatch(js, /workflow trace · click to expand/);
+});
+
+test('thread main header spans above the sidebar', () => {
+  const headerIndex = pages.indexOf('className="thread-main-header"');
+  const sidebarIndex = pages.indexOf('<aside className="agent-column"');
+  const workspaceIndex = pages.indexOf('<section className="flow-wrap thread-workspace"');
+  assert.ok(headerIndex > -1 && headerIndex < sidebarIndex);
+  assert.ok(sidebarIndex < workspaceIndex);
+  assert.match(pages, /<div className="thread-main-row">[\s\S]+href="\/workspace\.html"[\s\S]+id="thinking-title"[\s\S]+id="archive-thread"[\s\S]+<\/div>/);
+  assert.match(css, /\.thread-main-header \{ position: sticky; top: 0; z-index: 20; grid-column: 1 \/ -1; [^}]*display: grid/);
+  assert.match(css, /\.thread-main-row \{ display: flex; align-items: center/);
+  assert.match(css, /\.thread-main-row h1 \{[^}]*font-size: clamp\(20px, 2\.2vw, 28px\)/);
+  assert.doesNotMatch(components, /now-card flow-card/);
+});
+
+test('thread main header omits redundant done detail', () => {
+  const start = js.indexOf('function headerDetailCopy');
+  const end = js.indexOf('function setNow');
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+  const context = {};
+  runInNewContext(`${js.slice(start, end)}; globalThis.result = [headerDetailCopy('Done', ''), headerDetailCopy('Working', 'editing')].join('|');`, context);
+  assert.equal(context.result, '|Working · editing');
+  assert.match(js, /if \(graphStatus === 'done'\) thinkingDetail\.textContent = ''/);
+});
+
+test('changes rail is a summary button without inline preview', () => {
+  assert.match(pages, /<button id="diff-box" className="diff-box flow-card" type="button" hidden><span>changes<\/span><strong id="diff-count">0 files edited · 0 lines<\/strong><\/button>/);
+  assert.doesNotMatch(pages, /<details id="diff-box"/);
+  assert.doesNotMatch(pages, /id="diff-editor"|id="diff-files"/);
+  assert.match(js, /function formatDiffSummary/);
+  assert.match(js, /openDiffDialog\('__all__'\)/);
+  assert.doesNotMatch(js, /diffEditor|selectedDiffPath|selected diff/);
+  assert.doesNotMatch(css, /\.diff-editor|\.diff-workbench|\.diff-open-button/);
+});
+
+test('changes summary counts edited files and changed lines', () => {
+  const start = js.indexOf('function diffSections');
+  const end = js.indexOf('function isUnifiedDiff');
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+  const context = {};
+  runInNewContext(`${js.slice(start, end)}; globalThis.result = formatDiffSummary({ files: [{ path: 'app.js', diff: 'diff --git a/app.js b/app.js\\n--- a/app.js\\n+++ b/app.js\\n@@ -1 +1 @@\\n-old\\n+new' }, { path: 'notes.md', diff: 'edited notes.md\\n\\n+line' }] });`, context);
+  assert.equal(context.result, '2 files edited · 3 lines');
 });
 
 test('tool rows show one-line action copy with the target path or search scope', () => {
@@ -147,6 +199,20 @@ test('html assistant messages still render mentioned image artifacts', () => {
   assert.doesNotMatch(js, /renderExcalidrawArtifacts\(node, raw, \{ includeImages: false \}\)/);
 });
 
+test('openui fenced blocks render after assistant message text without extra chrome', () => {
+  assert.match(js, /stripOpenUIArtifactBlocks\(stripInteractiveArtifactBlocks\(raw\)\)/);
+  assert.match(js, /classList\.toggle\('openui-rendered'/);
+  assert.match(js, /renderOpenUIArtifactsLazy\(node, raw, fillComposerFromInteractiveAction\)/);
+  assert.match(js, /await import\('\.\/openui-renderer\.jsx'\)/);
+  assert.match(css, /\.message-card\.openui-rendered \{ width: 100%; max-width: 100%;/);
+  assert.match(css, /\.openui-artifacts/);
+  assert.match(css, /\.openui-artifact-rendered \* \{ font-family: var\(--sans\) !important; \}/);
+  assert.match(css, /\.openui-artifact-card/);
+  assert.match(css, /\.openui-artifact-rendered > \.openui-card\.openui-card-card/);
+  assert.match(css, /\.openui-artifact-rendered \.openui-table-head,\n\.openui-artifact-rendered \.openui-table-cell \{ white-space: normal;/);
+  assert.doesNotMatch(css, /\.openui-artifact-head/);
+});
+
 test('opening a populated thread scrolls back to the latest user turn', () => {
   assert.match(js, /let initialResumeScrollDone = false/);
   assert.match(js, /function restoreInitialThreadPosition\(\)/);
@@ -191,7 +257,7 @@ test('inline trace uses a subtle marker without overlay behavior', () => {
 test('thread page uses the cheap desktop scroll path', () => {
   assert.match(threadHtml, /<body class="thread-page" data-react-page="thread">/);
   assert.match(css, /body\.thread-page[\s\S]+background-image: none/);
-  assert.match(css, /\.thread-page \.flow-topbar \{ backdrop-filter: none; \}/);
+  assert.match(js, /document\.querySelector\('\.thread-main-header'\)/);
   assert.match(css, /content-visibility: auto/);
   assert.match(js, /function queueAssistantChunk/);
   assert.match(js, /requestAnimationFrame\(flushAssistantChunks\)/);

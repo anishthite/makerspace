@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Remote state persistence</title>
+<meta name="task" content="Stop production remote deploys from silently using reset-on-deploy file state when Cloudflare D1 credentials are present.">
+<meta name="date-started" content="2026-07-06">
+<meta name="date-updated" content="2026-07-06">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="makerspace,remote,deploy,state,d1,persistence">
+<meta name="related" content="2026-06-26-d1-state-store.html,2026-06-25-disk-backed-recent-projects.html,2026-06-29-user-codex-auth.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:900px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code,pre{font-family:ui-monospace,Menlo,monospace}code{background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}pre{background:#f6f6f6;padding:.55rem .7rem;overflow:auto}.meta{color:#555;font-size:12.5px}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px}.blast-med{color:#b85c00}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Remote state persistence</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-06 · status <b class="status-shipped">shipped</b> · blast <span class="blast-med">medium</span></p>
+<h2>Summary</h2><div class="kv"><b>Goal</b><div>Make hosted production choose D1 state when D1 env exists so redeploys do not reset sessions/settings/auth/profile.</div><b>Source</b><div>User reports remote state looks reset after deployment.</div><b>Surface</b><div><code>src/d1-state.js</code>, <code>src/config.js</code>, deploy docs, focused tests.</div><b>Schema</b><div>No D1 table change; reuse existing <code>workbench_sessions</code> and <code>workbench_kv</code>.</div><b>Open Qs</b><div>0; interpret request as preserving saved remote state, not forcing wipes.</div></div>
+<h2>API contract</h2><pre>NODE_ENV=production
+CLOUDFLARE_ACCOUNT_ID=...
+CLOUDFLARE_D1_DATABASE_ID=...
+CLOUDFLARE_API_TOKEN=...
+# WORKBENCH_STATE_STORE may stay unset; production infers d1.
+# WORKBENCH_STATE_STORE=file still forces disposable file state.</pre>
+<h2>Files</h2><table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>src/d1-state.js</code></td><td>touch</td><td>Add shared env state-store resolution and infer D1 in production with complete D1 credentials.</td></tr><tr><td><code>src/config.js</code></td><td>touch</td><td>Use the same resolved state-store value exposed in config.</td></tr><tr><td><code>README.md</code></td><td>touch</td><td>Document production D1 auto-selection and explicit file override.</td></tr><tr><td><code>deploy/digitalocean/README.md</code></td><td>touch</td><td>Add D1 envs to the remote backend setup.</td></tr><tr><td><code>test/d1-state.test.js</code>, <code>test/config.test.js</code></td><td>touch</td><td>Pin inference, explicit override, and config reporting.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr></table>
+<h2>Decisions</h2><table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Infer D1 only in <code>NODE_ENV=production</code> with complete Cloudflare credentials. Local tests and dev shells stay file-backed.</td></tr><tr><td>D-002</td><td>Keep <code>WORKBENCH_STATE_STORE=file</code> as an explicit escape hatch. Disposable previews still need reset-on-deploy behavior.</td></tr></table>
+<h2>Tradeoffs</h2><table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>Auto-select D1 over adding another deploy flag. Existing D1 credentials already prove the operator intended durable hosted state.</td></tr></table>
+<h2>Verification</h2><table><tr><th>ID</th><th>Command · Result</th></tr><tr><td>V-001</td><td><code>node --check src/d1-state.js && node --check src/config.js && node --test test/d1-state.test.js test/config.test.js</code> · 8/8 pass.</td></tr></table>
+<h2>Reversibility</h2><p>R-001 · <span class="blast-med">medium</span>. Revert the env resolver and docs; deployments can still force old behavior with <code>WORKBENCH_STATE_STORE=file</code>.</p>
+<h2>Definition of done</h2><ul><li>Production with complete D1 env and no state-store flag uses D1.</li><li>Explicit <code>WORKBENCH_STATE_STORE=file</code> keeps reset-on-deploy file state.</li><li>Local/dev without production mode stays file-backed.</li><li>Focused Node tests pass.</li></ul>
+</body></html>

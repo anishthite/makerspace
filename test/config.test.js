@@ -60,6 +60,30 @@ test('getConfig names the visible project from env or explicit home', () => {
   });
 });
 
+test('getConfig infers D1 state store for production deployments with D1 credentials', () => {
+  withEnv({
+    NODE_ENV: 'production',
+    WORKBENCH_STATE_STORE: undefined,
+    STATE_STORE: undefined,
+    CLOUDFLARE_ACCOUNT_ID: 'acct',
+    CLOUDFLARE_D1_DATABASE_ID: 'db',
+    CLOUDFLARE_API_TOKEN: 'token',
+  }, () => {
+    assert.equal(getConfig().stateStore, 'd1');
+  });
+
+  withEnv({
+    NODE_ENV: 'production',
+    WORKBENCH_STATE_STORE: 'file',
+    STATE_STORE: undefined,
+    CLOUDFLARE_ACCOUNT_ID: 'acct',
+    CLOUDFLARE_D1_DATABASE_ID: 'db',
+    CLOUDFLARE_API_TOKEN: 'token',
+  }, () => {
+    assert.equal(getConfig().stateStore, 'file');
+  });
+});
+
 test('host dispatch is opt-in for remote providers', () => {
   withEnv({ INFRA_PROVIDER: 'daytona', PI_HOST_DISPATCH: undefined, PI_LOCAL_DISPATCH: undefined }, () => {
     assert.equal(getConfig().hostDispatchEnabled, false);

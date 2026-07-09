@@ -31,7 +31,8 @@ After`;
   assert.equal(stripInteractiveArtifactBlocks(text), 'Before\nAfter');
 });
 
-test('interactive artifacts fail closed on invalid actions', () => {
+test('interactive artifacts accept legacy makerspace-ui alias and fail closed on invalid actions', () => {
+  assert.equal(extractInteractiveArtifacts('```makerspace-ui\n{"version":1,"title":"Alias","actions":[{"id":"go","label":"Go","prompt":"x"}]}\n```').length, 1);
   assert.equal(validateInteractiveArtifact({
     version: 1,
     title: 'Bad',

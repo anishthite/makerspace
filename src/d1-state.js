@@ -5,10 +5,6 @@ function clean(value) {
   return String(value || '').trim();
 }
 
-export function d1StateRequested(env = process.env) {
-  return ['d1', 'cloudflare-d1'].includes(clean(env.WORKBENCH_STATE_STORE || env.STATE_STORE).toLowerCase());
-}
-
 function d1Config(env = process.env) {
   return {
     accountId: clean(env.CLOUDFLARE_ACCOUNT_ID || env.CLOUDFLARE_D1_ACCOUNT_ID || env.D1_ACCOUNT_ID),
@@ -16,6 +12,19 @@ function d1Config(env = process.env) {
     apiToken: clean(env.CLOUDFLARE_API_TOKEN || env.CLOUDFLARE_D1_API_TOKEN || env.D1_API_TOKEN),
     apiBase: clean(env.CLOUDFLARE_API_BASE || env.D1_API_BASE) || 'https://api.cloudflare.com/client/v4',
   };
+}
+
+export function stateStoreFromEnv(env = process.env) {
+  const explicit = clean(env.WORKBENCH_STATE_STORE || env.STATE_STORE).toLowerCase();
+  if (explicit) return explicit;
+
+  const config = d1Config(env);
+  const production = clean(env.NODE_ENV).toLowerCase() === 'production';
+  return production && config.accountId && config.databaseId && config.apiToken ? 'd1' : 'file';
+}
+
+export function d1StateRequested(env = process.env) {
+  return ['d1', 'cloudflare-d1'].includes(stateStoreFromEnv(env));
 }
 
 function requireD1Config(env = process.env) {

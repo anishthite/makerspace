@@ -145,7 +145,7 @@ ipcMain.handle('workbench:remember-folder', (_event, folder) => writeLastFolder(
 ipcMain.handle('workbench:choose-folder', async (_event, folder) => {
   const defaultPath = cleanFolder(folder) || initialFolder || readLastFolder(userDataDir());
   const result = await dialog.showOpenDialog(mainWindow, {
-    properties: ['openDirectory'],
+    properties: ['openDirectory', 'createDirectory', 'promptToCreate'],
     ...(defaultPath ? { defaultPath } : {}),
   });
   const selected = result.canceled ? '' : result.filePaths[0] || '';

@@ -2,6 +2,7 @@ import 'diff2html/bundles/css/diff2html.min.css';
 import './appearance.js?v=palette-2';
 import { htmlPreviewDocument } from './html-preview.js';
 import { renderInteractiveArtifacts, stripInteractiveArtifactBlocks } from './interactive-artifacts.js';
+import { extractOpenUIArtifacts, stripOpenUIArtifactBlocks } from './openui-artifacts.js';
 import { submitOnEnter } from './submit-on-enter.js';
 import { bindImageDropZone, clearImageInput, filesToImageAttachments, imageAttachmentSrc, imageAttachmentText, imageInputFiles, updateImageStatus } from './image-attachments.js';
 import { implementationNoteFromToolEvent, implementationNotesFromToolEvent } from './implementation-notes.js';
@@ -52,8 +53,6 @@ const thinkingTitle = document.querySelector('#thinking-title');
 const thinkingDetail = document.querySelector('#thinking-detail');
 const diffBox = document.querySelector('#diff-box');
 const diffCount = document.querySelector('#diff-count');
-const diffFiles = document.querySelector('#diff-files');
-const diffEditor = document.querySelector('#diff-editor');
 const diffDialog = document.querySelector('#diff-dialog');
 const diffDialogTitle = document.querySelector('#diff-dialog-title');
 const diffDialogFiles = document.querySelector('#diff-dialog-files');
@@ -86,11 +85,9 @@ let runSummaryTimer = null;
 let initialPromptRendered = false;
 let historyRendered = false;
 let graphStatus = 'waiting';
-let selectedDiffPath = '';
 let diffDialogPath = '__all__';
 let lastDiffPayload = null;
 let diffRefreshTimer = null;
-let diffBoxOpenedOnce = false;
 let assistantChunkBuffer = '';
 let assistantChunkFrame = 0;
 let assistantChunkShouldFollow = false;
@@ -101,6 +98,7 @@ let queuedFollowUpCount = 0;
 let initialResumeScrollDone = false;
 let workflowPollTimer = 0;
 const excalidrawRenderTokens = new WeakMap();
+const openUIRenderTokens = new WeakMap();
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -726,7 +724,8 @@ function renderThread(thread) {
     queuedFollowUpCount = 0;
   }
   graphStatus = lifecycleCopy(thread);
-  if (!thinkingDetail.textContent) thinkingDetail.textContent = graphStatus;
+  if (graphStatus === 'done') thinkingDetail.textContent = '';
+  else if (!thinkingDetail.textContent) thinkingDetail.textContent = graphStatus;
   setStatus(graphStatus, statusTone(rawStatus), isActiveStatus(rawStatus));
   renderStopButton(thread);
   renderArchiveButton(thread);
@@ -852,7 +851,7 @@ function restoreInitialThreadPosition() {
   if (!target || (!timeline.querySelector('.message-item.assistant') && userMessages.length < 2)) return;
   initialResumeScrollDone = true;
   requestAnimationFrame(() => {
-    const topbar = document.querySelector('.flow-topbar');
+    const topbar = document.querySelector('.thread-main-header');
     const offset = Math.ceil(topbar?.getBoundingClientRect().height || 0) + 18;
     window.scrollTo({ top: Math.max(0, target.getBoundingClientRect().top + window.scrollY - offset), behavior: 'auto' });
   });
@@ -1008,14 +1007,19 @@ function isActiveEvent(event) {
   return isActiveStatus(status);
 }
 
+function headerDetailCopy(headline, detail) {
+  if (headline === 'Done' && !detail) return '';
+  return detail ? `${headline} · ${detail}` : headline;
+}
+
 function setNow(event) {
   syncRunTiming(event);
   const [headline, detail] = activityCopy(event);
   syncRunSummaryToolDetail(event, detail);
   thinkingTitle.textContent = threadDisplayTitle();
   thinkingTitle.classList.toggle('is-active', isActiveEvent(event));
-  thinkingDetail.textContent = detail ? `${headline} · ${detail}` : headline;
-  if (activityNote) activityNote.textContent = detail ? `${headline} · ${detail}` : headline;
+  thinkingDetail.textContent = headerDetailCopy(headline, detail);
+  if (activityNote) activityNote.textContent = headerDetailCopy(headline, detail);
   if (event?.runStatus) {
     graphStatus = lifecycleCopy({ runStatus: event.runStatus });
     setStatus(graphStatus, statusTone(event.runStatus), isActiveEvent(event));
@@ -1025,22 +1029,18 @@ function setNow(event) {
 
 function workflowStateClass(status) {
   const value = String(status || '').toLowerCase();
-  if (value === 'done' || value === 'completed') return 'done';
+  if (value === 'done' || value === 'completed' || value === 'complete' || value === 'success') return 'done';
   if (value === 'error' || value === 'failed' || value === 'aborted') return 'error';
   if (value === 'skipped' || value === 'paused') return 'done';
   return 'running';
 }
 
-function workflowTokens(value) {
-  const tokens = Number(value);
-  if (!Number.isFinite(tokens) || tokens <= 0) return '';
-  if (tokens < 1000) return `${Math.round(tokens)} tok`;
-  return `${(tokens / 1000).toFixed(tokens < 10_000 ? 1 : 0)}k tok`;
+function workflowStepDone(agent) {
+  return ['done', 'skipped', 'completed', 'complete', 'success'].includes(String(agent?.status || '').toLowerCase());
 }
 
-function workflowAgentDetail(label, value) {
-  const text = String(value || '').trim();
-  return text ? `<span><b>${escapeHtml(label)}</b>${escapeHtml(text)}</span>` : '';
+function workflowAgentSummary(agent) {
+  return String(agent?.error || agent?.resultPreview || agent?.promptPreview || '').trim();
 }
 
 function workflowAgentGroups(run) {
@@ -1054,32 +1054,22 @@ function workflowAgentGroups(run) {
 
 function workflowAgentNode(agent) {
   const agentState = workflowStateClass(agent.status);
-  const meta = [agent.model, workflowTokens(agent.tokens)].filter(Boolean).join(' · ');
-  const details = [
-    workflowAgentDetail('task', agent.promptPreview),
-    workflowAgentDetail('result', agent.resultPreview),
-    workflowAgentDetail('error', agent.error),
-  ].filter(Boolean).join('');
-  return `<article class="workflow-view-node workflow-agent ${agentState}"><div class="workflow-node-top"><span>${escapeHtml(agent.label || 'agent')}</span><b>${escapeHtml(agent.status || 'queued')}</b></div>${meta ? `<small>${escapeHtml(meta)}</small>` : ''}${details ? `<div class="workflow-agent-detail">${details}</div>` : ''}</article>`;
+  const summary = workflowAgentSummary(agent);
+  return `<article class="workflow-view-node workflow-agent ${agentState}"><div class="workflow-node-top"><span>${escapeHtml(agent.label || 'agent')}</span><b>${escapeHtml(agent.status || 'queued')}</b></div>${summary ? `<small>${escapeHtml(summary)}</small>` : ''}</article>`;
 }
 
 function renderWorkflowRun(run) {
   const agents = Array.isArray(run.agents) ? run.agents : [];
-  const done = agents.filter((agent) => ['done', 'skipped'].includes(String(agent.status || '').toLowerCase())).length;
-  const total = agents.length;
   const state = workflowStateClass(run.status);
   const groups = workflowAgentGroups(run);
-  const phasePills = groups.map((group, index) => {
-    const phaseDone = group.agents.filter((agent) => ['done', 'skipped'].includes(String(agent.status || '').toLowerCase())).length;
-    return `<span class="workflow-phase-pill"><i>${index + 1}</i>${escapeHtml(group.phase)} <small>${phaseDone}/${group.agents.length}</small></span>`;
-  }).join('');
   const lanes = groups.map((group, index) => {
-    const phaseDone = group.agents.filter((agent) => ['done', 'skipped'].includes(String(agent.status || '').toLowerCase())).length;
+    const phaseDone = group.agents.filter(workflowStepDone).length;
     const phaseRunning = group.agents.filter((agent) => String(agent.status || '').toLowerCase() === 'running').length;
-    return `<section class="workflow-lane"><div class="workflow-lane-head"><span>${index + 1}. ${escapeHtml(group.phase)}</span><small>${phaseRunning ? `${phaseRunning} running` : `${phaseDone}/${group.agents.length} done`}</small></div><div class="workflow-agent-grid">${group.agents.map(workflowAgentNode).join('')}</div></section>`;
-  }).join('<div class="workflow-step-link" aria-hidden="true">↓</div>');
+    return `<section class="workflow-lane"><div class="workflow-lane-head"><span><i>${index + 1}</i>${escapeHtml(group.phase)}</span><small>${phaseRunning ? `${phaseRunning} running` : `${phaseDone}/${group.agents.length} done`}</small></div><div class="workflow-agent-grid">${group.agents.map(workflowAgentNode).join('')}</div></section>`;
+  }).join('');
+  const flowHtml = lanes || '<p class="rail-empty">waiting for workflow journal</p>';
 
-  return `<div class="workflow-map"><div class="workflow-map-head agent-node workflow ${state}"><span>${escapeHtml(run.workflowName || run.label || 'workflow')}</span><small>${escapeHtml([run.runId, run.status || 'running', total ? `${done}/${total} agents` : 'waiting for agents'].filter(Boolean).join(' · '))}</small></div>${phasePills ? `<div class="workflow-phase-strip">${phasePills}</div>` : ''}<div class="workflow-flow"><div class="workflow-terminal"><span>start</span><small>workflow args → phases</small></div>${lanes ? `<div class="workflow-step-link" aria-hidden="true">↓</div>${lanes}<div class="workflow-step-link" aria-hidden="true">↓</div>` : ''}<div class="workflow-terminal ${state}"><span>${state === 'done' ? 'result' : state === 'error' ? 'failed' : 'running'}</span><small>${total ? `${done}/${total} agents` : 'waiting'}</small></div></div></div>`;
+  return `<div class="workflow-map"><div class="workflow-map-head workflow-title ${state}"><span>${escapeHtml(run.workflowName || run.label || 'workflow')}</span></div><div class="workflow-flow">${flowHtml}</div></div>`;
 }
 
 function renderAgentGraph() {
@@ -1143,10 +1133,22 @@ function fullDiffText(payload = {}) {
   return payload.diff || files.map((file) => diffTextForFile(file, payload)).join('\n\n');
 }
 
-function selectedDiffText(payload = {}) {
+function changedLineCount(payload = {}) {
   const files = diffFileRows(payload);
-  const selected = files.find((file) => file.path === selectedDiffPath) || files[0];
-  return selected ? diffTextForFile(selected, payload) : '';
+  const text = files.length ? files.map((file) => diffTextForFile(file, payload)).join('\n') : payload.diff || '';
+  return String(text).split('\n').reduce((count, line) => {
+    if (!/^[+-]/.test(line) || /^(---\s|\+\+\+\s)/.test(line)) return count;
+    return count + 1;
+  }, 0);
+}
+
+function plural(count, singular) {
+  return `${count} ${singular}${count === 1 ? '' : 's'}`;
+}
+
+function formatDiffSummary(payload = {}) {
+  const files = diffFileRows(payload).length;
+  return `${plural(files, 'file')} edited · ${plural(changedLineCount(payload), 'line')}`;
 }
 
 function isUnifiedDiff(text = '') {
@@ -1213,62 +1215,14 @@ function openDiffDialog(pathValue = '__all__') {
   if (!diffDialog.open) diffDialog.showModal();
 }
 
-function ensureDiffCopyButton() {
-  const workbench = diffEditor?.closest('.diff-workbench');
-  if (!workbench || workbench.querySelector('.diff-copy-button')) return;
-  const button = makeCopyButton(() => diffEditor.value, 'selected diff');
-  button.classList.add('diff-copy-button');
-  workbench.append(button);
-}
-
-function ensureDiffOpenButton() {
-  const workbench = diffEditor?.closest('.diff-workbench');
-  if (!workbench || workbench.querySelector('.diff-open-button')) return;
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.className = 'diff-open-button';
-  button.textContent = 'open full diff';
-  button.addEventListener('click', (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    openDiffDialog('__all__');
-  });
-  workbench.append(button);
-}
-
 function renderDiffBox(payload = {}) {
-  if (!diffBox || !diffCount || !diffFiles || !diffEditor) return;
+  if (!diffBox || !diffCount) return;
   lastDiffPayload = payload;
   const files = diffFileRows(payload);
   diffBox.hidden = !files.length;
-  diffCount.textContent = String(files.length);
-  diffFiles.replaceChildren();
-
-  if (!files.length) {
-    diffEditor.value = '';
-    return;
-  }
-
-  if (!files.some((file) => file.path === selectedDiffPath)) selectedDiffPath = files[0].path;
-  for (const file of files) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = `diff-file${file.path === selectedDiffPath ? ' is-active' : ''}`;
-    button.textContent = `${file.label || file.code || 'changed'} · ${file.path}`;
-    button.addEventListener('click', () => {
-      selectedDiffPath = file.path;
-      renderDiffBox(payload);
-    });
-    diffFiles.append(button);
-  }
-
-  diffEditor.value = selectedDiffText(payload);
-  ensureDiffCopyButton();
-  ensureDiffOpenButton();
-  if (!diffBoxOpenedOnce) {
-    diffBox.open = true;
-    diffBoxOpenedOnce = true;
-  }
+  const summary = formatDiffSummary(payload);
+  diffCount.textContent = summary;
+  diffBox.setAttribute('aria-label', `Open changes: ${summary}`);
 }
 
 async function refreshDiffBox() {
@@ -1276,10 +1230,10 @@ async function refreshDiffBox() {
   try {
     renderDiffBox(await fetchJson(`/api/threads/${encodeURIComponent(name)}/diff`));
   } catch (error) {
+    lastDiffPayload = null;
     diffBox.hidden = false;
-    diffCount.textContent = '!';
-    diffFiles?.replaceChildren();
-    if (diffEditor) diffEditor.value = error.message;
+    diffCount.textContent = 'could not load';
+    diffBox.setAttribute('aria-label', `Changes could not load: ${error.message}`);
   }
 }
 
@@ -1406,11 +1360,26 @@ function fillComposerFromInteractiveAction({ prompt = '', delivery = 'followUp' 
   setStatus('review interactive action, then send', 'info');
 }
 
+async function renderOpenUIArtifactsLazy(node, raw, onAction) {
+  const hasOpenUI = extractOpenUIArtifacts(raw).length > 0;
+  const hasRenderedOpenUI = Boolean(node.querySelector('.openui-artifacts'));
+  if (!hasOpenUI && !hasRenderedOpenUI) return;
+  const token = {};
+  openUIRenderTokens.set(node, token);
+  try {
+    const { renderOpenUIArtifacts } = await import('./openui-renderer.jsx');
+    if (openUIRenderTokens.get(node) === token) renderOpenUIArtifacts(node, raw, onAction);
+  } catch (error) {
+    console.error('Could not render OpenUI artifact.', error);
+  }
+}
+
 function renderMessageBody(node, text, allowHtml = false, images = []) {
   const raw = String(text || '');
-  const displayText = allowHtml ? stripInteractiveArtifactBlocks(raw) : raw;
+  const displayText = allowHtml ? stripOpenUIArtifactBlocks(stripInteractiveArtifactBlocks(raw)) : raw;
   const preview = allowHtml ? htmlPreviewDocument(displayText, currentPreviewTheme(), { resolveImageSrc: resolveHtmlPreviewImageSrc }) : '';
   const card = node.closest('.message-card');
+  card?.classList.toggle('openui-rendered', allowHtml && extractOpenUIArtifacts(raw).length > 0);
   messageText.set(node, raw);
 
   if (!preview) {
@@ -1419,7 +1388,10 @@ function renderMessageBody(node, text, allowHtml = false, images = []) {
     node.textContent = displayText;
     renderMessageAttachments(node, images);
     renderExcalidrawArtifacts(node, raw);
-    if (allowHtml) renderInteractiveArtifacts(node, raw, fillComposerFromInteractiveAction);
+    if (allowHtml) {
+      renderInteractiveArtifacts(node, raw, fillComposerFromInteractiveAction);
+      renderOpenUIArtifactsLazy(node, raw, fillComposerFromInteractiveAction);
+    }
     return;
   }
 
@@ -1445,6 +1417,7 @@ function renderMessageBody(node, text, allowHtml = false, images = []) {
   renderMessageAttachments(node, images);
   renderExcalidrawArtifacts(node, raw, { skipImagePaths: htmlImageArtifactPaths(displayText) });
   renderInteractiveArtifacts(node, raw, fillComposerFromInteractiveAction);
+  renderOpenUIArtifactsLazy(node, raw, fillComposerFromInteractiveAction);
 }
 
 function appendMessageText(node, text, allowHtml = false) {
@@ -2003,13 +1976,9 @@ agentRail?.addEventListener('keydown', (event) => {
   event.preventDefault();
   toggleAgentActivity();
 });
-diffBox?.addEventListener('click', (event) => event.stopPropagation());
-diffBox?.addEventListener('keydown', (event) => event.stopPropagation());
-diffEditor?.addEventListener('click', () => openDiffDialog(selectedDiffPath || '__all__'));
-diffEditor?.addEventListener('keydown', (event) => {
-  if (event.key !== 'Enter' && event.key !== ' ') return;
-  event.preventDefault();
-  openDiffDialog(selectedDiffPath || '__all__');
+diffBox?.addEventListener('click', (event) => {
+  event.stopPropagation();
+  openDiffDialog('__all__');
 });
 diffDialogClose?.addEventListener('click', () => diffDialog?.close());
 diffDialog?.addEventListener('click', (event) => {

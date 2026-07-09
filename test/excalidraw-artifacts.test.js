@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  artifactMediaOpenUISource,
   diagramImageArtifactPaths,
   excalidrawArtifactPaths,
   htmlImageArtifactPaths,
@@ -68,5 +69,16 @@ test('htmlImageArtifactPaths finds embedded relative image sources for duplicate
   assert.deepEqual(
     htmlImageArtifactPaths('<section><img src="output/playwright/demo.png"><img src="https://example.com/demo.png"><img src="../secret.png"><img src="output/playwright/demo.png"></section>'),
     ['output/playwright/demo.png'],
+  );
+});
+
+test('artifactMediaOpenUISource turns media paths into Workbench OpenUI', () => {
+  assert.equal(
+    artifactMediaOpenUISource('Rendered diagram artifact: `infra-options-decision.png`; source: `infra-options-decision.excalidraw`.'),
+    'root = ArtifactGallery([artifact1])\nartifact1 = ArtifactImage("infra-options-decision.png", "infra-options-decision.excalidraw")',
+  );
+  assert.equal(
+    artifactMediaOpenUISource('Created `flow.excalidraw` and rendered it inline.'),
+    'root = ArtifactGallery([artifact1])\nartifact1 = ExcalidrawArtifact("flow.excalidraw")',
   );
 });

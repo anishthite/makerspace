@@ -81,3 +81,34 @@ export function htmlImageArtifactPaths(value) {
   }
   return paths;
 }
+
+function artifactStem(path) {
+  return String(path || '').replace(/\.(?:excalidraw|gif|jpe?g|png|svg|webp)$/i, '');
+}
+
+function openUIString(value) {
+  return JSON.stringify(String(value || ''));
+}
+
+export function artifactMediaOpenUISource(value, options = {}) {
+  const skippedImages = new Set((options.skipImagePaths || []).map(normalizeDiagramImageArtifactPath).filter(Boolean));
+  const imagePaths = diagramImageArtifactPaths(value).filter((path) => !skippedImages.has(path));
+  const sourceByStem = new Map(excalidrawArtifactPaths(value).map((path) => [artifactStem(path), path]));
+  const usedSources = new Set();
+  const items = imagePaths.map((path) => {
+    const source = sourceByStem.get(artifactStem(path)) || '';
+    if (source) usedSources.add(source);
+    return { component: 'ArtifactImage', args: [path, source].filter(Boolean) };
+  });
+
+  for (const path of sourceByStem.values()) {
+    if (!usedSources.has(path)) items.push({ component: 'ExcalidrawArtifact', args: [path] });
+  }
+  if (!items.length) return '';
+
+  const refs = items.map((_, index) => `artifact${index + 1}`);
+  return [
+    `root = ArtifactGallery([${refs.join(', ')}])`,
+    ...items.map((item, index) => `${refs[index]} = ${item.component}(${item.args.map(openUIString).join(', ')})`),
+  ].join('\n');
+}

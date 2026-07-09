@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — OpenUI fenced blocks</title>
+<meta name="task" content="Render fenced OpenUI blocks inside Workbench thread messages.">
+<meta name="date-started" content="2026-07-08">
+<meta name="date-updated" content="2026-07-08">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="makerspace,ui,thread,openui,generative-ui">
+<meta name="related" content="2026-07-03-interactive-agent-ui.html,2026-07-03-inline-png-html-replies.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code,pre{font-family:ui-monospace,Menlo,monospace}code{background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}pre{background:#f6f6f6;padding:.55rem .7rem;border-radius:4px;overflow-x:auto;font-size:12.5px;line-height:1.4}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-med{color:#b85c00}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>OpenUI fenced blocks</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-08 · status <b class="status-shipped">shipped</b> · blast <span class="blast-med">medium</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Render assistant-authored <code>```openui</code> fences as inline OpenUI cards.</div><b>Surface</b><div><code>/thread.html</code> assistant message rendering.</div><b>Library</b><div><code>openuiChatLibrary</code> only for MVP; full canvas library deferred.</div><b>Actions</b><div>OpenUI actions fill the composer; no direct tool execution or auto-submit.</div><b>Schema</b><div>No backend/session schema change.</div><b>Open Qs</b><div>0.</div></div>
+<h2>API contract</h2>
+<pre>```openui
+root = Card([title])
+title = TextContent("Hello", "large-heavy")
+```</pre>
+<h2>UI layout</h2>
+<ol><li><b>Transcript</b>: strip <code>openui</code> fences from visible text before HTML/plain rendering.</li><li><b>OpenUI card</b>: append rendered components below the message body in a bounded section.</li><li><b>Actions</b>: convert OpenUI action events into reviewable composer text.</li></ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>package.json</code>, <code>package-lock.json</code></td><td>touch</td><td>Add OpenUI runtime packages.</td></tr><tr><td><code>frontend/src/runtime/openui-artifacts.js</code></td><td>new</td><td>Extract, strip, and format OpenUI fenced blocks.</td></tr><tr><td><code>frontend/src/runtime/openui-renderer.jsx</code></td><td>new</td><td>Mount OpenUI <code>Renderer</code> into existing DOM messages.</td></tr><tr><td><code>frontend/src/runtime/thread.js</code></td><td>touch</td><td>Strip and render OpenUI blocks in assistant messages.</td></tr><tr><td><code>frontend/public/styles.css</code></td><td>touch</td><td>Style the OpenUI card container.</td></tr><tr><td><code>packages/workbench-pi-defaults/context/AGENTS.md</code></td><td>touch</td><td>Teach agents the safe fence contract.</td></tr><tr><td><code>test/openui-artifacts.test.js</code>, <code>test/thread-trace-tray.test.js</code></td><td>touch</td><td>Pin extraction and thread wiring.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Use <code>openuiChatLibrary</code>. Inline thread messages need a single vertical card, not free dashboard layout.</td></tr><tr><td>D-002</td><td>Keep <code>workbench-ui</code> unchanged. Existing small controls still cover simple composer actions.</td></tr><tr><td>D-003</td><td>Disable OpenUI tool provider. Workbench should not execute model-declared UI tools in the browser.</td></tr><tr><td>D-004</td><td>Prefer <code>openui</code> over hand-authored HTML in Workbench default prompts. The renderer now exists and gives structured cards/tables/charts without sandboxed HTML fragments.</td></tr><tr><td>D-005</td><td>Force <code>openui</code> for final Workbench answers by default. The experiment is reversible in one prompt file if rendered cards feel heavy.</td></tr><tr><td>D-006</td><td>Remove Workbench's OpenUI wrapper chrome. OpenUI output should feel like the answer body, not a nested artifact card.</td></tr><tr><td>D-007</td><td>Pair <code>openui</code> answers with one optional <code>workbench-ui</code> control panel. Tunable next turns need sliders/checklists more than prose.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>Imported OpenUI over porting components. Reimplementation creates maintenance debt immediately.</td></tr><tr><td>T-002</td><td>Plain fence regex over a markdown AST. Existing artifact renderers already use bounded fence extraction.</td></tr></table>
+<h2>Deviations</h2>
+<table><tr><th>ID</th><th>From · Did · Reason</th></tr><tr><td>X-001</td><td>Static renderer import · Switched to dynamic import · Keeps the normal thread chunk small when no <code>openui</code> fence exists.</td></tr><tr><td>X-002</td><td>Strict <code>root =</code> requirement · Normalize bare component calls to <code>root = ...</code> · OpenUI parses bare calls without throwing but renders no root, which creates a confusing user error.</td></tr></table>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>node --test test/openui-artifacts.test.js test/thread-trace-tray.test.js</code></td><td>Passed 28/28.</td></tr><tr><td><code>node --check frontend/src/runtime/thread.js frontend/src/runtime/openui-artifacts.js</code></td><td>Passed.</td></tr><tr><td><code>node --test test/pi-defaults-package.test.js test/openui-artifacts.test.js test/thread-trace-tray.test.js</code></td><td>Passed 33/33 after wrapper polish.</td></tr><tr><td><code>node --test test/pi-defaults-package.test.js</code></td><td>Passed 5/5 after interactive-control prompt guidance.</td></tr><tr><td><code>npm run build</code></td><td>Passed; OpenUI stays in a lazy <code>openui-renderer</code> chunk.</td></tr><tr><td><code>npm test</code></td><td>Passed 230/230 before the root fallback patch.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Remove the two OpenUI runtime files, dependency additions, thread hooks, styles, tests, and prompt guidance; stored messages remain plain text.</p>
+<h2>Definition of done</h2>
+<ul><li><code>```openui</code> fences render inline with <code>openuiChatLibrary</code>.</li><li>Invalid/absent fences leave normal message rendering intact.</li><li>OpenUI button/form actions fill the composer for review.</li><li>Focused tests and <code>npm run build</code> pass.</li></ul>
+</body>
+</html>

@@ -1,4 +1,4 @@
-const FENCE_RE = /```workbench-ui\s*\n?([\s\S]*?)```/gi;
+const FENCE_RE = /```(?:workbench-ui|makerspace-ui)\s*\n?([\s\S]*?)```/gi;
 const CONTROL_TYPES = new Set(['slider', 'checklist', 'select', 'radio', 'text']);
 const DELIVERY_TYPES = new Set(['auto', 'followUp', 'steer']);
 const MAX_ARTIFACTS = 3;

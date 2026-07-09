@@ -129,6 +129,7 @@ CONTROL_API_TOKEN=
 VITE_WORKBENCH_API_BASE= # frontend build env only; backend HTTPS origin
 WORKBENCH_AUTH_REQUIRED= # set true to require GitHub sign-in even outside hosted mode
 WORKBENCH_AUTH_SECRET= # stable secret for signed auth cookies and encrypted OAuth tokens
+WORKBENCH_ALLOWED_USERS= # optional comma-separated GitHub logins/ids for private beta access
 WORKBENCH_ALLOWED_ORIGIN= # set to the static frontend origin for cross-origin cookie auth
 WORKBENCH_AUTH_SAMESITE= # defaults to None when WORKBENCH_ALLOWED_ORIGIN is set, otherwise Lax
 GITHUB_CLIENT_ID=
@@ -137,7 +138,7 @@ GITHUB_APP_ID= # optional; enables short-lived installation tokens for sandbox g
 GITHUB_APP_SLUG= # e.g. your-app-name; setup URL should be /api/auth/github/app/callback
 GITHUB_APP_PRIVATE_KEY= # PEM, or PEM with \n escapes
 AUTH_DATA_PATH=./data/auth.json
-WORKBENCH_STATE_STORE=file # set d1 for hosted Cloudflare D1 persistence
+WORKBENCH_STATE_STORE= # production auto-selects d1 when Cloudflare D1 env is complete; set file for disposable state
 WORKBENCH_WORKSPACE_MODE= # set true to reuse one remote workspace per signed-in user + repo
 CLOUDFLARE_ACCOUNT_ID=
 CLOUDFLARE_D1_DATABASE_ID=
@@ -184,7 +185,7 @@ Sandboxes get full `git` and `gh` CLI auth so agents can push branches and open 
 - Private GitHub clones use the same per-user token during Daytona setup, including pasted `github.com` URLs; the raw token is stripped before sessions are persisted.
 - `GH_TOKEN`/`GITHUB_TOKEN` are also in the default `FORWARD_ENV_KEYS`, so self-hosted single-user deployments can drop a PAT in the server env and get working `git push` + `gh` in every sandbox.
 
-For hosted App Platform deployments, set `WORKBENCH_STATE_STORE=d1` plus the three Cloudflare values above. D1 stores sessions, settings, recent projects, Dockerfile text, and Pi profile choices/text; repo files still live in Git/Daytona/local disk.
+For hosted App Platform deployments, set the three Cloudflare D1 values above; production automatically uses D1 unless `WORKBENCH_STATE_STORE=file` is set. D1 stores sessions, settings, recent projects, Dockerfile text, and Pi profile choices/text; repo files still live in Git/Daytona/local disk.
 
 ## Pi defaults package
 
@@ -304,4 +305,4 @@ The chat transport after boot is still:
 
 1. add direct terminal attach if the Daytona preview/CLI workflow is not enough
 2. add repo upload/sync for local-only repos
-3. add quotas/billing and a proper hosted secret manager before opening usage broadly
+3. add quotas/billing and a proper hosted secret manager before opening usage beyond an allowlisted beta

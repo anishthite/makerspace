@@ -116,7 +116,8 @@
 
   function App() {
     const [initialData, setInitialData] = React.useState(null);
-    const [scene, setScene] = React.useState(null);
+    const sceneRef = React.useRef(null);
+    const dirtyRef = React.useRef(false);
     const [dirty, setDirty] = React.useState(false);
     const [saving, setSaving] = React.useState(false);
     const [status, setStatus] = React.useState('');
@@ -133,19 +134,20 @@
             files: loaded.files || {},
             scrollToContent: true,
           };
+          sceneRef.current = { type: 'excalidraw', version: loaded.version || 2, source: loaded.source, elements: initial.elements, appState: initial.appState, files: initial.files };
           setInitialData(initial);
-          setScene({ type: 'excalidraw', version: loaded.version || 2, source: loaded.source, elements: initial.elements, appState: initial.appState, files: initial.files });
         })
         .catch((err) => { if (!cancelled) setError(err.message); });
       return () => { cancelled = true; };
     }, []);
 
     async function onSave() {
-      if (!scene || saving) return;
+      if (!sceneRef.current || saving) return;
       setSaving(true);
       setStatus('saving…');
       try {
-        const result = await saveScene(scene);
+        const result = await saveScene(sceneRef.current);
+        dirtyRef.current = false;
         setDirty(false);
         setStatus(`saved ${result.path}`);
       } catch (err) {
@@ -172,9 +174,12 @@
         gridModeEnabled: false,
         renderScrollbars: true,
         onChange: (elements, appState, files) => {
-          setScene({ type: 'excalidraw', version: scene?.version || 2, source: scene?.source, elements, appState, files });
-          setDirty(true);
-          setStatus('');
+          sceneRef.current = { type: 'excalidraw', version: sceneRef.current?.version || 2, source: sceneRef.current?.source, elements, appState, files };
+          if (!dirtyRef.current) {
+            dirtyRef.current = true;
+            setDirty(true);
+            setStatus('');
+          }
         },
       }),
     );

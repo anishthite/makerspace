@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Landing page positioning</title>
+<meta name="task" content="Remake the desktop landing page around Workbench's product edge and concrete features.">
+<meta name="date-started" content="2026-07-06">
+<meta name="date-updated" content="2026-07-06">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="makerspace,workbench,desktop,landing,positioning,copy">
+<meta name="related" content="2026-07-02-desktop-landing-offers.html,2026-06-30-dmg-release-landing.html,2026-07-01-project-workspace-mode.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Landing page positioning</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-06 · status <b class="status-shipped">shipped</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Rebuild <code>/desktop</code> as a concise marketing page for Workbench's local-plus-sandbox agent workflow.</div><b>Source</b><div><code>README.md</code>, current desktop landing, and shipped agent/workspace notes.</div><b>Surface</b><div><code>frontend/desktop.html</code> only.</div><b>Schema</b><div>None.</div><b>Mobile</b><div>Single-column responsive static page.</div><b>Open Qs</b><div>0; assume <code>/desktop</code> remains the public landing route.</div></div>
+<h2>UI layout</h2>
+<ol><li><b>Hero</b>: lead with local folders plus disposable sandboxes instead of generic “download the app” copy.</li><li><b>Edge strip</b>: frame the product against autocomplete, black-box cloud agents, and raw terminals.</li><li><b>Feature cards</b>: show local projects, remote workspaces, Pi profile sync, GitHub auth, live audit trail, and artifacts.</li><li><b>Workflow</b>: use a five-step row from choose repo to review diffs and continue.</li><li><b>CTA</b>: keep latest-release and direct-DMG links visible at top and bottom.</li></ol>
+<h2>Deviations</h2>
+<table><tr><th>ID</th><th>From spec · Did · Reason</th></tr><tr><td>X-001</td><td>Spec used hero, edge, feature, workflow, and CTA sections; collapsed to hero, capability strip, three cards, and footer; user requested a much more minimal page.</td></tr></table>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>frontend/desktop.html</code></td><td>touch</td><td>Replace the short DMG landing page with sharper positioning and feature sections.</td></tr><tr><td><code>frontend/public/landing-variations.html</code></td><td>new</td><td>Show the four reviewer-approved landing alternatives as static visual mockups.</td></tr><tr><td><code>implementation-notes/2026-07-06-landing-page-positioning.html</code></td><td>new</td><td>Record landing copy decisions and verification.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this positioning note.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Position Workbench as “run coding agents where the work belongs.” The product edge is execution locality plus visible review, not another chat surface.</td></tr><tr><td>D-002</td><td>Keep <code>/desktop</code> as the landing route. Prior shipped notes preserve <code>/</code> for project selection.</td></tr><tr><td>D-003</td><td>Use static HTML/CSS. No runtime state is needed.</td></tr><tr><td>D-004</td><td>Supersedes <code>D-001</code> copy density with “Agents for real repos.” User prefers minimal positioning over a full feature story.</td></tr><tr><td>D-005</td><td>Create <code>/landing-variations.html</code> instead of replacing <code>/desktop</code>. The user asked to compare alternatives before choosing.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>Concrete product capabilities over broad AI copy. The landing page should make the app's edge falsifiable.</td></tr><tr><td>T-002</td><td>One file over React components. The page ships faster and avoids touching app routes.</td></tr><tr><td>T-003</td><td>Three cards over eight cards plus workflow. The page now says enough and stops.</td></tr></table>
+<h2>Assumptions</h2>
+<ul><li>A-001 · Workbench is the public brand on the page; if Makerspace returns, swap labels only.</li></ul>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>npm run build</code></td><td>Passed.</td></tr><tr><td><code>playwright-cli screenshot</code></td><td>Captured <code>output/playwright/workbench-desktop-landing.png</code>.</td></tr><tr><td><code>npm run build</code> + <code>playwright-cli screenshot</code></td><td>Passed after minimal pass; captured <code>output/playwright/workbench-desktop-landing-minimal.png</code>.</td></tr><tr><td><code>npm run build</code> + <code>playwright-cli screenshot</code></td><td>Passed for variation gallery; captured <code>output/playwright/workbench-landing-variations.png</code>.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Revert <code>frontend/desktop.html</code> and the note/index rows to restore the previous landing page.</p>
+<h2>Definition of done</h2>
+<ul><li><code>/desktop</code> names the product edge and at least six real capabilities.</li><li>Latest-release and direct-DMG CTAs remain available.</li><li><code>npm run build</code> passes.</li></ul>
+</body>
+</html>

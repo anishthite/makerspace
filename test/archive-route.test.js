@@ -77,7 +77,7 @@ test('thread list does not count stale local runs as live after restart', async 
     assert.equal(threads['stale-completed'].completedAt, updatedAt);
     assert.equal(threads['unknown-completed'].runStatus, 'completed');
     assert.equal(threads['unknown-completed'].completedAt, updatedAt);
-    assert.equal(threads['remote-active'].runStatus, 'running');
+    assert.equal(threads['remote-active'].runStatus, 'failed');
   } finally {
     if (server) await stopServer(server);
     await rm(tempDir, { recursive: true, force: true });
@@ -126,7 +126,7 @@ test('message route restarts stale and failed local threads', async () => {
       });
       const payload = await response.json();
       assert.equal(response.status, 202, payload.error);
-      assert.equal(payload.thread.runStatus, 'running');
+      assert.equal(payload.thread.runStatus, 'starting');
       assert.equal(payload.thread.taskPrompt, `restart ${threadName}`);
       assert.equal(payload.thread.submittedAtMs, submittedAtMs);
     }
@@ -183,7 +183,7 @@ test('stop route marks a launching bridge thread failed', async () => {
   }
 });
 
-test('archive route accepts finished threads but rejects running threads', async () => {
+test('archive route accepts finished and stale inactive threads', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'workbench-archive-'));
   const sessionFile = path.join(tempDir, 'sessions.json');
   const settingsFile = path.join(tempDir, 'settings.json');
@@ -230,12 +230,12 @@ test('archive route accepts finished threads but rejects running threads', async
     assert.ok((await unknownDoneResponse.json()).thread.archivedAt);
 
     const busyResponse = await fetch(`${baseUrl}/api/threads/busy/archive`, { method: 'POST', headers: authHeaders });
-    assert.equal(busyResponse.status, 400);
-    assert.match((await busyResponse.json()).error, /finished/);
+    assert.equal(busyResponse.status, 200);
+    assert.ok((await busyResponse.json()).thread.archivedAt);
 
     const hiddenResponse = await fetch(`${baseUrl}/api/threads`, { headers: authHeaders });
     assert.equal(hiddenResponse.status, 200);
-    assert.deepEqual((await hiddenResponse.json()).threads.map((thread) => thread.name), ['busy']);
+    assert.deepEqual((await hiddenResponse.json()).threads.map((thread) => thread.name), []);
 
     const restoreResponse = await fetch(`${baseUrl}/api/threads/done/unarchive`, { method: 'POST', headers: authHeaders });
     assert.equal(restoreResponse.status, 200);
@@ -249,7 +249,7 @@ test('archive route accepts finished threads but rejects running threads', async
     assert.equal(sessions.find((session) => session.name === 'done').archivedAt, undefined);
     assert.ok(sessions.find((session) => session.name === 'failed').archivedAt);
     assert.ok(sessions.find((session) => session.name === 'unknown-done').archivedAt);
-    assert.equal(sessions.find((session) => session.name === 'busy').archivedAt, undefined);
+    assert.ok(sessions.find((session) => session.name === 'busy').archivedAt);
   } finally {
     if (server) await stopServer(server);
     await rm(tempDir, { recursive: true, force: true });

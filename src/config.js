@@ -1,6 +1,8 @@
 import { homedir } from 'node:os';
 import path from 'node:path';
 
+import { stateStoreFromEnv } from './d1-state.js';
+
 try {
   process.loadEnvFile?.(path.join(process.cwd(), '.env'));
 } catch (error) {
@@ -70,7 +72,8 @@ export function getConfig() {
     authSessionDays: Number(process.env.WORKBENCH_AUTH_SESSION_DAYS || 30),
     allowHostedLocalProvider: truthy(process.env.WORKBENCH_ALLOW_HOSTED_LOCAL_PROVIDER),
     allowedOrigin: allowedOriginFromEnv(),
-    stateStore: process.env.WORKBENCH_STATE_STORE || process.env.STATE_STORE || 'file',
+    allowedUsers: splitList(process.env.WORKBENCH_ALLOWED_USERS || process.env.WORKBENCH_ALLOWED_GITHUB_USERS || ''),
+    stateStore: stateStoreFromEnv(),
     daytonaApiKey: process.env.DAYTONA_API_KEY || '',
     daytonaApiUrl: process.env.DAYTONA_API_URL || 'https://app.daytona.io/api',
     daytonaTarget: process.env.DAYTONA_TARGET || '',
@@ -94,6 +97,7 @@ export function getConfig() {
     dockerfilePath: process.env.DOCKERFILE_PATH || path.join(rootDir, 'image', 'Dockerfile'),
     settingsFile: process.env.SETTINGS_DATA_PATH || path.join(defaultDataDir, 'settings.json'),
     recentProjectsFile: process.env.RECENT_PROJECTS_DATA_PATH || path.join(defaultDataDir, 'recent-projects.json'),
+    workflowRunsDir: process.env.WORKBENCH_WORKFLOW_RUNS_DIR || path.join(defaultDataDir, 'workflows', 'runs'),
     authFile: process.env.AUTH_DATA_PATH || process.env.WORKBENCH_AUTH_DATA_PATH || path.join(defaultDataDir, 'auth.json'),
     remoteWorkspaceDir: process.env.REMOTE_WORKSPACE_DIR || '/srv/workspace',
     remoteControlDir: process.env.REMOTE_CONTROL_DIR || '/srv/workbench',

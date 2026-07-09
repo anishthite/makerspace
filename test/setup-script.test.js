@@ -196,7 +196,9 @@ test('buildSetupScript skips direct pi auto-run for bridge-backed chat sessions'
   assert.match(bridgeScript, /entries = Array\.isArray\(body\.r\)/);
   assert.match(bridgeScript, /delivery=body\.delivery==="followUp"\?"followUp":body\.delivery==="steer"\?"steer":""/);
   assert.match(bridgeScript, /type:"queue",steering:\[\.\.\.event\.steering\],followUp:\[\.\.\.event\.followUp\]/);
-  assert.match(bridgeScript, /if\(run\.child\?\.steer&&delivery\)/);
+  assert.match(bridgeScript, /if\(delivery\)\{/);
+  assert.match(bridgeScript, /if\(!run\.child\?\.steer\|\|!run\.child\?\.followUp\)\{/);
+  assert.match(bridgeScript, /sendJson\(response,409,\{error:"Main agent is starting; try again in a moment\."\}\)/);
   assert.match(bridgeScript, /if\(delivery==="followUp"\)await run\.child\.followUp\(prompt,images\[0\]\?images:undefined\)/);
   assert.match(bridgeScript, /else await run\.child\.steer\(prompt,images\[0\]\?images:undefined\)/);
   assert.match(bridgeScript, /piSession\.prompt\(prompt, images\[0\] \? \{ images \} : undefined\)/);

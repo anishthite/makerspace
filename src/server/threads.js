@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { homedir } from 'node:os';
 import path from 'node:path';
 
 import { createDraftPullRequestForThread } from '../git-delivery.js';
@@ -119,11 +120,40 @@ export function createThreadService({ config, provider, http, auth, runState, br
     await provider.writeRemoteFile(session, path.posix.join(session.remoteWorkspaceDir || config.remoteWorkspaceDir, artifactPath), text);
   }
 
-  async function readThreadWorkflowRunFile(session, runId) {
-    const runPath = path.posix.join('.pi/workflows/runs', `${runId}.json`);
-    if (session.repoPath) return readFile(path.join(session.repoPath, runPath), 'utf8');
+  function notFound(error) {
+    return error?.code === 'ENOENT' || /not found|no such file/i.test(error?.message || '');
+  }
+
+  function workbenchWorkflowRunFile(runId) {
+    return path.join(config.workflowRunsDir || path.join(config.localDataDir || config.rootDir || process.cwd(), 'workflows', 'runs'), `${runId}.json`);
+  }
+
+  async function readWorkbenchWorkflowRunFile(runId) {
+    return readFile(workbenchWorkflowRunFile(runId), 'utf8');
+  }
+
+  async function writeWorkbenchWorkflowRunFile(runId, raw) {
+    const filePath = workbenchWorkflowRunFile(runId);
+    await mkdir(path.dirname(filePath), { recursive: true });
+    await writeFile(filePath, raw, 'utf8');
+  }
+
+  async function readRuntimeWorkflowRunFile(session, runId) {
+    const runPath = path.posix.join('.pi/better-workflows/runs', `${runId}.json`);
+    if (session.repoPath) return readFile(path.join(homedir(), runPath), 'utf8');
     if (!provider.readRemoteFile) throw clientError('Workflow run details are unavailable for this provider.', 501);
-    return provider.readRemoteFile(session, path.posix.join(session.remoteWorkspaceDir || config.remoteWorkspaceDir, runPath));
+    return provider.readRemoteFile(session, path.posix.join(config.remoteHomeDir || '/home/daytona', runPath));
+  }
+
+  async function readThreadWorkflowRunFile(session, runId) {
+    try {
+      const raw = await readRuntimeWorkflowRunFile(session, runId);
+      await writeWorkbenchWorkflowRunFile(runId, raw);
+      return raw;
+    } catch (error) {
+      if (!notFound(error)) throw error;
+      return readWorkbenchWorkflowRunFile(runId);
+    }
   }
 
   function workflowPreview(value, max = 260) {
@@ -131,16 +161,78 @@ export function createThreadService({ config, provider, http, auth, runState, br
     return text.length > max ? `${text.slice(0, max)}…` : text;
   }
 
+  function workflowResultPreview(value) {
+    if (!value) return '';
+    if (typeof value === 'string') return workflowPreview(value);
+    if (Array.isArray(value)) return `${value.length} items`;
+    if (typeof value !== 'object') return workflowPreview(value);
+    if (typeof value.summary === 'string') return workflowPreview(value.summary);
+    if (Array.isArray(value.variations)) {
+      const names = value.variations.map((item) => item?.name || item?.key).filter(Boolean).slice(0, 3).join(', ');
+      return workflowPreview(`${value.variations.length} variations${names ? `: ${names}` : ''}`);
+    }
+    if (Object.hasOwn(value, 'approved') && Object.hasOwn(value, 'score')) return workflowPreview(`${value.approved ? 'approved' : 'not approved'} · ${value.score}/10`);
+    if (value.result && Object.keys(value).length === 1) return workflowResultPreview(value.result);
+    return workflowPreview(Object.keys(value).slice(0, 5).join(', ') || JSON.stringify(value));
+  }
+
+  function workflowJournalPhase(entry, index) {
+    const result = entry?.result;
+    if (typeof result === 'string') return 'Synthesize';
+    if (!result || typeof result !== 'object') return 'Journal';
+    if (Array.isArray(result.variations)) return index === 0 ? 'Generate' : 'Revise';
+    if (Object.hasOwn(result, 'approved')) return index <= 1 ? 'Review' : 'Revise';
+    return 'Journal';
+  }
+
+  function workflowJournalLabel(entry, index) {
+    const result = entry?.result;
+    if (typeof result === 'string') return 'synthesize final';
+    if (!result || typeof result !== 'object') return `step ${index + 1}`;
+    if (Array.isArray(result.variations)) return index === 0 ? 'generate variations' : 'revise variations';
+    if (Object.hasOwn(result, 'approved')) return 'review alternatives';
+    return `step ${index + 1}`;
+  }
+
+  function workflowJournalToolPreview(entry) {
+    const calls = Array.isArray(entry?.toolCalls) ? entry.toolCalls : [];
+    const names = calls.map((call) => call?.name).filter(Boolean);
+    if (!names.length) return '';
+    const shown = names.slice(0, 4).join(', ');
+    return names.length > 4 ? `${shown}, +${names.length - 4}` : shown;
+  }
+
+  function workflowJournalAgents(journal) {
+    return journal.map((entry, index) => ({
+      id: entry.index ?? index,
+      label: workflowJournalLabel(entry, index),
+      phase: workflowJournalPhase(entry, index),
+      status: 'done',
+      model: '',
+      tokens: null,
+      promptPreview: entry.hash ? `journal ${entry.index ?? index} · ${entry.hash}` : `journal ${entry.index ?? index}`,
+      resultPreview: workflowResultPreview(entry.result),
+      toolPreview: workflowJournalToolPreview(entry),
+      error: workflowPreview((Array.isArray(entry.toolCalls) ? entry.toolCalls : []).find((call) => call?.isError)?.result),
+      startedAt: '',
+      endedAt: '',
+    }));
+  }
+
   function workflowRunPayload(runId, raw) {
     const data = JSON.parse(raw);
-    const agents = Array.isArray(data.agents) ? data.agents : [];
+    const journalAgents = Array.isArray(data.journal) ? workflowJournalAgents(data.journal) : [];
+    const agents = Array.isArray(data.agents) && data.agents.length ? data.agents : journalAgents;
+    const source = Array.isArray(data.agents) && data.agents.length ? 'agents' : journalAgents.length ? 'journal' : 'pending';
+    const phases = Array.isArray(data.phases) && data.phases.length ? data.phases : [...new Set(agents.map((agent) => agent.phase || 'workflow'))];
     return {
       available: true,
       runId: data.runId || runId,
-      workflowName: data.workflowName || 'workflow',
+      workflowName: data.workflowName || data.name || 'workflow',
       status: data.status || 'unknown',
-      phases: Array.isArray(data.phases) ? data.phases : [],
-      currentPhase: data.currentPhase || '',
+      source,
+      phases,
+      currentPhase: data.currentPhase || phases.at(-1) || '',
       agents: agents.map((agent) => ({
         id: agent.id,
         label: agent.label || `agent ${agent.id ?? ''}`.trim(),
@@ -148,13 +240,17 @@ export function createThreadService({ config, provider, http, auth, runState, br
         status: agent.status || 'unknown',
         model: agent.model || '',
         tokens: Number.isFinite(agent.tokens) ? agent.tokens : null,
-        promptPreview: workflowPreview(agent.prompt),
+        promptPreview: workflowPreview(agent.prompt || agent.promptPreview),
         resultPreview: workflowPreview(agent.resultPreview),
+        toolPreview: workflowPreview(agent.toolPreview),
         error: workflowPreview(agent.error),
         startedAt: agent.startedAt || '',
         endedAt: agent.endedAt || '',
       })),
-      updatedAt: data.updatedAt || '',
+      resultPreview: workflowResultPreview(data.result),
+      startedAt: data.startedAt || '',
+      finishedAt: data.finishedAt || '',
+      updatedAt: data.updatedAt || data.finishedAt || '',
     };
   }
 
@@ -167,7 +263,7 @@ export function createThreadService({ config, provider, http, auth, runState, br
     try {
       return workflowRunPayload(runId, await readThreadWorkflowRunFile(session, runId));
     } catch (error) {
-      if (error.code === 'ENOENT' || /not found|no such file/i.test(error.message || '')) {
+      if (notFound(error)) {
         return { available: false, runId, workflowName: 'workflow', status: 'pending', phases: [], agents: [] };
       }
       if (error instanceof SyntaxError) throw clientError(`${runId} workflow run state is invalid.`);
@@ -387,6 +483,12 @@ export function createThreadService({ config, provider, http, auth, runState, br
     return session;
   }
 
+  function activeControlStatus(session) {
+    const stored = effectiveStoredRunStatus(session);
+    if (!session.localMode && session.bridgeClaimed && isActiveRunStatus(stored)) return stored;
+    return effectiveStoredRunStatus(decorateLiveSession(session));
+  }
+
   async function archiveThreadSession(name, viewerSessionId = '', trusted = false, user = null) {
     const existing = await getThreadSession(name);
     if (!canAccessSession(existing, viewerSessionId, trusted, user)) {
@@ -439,8 +541,7 @@ export function createThreadService({ config, provider, http, auth, runState, br
       throw clientError(`Main agent ${name} belongs to a different user.`, 403);
     }
 
-    const live = decorateLiveSession(existing);
-    const status = effectiveStoredRunStatus(live);
+    const status = activeControlStatus(existing);
     if (!isActiveRunStatus(status)) {
       throw clientError('Only running main agents can be stopped.');
     }
@@ -531,7 +632,7 @@ export function createThreadService({ config, provider, http, auth, runState, br
     const modelOptions = normalizeModelOptions(body);
     const images = normalizeImageAttachments(body.images);
     const delivery = normalizeMessageDelivery(body.delivery);
-    const status = String(effectiveStoredRunStatus(decorateLiveSession(existing)) || existing.runStatus || existing.status || '').toLowerCase();
+    const status = String(activeControlStatus(existing) || existing.runStatus || existing.status || '').toLowerCase();
 
     if (existing.localMode && liveLocalRuns.has(name)) {
       return sendActiveLocalThreadMessage(existing, prompt, submittedAtMs, delivery, images);
@@ -626,15 +727,15 @@ export function createThreadService({ config, provider, http, auth, runState, br
       bridgeClaimed: false,
       localMode: true,
       provider: provider.kind,
-      status: 'running',
-      runStatus: 'running',
+      status: 'launching',
+      runStatus: 'starting',
       firstLlmLatencyMs: null,
       updatedAt: now,
       createdAt: session.createdAt || now,
     });
 
-    resetRunState(stored.name, 'running');
-    appendRunOutput(stored.name, `[system] Running main agent locally in ${stored.repoPath}.\n`, 'running');
+    resetRunState(stored.name, 'starting');
+    appendRunOutput(stored.name, `[system] Running main agent locally in ${stored.repoPath}.\n`, 'starting');
 
     const controller = new AbortController();
     localRunControllers.set(stored.name, controller);

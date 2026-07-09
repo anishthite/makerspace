@@ -522,14 +522,15 @@ export function createBridgeService({ config, provider, auth, runState }) {
     appendRunStatus(name, 'failed', { warning: message, done: true });
     const existing = await getStoredSession(config.sessionFile, name);
     if (!existing) return;
+    await recordBridgeLaunchLog(name, 'launch:failed', { error: message });
+    const current = (await getStoredSession(config.sessionFile, name)) || existing;
     await upsertSession(config.sessionFile, {
-      ...existing,
+      ...current,
       status: 'failed',
       runStatus: 'failed',
       warning: message,
       updatedAt: new Date().toISOString(),
     });
-    await recordBridgeLaunchLog(name, 'launch:failed', { error: message });
   }
 
   async function startClaimedBridgeRun(name, current, readyMessage) {
@@ -541,16 +542,16 @@ export function createBridgeService({ config, provider, auth, runState }) {
     await recordBridgeLaunchLog(current, 'run:start', { runId: current.bridgeRunId || '' });
     await startBridgeRun(current);
     await recordBridgeLaunchLog(current, 'run:sent', { runId: current.bridgeRunId || '' });
-    const running = await upsertSession(config.sessionFile, {
+    const starting = await upsertSession(config.sessionFile, {
       ...current,
       ...activeRunResetPatch(),
-      status: 'running',
-      runStatus: 'running',
+      status: 'launching',
+      runStatus: 'starting',
       images: [],
       updatedAt: new Date().toISOString(),
     });
-    setRunState(name, { runStatus: 'running', warning: null });
-    await persistRunStatus(running, 'running');
+    setRunState(name, { runStatus: 'starting', warning: null });
+    await persistRunStatus(starting, 'starting');
     return true;
   }
 
@@ -707,17 +708,17 @@ export function createBridgeService({ config, provider, auth, runState }) {
     appendRunOutput(claimed.name, '[system] Using a prepared idle bridge sandbox.\n', 'launching');
     await syncBridgeAuth(claimed);
     await startBridgeRun(claimed);
-    const running = await upsertSession(config.sessionFile, {
+    const starting = await upsertSession(config.sessionFile, {
       ...claimed,
       ...activeRunResetPatch(),
-      status: 'running',
-      runStatus: 'running',
+      status: 'launching',
+      runStatus: 'starting',
       images: [],
       updatedAt: new Date().toISOString(),
     });
-    setRunState(claimed.name, { runStatus: 'running', warning: null });
+    setRunState(claimed.name, { runStatus: 'starting', warning: null });
     void ensureWarmBridgePool();
-    return running;
+    return starting;
   }
 
   async function claimLaunchingIntentBridgeSession(reusable, normalized, submittedAtMs, user = null) {
@@ -893,16 +894,16 @@ export function createBridgeService({ config, provider, auth, runState }) {
           updatedAt: new Date().toISOString(),
         });
         await startBridgeRun(runnable);
-        const running = await upsertSession(config.sessionFile, {
+        const starting = await upsertSession(config.sessionFile, {
           ...runnable,
           ...activeRunResetPatch(),
-          status: 'running',
-          runStatus: 'running',
+          status: 'launching',
+          runStatus: 'starting',
           images: [],
           updatedAt: new Date().toISOString(),
         });
-        setRunState(stored.name, { runStatus: 'running', warning: null });
-        await persistRunStatus(running, 'running');
+        setRunState(stored.name, { runStatus: 'starting', warning: null });
+        await persistRunStatus(starting, 'starting');
         await upsertSession(config.sessionFile, {
           ...workspace,
           lastUsedAt: new Date().toISOString(),
@@ -956,8 +957,8 @@ export function createBridgeService({ config, provider, auth, runState }) {
         } else {
           appendRunOutput(stored.name, '[system] Using the default image.\n', 'launching');
         }
-        await recordBridgeLaunchLog(prepared, 'thread_launch:worker_start', { hasRepoAuth: Boolean(repoAuthHeader) });
 
+        await recordBridgeLaunchLog(prepared, 'thread_launch:worker_start', { hasRepoAuth: Boolean(repoAuthHeader) });
         const piAuthText = await readPiAuthForSession(prepared);
         const launchSession = repoAuthHeader ? { ...prepared, repoAuthHeader } : prepared;
         const remote = await provider.createSession(launchSession, bridgeLaunchSettings(prepared, imageSettings));

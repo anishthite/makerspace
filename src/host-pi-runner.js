@@ -38,6 +38,18 @@ function messageText(message) {
   return typeof message?.content === 'string' ? message.content : textFromContent(message?.content);
 }
 
+export function assistantProviderErrorMessage(message = {}) {
+  if (message?.role !== 'assistant' || (message.stopReason !== 'error' && !message.errorMessage)) return '';
+  const raw = String(message.errorMessage || '').trim();
+  if (!raw) return 'assistant stopped with a provider error';
+  try {
+    const parsed = JSON.parse(raw);
+    return String(parsed.detail || parsed.error?.message || parsed.message || raw);
+  } catch {
+    return raw;
+  }
+}
+
 export function workflowRunIdFromText(text) {
   const value = String(text || '');
   return value.match(/\brun-[a-z0-9-]+\b/i)?.[0] || value.match(/\bRun ID:\s*([a-z0-9][a-z0-9-]{2,100})\b/i)?.[1] || '';
@@ -372,6 +384,7 @@ async function runCreatedPiSession({ createSession, session, emitOutput, emitMet
   let clearMessageControl = null;
   let firstProviderCallPublished = false;
   let streamedAssistantText = '';
+  let lastProviderError = '';
   const toolOutput = new Map();
   let backgroundWorkflowCount = 0;
   let workflowResultCount = 0;
@@ -475,6 +488,7 @@ async function runCreatedPiSession({ createSession, session, emitOutput, emitMet
       }
 
       if (event.type === 'message_end') {
+        lastProviderError = assistantProviderErrorMessage(event.message) || lastProviderError;
         if (event.message?.role === 'assistant' && event.message.usage) {
           emitEvent?.({
             type: 'usage',
@@ -610,6 +624,9 @@ async function runCreatedPiSession({ createSession, session, emitOutput, emitMet
     const lastAssistantText = piSession.getLastAssistantText?.();
     if (lastAssistantText && !streamedAssistantText.trim()) {
       emitOutput(lastAssistantText, 'running');
+    }
+    if (!streamedAssistantText.trim() && !lastAssistantText) {
+      throw new Error(lastProviderError || 'Main agent completed without assistant output. Check provider auth.');
     }
     await emitStatus('completed', { done: true });
   } catch (error) {

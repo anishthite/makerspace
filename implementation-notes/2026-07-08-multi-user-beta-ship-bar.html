@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Multi-user beta ship bar</title>
+<meta name="task" content="Execute the smallest Workbench changes needed before trusted multi-user beta deployment.">
+<meta name="date-started" content="2026-07-08">
+<meta name="date-updated" content="2026-07-08">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="makerspace,workbench,multi-user,auth,deploy,tests">
+<meta name="related" content="2026-07-07-multi-user-git-control.html,2026-07-07-stale-remote-launches.html,2026-07-06-remote-state-persistence.html,2026-07-05-steering-delivery-hardening.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:900px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code,pre{font-family:ui-monospace,Menlo,monospace}code{background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}pre{background:#f6f6f6;padding:.6rem .75rem;overflow:auto}.meta{color:#555;font-size:12.5px}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px}.blast-med{color:#b85c00}.status-progress{color:#b85c00}.ok{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Multi-user beta ship bar</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-08 · status <b class="ok">shipped</b> · blast <span class="blast-med">medium</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Make the trusted hosted beta path test-green and gated.</div><b>Source</b><div>User asked for a workflow plan and execution after the multi-user ship-bar review.</div><b>Workflow</b><div><code>run-mrbgdzki-1</code> found failing-test drift and package hygiene; auth/deploy scouts failed closed.</div><b>Surface</b><div><code>src/server/*</code>, route manifest, deploy docs, package hygiene.</div><b>Schema</b><div>None.</div><b>Open Qs</b><div>0.</div></div>
+<h2>API contract</h2>
+<pre>WORKBENCH_ALLOWED_USERS=octo,mona,github-123
+# Empty value keeps existing GitHub-auth behavior.
+# Non-empty value allows matching GitHub login, githubId, or stored user id only.</pre>
+<h2>Algorithm</h2>
+<ol><li>Keep stale active rows failed for list/archive surfaces.</li><li>Use persisted bridge status only for active control actions: <code>stop</code>, <code>steer</code>, <code>followUp</code>.</li><li>Deny GitHub OAuth callback before user/token persistence when <code>WORKBENCH_ALLOWED_USERS</code> excludes the account.</li><li>Keep broad usage deferred behind allowlist until quotas/billing exist.</li></ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>src/server/threads.js</code></td><td>touch</td><td>Trust persisted bridge-active status only for control delivery and stop.</td></tr><tr><td><code>src/server/bridge.js</code></td><td>touch</td><td>Persist <code>launch:failed</code> before exposing the failed warning.</td></tr><tr><td><code>src/config.js</code>, <code>src/server/auth.js</code></td><td>touch</td><td>Add comma-separated GitHub allowlist and reject excluded login callbacks.</td></tr><tr><td><code>frontend/route-manifest.json</code></td><td>touch</td><td>Register two existing static public pages.</td></tr><tr><td><code>packages/workbench-pi-defaults/skills/excalidraw-diagram/references/.venv</code></td><td>delete</td><td>Remove generated virtualenv from the package tree.</td></tr><tr><td><code>test/archive-route.test.js</code>, <code>test/multi-user-access.test.js</code></td><td>touch</td><td>Pin stale inactive archive semantics and allowlist denial.</td></tr><tr><td><code>README.md</code>, <code>deploy/digitalocean/README.md</code></td><td>touch</td><td>Document private-beta gate and hosted env.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Use <code>WORKBENCH_ALLOWED_USERS</code> over billing or roles. Private beta needs a gate, not an account system.</td></tr><tr><td>D-002</td><td>Reject excluded users before persistence. Denied accounts should not create users, auth sessions, or OAuth token rows.</td></tr><tr><td>D-003</td><td>Trust stored bridge status for control actions only. List/archive should still surface stale active rows as failed.</td></tr><tr><td>D-004</td><td>Write <code>launch:failed</code> before the warning. Tests and users should not see failed state before its diagnostic phase exists.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>Env allowlist over Cloudflare Access-only. The app can enforce the beta gate even when the operator skips the proxy layer.</td></tr><tr><td>T-002</td><td>Route manifest update over generator work. Existing test already detects drift.</td></tr></table>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>node --check src/server/threads.js src/server/auth.js src/config.js</code> plus focused tests</td><td>Passed 21/21.</td></tr><tr><td><code>node --check src/server/bridge.js</code> plus bridge/archive/steering tests</td><td>Passed 13/13.</td></tr><tr><td><code>npm test</code></td><td>Passed 226/226.</td></tr><tr><td><code>npm run build</code></td><td>Passed.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Clear <code>WORKBENCH_ALLOWED_USERS</code> to disable the beta gate; revert auth/config/docs/tests to remove it.</p>
+<h2>Followups</h2>
+<ul><li>L-001 · Add quotas/billing before opening usage beyond allowlisted beta.</li><li>L-002 · Add a generated route manifest only if manual drift keeps recurring.</li></ul>
+<h2>Definition of done</h2>
+<ul><li>Workflow plan reviewed.</li><li>Focused failing-test set passes.</li><li><code>npm test</code> passes.</li><li>Hosted docs name the beta gate and durable state envs.</li></ul>
+</body>
+</html>
