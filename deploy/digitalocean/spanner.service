@@ -1,0 +1,18 @@
+[Unit]
+Description=Spanner control backend
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/spanner
+Environment=NODE_ENV=production
+EnvironmentFile=/etc/spanner.env
+ExecStart=/usr/bin/npm start
+Restart=always
+RestartSec=5
+User=spanner
+Group=spanner
+
+[Install]
+WantedBy=multi-user.target

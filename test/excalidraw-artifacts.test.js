@@ -72,7 +72,7 @@ test('htmlImageArtifactPaths finds embedded relative image sources for duplicate
   );
 });
 
-test('artifactMediaOpenUISource turns media paths into Workbench OpenUI', () => {
+test('artifactMediaOpenUISource turns media paths into Spanner OpenUI', () => {
   assert.equal(
     artifactMediaOpenUISource('Rendered diagram artifact: `infra-options-decision.png`; source: `infra-options-decision.excalidraw`.'),
     'root = ArtifactGallery([artifact1])\nartifact1 = ArtifactImage("infra-options-decision.png", "infra-options-decision.excalidraw")',

@@ -1,3 +1,4 @@
+import { cpSync, existsSync, renameSync, rmSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 
@@ -22,8 +23,8 @@ const DEFAULT_FORWARD_ENV_KEYS = [
 ];
 
 function splitList(value) {
-  return value
-    .split(',')
+  return String(value || '')
+    .split(/[,\n]/)
     .map((item) => item.trim())
     .filter(Boolean);
 }
@@ -32,28 +33,59 @@ function truthy(value) {
   return ['1', 'true', 'yes', 'on'].includes(String(value || '').trim().toLowerCase());
 }
 
+function moveLegacyDir(legacyDir, nextDir) {
+  if (!legacyDir || !nextDir || legacyDir === nextDir || existsSync(nextDir) || !existsSync(legacyDir)) return;
+  try {
+    renameSync(legacyDir, nextDir);
+  } catch (error) {
+    if (error?.code !== 'EXDEV') throw error;
+    cpSync(legacyDir, nextDir, { recursive: true, errorOnExist: false });
+    rmSync(legacyDir, { recursive: true, force: true });
+  }
+}
+
+function defaultLocalDataDir() {
+  const nextDir = path.join(homedir(), '.spanner');
+  // ponytail: one-time hard-rename migration; explicit SPANNER_HOME opts out.
+  if (!process.env.SPANNER_HOME) moveLegacyDir(path.join(homedir(), '.workbench'), nextDir);
+  return nextDir;
+}
+
+const ALLOWED_ORIGIN_ENV_KEYS = [
+  'SPANNER_ALLOWED_ORIGINS',
+  'SPANNER_ALLOWED_ORIGIN',
+  'PUBLIC_APP_ORIGINS',
+  'PUBLIC_APP_ORIGIN',
+];
+
+export function allowedOriginsFromEnv(env = process.env) {
+  const value = ALLOWED_ORIGIN_ENV_KEYS.map((key) => env[key]).find((item) => String(item || '').trim());
+  return splitList(value || '');
+}
+
 export function allowedOriginFromEnv(env = process.env) {
-  return String(env.WORKBENCH_ALLOWED_ORIGIN || env.MAKERSPACE_ALLOWED_ORIGIN || env.PUBLIC_APP_ORIGIN || '').trim();
+  return allowedOriginsFromEnv(env)[0] || '';
 }
 
 function projectNameFromEnv(localDataDir) {
-  const explicit = String(process.env.WORKBENCH_PROJECT || process.env.WORKBENCH_NAME || '').trim();
+  const explicit = String(process.env.SPANNER_PROJECT || process.env.SPANNER_NAME || '').trim();
   if (explicit) return explicit;
 
-  if (process.env.WORKBENCH_HOME) {
+  if (process.env.SPANNER_HOME) {
     const name = path.basename(path.resolve(localDataDir)).replace(/^\.+/, '').trim();
     if (name) return name;
   }
 
-  return 'workbench';
+  return 'spanner';
 }
 
 export function getConfig() {
   const rootDir = process.cwd();
   const provider = process.env.INFRA_PROVIDER || process.env.PROVIDER || 'daytona';
-  const workspaceMode = truthy(process.env.WORKBENCH_WORKSPACE_MODE || process.env.PROJECT_WORKSPACE_MODE);
-  const localDataDir = process.env.WORKBENCH_HOME || path.join(homedir(), '.workbench');
+  const workspaceMode = truthy(process.env.SPANNER_WORKSPACE_MODE || process.env.PROJECT_WORKSPACE_MODE);
+  const localDataDir = process.env.SPANNER_HOME || defaultLocalDataDir();
   const defaultDataDir = provider === 'local' ? localDataDir : path.join(rootDir, 'data');
+  const allowedOrigins = allowedOriginsFromEnv();
 
   return {
     rootDir,
@@ -63,16 +95,17 @@ export function getConfig() {
     host: process.env.HOST || (provider === 'local' ? '127.0.0.1' : ''),
     port: Number(process.env.PORT || 8787),
     controlApiToken: process.env.CONTROL_API_TOKEN || '',
-    authRequired: process.env.WORKBENCH_AUTH_REQUIRED || process.env.WORKBENCH_MULTI_USER
-      ? truthy(process.env.WORKBENCH_AUTH_REQUIRED || process.env.WORKBENCH_MULTI_USER)
+    authRequired: process.env.SPANNER_AUTH_REQUIRED || process.env.SPANNER_MULTI_USER
+      ? truthy(process.env.SPANNER_AUTH_REQUIRED || process.env.SPANNER_MULTI_USER)
       : Boolean(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET && provider !== 'local'),
-    authSecret: process.env.WORKBENCH_AUTH_SECRET || process.env.AUTH_SECRET || '',
-    authCookieName: process.env.WORKBENCH_AUTH_COOKIE || 'workbench_auth',
-    authCookieSameSite: process.env.WORKBENCH_AUTH_SAMESITE || '',
-    authSessionDays: Number(process.env.WORKBENCH_AUTH_SESSION_DAYS || 30),
-    allowHostedLocalProvider: truthy(process.env.WORKBENCH_ALLOW_HOSTED_LOCAL_PROVIDER),
-    allowedOrigin: allowedOriginFromEnv(),
-    allowedUsers: splitList(process.env.WORKBENCH_ALLOWED_USERS || process.env.WORKBENCH_ALLOWED_GITHUB_USERS || ''),
+    authSecret: process.env.SPANNER_AUTH_SECRET || process.env.AUTH_SECRET || '',
+    authCookieName: process.env.SPANNER_AUTH_COOKIE || 'spanner_auth',
+    authCookieSameSite: process.env.SPANNER_AUTH_SAMESITE || '',
+    authSessionDays: Number(process.env.SPANNER_AUTH_SESSION_DAYS || 30),
+    allowHostedLocalProvider: truthy(process.env.SPANNER_ALLOW_HOSTED_LOCAL_PROVIDER),
+    allowedOrigin: allowedOrigins[0] || '',
+    allowedOrigins,
+    allowedUsers: splitList(process.env.SPANNER_ALLOWED_USERS || process.env.SPANNER_ALLOWED_GITHUB_USERS || ''),
     stateStore: stateStoreFromEnv(),
     daytonaApiKey: process.env.DAYTONA_API_KEY || '',
     daytonaApiUrl: process.env.DAYTONA_API_URL || 'https://app.daytona.io/api',
@@ -97,10 +130,10 @@ export function getConfig() {
     dockerfilePath: process.env.DOCKERFILE_PATH || path.join(rootDir, 'image', 'Dockerfile'),
     settingsFile: process.env.SETTINGS_DATA_PATH || path.join(defaultDataDir, 'settings.json'),
     recentProjectsFile: process.env.RECENT_PROJECTS_DATA_PATH || path.join(defaultDataDir, 'recent-projects.json'),
-    workflowRunsDir: process.env.WORKBENCH_WORKFLOW_RUNS_DIR || path.join(defaultDataDir, 'workflows', 'runs'),
-    authFile: process.env.AUTH_DATA_PATH || process.env.WORKBENCH_AUTH_DATA_PATH || path.join(defaultDataDir, 'auth.json'),
+    workflowRunsDir: process.env.SPANNER_WORKFLOW_RUNS_DIR || path.join(defaultDataDir, 'workflows', 'runs'),
+    authFile: process.env.AUTH_DATA_PATH || process.env.SPANNER_AUTH_DATA_PATH || path.join(defaultDataDir, 'auth.json'),
     remoteWorkspaceDir: process.env.REMOTE_WORKSPACE_DIR || '/srv/workspace',
-    remoteControlDir: process.env.REMOTE_CONTROL_DIR || '/srv/workbench',
+    remoteControlDir: process.env.REMOTE_CONTROL_DIR || '/srv/spanner',
     bridgePort: Number(process.env.PI_BRIDGE_PORT || 4310),
     bridgeReadyTimeoutMs: Number(process.env.PI_BRIDGE_READY_TIMEOUT_MS || 240000),
     bridgeReadyPollMs: Number(process.env.PI_BRIDGE_READY_POLL_MS || 1000),
@@ -112,11 +145,11 @@ export function getConfig() {
     piAgentDir: process.env.PI_CODING_AGENT_DIR || path.join(homedir(), '.pi', 'agent'),
     piProfileFile: process.env.PI_PROFILE_DATA_PATH || path.join(defaultDataDir, 'pi-profile.json'),
     piDefaultsPackageDir:
-      process.env.WORKBENCH_PI_DEFAULTS_PACKAGE_DIR ||
-      path.join(rootDir, 'packages', 'workbench-pi-defaults'),
+      process.env.SPANNER_PI_DEFAULTS_PACKAGE_DIR ||
+      path.join(rootDir, 'packages', 'spanner-pi-defaults'),
     remotePiDefaultsPackageDir:
       process.env.REMOTE_PI_DEFAULTS_PACKAGE_DIR ||
-      `/home/${process.env.DAYTONA_USER || 'daytona'}/.pi/agent/workbench-pi-defaults`,
+      `/home/${process.env.DAYTONA_USER || 'daytona'}/.pi/agent/spanner-pi-defaults`,
     piInstallCommand:
       process.env.PI_INSTALL_COMMAND ||
       'npm install -g --ignore-scripts @earendil-works/pi-coding-agent',

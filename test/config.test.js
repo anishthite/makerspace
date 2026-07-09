@@ -1,5 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
 import { collectForwardedEnv, getConfig } from '../src/config.js';
 
@@ -49,21 +52,40 @@ test('collectForwardedEnv only forwards shared GitHub tokens in single-user mode
 });
 
 test('getConfig names the visible project from env or explicit home', () => {
-  withEnv({ INFRA_PROVIDER: 'local', WORKBENCH_PROJECT: 'site-ui', WORKBENCH_NAME: undefined, WORKBENCH_HOME: '/tmp/workbench/site', RECENT_PROJECTS_DATA_PATH: undefined }, () => {
+  withEnv({ INFRA_PROVIDER: 'local', SPANNER_PROJECT: 'site-ui', SPANNER_NAME: undefined, SPANNER_HOME: '/tmp/spanner/site', RECENT_PROJECTS_DATA_PATH: undefined }, () => {
     assert.equal(getConfig().projectName, 'site-ui');
   });
 
-  withEnv({ INFRA_PROVIDER: 'local', WORKBENCH_PROJECT: undefined, WORKBENCH_NAME: undefined, WORKBENCH_HOME: '/tmp/workbench/api', RECENT_PROJECTS_DATA_PATH: undefined }, () => {
+  withEnv({ INFRA_PROVIDER: 'local', SPANNER_PROJECT: undefined, SPANNER_NAME: undefined, SPANNER_HOME: '/tmp/spanner/api', RECENT_PROJECTS_DATA_PATH: undefined }, () => {
     const config = getConfig();
     assert.equal(config.projectName, 'api');
-    assert.equal(config.recentProjectsFile, '/tmp/workbench/api/recent-projects.json');
+    assert.equal(config.recentProjectsFile, '/tmp/spanner/api/recent-projects.json');
   });
+});
+
+test('getConfig moves default local state from .workbench to .spanner', () => {
+  const home = mkdtempSync(path.join(os.tmpdir(), 'spanner-home-'));
+  try {
+    const legacyDir = path.join(home, '.workbench');
+    const nextDir = path.join(home, '.spanner');
+    mkdirSync(legacyDir, { recursive: true });
+    writeFileSync(path.join(legacyDir, 'sessions.json'), '[{"name":"old"}]\n');
+
+    withEnv({ HOME: home, INFRA_PROVIDER: 'local', SPANNER_HOME: undefined, SPANNER_PROJECT: undefined, SPANNER_NAME: undefined }, () => {
+      const config = getConfig();
+      assert.equal(config.localDataDir, nextDir);
+      assert.equal(existsSync(legacyDir), false);
+      assert.equal(readFileSync(path.join(nextDir, 'sessions.json'), 'utf8'), '[{"name":"old"}]\n');
+    });
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
 });
 
 test('getConfig infers D1 state store for production deployments with D1 credentials', () => {
   withEnv({
     NODE_ENV: 'production',
-    WORKBENCH_STATE_STORE: undefined,
+    SPANNER_STATE_STORE: undefined,
     STATE_STORE: undefined,
     CLOUDFLARE_ACCOUNT_ID: 'acct',
     CLOUDFLARE_D1_DATABASE_ID: 'db',
@@ -74,7 +96,7 @@ test('getConfig infers D1 state store for production deployments with D1 credent
 
   withEnv({
     NODE_ENV: 'production',
-    WORKBENCH_STATE_STORE: 'file',
+    SPANNER_STATE_STORE: 'file',
     STATE_STORE: undefined,
     CLOUDFLARE_ACCOUNT_ID: 'acct',
     CLOUDFLARE_D1_DATABASE_ID: 'db',
@@ -95,13 +117,13 @@ test('host dispatch is opt-in for remote providers', () => {
 });
 
 test('workspace mode extends default Daytona autodelete', () => {
-  withEnv({ WORKBENCH_WORKSPACE_MODE: '1', DAYTONA_AUTODELETE_MINUTES: undefined }, () => {
+  withEnv({ SPANNER_WORKSPACE_MODE: '1', DAYTONA_AUTODELETE_MINUTES: undefined }, () => {
     const config = getConfig();
     assert.equal(config.workspaceMode, true);
     assert.equal(config.daytonaAutodeleteMinutes, 10080);
   });
 
-  withEnv({ WORKBENCH_WORKSPACE_MODE: undefined, DAYTONA_AUTODELETE_MINUTES: undefined }, () => {
+  withEnv({ SPANNER_WORKSPACE_MODE: undefined, DAYTONA_AUTODELETE_MINUTES: undefined }, () => {
     assert.equal(getConfig().daytonaAutodeleteMinutes, 120);
   });
 });

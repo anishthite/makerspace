@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 220" role="img" aria-labelledby="title desc" shape-rendering="crispEdges">
+  <title id="title">Spanner logo option — One-Bit Spanner</title>
+  <desc id="desc">A four-block monochrome pixel spanner glyph.</desc>
+  <rect width="720" height="220" fill="none"/>
+  <g transform="translate(58 54) scale(7)">
+    <rect x="2" y="4" width="4" height="2" fill="#FAF8F3"/>
+    <rect x="2" y="10" width="4" height="2" fill="#FAF8F3"/>
+    <rect x="5" y="6" width="2" height="4" fill="#FAF8F3"/>
+    <rect x="7" y="7" width="8" height="2" fill="#FAF8F3"/>
+  </g>
+  <text x="210" y="120" fill="#FAF8F3" font-family="Hack, 'Courier New', ui-monospace, monospace" font-size="45" font-weight="900" letter-spacing="2">SPANNER</text>
+</svg>

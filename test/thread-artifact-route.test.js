@@ -31,7 +31,7 @@ async function stopServer(child) {
 }
 
 test('thread artifact route serves local Excalidraw drawings only', async () => {
-  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'workbench-excalidraw-'));
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'spanner-excalidraw-'));
   const sessionFile = path.join(tempDir, 'sessions.json');
   const settingsFile = path.join(tempDir, 'settings.json');
   let server;

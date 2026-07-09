@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Workbench — Starting Screen Preview</title>
+  <title>Spanner — Starting Screen Preview</title>
   <style>
     @import url('https://cdn.jsdelivr.net/npm/hack-font@3/build/web/hack.css');
     :root {
@@ -139,11 +139,11 @@
     .brief-side { display: grid; gap: 10px; }
     .route-card { padding: 14px; }
 
-    .v-workbench .workgrid { display: grid; grid-template-columns: 240px minmax(0, 1fr) 260px; gap: 12px; align-items: start; }
-    .v-workbench .panel-lite { border: 1px solid var(--rule); border-radius: 3px; padding: 14px; background: var(--paper); box-shadow: var(--shadow); }
-    .v-workbench .panel-lite h3 { margin-bottom: 12px; }
-    .v-workbench .stack { display: grid; gap: 8px; }
-    .v-workbench .launch { display: grid; gap: 10px; }
+    .v-spanner .workgrid { display: grid; grid-template-columns: 240px minmax(0, 1fr) 260px; gap: 12px; align-items: start; }
+    .v-spanner .panel-lite { border: 1px solid var(--rule); border-radius: 3px; padding: 14px; background: var(--paper); box-shadow: var(--shadow); }
+    .v-spanner .panel-lite h3 { margin-bottom: 12px; }
+    .v-spanner .stack { display: grid; gap: 8px; }
+    .v-spanner .launch { display: grid; gap: 10px; }
     .metric { padding: 12px; box-shadow: none; }
     .metric b { display: block; font-size: 34px; line-height: 1; letter-spacing: -.05em; }
     .metric span { color: var(--faint); font-size: 11px; text-transform: lowercase; }
@@ -163,7 +163,7 @@
     }
 
     @media (max-width: 1060px) {
-      .hero, .variation, .v-brief .layout, .v-workbench .workgrid, .v-inbox .inbox-grid { grid-template-columns: 1fr; }
+      .hero, .variation, .v-brief .layout, .v-spanner .workgrid, .v-inbox .inbox-grid { grid-template-columns: 1fr; }
       .panel { position: static; }
       .v-command .recent, .brief-grid { grid-template-columns: 1fr; }
     }
@@ -193,7 +193,7 @@
     <nav class="nav" aria-label="Preview sections">
       <a href="#command-first">command first</a>
       <a href="#mission-brief">mission brief</a>
-      <a href="#workbench">workbench</a>
+      <a href="#spanner">spanner</a>
       <a href="#inbox-start">inbox start</a>
     </nav>
 
@@ -209,7 +209,7 @@
       <section class="screen" aria-label="Command First mockup">
         <div class="screen-inner">
           <header class="topbar">
-            <a class="brand" href="#"><span class="brand-mark">M</span><span>workbench</span></a>
+            <a class="brand" href="#"><span class="brand-mark">M</span><span>spanner</span></a>
             <div class="top-actions"><span class="chip"><span class="dot"></span>codex</span><span class="chip"><span class="dot"></span>github</span><a class="ghost" href="#">settings</a></div>
           </header>
           <div class="center">
@@ -242,7 +242,7 @@
       <section class="screen" aria-label="Mission Brief mockup">
         <div class="screen-inner">
           <header class="topbar">
-            <a class="brand" href="#"><span class="brand-mark">M</span><span>workbench</span></a>
+            <a class="brand" href="#"><span class="brand-mark">M</span><span>spanner</span></a>
             <div class="top-actions"><span class="chip"><span class="dot"></span>ready</span><a class="ghost" href="#">agents</a><a class="ghost" href="#">settings</a></div>
           </header>
           <div class="layout">
@@ -266,18 +266,18 @@
       </section>
     </article>
 
-    <article id="workbench" class="variation v-workbench">
+    <article id="spanner" class="variation v-spanner">
       <aside class="panel">
         <span class="rank">03</span>
         <p class="eyebrow">power user</p>
-        <h2>Workbench</h2>
+        <h2>Spanner</h2>
         <p>Agents, command, and readiness in one glance. Useful when users routinely juggle multiple agents.</p>
         <ul><li>Best status scanning</li><li>More dashboard-like</li><li>More chrome than needed for first run</li></ul>
       </aside>
-      <section class="screen" aria-label="Workbench mockup">
+      <section class="screen" aria-label="Spanner mockup">
         <div class="screen-inner">
           <header class="topbar">
-            <a class="brand" href="#"><span class="brand-mark">M</span><span>workbench</span></a>
+            <a class="brand" href="#"><span class="brand-mark">M</span><span>spanner</span></a>
             <div class="top-actions"><span class="chip"><span class="dot"></span>local bridge</span><span class="chip">3 warm</span><a class="ghost" href="#">settings</a></div>
           </header>
           <div class="workgrid">
@@ -318,7 +318,7 @@
       <section class="screen" aria-label="Inbox Start mockup">
         <div class="screen-inner">
           <header class="topbar">
-            <a class="brand" href="#"><span class="brand-mark">M</span><span>workbench</span></a>
+            <a class="brand" href="#"><span class="brand-mark">M</span><span>spanner</span></a>
             <div class="top-actions"><span class="chip"><span class="dot"></span>ready</span><a class="ghost" href="#">new</a><a class="ghost" href="#">settings</a></div>
           </header>
           <form class="command">

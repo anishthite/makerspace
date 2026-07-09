@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="560" viewBox="0 0 1180 560" role="img" aria-label="Remote Workbench session storage flow">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#475569"/>
+    </marker>
+    <style>
+      .box{fill:#f8fafc;stroke:#334155;stroke-width:2;rx:14;ry:14}
+      .store{fill:#ecfeff;stroke:#0891b2;stroke-width:2;rx:14;ry:14}
+      .mem{fill:#fff7ed;stroke:#ea580c;stroke-width:2;rx:14;ry:14}
+      .remote{fill:#f0fdf4;stroke:#16a34a;stroke-width:2;rx:14;ry:14}
+      .title{font:700 18px system-ui,-apple-system,Segoe UI,sans-serif;fill:#0f172a}
+      .text{font:14px system-ui,-apple-system,Segoe UI,sans-serif;fill:#334155}
+      .small{font:12px system-ui,-apple-system,Segoe UI,sans-serif;fill:#64748b}
+      .line{stroke:#475569;stroke-width:2;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+
+  <text x="40" y="42" class="title">Remote Workbench storage</text>
+  <text x="40" y="66" class="small">Hosted default: Cloudflare D1 for app state; Daytona/Git for workspace files; live streams are memory/log-backed.</text>
+
+  <rect class="box" x="40" y="110" width="200" height="110"/>
+  <text class="title" x="60" y="145">Browser</text>
+  <text class="text" x="60" y="174">HttpOnly auth cookie</text>
+  <text class="text" x="60" y="198">x-workbench-session</text>
+
+  <rect class="box" x="320" y="92" width="260" height="148"/>
+  <text class="title" x="340" y="128">Node control API</text>
+  <text class="text" x="340" y="158">src/server/* routes</text>
+  <text class="text" x="340" y="182">src/store.js adapter</text>
+  <text class="text" x="340" y="206">decorates/redacts sessions</text>
+
+  <rect class="store" x="690" y="70" width="410" height="180"/>
+  <text class="title" x="710" y="106">Cloudflare D1</text>
+  <text class="text" x="710" y="136">workbench_sessions: JSON session blob by name</text>
+  <text class="text" x="710" y="162">workbench_kv: settings, auth, recent projects, profile</text>
+  <text class="small" x="710" y="192">file fallback: data/sessions.json, settings.json, auth.json...</text>
+  <text class="small" x="710" y="216">selected by WORKBENCH_STATE_STORE / production D1 env</text>
+
+  <rect class="mem" x="320" y="310" width="260" height="150"/>
+  <text class="title" x="340" y="346">Process memory</text>
+  <text class="text" x="340" y="376">activeRuns events/output</text>
+  <text class="text" x="340" y="400">SSE subscribers</text>
+  <text class="text" x="340" y="424">browser session scratch</text>
+  <text class="small" x="340" y="448">not durable across API restart</text>
+
+  <rect class="remote" x="690" y="320" width="410" height="160"/>
+  <text class="title" x="710" y="356">Daytona sandbox / bridge</text>
+  <text class="text" x="710" y="386">repo files: Git + /srv/workspace</text>
+  <text class="text" x="710" y="410">bridge runs Map + /srv/workbench/*.log</text>
+  <text class="text" x="710" y="434">Pi traces: /srv/workbench/pi-sessions/*.jsonl</text>
+  <text class="small" x="710" y="458">sandbox id/name is stored back in D1 session blob</text>
+
+  <path class="line" d="M240 165 H320"/>
+  <path class="line" d="M580 160 H690"/>
+  <path class="line" d="M450 240 V310"/>
+  <path class="line" d="M580 390 H690"/>
+  <path class="line" d="M895 320 V250"/>
+
+  <text class="small" x="260" y="150">HTTP / SSE</text>
+  <text class="small" x="600" y="146">persist metadata</text>
+  <text class="small" x="462" y="286">live stream cache</text>
+  <text class="small" x="602" y="376">bridge/run stream</text>
+</svg>

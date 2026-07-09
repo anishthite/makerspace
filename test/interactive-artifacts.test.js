@@ -10,7 +10,7 @@ import {
 
 test('interactive artifact blocks parse, normalize, and strip safely', () => {
   const text = `Before
-\`\`\`workbench-ui
+\`\`\`spanner-ui
 {"version":1,"title":"Tune","controls":[{"id":"detail","type":"slider","label":"Detail","min":1,"max":10,"default":7}],"actions":[{"id":"apply","label":"Apply","delivery":"followUp","prompt":"Revise with detail={{detail}}."}]}
 \`\`\`
 After`;
@@ -31,14 +31,14 @@ After`;
   assert.equal(stripInteractiveArtifactBlocks(text), 'Before\nAfter');
 });
 
-test('interactive artifacts accept legacy makerspace-ui alias and fail closed on invalid actions', () => {
-  assert.equal(extractInteractiveArtifacts('```makerspace-ui\n{"version":1,"title":"Alias","actions":[{"id":"go","label":"Go","prompt":"x"}]}\n```').length, 1);
+test('interactive artifacts parse only Spanner UI blocks and fail closed on invalid actions', () => {
+  assert.equal(extractInteractiveArtifacts('```other-ui\n{"version":1,"title":"Alias","actions":[{"id":"go","label":"Go","prompt":"x"}]}\n```').length, 0);
   assert.equal(validateInteractiveArtifact({
     version: 1,
     title: 'Bad',
     actions: [{ id: 'send', label: 'Send', delivery: 'now', prompt: 'Nope' }],
   }), null);
-  assert.equal(extractInteractiveArtifacts('```workbench-ui\nnot json\n```').length, 0);
+  assert.equal(extractInteractiveArtifacts('```spanner-ui\nnot json\n```').length, 0);
 });
 
 test('interactive action prompts interpolate visible values', () => {

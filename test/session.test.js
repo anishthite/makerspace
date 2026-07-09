@@ -5,7 +5,7 @@ import { appendThreadMessages, decorateSession, normalizeChatRequest, normalizeC
 
 const config = {
   defaultTaskPrompt: 'Inspect the repo and do the task.',
-  remoteControlDir: '/srv/workbench',
+  remoteControlDir: '/srv/spanner',
   bridgePort: 4310,
 };
 
@@ -184,8 +184,8 @@ test('decorateSession preserves provider commands and hides bridge secrets', () 
     {
       name: 'hello-agent',
       connectCommand: 'daytona ssh sandbox-123',
-      runAgentCommand: 'daytona ssh sandbox-123 -- bash /srv/workbench/run-pi.sh',
-      tailLogCommand: 'daytona ssh sandbox-123 -- tail -n 120 /srv/workbench/pi.log',
+      runAgentCommand: 'daytona ssh sandbox-123 -- bash /srv/spanner/run-pi.sh',
+      tailLogCommand: 'daytona ssh sandbox-123 -- tail -n 120 /srv/spanner/pi.log',
       bridgeUrl: 'https://preview.example/4310',
       bridgeToken: 'secret-bridge-token',
       previewToken: 'secret-preview-token',
@@ -204,6 +204,6 @@ test('decorateSession preserves provider commands and hides bridge secrets', () 
   assert.equal(session.images, undefined);
   assert.equal(session.hasBridgeToken, true);
   assert.equal(session.commands.connect, 'daytona ssh sandbox-123');
-  assert.equal(session.commands.runAgent, 'daytona ssh sandbox-123 -- bash /srv/workbench/run-pi.sh');
-  assert.equal(session.commands.tailLog, 'daytona ssh sandbox-123 -- tail -n 120 /srv/workbench/pi.log');
+  assert.equal(session.commands.runAgent, 'daytona ssh sandbox-123 -- bash /srv/spanner/run-pi.sh');
+  assert.equal(session.commands.tailLog, 'daytona ssh sandbox-123 -- tail -n 120 /srv/spanner/pi.log');
 });

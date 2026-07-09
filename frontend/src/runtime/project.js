@@ -1,10 +1,24 @@
 import './appearance.js?v=palette-2';
 
-const BROWSER_SESSION_KEY = 'workbenchBrowserSession';
-const PROJECT_KEY = 'workbenchSelectedProject';
-const RECENT_PROJECTS_KEY = 'workbenchRecentProjects';
+const BROWSER_SESSION_KEY = 'spannerBrowserSession';
+const PROJECT_KEY = 'spannerSelectedProject';
+const RECENT_PROJECTS_KEY = 'spannerRecentProjects';
 const MAX_REPO_SUGGESTIONS = 8;
-const API_BASE = String(import.meta.env?.VITE_WORKBENCH_API_BASE || '').trim().replace(/\/+$/, '');
+const API_BASE = String(import.meta.env?.VITE_SPANNER_API_BASE || '').trim().replace(/\/+$/, '');
+
+function migrateStorageKey(legacyKey, nextKey) {
+  try {
+    if (localStorage.getItem(nextKey) === null) {
+      const value = localStorage.getItem(legacyKey);
+      if (value !== null) localStorage.setItem(nextKey, value);
+    }
+    localStorage.removeItem(legacyKey);
+  } catch {}
+}
+
+migrateStorageKey('workbenchBrowserSession', BROWSER_SESSION_KEY);
+migrateStorageKey('workbenchSelectedProject', PROJECT_KEY);
+migrateStorageKey('workbenchRecentProjects', RECENT_PROJECTS_KEY);
 
 const codexAuthPill = document.querySelector('#codex-auth-pill');
 const codexAuthLabel = document.querySelector('#codex-auth-label');
@@ -55,7 +69,7 @@ function getApiToken() {
 }
 
 function authHeaders() {
-  const headers = { 'x-workbench-session': getBrowserSessionId() };
+  const headers = { 'x-spanner-session': getBrowserSessionId() };
   const token = getApiToken();
   if (token) headers.authorization = `Bearer ${token}`;
   return headers;
@@ -457,9 +471,9 @@ function renderRepoSuggestions() {
 }
 
 async function loadLastFolder() {
-  if (!globalThis.workbenchDesktop?.getLastFolder || repoInput.value.trim()) return;
+  if (!globalThis.spannerDesktop?.getLastFolder || repoInput.value.trim()) return;
   try {
-    const folder = await globalThis.workbenchDesktop.getLastFolder();
+    const folder = await globalThis.spannerDesktop.getLastFolder();
     if (!folder || repoInput.value.trim()) return;
     repoInput.value = folder;
     repoHint.textContent = 'Last local folder loaded.';
@@ -469,7 +483,7 @@ async function loadLastFolder() {
 function renderProvider(provider) {
   providerKind = provider?.kind || '';
   const local = providerKind === 'local';
-  const canChooseFolder = Boolean(globalThis.workbenchDesktop?.chooseFolder);
+  const canChooseFolder = Boolean(globalThis.spannerDesktop?.chooseFolder);
   repoInput.placeholder = local ? '/Users/you/project' : 'type repo name, paste URL, or /Users/you/project';
   repoTray.hidden = local && canChooseFolder;
   repoRefresh.hidden = local;
@@ -545,7 +559,7 @@ async function refreshProjectThreads() {
 async function loadStatus() {
   getBrowserSessionId();
   renderRecentProjects();
-  if (globalThis.workbenchDesktop?.chooseFolder) {
+  if (globalThis.spannerDesktop?.chooseFolder) {
     chooseFolder.hidden = false;
     repoTray.hidden = true;
     repoHint.textContent = 'Choose a local folder or paste a repo.';
@@ -583,7 +597,7 @@ async function openWorkspace(project) {
   await saveProject(project);
   if (project.kind === 'local') {
     try {
-      await globalThis.workbenchDesktop?.rememberFolder?.(project.value);
+      await globalThis.spannerDesktop?.rememberFolder?.(project.value);
     } catch {}
   }
   location.href = '/workspace.html';
@@ -604,7 +618,7 @@ repoRefresh.addEventListener('click', async () => {
 
 chooseFolder.addEventListener('click', async () => {
   try {
-    const folder = await globalThis.workbenchDesktop?.chooseFolder?.(repoInput.value.trim());
+    const folder = await globalThis.spannerDesktop?.chooseFolder?.(repoInput.value.trim());
     if (!folder) return;
     repoInput.value = folder;
     resetRepoSelection('Local folder selected.');

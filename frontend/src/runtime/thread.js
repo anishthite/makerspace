@@ -8,9 +8,9 @@ import { bindImageDropZone, clearImageInput, filesToImageAttachments, imageAttac
 import { implementationNoteFromToolEvent, implementationNotesFromToolEvent } from './implementation-notes.js';
 import { diagramImageArtifactPaths, excalidrawArtifactPaths, htmlImageArtifactPaths, normalizeDiagramImageArtifactPath } from './excalidraw-artifacts.js';
 
-const BROWSER_SESSION_KEY = 'workbenchBrowserSession';
-const MODEL_REF_KEY = 'workbenchModelRef';
-const THINKING_LEVEL_KEY = 'workbenchThinkingLevel';
+const BROWSER_SESSION_KEY = 'spannerBrowserSession';
+const MODEL_REF_KEY = 'spannerModelRef';
+const THINKING_LEVEL_KEY = 'spannerThinkingLevel';
 const THINKING_LEVELS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh'];
 const ARCHIVEABLE_THREAD_STATUSES = ['completed', 'ready', 'failed'];
 const COPY_FEEDBACK_MS = 1200;
@@ -18,7 +18,22 @@ const PHOSPHOR_COPY_ICON = '<svg viewBox="0 0 256 256" aria-hidden="true" focusa
 const MAX_INLINE_EXCALIDRAW_ARTIFACTS = 3;
 const MAX_INLINE_DIAGRAM_IMAGE_ARTIFACTS = 4;
 
-const API_BASE = String(import.meta.env?.VITE_WORKBENCH_API_BASE || '').trim().replace(/\/+$/, '');
+const API_BASE = String(import.meta.env?.VITE_SPANNER_API_BASE || '').trim().replace(/\/+$/, '');
+
+function migrateStorageKey(legacyKey, nextKey) {
+  try {
+    if (localStorage.getItem(nextKey) === null) {
+      const value = localStorage.getItem(legacyKey);
+      if (value !== null) localStorage.setItem(nextKey, value);
+    }
+    localStorage.removeItem(legacyKey);
+  } catch {}
+}
+
+migrateStorageKey('workbenchBrowserSession', BROWSER_SESSION_KEY);
+migrateStorageKey('workbenchModelRef', MODEL_REF_KEY);
+migrateStorageKey('workbenchThinkingLevel', THINKING_LEVEL_KEY);
+
 const params = new URLSearchParams(location.search);
 const name = params.get('name');
 
@@ -58,6 +73,23 @@ const diffDialogTitle = document.querySelector('#diff-dialog-title');
 const diffDialogFiles = document.querySelector('#diff-dialog-files');
 const diffDialogBody = document.querySelector('#diff-dialog-body');
 const diffDialogClose = document.querySelector('#diff-dialog-close');
+
+function syncComposerClearance() {
+  if (!promptForm) return;
+  const bottom = Number.parseFloat(getComputedStyle(promptForm).bottom) || 0;
+  const clearance = Math.ceil(promptForm.getBoundingClientRect().height + bottom + 18);
+  document.documentElement.style.setProperty('--thread-composer-clearance', `${Math.max(126, clearance)}px`);
+}
+
+function observeComposerClearance() {
+  if (!promptForm) return;
+  const sync = () => requestAnimationFrame(syncComposerClearance);
+  syncComposerClearance();
+  if (globalThis.ResizeObserver) new ResizeObserver(sync).observe(promptForm);
+  window.addEventListener('resize', sync);
+}
+
+observeComposerClearance();
 
 let activeStream = null;
 let currentThread = null;
@@ -290,7 +322,7 @@ function renderPiDefaults(defaults = {}) {
 }
 
 function authHeaders() {
-  const headers = { 'x-workbench-session': getBrowserSessionId() };
+  const headers = { 'x-spanner-session': getBrowserSessionId() };
   const token = getApiToken();
   if (token) headers.authorization = `Bearer ${token}`;
   return headers;
@@ -459,7 +491,7 @@ function appendExcalidrawArtifactCard(section, artifactPath) {
     button.textContent = label;
     button.addEventListener('click', () => fillComposerFromInteractiveAction({
       delivery: 'followUp',
-      prompt: `[Diagram action: ${label}]\nFor ${artifactPath}: ${instruction}\nMention the new artifact path as plain text so Workbench renders it inline.`,
+      prompt: `[Diagram action: ${label}]\nFor ${artifactPath}: ${instruction}\nMention the new artifact path as plain text so Spanner renders it inline.`,
     }));
     actions.append(button);
   });
@@ -702,7 +734,7 @@ function setStatus(text, tone = 'info', active = false) {
 function renderProject(provider) {
   const project = provider?.project || {};
   const name = String(project.name || '').trim();
-  const visible = name && name !== 'workbench';
+  const visible = name && name !== 'spanner';
   currentProjectName = visible ? name : '';
   if (!projectLabel) return;
   projectLabel.hidden = !visible;
@@ -716,7 +748,7 @@ function renderThread(thread) {
   const displayTitle = threadDisplayTitle(thread);
   title.textContent = displayTitle;
   thinkingTitle.textContent = displayTitle;
-  document.title = currentProjectName ? `${displayTitle} · ${currentProjectName} · Workbench` : `${displayTitle} · Workbench`;
+  document.title = currentProjectName ? `${displayTitle} · ${currentProjectName} · Spanner` : `${displayTitle} · Spanner`;
   meta.textContent = '';
   const rawStatus = effectiveStatus(thread) || 'unknown';
   if (String(rawStatus).toLowerCase() !== 'running') {

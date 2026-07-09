@@ -3,22 +3,56 @@ import path from 'node:path';
 
 import { allowedOriginFromEnv } from '../config.js';
 
-export function createHttpHelpers({ publicDir, allowedOrigin = allowedOriginFromEnv() }) {
-  const corsOrigin = allowedOrigin || '*';
-  const corsHeaders = {
-    'access-control-allow-origin': corsOrigin,
-    'access-control-allow-methods': 'GET,POST,OPTIONS',
-    'access-control-allow-headers': 'content-type,authorization,x-api-token,x-workbench-session',
-    ...(corsOrigin === '*' ? {} : { 'access-control-allow-credentials': 'true' }),
-  };
+const corsRequest = Symbol('spannerCorsRequest');
+
+function normalizeOrigins(...values) {
+  return [...new Set(values.flatMap((value) => Array.isArray(value) ? value : String(value || '').split(/[,\n]/)).map((origin) => origin.trim()).filter(Boolean))];
+}
+
+export function createHttpHelpers({ publicDir, allowedOrigin = allowedOriginFromEnv(), allowedOrigins = [] }) {
+  const configuredOrigins = normalizeOrigins(allowedOrigins, allowedOrigin);
+  const staticAliases = new Map([
+    ['/homepage', 'desktop.html'],
+    ['/desktop', 'desktop.html'],
+    ['/thread', 'thread.html'],
+    ['/telemetry', 'telemetry.html'],
+    ['/local-telemetry', 'local-telemetry.html'],
+  ]);
+
+  function corsOriginFor(request) {
+    if (!configuredOrigins.length) return '*';
+    const origin = String(request?.headers?.origin || '').trim();
+    return configuredOrigins.includes(origin) ? origin : configuredOrigins[0];
+  }
+
+  function corsHeadersFor(request) {
+    const corsOrigin = corsOriginFor(request);
+    return {
+      'access-control-allow-origin': corsOrigin,
+      'access-control-allow-methods': 'GET,POST,OPTIONS',
+      'access-control-allow-headers': 'content-type,authorization,x-api-token,x-spanner-session',
+      ...(configuredOrigins.length > 1 ? { vary: 'origin' } : {}),
+      ...(corsOrigin === '*' ? {} : { 'access-control-allow-credentials': 'true' }),
+    };
+  }
+
+  const corsHeaders = corsHeadersFor();
+
+  function bindCorsRequest(request, response) {
+    response[corsRequest] = request;
+  }
+
+  function corsHeadersForResponse(response) {
+    return corsHeadersFor(response?.[corsRequest]);
+  }
 
   function sendJson(response, statusCode, payload) {
-    response.writeHead(statusCode, { 'content-type': 'application/json; charset=utf-8', ...corsHeaders });
+    response.writeHead(statusCode, { 'content-type': 'application/json; charset=utf-8', ...corsHeadersForResponse(response) });
     response.end(`${JSON.stringify(payload, null, 2)}\n`);
   }
 
   function sendText(response, statusCode, payload, contentType = 'text/plain; charset=utf-8', headers = {}) {
-    response.writeHead(statusCode, { 'content-type': contentType, ...corsHeaders, ...headers });
+    response.writeHead(statusCode, { 'content-type': contentType, ...corsHeadersForResponse(response), ...headers });
     response.end(payload);
   }
 
@@ -63,7 +97,7 @@ export function createHttpHelpers({ publicDir, allowedOrigin = allowedOriginFrom
   }
 
   async function serveStatic(requestPath, response) {
-    const relativePath = requestPath === '/' ? 'index.html' : requestPath.slice(1);
+    const relativePath = staticAliases.get(requestPath) || (requestPath === '/' ? 'index.html' : requestPath.slice(1));
     const filePath = path.normalize(path.join(publicDir, relativePath));
 
     if (!filePath.startsWith(publicDir)) {
@@ -86,6 +120,8 @@ export function createHttpHelpers({ publicDir, allowedOrigin = allowedOriginFrom
 
   return {
     corsHeaders,
+    corsHeadersFor,
+    bindCorsRequest,
     sendJson,
     sendText,
     clientError,

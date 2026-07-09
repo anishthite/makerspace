@@ -7,7 +7,7 @@ import path from 'node:path';
 import { LAST_FOLDER_FILE, readLastFolder, writeLastFolder } from '../desktop/last-folder.js';
 
 test('last local folder persists without clobbering other desktop state', async (t) => {
-  const dir = await mkdtemp(path.join(os.tmpdir(), 'workbench-folder-'));
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'spanner-folder-'));
   t.after(() => rm(dir, { recursive: true, force: true }));
   const file = path.join(dir, LAST_FOLDER_FILE);
 

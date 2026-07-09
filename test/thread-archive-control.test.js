@@ -6,7 +6,7 @@ const pages = readFileSync(new URL('../frontend/src/pages.jsx', import.meta.url)
 const js = readFileSync(new URL('../frontend/src/runtime/thread.js', import.meta.url), 'utf8');
 
 test('thread view exposes top-right stop and mark-as-done controls in the header', () => {
-  assert.match(pages, /<div className="header-actions"><StatusPill id="thread-status">connecting<\/StatusPill><Button id="stop-thread"[^>]+className="thread-stop-btn"[^>]+>stop<\/Button><Button id="archive-thread"[^>]+className="thread-done-btn"[^>]+>mark as done<\/Button><\/div>/);
+  assert.match(pages, /<div className="header-actions"><StatusPill id="thread-status">connecting<\/StatusPill>[\s\S]*<Button id="stop-thread"[^>]+className="thread-stop-btn"[^>]+>[\s\S]*stop<\/Button>[\s\S]*<Button id="archive-thread"[^>]+className="thread-done-btn"[^>]+>[\s\S]*mark as done<\/Button><\/div>/);
   assert.equal(pages.match(/id="stop-thread"/g)?.length, 1);
   assert.equal(pages.match(/id="archive-thread"/g)?.length, 1);
   assert.ok(pages.indexOf('className="header-actions"') < pages.indexOf('id="stop-thread"'));

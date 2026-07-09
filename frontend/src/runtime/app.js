@@ -2,14 +2,30 @@ import './appearance.js?v=palette-2';
 import { bindImageDropZone, clearImageInput, filesToImageAttachments, imageInputFiles, updateImageStatus } from './image-attachments.js';
 import { submitOnEnter } from './submit-on-enter.js';
 
-const BROWSER_SESSION_KEY = 'workbenchBrowserSession';
-const MODEL_REF_KEY = 'workbenchModelRef';
-const THINKING_LEVEL_KEY = 'workbenchThinkingLevel';
-const PROJECT_KEY = 'workbenchSelectedProject';
-const SEEN_FINISHED_THREADS_KEY = 'workbenchSeenFinishedThreads';
+const BROWSER_SESSION_KEY = 'spannerBrowserSession';
+const MODEL_REF_KEY = 'spannerModelRef';
+const THINKING_LEVEL_KEY = 'spannerThinkingLevel';
+const PROJECT_KEY = 'spannerSelectedProject';
+const SEEN_FINISHED_THREADS_KEY = 'spannerSeenFinishedThreads';
 const THINKING_LEVELS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh'];
 const ARCHIVEABLE_THREAD_STATUSES = ['completed', 'ready', 'failed'];
-const API_BASE = String(import.meta.env?.VITE_WORKBENCH_API_BASE || '').trim().replace(/\/+$/, '');
+const API_BASE = String(import.meta.env?.VITE_SPANNER_API_BASE || '').trim().replace(/\/+$/, '');
+
+function migrateStorageKey(legacyKey, nextKey) {
+  try {
+    if (localStorage.getItem(nextKey) === null) {
+      const value = localStorage.getItem(legacyKey);
+      if (value !== null) localStorage.setItem(nextKey, value);
+    }
+    localStorage.removeItem(legacyKey);
+  } catch {}
+}
+
+migrateStorageKey('workbenchBrowserSession', BROWSER_SESSION_KEY);
+migrateStorageKey('workbenchModelRef', MODEL_REF_KEY);
+migrateStorageKey('workbenchThinkingLevel', THINKING_LEVEL_KEY);
+migrateStorageKey('workbenchSelectedProject', PROJECT_KEY);
+migrateStorageKey('workbenchSeenFinishedThreads', SEEN_FINISHED_THREADS_KEY);
 
 const providerBanner = document.querySelector('#provider-banner');
 const projectLabel = document.querySelector('#project-label');
@@ -68,7 +84,7 @@ function toastHost() {
   host = document.createElement('div');
   host.id = 'agent-toast-stack';
   host.setAttribute('aria-live', 'polite');
-  host.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:1000;display:grid;gap:8px;max-width:min(360px,calc(100vw - 32px));pointer-events:none';
+  host.style.cssText = 'position:fixed;right:18px;bottom:var(--thread-composer-clearance,18px);z-index:1000;display:grid;gap:8px;max-width:min(360px,calc(100vw - 32px));pointer-events:none';
   document.body.append(host);
   return host;
 }
@@ -168,7 +184,7 @@ function loadRunControls() {
 }
 
 function authHeaders() {
-  const headers = { 'x-workbench-session': getBrowserSessionId() };
+  const headers = { 'x-spanner-session': getBrowserSessionId() };
   const token = getApiToken();
   if (token) headers.authorization = `Bearer ${token}`;
   return headers;
@@ -260,12 +276,12 @@ function sameSelectedProject(thread) {
 function renderProject(provider) {
   const project = provider?.project || {};
   const name = String(project.name || '').trim();
-  const visible = name && name !== 'workbench';
+  const visible = name && name !== 'spanner';
   if (!projectLabel) return;
   projectLabel.hidden = !visible;
   projectLabel.textContent = visible ? name : '';
   projectLabel.title = project.home ? `Project state: ${project.home}` : `Project: ${name}`;
-  document.title = visible ? `Workbench · ${name}` : 'Workbench';
+  document.title = visible ? `Spanner · ${name}` : 'Spanner';
 }
 
 function providerSummary(provider) {
@@ -280,9 +296,9 @@ function providerSummary(provider) {
 }
 
 async function loadLastLocalFolder() {
-  if (!globalThis.workbenchDesktop?.getLastFolder || repoUrlInput.value.trim()) return;
+  if (!globalThis.spannerDesktop?.getLastFolder || repoUrlInput.value.trim()) return;
   try {
-    const folder = await globalThis.workbenchDesktop.getLastFolder();
+    const folder = await globalThis.spannerDesktop.getLastFolder();
     if (!folder || repoUrlInput.value.trim()) return;
     repoUrlInput.value = folder;
     repoHint.textContent = 'Last local folder.';
@@ -292,7 +308,7 @@ async function loadLastLocalFolder() {
 function applyProviderMode(provider) {
   localProvider = provider?.kind === 'local';
   repoUrlInput.placeholder = localProvider ? '/Users/you/project' : 'github.com/you/repo';
-  chooseFolder.hidden = !localProvider || !globalThis.workbenchDesktop?.chooseFolder;
+  chooseFolder.hidden = !localProvider || !globalThis.spannerDesktop?.chooseFolder;
 
   if (localProvider) {
     repoPicker.disabled = true;
@@ -712,7 +728,7 @@ repoRefresh.addEventListener('click', async () => {
 });
 
 chooseFolder.addEventListener('click', async () => {
-  const folder = await globalThis.workbenchDesktop?.chooseFolder?.(repoUrlInput.value.trim());
+  const folder = await globalThis.spannerDesktop?.chooseFolder?.(repoUrlInput.value.trim());
   if (!folder) return;
   repoUrlInput.value = folder;
   resetRepoSelection('Local folder selected.');
@@ -763,7 +779,7 @@ threadForm.addEventListener('submit', async (event) => {
     });
     if (localProject) {
       try {
-        await globalThis.workbenchDesktop?.rememberFolder?.(repoInput);
+        await globalThis.spannerDesktop?.rememberFolder?.(repoInput);
       } catch {}
     }
     clearImageInput(imageInput);

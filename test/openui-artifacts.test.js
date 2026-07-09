@@ -35,6 +35,13 @@ test('openui source accepts a bare component call as the root', () => {
   assert.equal(normalizeOpenUISource('root = Card([])'), 'root = Card([])');
 });
 
+test('openui source normalizes triple-quoted string literals', () => {
+  assert.equal(
+    normalizeOpenUISource('TextContent("""Hi\nthere""")'),
+    'root = TextContent("Hi\\nthere")',
+  );
+});
+
 test('openui action prompt keeps user review in the composer', () => {
   assert.equal(
     openUIActionPrompt({

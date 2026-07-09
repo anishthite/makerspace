@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-APP_NAME="${APP_NAME:-Workbench}"
+APP_NAME="${APP_NAME:-Spanner}"
 INSTALL_DIR="${INSTALL_DIR:-/Applications}"
 
 usage() {
@@ -10,7 +10,7 @@ usage() {
 Usage: $(basename "$0") [path/to/${APP_NAME}.app|path/to/${APP_NAME}.dmg]
 
 Installs the packaged app into ${INSTALL_DIR}.
-With no path, uses output/desktop-package/${APP_NAME}.app, then output/desktop-package/workbench.dmg.
+With no path, uses output/desktop-package/${APP_NAME}.app, then output/desktop-package/spanner.dmg.
 USAGE
 }
 
@@ -19,7 +19,7 @@ find_source() {
 
   for candidate in \
     "$ROOT/output/desktop-package/${APP_NAME}.app" \
-    "$ROOT/output/desktop-package/workbench.dmg" \
+    "$ROOT/output/desktop-package/spanner.dmg" \
     "$ROOT/output/${APP_NAME}-"*.dmg; do
     if [[ -e "$candidate" ]]; then
       printf '%s\n' "$candidate"

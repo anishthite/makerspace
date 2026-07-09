@@ -1,5 +1,17 @@
-const BROWSER_SESSION_KEY = 'workbenchBrowserSession';
-const API_BASE = String(import.meta.env?.VITE_WORKBENCH_API_BASE || '').trim().replace(/\/+$/, '');
+const BROWSER_SESSION_KEY = 'spannerBrowserSession';
+const API_BASE = String(import.meta.env?.VITE_SPANNER_API_BASE || '').trim().replace(/\/+$/, '');
+
+function migrateStorageKey(legacyKey, nextKey) {
+  try {
+    if (localStorage.getItem(nextKey) === null) {
+      const value = localStorage.getItem(legacyKey);
+      if (value !== null) localStorage.setItem(nextKey, value);
+    }
+    localStorage.removeItem(legacyKey);
+  } catch {}
+}
+
+migrateStorageKey('workbenchBrowserSession', BROWSER_SESSION_KEY);
 const codexLogin = document.querySelector('#codex-login');
 const codexStatus = document.querySelector('#codex-status');
 const codexDevice = document.querySelector('#codex-device');
@@ -32,6 +44,7 @@ const settingsStatus = document.querySelector('#settings-status');
 const desktopUpdates = document.querySelector('#desktop-updates');
 const desktopCheckUpdates = document.querySelector('#desktop-check-updates');
 const desktopUpdateStatus = document.querySelector('#desktop-update-status');
+const settingsGlobalStatus = document.querySelector('#settings-global-status');
 let currentSettings = null;
 let currentPiProfile = null;
 let activeClaudeCodeLoginId = '';
@@ -71,7 +84,7 @@ function getApiToken() {
 }
 
 function authHeaders() {
-  const headers = { 'x-workbench-session': getBrowserSessionId() };
+  const headers = { 'x-spanner-session': getBrowserSessionId() };
   const token = getApiToken();
   if (token) headers.authorization = `Bearer ${token}`;
   return headers;
@@ -93,10 +106,35 @@ async function fetchJson(path, options = {}) {
   try {
     payload = text ? JSON.parse(text) : {};
   } catch {
-    throw new Error('Backend unavailable. Set VITE_WORKBENCH_API_BASE to the backend URL and redeploy.');
+    throw new Error('Backend unavailable. Set VITE_SPANNER_API_BASE to the backend URL and redeploy.');
   }
   if (!response.ok) throw new Error(payload.error || `Request failed: ${response.status}`);
   return payload;
+}
+
+function backendUnavailableMessage(message = '') {
+  return /Backend unavailable|VITE_SPANNER_API_BASE/i.test(String(message || ''));
+}
+
+function showGlobalSettingsStatus(message = '') {
+  if (!settingsGlobalStatus) return;
+  const text = String(message || '').trim();
+  settingsGlobalStatus.hidden = !text;
+  settingsGlobalStatus.textContent = text;
+}
+
+function handleSettingsLoadError(target, error) {
+  const message = error?.message || String(error || 'Unable to load settings.');
+  if (backendUnavailableMessage(message)) {
+    showGlobalSettingsStatus(message);
+    if (target) {
+      target.textContent = 'Waiting for backend.';
+      target.hidden = true;
+    }
+    return;
+  }
+  if (target) target.hidden = false;
+  if (target) target.textContent = message;
 }
 
 async function persistConnectionInputs(reload = false) {
@@ -141,14 +179,14 @@ function writeAuthTab(authTab, title, body) {
 }
 
 function openWebCodexTab() {
-  if (globalThis.workbenchDesktop) return null;
+  if (globalThis.spannerDesktop) return null;
   const codexTab = globalThis.open?.('about:blank', '_blank') || null;
   if (codexTab) writeAuthTab(codexTab, 'Codex sign-in', 'Opening Codex sign-in…');
   return codexTab;
 }
 
 function openWebClaudeCodeTab() {
-  if (globalThis.workbenchDesktop) return null;
+  if (globalThis.spannerDesktop) return null;
   const claudeTab = globalThis.open?.('about:blank', '_blank') || null;
   if (claudeTab) writeAuthTab(claudeTab, 'Claude Code sign-in', 'Opening Claude Code sign-in…');
   return claudeTab;
@@ -238,17 +276,22 @@ function renderGitHubAuth(status) {
   }
 
   const connected = Boolean(status.connected);
+  const needsReconnect = Boolean(status.needsReconnect);
   const app = status.app || {};
   const appAccounts = (app.installations || []).map((entry) => entry.accountLogin).filter(Boolean).join(', ');
+  const missingScopes = (status.missingScopes || []).join(', ');
+  githubLogin.textContent = needsReconnect ? 'Reconnect' : 'Sign in';
   githubLogin.disabled = false;
-  githubLogin.hidden = connected;
+  githubLogin.hidden = connected && !needsReconnect;
   githubLogout.disabled = !connected;
   githubLogout.hidden = !connected;
-  githubAppInstall.disabled = !connected || !app.installable;
+  githubAppInstall.disabled = !connected || needsReconnect || !app.installable;
   githubAppInstall.hidden = !app.configured;
-  githubStatus.textContent = connected
-    ? `Signed in · ${status.user?.login || 'GitHub'}${app.installed ? ` · App installed for ${appAccounts || 'GitHub'}` : app.configured ? ' · Install app for private repo git' : ''}`
-    : 'Signed out';
+  githubStatus.textContent = needsReconnect
+    ? `Reconnect GitHub to allow workflow file changes${missingScopes ? ` (${missingScopes} scope)` : ''}.`
+    : connected
+      ? `Signed in · ${status.user?.login || 'GitHub'}${app.installed ? ` · App installed for ${appAccounts || 'GitHub'}` : app.configured ? ' · Install app for private repo git' : ''}`
+      : 'Signed out';
 }
 
 async function loadGitHubAuth() {
@@ -305,11 +348,13 @@ async function loadPiProfile() {
 }
 
 async function reloadSettingsData() {
-  await loadGitHubAuth().catch((error) => { githubStatus.textContent = error.message; });
-  await loadCodexAuth().catch((error) => { codexStatus.textContent = error.message; });
-  await loadClaudeCodeAuth().catch((error) => { claudeCodeStatus.textContent = error.message; });
-  await loadSettings().catch((error) => { settingsStatus.textContent = error.message; });
-  await loadPiProfile().catch((error) => { piProfileStatus.textContent = error.message; });
+  showGlobalSettingsStatus('');
+  [githubStatus, codexStatus, claudeCodeStatus, settingsStatus, piProfileStatus].forEach((target) => { if (target) target.hidden = false; });
+  await loadGitHubAuth().catch((error) => handleSettingsLoadError(githubStatus, error));
+  await loadCodexAuth().catch((error) => handleSettingsLoadError(codexStatus, error));
+  await loadClaudeCodeAuth().catch((error) => handleSettingsLoadError(claudeCodeStatus, error));
+  await loadSettings().catch((error) => handleSettingsLoadError(settingsStatus, error));
+  await loadPiProfile().catch((error) => handleSettingsLoadError(piProfileStatus, error));
 }
 
 function showDesktopUpdateStatus(info = {}) {
@@ -317,7 +362,7 @@ function showDesktopUpdateStatus(info = {}) {
 }
 
 function initDesktopUpdates() {
-  const desktop = globalThis.workbenchDesktop;
+  const desktop = globalThis.spannerDesktop;
   if (!desktopUpdates || !desktopCheckUpdates || !desktopUpdateStatus || !desktop?.checkForUpdates) return;
   desktopUpdates.hidden = false;
   desktopUpdateStatus.textContent = 'Ready to check for desktop updates.';

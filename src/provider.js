@@ -10,7 +10,7 @@ export { isTransientSandboxError };
 
 function projectInfo(config = {}) {
   return {
-    name: config.projectName || 'workbench',
+    name: config.projectName || 'spanner',
     home: config.provider === 'local' ? config.localDataDir || '' : '',
   };
 }

@@ -27,7 +27,7 @@ test('normalizeImageSettings defaults to the optimized image', () => {
 });
 
 test('readSavedSettings scrubs legacy github auth fields', async () => {
-  const dir = await mkdtemp(path.join(os.tmpdir(), 'workbench-settings-'));
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'spanner-settings-'));
   const filePath = path.join(dir, 'settings.json');
 
   await writeFile(filePath, `${JSON.stringify({
@@ -48,7 +48,7 @@ test('readSavedSettings scrubs legacy github auth fields', async () => {
 });
 
 test('saveAppSettings preserves blank secrets and hides them on read', async () => {
-  const dir = await mkdtemp(path.join(os.tmpdir(), 'workbench-settings-'));
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'spanner-settings-'));
   const config = {
     settingsFile: path.join(dir, 'settings.json'),
     dockerfilePath: path.join(dir, 'Dockerfile'),
@@ -93,7 +93,7 @@ test('deriveNpmPackageManifest keeps only npm packages', () => {
   }));
 
   assert.deepEqual(manifest, {
-    name: 'workbench-image-packages',
+    name: 'spanner-image-packages',
     private: true,
     dependencies: {
       'pi-web-access': 'latest',

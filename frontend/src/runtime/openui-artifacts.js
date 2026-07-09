@@ -7,8 +7,13 @@ function shortText(value, max = MAX_SOURCE) {
   return String(value ?? '').trim().slice(0, max);
 }
 
+function normalizeTripleQuotedStrings(value) {
+  // ponytail: OpenUI has no triple strings; full lexer only if content needs literal """.
+  return value.replace(/"""([\s\S]*?)"""/g, (_, text) => JSON.stringify(text));
+}
+
 export function normalizeOpenUISource(value) {
-  const source = shortText(value);
+  const source = normalizeTripleQuotedStrings(shortText(value));
   if (!source || /^root\s*=/m.test(source)) return source;
   return /^[A-Z][A-Za-z0-9_]*\s*\(/.test(source) ? `root = ${source}` : source;
 }

@@ -9,6 +9,13 @@ const agentToasts = readFileSync(new URL('../frontend/src/runtime/agent-toasts.j
 const runState = readFileSync(new URL('../src/server/run-state.js', import.meta.url), 'utf8');
 const threads = readFileSync(new URL('../src/server/threads.js', import.meta.url), 'utf8');
 
+test('unsigned hosted users go to the homepage landing route', () => {
+  assert.match(entry, /const HOMEPAGE_PATH = '\/homepage';/);
+  assert.match(entry, /fetch\(`\$\{API_BASE\}\/api\/me`/);
+  assert.match(entry, /me\.authRequired && !me\.authenticated && me\.githubConfigured/);
+  assert.match(entry, /location\.replace\(homepageRedirectUrl\(\)\)/);
+});
+
 test('home agents header omits aggregate status line', () => {
   assert.match(pages, /export function WorkspacePage\(\)/);
   assert.doesNotMatch(pages, /id="action-summary"/);
@@ -34,7 +41,7 @@ test('home rows avoid workspace folder details', () => {
 
 test('home history and finished clear controls are near agent refresh', () => {
   assert.doesNotMatch(pages, /main-screen-variations|>concepts<\/a>/);
-  assert.match(pages, /href="\/history\.html">history<\/Button><Button id="refresh-threads"/);
+  assert.match(pages, /href="\/history\.html">.*history<\/Button><Button id="refresh-threads"/);
   assert.match(js, /id="clear-finished-threads" class="textbtn lane-clear"/);
   assert.match(js, /for \(const name of names\) \{\s*await fetchJson\(`\/api\/threads\/\$\{encodeURIComponent\(name\)\}\/archive`/);
   assert.match(js, /cache: 'no-store'/);
@@ -59,7 +66,7 @@ test('recently finished rows stack finished and runtime copy in the top right', 
 });
 
 test('recently finished success indicators can be dismissed locally', () => {
-  assert.ok(js.includes("const SEEN_FINISHED_THREADS_KEY = 'workbenchSeenFinishedThreads';"));
+  assert.ok(js.includes("const SEEN_FINISHED_THREADS_KEY = 'spannerSeenFinishedThreads';"));
   assert.ok(js.includes("return !active && ['completed', 'ready'].includes(rawStatus);"));
   assert.ok(js.includes('data-finished-indicator="${escapeHtml(indicatorKey)}"'));
   assert.ok(js.includes('data-finished-thread="${escapeHtml(indicatorKey)}"'));

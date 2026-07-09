@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 220" role="img" aria-labelledby="title desc" shape-rendering="crispEdges">
+  <title id="title">Spanner pixel bench logo — One-Bit Bench</title>
+  <desc id="desc">A four-block one-color pixel bench glyph.</desc>
+  <rect width="720" height="220" fill="none"/>
+  <g transform="translate(58 54) scale(7)">
+      <rect x="2" y="5" width="12" height="2" fill="#241A12"/>
+      <rect x="2" y="10" width="12" height="2" fill="#241A12"/>
+      <rect x="4" y="12" width="2" height="3" fill="#241A12"/>
+      <rect x="10" y="12" width="2" height="3" fill="#241A12"/>
+  </g>
+  <text x="210" y="120" fill="#241A12" font-family="Hack, 'Courier New', ui-monospace, monospace" font-size="43" font-weight="900" letter-spacing="2">SPANNER</text>
+</svg>

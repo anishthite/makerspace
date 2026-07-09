@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 commit_message="${*:-}"
-release_repo="${RELEASE_REPO:-anishthite/workbench-downloads}"
+release_repo="${RELEASE_REPO:-anishthite/spanner-downloads}"
 
 current_tag() {
   node -p '"v" + require("./package.json").version'
@@ -44,7 +44,7 @@ if git rev-parse -q --verify "refs/tags/$tag" >/dev/null 2>&1; then
     tag="$(current_tag)"
   fi
 fi
-title="Workbench $tag"
+title="Spanner $tag"
 commit_if_dirty "Prepare $tag release"
 
 npm run desktop:release
@@ -76,8 +76,8 @@ else
 fi
 git push origin "$tag"
 
-assets=(output/desktop-package/workbench.dmg)
-for zip in output/desktop-package/workbench-mac-*.zip; do
+assets=(output/desktop-package/spanner.dmg)
+for zip in output/desktop-package/spanner-mac-*.zip; do
   [[ -f "$zip" ]] && assets+=("$zip")
 done
 

@@ -46,14 +46,16 @@ test('static public pages stay in frontend/public for Vite copy', () => {
 });
 
 test('active storage keys and deploy aliases are listed', () => {
-  for (const key of ['workbenchBrowserSession', 'workbenchSelectedProject', 'workbenchModelRef', 'workbenchThinkingLevel', 'workbenchSeenFinishedThreads', 'workbenchRecentProjects']) {
+  for (const key of ['spannerBrowserSession', 'spannerSelectedProject', 'spannerModelRef', 'spannerThinkingLevel', 'spannerSeenFinishedThreads', 'spannerRecentProjects']) {
     assert.ok(manifest.storageKeys.includes(key), key);
   }
 
+  assert.ok(manifest.aliases.some((alias) => alias.route === '/homepage' && alias.target === '/desktop.html'));
   assert.ok(manifest.aliases.some((alias) => alias.route === '/desktop' && alias.target === '/desktop.html'));
   assert.ok(manifest.aliases.some((alias) => alias.route === '/thread' && alias.target === '/thread.html'));
   assert.ok(manifest.aliases.some((alias) => alias.route === '/telemetry' && alias.target === '/telemetry.html'));
   assert.ok(manifest.aliases.some((alias) => alias.route === '/local-telemetry' && alias.target === '/local-telemetry.html'));
-  assert.match(read('src/server.js'), /const publicDir = process\.env\.WORKBENCH_STATIC_DIR \|\| distDir;/);
+  assert.match(read('src/server.js'), /const publicDir = process\.env\.SPANNER_STATIC_DIR \|\| distDir;/);
+  assert.match(read('src/server/http.js'), /\['\/homepage', 'desktop\.html'\]/);
   assert.doesNotMatch(read('src/server.js'), /rootDir, 'public'/);
 });

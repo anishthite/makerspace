@@ -119,13 +119,13 @@ test('thread main header omits redundant done detail', () => {
 });
 
 test('changes rail is a summary button without inline preview', () => {
-  assert.match(pages, /<button id="diff-box" className="diff-box flow-card" type="button" hidden><span>changes<\/span><strong id="diff-count">0 files edited · 0 lines<\/strong><\/button>/);
+  assert.match(pages, /<button id="diff-box" className="diff-box flow-card" type="button" hidden>[\s\S]*changes[\s\S]*<strong id="diff-count">0 files edited · 0 lines<\/strong><\/button>/);
   assert.doesNotMatch(pages, /<details id="diff-box"/);
   assert.doesNotMatch(pages, /id="diff-editor"|id="diff-files"/);
   assert.match(js, /function formatDiffSummary/);
   assert.match(js, /openDiffDialog\('__all__'\)/);
   assert.doesNotMatch(js, /diffEditor|selectedDiffPath|selected diff/);
-  assert.doesNotMatch(css, /\.diff-editor|\.diff-workbench|\.diff-open-button/);
+  assert.doesNotMatch(css, /\.diff-editor|\.diff-spanner|\.diff-open-button/);
 });
 
 test('changes summary counts edited files and changed lines', () => {
@@ -182,6 +182,19 @@ test('running thread composer labels steer and follow-up delivery', () => {
   assert.match(js, /delivery,\s*submittedAtMs/);
   assert.match(js, /if \(!activeDelivery\) activeRunSummaryMarker = appendRunSummaryMarker/);
   assert.match(js, /event\.type === 'queue'\) updateQueueState\(event\)/);
+});
+
+test('thread timeline and toasts clear the sticky composer', () => {
+  const agentToasts = readFileSync(new URL('../frontend/src/runtime/agent-toasts.js', import.meta.url), 'utf8');
+  const appJs = readFileSync(new URL('../frontend/src/runtime/app.js', import.meta.url), 'utf8');
+  assert.match(js, /function syncComposerClearance\(\)/);
+  assert.match(js, /--thread-composer-clearance/);
+  assert.match(js, /getBoundingClientRect\(\)\.height \+ bottom \+ 18/);
+  assert.match(js, /ResizeObserver/);
+  assert.match(css, /\.conversation-main \.timeline-flow \{ padding-bottom: max\(126px, var\(--thread-composer-clearance, 220px\)\); \}/);
+  assert.match(agentToasts, /bottom:var\(--thread-composer-clearance,18px\)/);
+  assert.match(appJs, /bottom:var\(--thread-composer-clearance,18px\)/);
+  assert.match(threadHtml, /styles\.css\?v=thread-overlap-1/);
 });
 
 test('thread messages render stored image attachments', () => {

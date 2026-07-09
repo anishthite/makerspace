@@ -47,16 +47,32 @@
 
   const artifactPath = safeArtifactPath(rawArtifactPath);
 
-  const API_BASE = String(import.meta.env.VITE_WORKBENCH_API_BASE || '').trim().replace(/\/+$/, '');
+  const API_BASE = String(import.meta.env.VITE_SPANNER_API_BASE || '').trim().replace(/\/+$/, '');
 
   function apiUrl(path) {
     return `${API_BASE}${path}`;
   }
 
+  function browserSession() {
+    const nextKey = 'spannerBrowserSession';
+    const legacyKey = 'workbenchBrowserSession';
+    try {
+      let session = localStorage.getItem(nextKey) || '';
+      if (!session) {
+        session = localStorage.getItem(legacyKey) || '';
+        if (session) localStorage.setItem(nextKey, session);
+      }
+      localStorage.removeItem(legacyKey);
+      return session;
+    } catch {
+      return '';
+    }
+  }
+
   function authHeaders() {
     const headers = {};
-    const session = localStorage.getItem('workbenchBrowserSession') || '';
-    if (session) headers['x-workbench-session'] = session;
+    const session = browserSession();
+    if (session) headers['x-spanner-session'] = session;
     return headers;
   }
 

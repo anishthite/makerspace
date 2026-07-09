@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Homepage landing gate</title>
+<meta name="task" content="Serve the landing page at /homepage and send unsigned hosted users there.">
+<meta name="date-started" content="2026-07-09">
+<meta name="date-updated" content="2026-07-09">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="spanner,landing,auth,homepage,vercel">
+<meta name="related" content="2026-07-09-landing-github-sign-in.html,2026-07-09-landing-design-system.html,2026-07-08-visible-sign-in.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  ul { margin: .3rem 0 .8rem 1.2rem; padding: 0; }
+  li { margin: .15rem 0; }
+  .blast-low { color: #2a7a2a; } .blast-med { color: #b85c00; } .blast-high { color: #b00020; font-weight: 600; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>Homepage landing gate</h1>
+<p class="meta"><code>push-prep/20260708-171222</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-09 · status <b>shipped</b> · blast <span class="blast-med">medium</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Serve the existing landing page at <code>/homepage</code> and redirect unsigned hosted users there.</div>
+  <b>Source</b><div><code>GET /api/me</code> exposes <code>authRequired</code>, <code>authenticated</code>, and <code>githubConfigured</code>.</div>
+  <b>Surface</b><div><code>/homepage</code>, <code>/desktop.html</code>, React entry bootstrap.</div>
+  <b>Schema</b><div>None.</div>
+  <b>Mobile</b><div>Existing landing breakpoint only.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>Algorithm</h2>
+<ol>
+  <li>Fetch <code>/api/me</code> through <code>VITE_SPANNER_API_BASE</code> during React bootstrap.</li>
+  <li>If <code>authRequired && !authenticated && githubConfigured</code>, replace the current route with <code>/homepage?returnTo=&lt;current URL&gt;</code>.</li>
+  <li>Keep local/dev routes in place when the auth API is unavailable or GitHub OAuth is not configured.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>vercel.json</code></td><td>touch</td><td>Add the <code>/homepage</code> production rewrite.</td></tr>
+  <tr><td><code>frontend/route-manifest.json</code></td><td>touch</td><td>List <code>/homepage</code> as a deploy alias.</td></tr>
+  <tr><td><code>frontend/src/entry.jsx</code></td><td>touch</td><td>Redirect unsigned hosted users before they use protected React pages.</td></tr>
+  <tr><td><code>src/server/http.js</code></td><td>touch</td><td>Serve deploy aliases from the backend static server too.</td></tr>
+  <tr><td><code>frontend/desktop.html</code></td><td>touch</td><td>Let the reused landing page call the configured remote API and preserve <code>returnTo</code>.</td></tr>
+  <tr><td><code>test/*</code></td><td>touch</td><td>Add static checks for the alias, auth redirect, and landing API base.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Alias <code>/homepage</code> to <code>/desktop.html</code>. The existing landing already has the requested copy and sign-in modal.</td></tr>
+  <tr><td>D-002</td><td>Redirect only when hosted auth is required and GitHub OAuth is configured. Local and misconfigured dev setups should still show diagnostics.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td>One shared landing file over a duplicate <code>homepage.html</code>. Avoids copy drift.</td></tr>
+</table>
+
+<h2>Assumptions</h2>
+<ul>
+  <li>A-001 · Hosted builds set <code>VITE_SPANNER_API_BASE</code> when the API is not same-origin. If wrong: the redirect safely does nothing.</li>
+</ul>
+
+<h2>Verification</h2>
+<table>
+  <tr><th>Check</th><th>Result</th></tr>
+  <tr><td><code>node --test test/desktop-landing-signin.test.js test/frontend-route-manifest.test.js test/home-runtime-summary.test.js</code></td><td>Passed 17/17.</td></tr>
+  <tr><td><code>npm run build</code></td><td>Passed.</td></tr>
+  <tr><td><code>git diff --check -- …</code></td><td>Passed.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Revert the alias, bootstrap redirect, landing script tweak, and tests to restore the in-app sign-in gate.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li><code>/homepage</code> serves the landing page.</li>
+  <li>Unsigned hosted React app visitors land on <code>/homepage</code>.</li>
+  <li>Focused static tests and <code>npm run build</code> pass.</li>
+</ul>
+</body>
+</html>

@@ -35,7 +35,7 @@ function createService(config) {
 }
 
 test('local telemetry reads desktop sessions and Pi trace analysis without browser ownership filter', async () => {
-  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'workbench-local-telemetry-'));
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'spanner-local-telemetry-'));
   const localHome = path.join(tempDir, 'local-home');
   const isolatedStore = path.join(tempDir, 'configured-sessions.json');
 

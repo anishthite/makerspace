@@ -7,7 +7,7 @@ import path from 'node:path';
 import { buildPiProfileSyncPayload, piProfileResourceOverrides, readPiProfile, savePiProfile } from '../src/pi-profile.js';
 
 async function makeProfileFixture() {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workbench-pi-profile-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-pi-profile-'));
   const agentDir = path.join(root, 'agent');
   const agentsSkillsDir = path.join(root, 'agents-skills');
   const piProfileFile = path.join(root, 'pi-profile.json');
@@ -26,19 +26,19 @@ async function makeProfileFixture() {
   return { root, agentDir, agentsSkillsDir, piProfileFile };
 }
 
-test('readPiProfile defaults to Workbench package profile instead of personal Pi dir', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workbench-package-profile-'));
-  const packageDir = path.join(root, 'packages', 'workbench-pi-defaults');
+test('readPiProfile defaults to Spanner package profile instead of personal Pi dir', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-package-profile-'));
+  const packageDir = path.join(root, 'packages', 'spanner-pi-defaults');
   const personalDir = path.join(root, 'personal-pi');
   await mkdir(path.join(packageDir, 'context'), { recursive: true });
   await mkdir(personalDir, { recursive: true });
-  await writeFile(path.join(packageDir, 'context', 'AGENTS.md'), '# Workbench Pi\n');
+  await writeFile(path.join(packageDir, 'context', 'AGENTS.md'), '# Spanner Pi\n');
   await writeFile(path.join(personalDir, 'AGENTS.md'), '# Personal Pi\n');
   const previous = process.env.PI_CODING_AGENT_DIR;
   process.env.PI_CODING_AGENT_DIR = personalDir;
   try {
     const profile = await readPiProfile({ rootDir: root, piDefaultsPackageDir: packageDir, piProfileFile: path.join(root, 'profile.json') });
-    assert.equal(profile.agentsText, '# Workbench Pi\n');
+    assert.equal(profile.agentsText, '# Spanner Pi\n');
     assert.equal(profile.agentsPath, path.join(packageDir, 'context', 'AGENTS.md'));
   } finally {
     if (previous === undefined) delete process.env.PI_CODING_AGENT_DIR;

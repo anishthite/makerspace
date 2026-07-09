@@ -54,7 +54,7 @@ test('CONTROL_API_TOKEN is optional user auth bypass when multi-user auth is on'
 });
 
 test('GitHub login rejects users outside the hosted allowlist', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workbench-allowed-users-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-allowed-users-'));
   const previousFetch = globalThis.fetch;
   globalThis.fetch = async (url) => {
     if (String(url).includes('/login/oauth/access_token')) {
@@ -74,7 +74,7 @@ test('GitHub login rejects users outside the hosted allowlist', async () => {
         githubClientId: 'client-id',
         githubClientSecret: 'secret',
         allowedUsers: ['octo'],
-        authCookieName: 'workbench_auth',
+        authCookieName: 'spanner_auth',
       },
       http: httpStub(),
     });
@@ -86,7 +86,7 @@ test('GitHub login rejects users outside the hosted allowlist', async () => {
 
     const redirect = new URL(result.location);
     assert.equal(redirect.searchParams.get('github'), 'denied');
-    assert.match(String(result.headers?.['set-cookie'] || ''), /workbench_auth_github_oauth=/);
+    assert.match(String(result.headers?.['set-cookie'] || ''), /spanner_auth_github_oauth=/);
     assert.equal(await auth.authStore.getUserByGitHubId('2'), null);
   } finally {
     globalThis.fetch = previousFetch;
@@ -95,7 +95,7 @@ test('GitHub login rejects users outside the hosted allowlist', async () => {
 });
 
 test('GitHub login refuses implicit account switches', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workbench-switch-users-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-switch-users-'));
   const previousFetch = globalThis.fetch;
   globalThis.fetch = async (url) => {
     if (String(url).includes('/login/oauth/access_token')) {
@@ -114,7 +114,7 @@ test('GitHub login refuses implicit account switches', async () => {
         authFile: path.join(root, 'auth.json'),
         githubClientId: 'client-id',
         githubClientSecret: 'secret',
-        authCookieName: 'workbench_auth',
+        authCookieName: 'spanner_auth',
       },
       http: httpStub(),
     });
@@ -127,7 +127,7 @@ test('GitHub login refuses implicit account switches', async () => {
     const redirect = new URL(result.location);
     assert.equal(redirect.searchParams.get('github'), 'denied');
     assert.equal(redirect.searchParams.get('message'), 'Sign out before switching GitHub accounts.');
-    assert.match(String(result.headers?.['set-cookie'] || ''), /workbench_auth_github_oauth=/);
+    assert.match(String(result.headers?.['set-cookie'] || ''), /spanner_auth_github_oauth=/);
     assert.equal(await auth.authStore.getUserByGitHubId('2'), null);
   } finally {
     globalThis.fetch = previousFetch;
@@ -136,7 +136,7 @@ test('GitHub login refuses implicit account switches', async () => {
 });
 
 test('GitHub callback requires the browser that started OAuth', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workbench-github-nonce-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-github-nonce-'));
   try {
     const auth = createAuthService({
       config: {
@@ -144,7 +144,7 @@ test('GitHub callback requires the browser that started OAuth', async () => {
         authFile: path.join(root, 'auth.json'),
         githubClientId: 'client-id',
         githubClientSecret: 'secret',
-        authCookieName: 'workbench_auth',
+        authCookieName: 'spanner_auth',
       },
       http: httpStub(),
     });
@@ -182,7 +182,7 @@ test('hosted auth mutations reject cross-site requests', () => {
 });
 
 test('GitHub App installation token wins for matching repo owner', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workbench-github-app-token-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-github-app-token-'));
   const previousFetch = globalThis.fetch;
   const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
   globalThis.fetch = async (url) => {
@@ -219,8 +219,32 @@ test('GitHub App installation token wins for matching repo owner', async () => {
   }
 });
 
+test('old GitHub OAuth tokens without workflow scope are not used for remote git auth', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-github-stale-scope-'));
+  try {
+    const auth = createAuthService({
+      config: { authRequired: true, authFile: path.join(root, 'auth.json'), githubClientSecret: 'secret' },
+      http: httpStub(),
+    });
+    await auth.authStore.upsertUser({ id: 'github-1', githubId: '1', login: 'octo' });
+    await auth.authStore.upsertOAuthToken({ userId: 'github-1', provider: 'github', accessToken: 'old-token', scopes: ['repo', 'read:user'] });
+
+    await assert.rejects(
+      () => auth.readGitHubAuthForSession({ ownerUserId: 'github-1', repoUrl: 'https://github.com/acme/private.git' }),
+      /Reconnect GitHub.*workflow/,
+    );
+
+    const status = await auth.publicGitHubAuth({ id: 'github-1', githubId: '1', login: 'octo' });
+    assert.equal(status.connected, true);
+    assert.equal(status.needsReconnect, true);
+    assert.deepEqual(status.missingScopes, ['workflow']);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('signed-in user token authenticates pasted GitHub repo URLs', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workbench-github-enrich-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-github-enrich-'));
   const previousFetch = globalThis.fetch;
   globalThis.fetch = async () => new Response(JSON.stringify({
     id: 1,
@@ -237,7 +261,7 @@ test('signed-in user token authenticates pasted GitHub repo URLs', async () => {
       http: httpStub(),
     });
     await auth.authStore.upsertUser({ id: 'github-1', githubId: '1', login: 'octo' });
-    await auth.authStore.upsertOAuthToken({ userId: 'github-1', provider: 'github', accessToken: 'user-token' });
+    await auth.authStore.upsertOAuthToken({ userId: 'github-1', provider: 'github', accessToken: 'user-token', scopes: ['repo', 'read:user', 'workflow'] });
 
     const session = await auth.enrichGitHubRepoSession({
       repoMode: 'git',
@@ -255,7 +279,7 @@ test('signed-in user token authenticates pasted GitHub repo URLs', async () => {
 });
 
 test('hosted pull requests ignore browser-session GitHub token fallback', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workbench-pr-token-scope-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-pr-token-scope-'));
   try {
     const sessionFile = path.join(root, 'sessions.json');
     await writeFile(sessionFile, `${JSON.stringify([
@@ -291,7 +315,7 @@ test('hosted pull requests ignore browser-session GitHub token fallback', async 
 });
 
 test('thread list payload returns only the signed-in user sessions', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workbench-thread-scope-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-thread-scope-'));
   try {
     const sessionFile = path.join(root, 'sessions.json');
     await writeFile(sessionFile, `${JSON.stringify([

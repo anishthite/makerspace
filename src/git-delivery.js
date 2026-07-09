@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import { buildGitHubCloneAuthHeader, createGitHubPullRequest, parseGitHubRepoUrl } from './github.js';
 
-const RESULT_MARKER = '__WORKBENCH_GIT_DELIVERY__';
+const RESULT_MARKER = '__SPANNER_GIT_DELIVERY__';
 
 function shellQuote(value) {
   return `'${String(value).replace(/'/g, `'\\''`)}'`;
@@ -53,7 +53,7 @@ export function normalizeGitDeliveryFiles(changes = [], remoteCwd = '') {
 }
 
 export function branchNameForThread(session = {}) {
-  return `workbench/${slugify(session.name || session.title)}-${hash(session.name || session.repoUrl || 'thread')}`;
+  return `spanner/${slugify(session.name || session.title)}-${hash(session.name || session.repoUrl || 'thread')}`;
 }
 
 function safeBranchName(value, fallback) {
@@ -68,7 +68,7 @@ export function titleForThreadPullRequest(session = {}, options = {}) {
   const title = String(session.title || '').trim();
   if (title) return title.slice(0, 120);
   const prompt = String(session.initialPrompt || session.taskPrompt || '').trim().split(/\r?\n/)[0];
-  return (prompt || `Workbench changes for ${session.name || 'thread'}`).slice(0, 120);
+  return (prompt || `Spanner changes for ${session.name || 'thread'}`).slice(0, 120);
 }
 
 function commitMessageForThread(session = {}, options = {}) {
@@ -79,7 +79,7 @@ export function bodyForThreadPullRequest(session = {}, files = [], options = {})
   const explicit = String(options.body || '').trim();
   if (explicit) return explicit;
   const list = files.map((file) => `- \`${file}\``).join('\n') || '- No tracked files';
-  return `Created by Workbench from thread \`${session.name || 'thread'}\`.\n\nStaged files:\n${list}\n`;
+  return `Created by Spanner from thread \`${session.name || 'thread'}\`.\n\nStaged files:\n${list}\n`;
 }
 
 export function repoPathForThreadPullRequest(session = {}) {
@@ -113,7 +113,7 @@ export function buildGitDeliveryScript({ cwd, files, branch, commitMessage, auth
     `  printf '%s%s\\n' ${shellQuote(RESULT_MARKER)} '{"noChanges":true}'`,
     '  exit 0',
     'fi',
-    'git -c user.name="Workbench" -c user.email="workbench@users.noreply.github.com" commit -m "$COMMIT_MESSAGE"',
+    'git -c user.name="Spanner" -c user.email="spanner@users.noreply.github.com" commit -m "$COMMIT_MESSAGE"',
     'COMMIT_SHA=$(git rev-parse HEAD)',
     `git -c ${shellQuote(extraHeader)} push --force-with-lease origin "HEAD:refs/heads/$BRANCH"`,
     `printf '%s' ${shellQuote(RESULT_MARKER)}`,

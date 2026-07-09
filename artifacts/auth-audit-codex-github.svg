@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="720" viewBox="0 0 1180 720" role="img" aria-labelledby="title desc">
+  <title id="title">Workbench Codex and GitHub auth audit flow</title>
+  <desc id="desc">Shows browser login, backend credential storage, bridge auth sync, and the missing Codex refresh back-sync path.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#334155"/></marker>
+    <marker id="redArrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#b91c1c"/></marker>
+    <style>
+      .bg{fill:#f8fafc}.box{fill:#fff;stroke:#334155;stroke-width:2;rx:16}.store{fill:#eef6ff;stroke:#2563eb}.remote{fill:#f5f3ff;stroke:#7c3aed}.provider{fill:#fff7ed;stroke:#ea580c}.bad{fill:#fef2f2;stroke:#b91c1c}.title{font:700 22px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;fill:#0f172a}.h{font:700 16px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;fill:#0f172a}.t{font:13px ui-monospace,SFMono-Regular,Menlo,monospace;fill:#334155}.small{font:12px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;fill:#475569}.arrow{stroke:#334155;stroke-width:2.2;fill:none;marker-end:url(#arrow)}.dashed{stroke-dasharray:7 6}.badline{stroke:#b91c1c;stroke-width:2.4;fill:none;marker-end:url(#redArrow)}
+    </style>
+  </defs>
+  <rect class="bg" width="1180" height="720"/>
+  <text class="title" x="40" y="44">Codex + GitHub auth: current remote flow</text>
+
+  <rect class="box" x="44" y="92" width="235" height="160"/>
+  <text class="h" x="66" y="124">Browser UI</text>
+  <text class="t" x="66" y="155">credentials: include</text>
+  <text class="t" x="66" y="178">x-workbench-session</text>
+  <text class="small" x="66" y="210">Settings starts GitHub + Codex login.</text>
+
+  <rect class="box" x="382" y="92" width="300" height="160"/>
+  <text class="h" x="404" y="124">Node backend</text>
+  <text class="t" x="404" y="155">src/server/auth.js</text>
+  <text class="t" x="404" y="178">src/server/bridge.js</text>
+  <text class="small" x="404" y="210">Creates signed session cookie and bridge /auth payload.</text>
+
+  <rect class="store" x="792" y="92" width="310" height="160" rx="16"/>
+  <text class="h" x="814" y="124">Auth store: D1 or auth.json</text>
+  <text class="t" x="814" y="155">auth:session:&lt;hash&gt;</text>
+  <text class="t" x="814" y="178">auth:oauth:&lt;user&gt;:github</text>
+  <text class="t" x="814" y="201">secret:openai-codex-auth</text>
+
+  <rect class="provider" x="792" y="298" width="310" height="126" rx="16"/>
+  <text class="h" x="814" y="330">OAuth providers</text>
+  <text class="t" x="814" y="360">GitHub OAuth: account + repo token</text>
+  <text class="t" x="814" y="383">OpenAI Codex: access + refresh</text>
+
+  <rect class="remote" x="382" y="496" width="376" height="160" rx="16"/>
+  <text class="h" x="404" y="528">Remote bridge sandbox</text>
+  <text class="t" x="404" y="559">POST /auth writes ~/.pi/agent/auth.json</text>
+  <text class="t" x="404" y="582">POST /auth writes ~/.git-credentials</text>
+  <text class="small" x="404" y="616">Pi refreshes expired Codex tokens locally during runs.</text>
+
+  <rect class="bad" x="44" y="496" width="250" height="160" rx="16"/>
+  <text class="h" x="66" y="528">Likely bug</text>
+  <text class="small" x="66" y="558">Remote Codex refresh rotates tokens,</text>
+  <text class="small" x="66" y="579">but refreshed auth never returns to</text>
+  <text class="small" x="66" y="600">the backend store. Next sync can</text>
+  <text class="small" x="66" y="621">overwrite the sandbox with stale auth.</text>
+
+  <path class="arrow" d="M279 150 C318 150 340 150 382 150"/>
+  <text class="small" x="306" y="136">API calls</text>
+
+  <path class="arrow" d="M682 150 C724 150 746 150 792 150"/>
+  <text class="small" x="706" y="136">store/read secrets</text>
+
+  <path class="arrow" d="M947 252 L947 298"/>
+  <text class="small" x="962" y="281">login exchange</text>
+
+  <path class="arrow" d="M532 252 C532 336 532 414 532 496"/>
+  <text class="small" x="548" y="374">before each run: POST /auth</text>
+
+  <path class="arrow dashed" d="M792 205 C700 272 640 394 610 496"/>
+  <text class="small" x="628" y="334">backend sends stored Codex auth</text>
+
+  <path class="arrow" d="M758 576 C850 560 922 488 947 424"/>
+  <text class="small" x="796" y="536">remote uses providers</text>
+
+  <path class="badline dashed" d="M382 584 C332 584 318 584 294 584"/>
+  <text class="small" x="304" y="570" fill="#b91c1c">missing back-sync</text>
+
+  <path class="badline dashed" d="M294 625 C500 704 727 682 884 252"/>
+  <text class="small" x="455" y="686" fill="#b91c1c">stale backend credential can be pushed again</text>
+</svg>

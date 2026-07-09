@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Workbench — the easiest way to build with agents</title>
-  <meta name="description" content="Workbench is the easiest way to build with agents: start jobs across local repos and remote sandboxes, watch progress, and review every diff before it lands.">
+  <title>Spanner — the easiest way to build with agents</title>
+  <meta name="description" content="Spanner is the easiest way to build with agents: start jobs across local repos and remote sandboxes, watch progress, and review every diff before it lands.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -81,8 +81,8 @@
 </head>
 <body>
   <main>
-    <nav aria-label="Workbench navigation">
-      <a class="brand" href="/"><img src="/logo-mark.svg" alt="" aria-hidden="true"><span>workbench</span></a>
+    <nav aria-label="Spanner navigation">
+      <a class="brand" href="/"><img src="/logo-mark.svg" alt="" aria-hidden="true"><span>spanner</span></a>
       <div class="nav-links">
         <button id="signin-open" class="link-button" type="button" data-open-signin>Sign in</button>
         <a href="/">web app</a>
@@ -94,7 +94,7 @@
         <h1 id="title">The easiest way to build with agents.</h1>
         <p class="lede">Start agent jobs across local repos and remote sandboxes, watch progress in one place, and review every diff before it lands.</p>
         <div class="actions">
-          <a class="button" href="https://github.com/anishthite/workbench-downloads/releases/latest">Download for macOS</a>
+          <a class="button" href="https://github.com/anishthite/spanner-downloads/releases/latest">Download for macOS</a>
           <a class="button secondary" href="#install">Install instructions</a>
         </div>
       </div>
@@ -102,7 +102,7 @@
         <div class="preview-head"><p class="eyebrow">agent run</p><span class="state">ready</span></div>
         <div class="prompt-card">“Update landing copy, add GitHub sign-in, show me the diff.”</div>
         <div class="run-list" aria-label="Run details">
-          <div class="run-row"><span>repo</span><strong>workbench</strong></div>
+          <div class="run-row"><span>repo</span><strong>spanner</strong></div>
           <div class="run-row"><span>workspace</span><strong>local or sandbox</strong></div>
           <div class="run-row"><span>trace</span><strong>tools · files · notes</strong></div>
           <div class="run-row"><span>finish</span><strong>review every diff</strong></div>
@@ -112,15 +112,15 @@
 
     <div class="strip">Build with agents · local repos · remote sandboxes · live traces · human-reviewed diffs</div>
 
-    <section class="grid" aria-label="Workbench features">
+    <section class="grid" aria-label="Spanner features">
       <article class="card"><h2>Start building</h2><p>Launch agents against local folders or remote sandboxes without rebuilding setup for every repo.</p></article>
       <article class="card"><h2>Watch what matters</h2><p>Track active agents, tool calls, traces, status, and progress in one place.</p></article>
       <article class="card"><h2>Review every diff</h2><p>Open finished diffs, notes, artifacts, and next steps, then decide what lands.</p></article>
     </section>
 
     <footer id="install">
-      <span>Open the DMG, drag Workbench to Applications, then pick a folder, repo, or sandbox.</span>
-      <a href="https://github.com/anishthite/workbench-downloads/releases/latest">release notes</a>
+      <span>Open the DMG, drag Spanner to Applications, then pick a folder, repo, or sandbox.</span>
+      <a href="https://github.com/anishthite/spanner-downloads/releases/latest">release notes</a>
     </footer>
   </main>
 
@@ -130,7 +130,7 @@
         <div>
           <p class="eyebrow">GitHub sign-in</p>
           <h2 id="signin-title">Build with your repos.</h2>
-          <p>Sign in with GitHub so Workbench can launch agents against the repos you choose.</p>
+          <p>Sign in with GitHub so Spanner can launch agents against the repos you choose.</p>
         </div>
         <button id="signin-close" class="close-button" type="button" aria-label="Close sign-in modal">×</button>
       </div>
@@ -144,9 +144,17 @@
     </div>
   </dialog>
 
-  <script>
+  <script type="module">
     (() => {
-      const SESSION_KEY = 'workbenchBrowserSession';
+      const API_BASE = String(import.meta.env?.VITE_SPANNER_API_BASE || '').trim().replace(/\/+$/, '');
+      const SESSION_KEY = 'spannerBrowserSession';
+      try {
+        if (localStorage.getItem(SESSION_KEY) === null) {
+          const value = localStorage.getItem('workbenchBrowserSession');
+          if (value !== null) localStorage.setItem(SESSION_KEY, value);
+        }
+        localStorage.removeItem('workbenchBrowserSession');
+      } catch {}
       const openButton = document.querySelector('[data-open-signin]');
       const dialog = document.querySelector('#signin-modal');
       const closeButton = document.querySelector('#signin-close');
@@ -175,12 +183,26 @@
         }
       }
 
+      function apiUrl(path) {
+        return `${API_BASE}${path}`;
+      }
+
+      function targetUrl() {
+        try {
+          const raw = new URLSearchParams(location.search).get('returnTo') || '/';
+          const url = new URL(raw, location.href);
+          return url.origin === location.origin ? url.toString() : `${location.origin}/`;
+        } catch {
+          return `${location.origin}/`;
+        }
+      }
+
       async function fetchJson(path, options = {}) {
-        const response = await fetch(path, {
+        const response = await fetch(apiUrl(path), {
           credentials: 'include',
           cache: 'no-store',
           ...options,
-          headers: { 'x-workbench-session': sessionId(), ...(options.headers || {}) },
+          headers: { 'x-spanner-session': sessionId(), ...(options.headers || {}) },
         });
         const text = await response.text();
         let payload = {};
@@ -211,7 +233,7 @@
 
       async function startGitHubSignIn() {
         if (connected) {
-          location.href = '/';
+          location.href = targetUrl();
           return;
         }
         githubButton.disabled = true;
@@ -220,7 +242,7 @@
           const payload = await fetchJson('/api/auth/github/login', {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ returnTo: location.href }),
+            body: JSON.stringify({ returnTo: targetUrl() }),
           });
           location.href = payload.loginUrl;
         } catch (error) {

@@ -1,7 +1,19 @@
 import './appearance.js?v=palette-2';
 
-const BROWSER_SESSION_KEY = 'workbenchBrowserSession';
-const API_BASE = String(import.meta.env?.VITE_WORKBENCH_API_BASE || '').trim().replace(/\/+$/, '');
+const BROWSER_SESSION_KEY = 'spannerBrowserSession';
+const API_BASE = String(import.meta.env?.VITE_SPANNER_API_BASE || '').trim().replace(/\/+$/, '');
+
+function migrateStorageKey(legacyKey, nextKey) {
+  try {
+    if (localStorage.getItem(nextKey) === null) {
+      const value = localStorage.getItem(legacyKey);
+      if (value !== null) localStorage.setItem(nextKey, value);
+    }
+    localStorage.removeItem(legacyKey);
+  } catch {}
+}
+
+migrateStorageKey('workbenchBrowserSession', BROWSER_SESSION_KEY);
 
 const isLocalTelemetry = location.pathname.includes('local-telemetry') || new URLSearchParams(location.search).get('source') === 'local';
 
@@ -40,7 +52,7 @@ function getApiToken() {
 }
 
 function authHeaders() {
-  const headers = { 'x-workbench-session': getBrowserSessionId() };
+  const headers = { 'x-spanner-session': getBrowserSessionId() };
   const token = getApiToken();
   if (token) headers.authorization = `Bearer ${token}`;
   return headers;

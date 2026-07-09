@@ -21,8 +21,8 @@ test('project selector offers desktop local folders', () => {
   assert.match(project, /const repoOptions = document\.querySelector\('#project-repo-options'\)/);
   assert.match(project, /const repoTray = document\.querySelector\('#project-repo-tray'\)/);
   assert.match(project, /repoTray\.hidden = local && canChooseFolder/);
-  assert.match(project, /workbenchDesktop\?\.chooseFolder/);
-  assert.match(project, /workbenchSelectedProject/);
+  assert.match(project, /spannerDesktop\?\.chooseFolder/);
+  assert.match(project, /spannerSelectedProject/);
   assert.match(project, /\/api\/recent-projects/);
   assert.match(project, /project-running-badge/);
   assert.match(project, /function filterRepos\(query/);

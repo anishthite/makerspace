@@ -130,7 +130,7 @@ export function normalizeCreateRequest(body, config) {
   const normalizedSharePort = Number.isFinite(sharePort) && sharePort > 0 ? sharePort : null;
   const requestedName = String(body.name || '').trim();
   const fallbackName = buildGeneratedName(inferBaseName(repoUrl));
-  const name = slugify(requestedName || fallbackName) || buildGeneratedName('workbench');
+  const name = slugify(requestedName || fallbackName) || buildGeneratedName('spanner');
 
   return {
     name,

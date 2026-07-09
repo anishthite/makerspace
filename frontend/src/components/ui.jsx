@@ -30,7 +30,7 @@ export function Surface({ as, className, children, ...props }) {
 export function Button({ as, href, variant = 'secondary', size = 'md', loading = false, className, children, ...props }) {
   const Comp = as || (href ? 'a' : 'button');
   const legacyClass = variant === 'primary' ? 'primary-btn' : 'textbtn';
-  const content = <span>{children}</span>;
+  const content = <span className="inline-flex items-center justify-center gap-1.5">{children}</span>;
   const shared = {
     variant: buttonVariant[variant] || variant,
     size: buttonSize[size] || size,

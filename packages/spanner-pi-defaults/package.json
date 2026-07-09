@@ -1,0 +1,19 @@
+{
+  "name": "@spanner/pi-defaults",
+  "version": "0.1.0",
+  "description": "Spanner default Pi skills, prompts, and prompt policy.",
+  "keywords": ["pi-package"],
+  "type": "module",
+  "pi": {
+    "extensions": ["extensions/*.ts"],
+    "skills": ["skills"],
+    "prompts": ["prompts/*.md"]
+  },
+  "files": [
+    "context",
+    "extensions",
+    "skills",
+    "prompts",
+    "README.md"
+  ]
+}

@@ -6,6 +6,9 @@ import { applyAppearance } from './runtime/appearance.js';
 import { startAgentToastWatcher } from './runtime/agent-toasts.js';
 import './styles/fluid-ui.css';
 
+const HOMEPAGE_PATH = '/homepage';
+const API_BASE = String(import.meta.env?.VITE_SPANNER_API_BASE || '').trim().replace(/\/+$/, '');
+
 const runtimeLoaders = {
   project: () => import('./runtime/project.js'),
   workspace: () => import('./runtime/app.js'),
@@ -14,6 +17,19 @@ const runtimeLoaders = {
   history: () => import('./runtime/history.js'),
   performance: () => import('./runtime/performance.js'),
 };
+
+function homepageRedirectUrl() {
+  const returnTo = location.href;
+  return `${HOMEPAGE_PATH}?${new URLSearchParams({ returnTo })}`;
+}
+
+async function redirectUnsignedHostedUsers() {
+  try {
+    const response = await fetch(`${API_BASE}/api/me`, { credentials: 'include', cache: 'no-store' });
+    const me = await response.json();
+    if (me.authRequired && !me.authenticated && me.githubConfigured) location.replace(homepageRedirectUrl());
+  } catch {}
+}
 
 function App({ page }) {
   const Page = pages[page] || pages.project;
@@ -34,11 +50,12 @@ function App({ page }) {
 }
 
 applyAppearance();
+void redirectUnsignedHostedUsers();
 
 const root = document.querySelector('#root');
 const page = document.body?.dataset?.reactPage || 'project';
 if (page !== 'workspace') startAgentToastWatcher();
-const reactRoot = root.__workbenchRoot || createRoot(root);
-root.__workbenchRoot = reactRoot;
+const reactRoot = root.__spannerRoot || createRoot(root);
+root.__spannerRoot = reactRoot;
 
 reactRoot.render(<App page={page} />);

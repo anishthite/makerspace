@@ -11,12 +11,15 @@ test('desktop landing exposes GitHub sign-in modal', () => {
   assert.match(html, /Continue with GitHub/);
   assert.match(html, /\/api\/auth\/github['"]/);
   assert.match(html, /\/api\/auth\/github\/login/);
-  assert.match(html, /'x-workbench-session': sessionId\(\)/);
-  assert.match(html, /JSON\.stringify\(\{ returnTo: location\.href \}\)/);
+  assert.match(html, /type="module"/);
+  assert.match(html, /VITE_SPANNER_API_BASE/);
+  assert.match(html, /'x-spanner-session': sessionId\(\)/);
+  assert.match(html, /function targetUrl\(\)/);
+  assert.match(html, /JSON\.stringify\(\{ returnTo: targetUrl\(\) \}\)/);
 });
 
 test('desktop landing follows the root design system', () => {
-  assert.match(design, /# Workbench design system/);
+  assert.match(design, /# Spanner design system/);
   assert.match(design, /`accent` \| `#1F5E9C`/);
   assert.match(html, /Design source: DESIGN\.md/);
   assert.match(html, /--ds-accent: #1F5E9C;/);

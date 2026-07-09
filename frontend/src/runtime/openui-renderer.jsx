@@ -8,8 +8,8 @@ import { extractOpenUIArtifacts, openUIActionPrompt } from './openui-artifacts.j
 
 function unmountOpenUIRoots(node) {
   node.querySelectorAll('[data-openui-root]').forEach((host) => {
-    host.__workbenchOpenUIRoot?.unmount?.();
-    delete host.__workbenchOpenUIRoot;
+    host.__spannerOpenUIRoot?.unmount?.();
+    delete host.__spannerOpenUIRoot;
   });
 }
 
@@ -56,7 +56,7 @@ export function renderOpenUIArtifacts(node, rawText, onAction) {
     section.append(card);
 
     const root = createRoot(host);
-    host.__workbenchOpenUIRoot = root;
+    host.__spannerOpenUIRoot = root;
     root.render(<OpenUIArtifact source={source} onAction={onAction} />);
   });
 

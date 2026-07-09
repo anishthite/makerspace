@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — OpenUI triple string normalization</title>
+<meta name="task" content="Normalize triple-quoted OpenUI string literals before rendering.">
+<meta name="date-started" content="2026-07-09">
+<meta name="date-updated" content="2026-07-09">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,ui,thread,openui,parser">
+<meta name="related" content="2026-07-08-openui-fenced-blocks.html,2026-07-08-openui-flat-roots.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code, pre { font-family: ui-monospace, Menlo, monospace; }
+  code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  ul, ol { margin: .3rem 0 .8rem 1.2rem; padding: 0; }
+  li { margin: .15rem 0; }
+  .blast-low { color: #2a7a2a; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>OpenUI triple string normalization</h1>
+<p class="meta"><code>push-prep/20260708-171222</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-09 · status <b>shipped</b> · blast <span class="blast-low">low</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Render assistant-authored <code>TextContent("""...""")</code> blocks without OpenUI arg-count errors.</div>
+  <b>Source</b><div>User saw <code>TextContent takes 2 arg(s), got 3</code> from a triple-quoted answer.</div>
+  <b>Surface</b><div><code>/thread.html</code> OpenUI fenced artifact normalization.</div>
+  <b>Schema</b><div>None.</div>
+  <b>Mobile</b><div>Untouched.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>Algorithm</h2>
+<ol>
+  <li>Run <code>normalizeTripleQuotedStrings()</code> inside <code>normalizeOpenUISource()</code>.</li>
+  <li>Replace each <code>"""..."""</code> literal with <code>JSON.stringify(...)</code> so OpenUI sees one normal string argument.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>frontend/src/runtime/openui-artifacts.js</code></td><td>touch</td><td>Normalize triple-quoted string literals before root inference.</td></tr>
+  <tr><td><code>test/openui-artifacts.test.js</code></td><td>touch</td><td>Pin triple-quoted <code>TextContent</code> normalization.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Normalize source before rendering. Future assistant slips become harmless without forking OpenUI.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td>Small regex over a lexer. OpenUI does not define triple strings, so one bounded compatibility pass is enough.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Remove <code>normalizeTripleQuotedStrings()</code> and the focused unit test.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li><code>TextContent("""Hi\nthere""")</code> normalizes to one OpenUI string argument.</li>
+  <li><code>node --test test/openui-artifacts.test.js</code> passes.</li>
+  <li>Manual parser smoke returns zero OpenUI validation errors.</li>
+</ul>
+</body>
+</html>

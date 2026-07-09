@@ -22,7 +22,7 @@ test('git delivery script stages explicit files, not the whole worktree', () => 
   const script = buildGitDeliveryScript({
     cwd: '/srv/workspace/tasks/thread',
     files: ['src/app.js', 'docs/file with spaces.md'],
-    branch: 'workbench/thread-1234abcd',
+    branch: 'spanner/thread-1234abcd',
     commitMessage: "Fix user's bug",
     authHeader: 'AUTHORIZATION: basic abc123',
   });
@@ -65,7 +65,7 @@ test('draft PR delivery pushes with one-shot auth and creates a GitHub draft PR'
       provider: {
         async runRemoteScript(_session, script) {
           scripts.push(script);
-          return { stdout: '__WORKBENCH_GIT_DELIVERY__{"noChanges":false,"branch":"workbench/fix-login-abc12345","commit":"abc123"}\n' };
+          return { stdout: '__SPANNER_GIT_DELIVERY__{"noChanges":false,"branch":"spanner/fix-login-abc12345","commit":"abc123"}\n' };
         },
       },
       token: 'secret-token',
@@ -78,7 +78,7 @@ test('draft PR delivery pushes with one-shot auth and creates a GitHub draft PR'
     assert.equal(request.options.headers.authorization, 'Bearer secret-token');
     assert.equal(request.body.draft, true);
     assert.equal(request.body.base, 'main');
-    assert.match(request.body.head, /^workbench\/fix-login-/);
+    assert.match(request.body.head, /^spanner\/fix-login-/);
     assert.match(scripts[0], /http\.extraHeader=AUTHORIZATION: basic/);
     assert.doesNotMatch(scripts[0], /git add -A/);
   } finally {

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en" data-theme="dark" data-palette="graphite">
+<head>
+  <meta charset="utf-8">
+  <title>Current multi-agent workflow running</title>
+  <link rel="stylesheet" href="../../frontend/public/styles.css">
+  <style>
+    body { min-height: 100vh; background: #050505; }
+    .page { width: 292px; padding: 20px; }
+    .capture { width: 250px; transform: scale(2); transform-origin: top left; }
+    .agent-column { position: static; top: auto; }
+    .diff-box { display: flex; margin-top: 12px; }
+  </style>
+</head>
+<body class="thread-page">
+  <main class="page">
+    <aside class="agent-column capture" aria-label="Workflow agents">
+      <div id="agent-rail" class="agent-rail flow-card is-open" aria-label="Workflow agent trace" role="button" tabindex="0" aria-controls="agent-trace" aria-expanded="true">
+        <div class="rail-head"><span>workflow agents</span><strong>working · 8</strong></div>
+        <p class="rail-hint">click for full workflow trace</p>
+        <div id="agent-graph" class="agent-graph">
+          <div class="agent-node pi working"><span>main agent</span><small>working</small></div>
+          <div class="agent-edge"></div>
+          <div class="subagent-stack workflow-agent-stack">
+            <div class="workflow-map">
+              <div class="workflow-map-head agent-node workflow running"><span>pr review swarm</span><small>run-mqumvxu9-1 · running · 5/8 agents</small></div>
+              <div class="workflow-phase-strip">
+                <span class="workflow-phase-pill"><i>1</i>scout <small>3/3</small></span>
+                <span class="workflow-phase-pill"><i>2</i>verify <small>2/4</small></span>
+                <span class="workflow-phase-pill"><i>3</i>synthesize <small>0/1</small></span>
+              </div>
+              <div class="workflow-flow">
+                <div class="workflow-terminal"><span>start</span><small>workflow run → journal</small></div>
+                <div class="workflow-step-link" aria-hidden="true">↓</div>
+                <section class="workflow-lane">
+                  <div class="workflow-lane-head"><span>1. scout</span><small>3/3 done</small></div>
+                  <div class="workflow-agent-grid">
+                    <article class="workflow-view-node workflow-agent done"><div class="workflow-node-top"><span>security scout</span><b>done</b></div><small>gpt-5.5 · 4.2k tok</small><div class="workflow-agent-detail"><span><b>task</b>Map auth and data risks.</span><span><b>tools</b>grep, read</span><span><b>result</b>Found one possible owner-check bug.</span></div></article>
+                    <article class="workflow-view-node workflow-agent done"><div class="workflow-node-top"><span>ui scout</span><b>done</b></div><small>gpt-5.5 · 3.1k tok</small><div class="workflow-agent-detail"><span><b>task</b>Check thread UI regressions.</span><span><b>result</b>Found rail overflow concern.</span></div></article>
+                    <article class="workflow-view-node workflow-agent done"><div class="workflow-node-top"><span>test scout</span><b>done</b></div><small>gpt-5.5 · 2.7k tok</small><div class="workflow-agent-detail"><span><b>task</b>Find missing coverage.</span><span><b>result</b>Suggest one route test.</span></div></article>
+                  </div>
+                </section>
+                <div class="workflow-step-link" aria-hidden="true">↓</div>
+                <section class="workflow-lane">
+                  <div class="workflow-lane-head"><span>2. verify</span><small>2 running</small></div>
+                  <div class="workflow-agent-grid">
+                    <article class="workflow-view-node workflow-agent done"><div class="workflow-node-top"><span>verify auth</span><b>done</b></div><small>gpt-5.5 · 2.1k tok</small><div class="workflow-agent-detail"><span><b>result</b>Confirmed real.</span></div></article>
+                    <article class="workflow-view-node workflow-agent running"><div class="workflow-node-top"><span>verify layout</span><b>running</b></div><small>gpt-5.5 · 1.4k tok</small><div class="workflow-agent-detail"><span><b>task</b>Reproduce rail behavior with many agents.</span><span><b>tools</b>read, screenshot</span></div></article>
+                    <article class="workflow-view-node workflow-agent running"><div class="workflow-node-top"><span>verify tests</span><b>running</b></div><small>gpt-5.5 · 900 tok</small><div class="workflow-agent-detail"><span><b>task</b>Check if existing route tests cover journal rows.</span></div></article>
+                    <article class="workflow-view-node workflow-agent"><div class="workflow-node-top"><span>verify perf</span><b>queued</b></div><small>waiting</small><div class="workflow-agent-detail"><span><b>task</b>Look for expensive polling.</span></div></article>
+                  </div>
+                </section>
+                <div class="workflow-step-link" aria-hidden="true">↓</div>
+                <section class="workflow-lane">
+                  <div class="workflow-lane-head"><span>3. synthesize</span><small>0/1 done</small></div>
+                  <div class="workflow-agent-grid">
+                    <article class="workflow-view-node workflow-agent"><div class="workflow-node-top"><span>synthesize final</span><b>queued</b></div><small>waiting for verify</small><div class="workflow-agent-detail"><span><b>task</b>Write final review after verifiers finish.</span></div></article>
+                  </div>
+                </section>
+                <div class="workflow-step-link" aria-hidden="true">↓</div>
+                <div class="workflow-terminal running"><span>running</span><small>waiting for verify phase</small></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <button id="diff-box" class="diff-box flow-card" type="button"><span>changes</span><strong>2 files edited · 0 lines</strong></button>
+    </aside>
+  </main>
+</body>
+</html>

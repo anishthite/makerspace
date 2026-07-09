@@ -11,7 +11,7 @@ const MAX_SYNC_TOTAL_BYTES = 2_000_000;
 const MAX_SYNC_FILES = 300;
 
 function defaultAgentDir(config = {}) {
-  return config.piDefaultsPackageDir || path.join(config.rootDir || process.cwd(), 'packages', 'workbench-pi-defaults');
+  return config.piDefaultsPackageDir || path.join(config.rootDir || process.cwd(), 'packages', 'spanner-pi-defaults');
 }
 
 function agentsPathFor(agentDir, config = {}) {

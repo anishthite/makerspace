@@ -15,7 +15,7 @@ function config(root) {
 }
 
 test('auth store persists users, sessions, encrypted OAuth tokens, and user KV', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workbench-auth-store-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-auth-store-'));
   try {
     const store = createAuthStore(config(root));
     const user = await store.upsertUser({ githubId: '123', login: 'octo', avatarUrl: 'https://example.test/a.png' });

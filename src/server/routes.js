@@ -5,7 +5,7 @@ import { readAppSettings, saveAppSettings } from '../settings.js';
 import { getStoredSession, upsertSession } from '../store.js';
 
 export function createRequestHandler({ config, provider, http, auth, runState, threads, sessions }) {
-  const { corsHeaders, sendJson, sendText, readJsonBody, serveStatic } = http;
+  const { corsHeadersFor, bindCorsRequest, sendJson, sendText, readJsonBody, serveStatic } = http;
   const {
     requireApiToken,
     requireTrustedBrowserRequest,
@@ -67,11 +67,12 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
 
   return async function handleRequest(request, response) {
     try {
+      bindCorsRequest?.(request, response);
       const url = new URL(request.url || '/', `http://${request.headers.host || 'localhost'}`);
       const pathname = url.pathname;
 
       if (request.method === 'OPTIONS') {
-        response.writeHead(204, corsHeaders);
+        response.writeHead(204, corsHeadersFor(request));
         response.end();
         return;
       }
@@ -458,7 +459,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
           'cache-control': 'no-cache, no-transform',
           'x-accel-buffering': 'no',
           connection: 'keep-alive',
-          ...corsHeaders,
+          ...corsHeadersFor(request),
         });
         response.write('retry: 1000\n\n');
 

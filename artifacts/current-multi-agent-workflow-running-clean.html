@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en" data-theme="dark" data-palette="graphite">
+<head>
+  <meta charset="utf-8">
+  <title>Clean multi-agent workflow running</title>
+  <link rel="stylesheet" href="../../frontend/public/styles.css">
+  <style>
+    body { min-height: 100vh; background: #050505; }
+    .page { width: 292px; padding: 20px; }
+    .capture { width: 250px; transform: scale(2); transform-origin: top left; }
+    .agent-column { position: static; top: auto; }
+    .diff-box { display: flex; margin-top: 12px; }
+  </style>
+</head>
+<body class="thread-page">
+  <main class="page">
+    <aside class="agent-column capture" aria-label="Workflow agents">
+      <div id="agent-rail" class="agent-rail flow-card is-open" aria-label="Workflow agent trace" role="button" tabindex="0" aria-controls="agent-trace" aria-expanded="true">
+        <div class="rail-head"><span>workflow agents</span><strong>working · 8</strong></div>
+        <p class="rail-hint">click for full workflow trace</p>
+        <div id="agent-graph" class="agent-graph">
+          <div class="agent-node pi working"><span>main agent</span><small>working</small></div>
+          <div class="agent-edge"></div>
+          <div class="subagent-stack workflow-agent-stack">
+            <div class="workflow-map">
+              <div class="workflow-map-head workflow-title running"><span>pr review swarm</span></div>
+              <div class="workflow-flow">
+                <section class="workflow-lane">
+                  <div class="workflow-lane-head"><span>1. scout</span><small>3/3 done</small></div>
+                  <div class="workflow-agent-grid">
+                    <article class="workflow-view-node workflow-agent done"><div class="workflow-node-top"><span>security scout</span><b>done</b></div><small>Found one possible owner-check bug.</small></article>
+                    <article class="workflow-view-node workflow-agent done"><div class="workflow-node-top"><span>ui scout</span><b>done</b></div><small>Found rail overflow concern.</small></article>
+                    <article class="workflow-view-node workflow-agent done"><div class="workflow-node-top"><span>test scout</span><b>done</b></div><small>Suggest one route test.</small></article>
+                  </div>
+                </section>
+                <section class="workflow-lane">
+                  <div class="workflow-lane-head"><span>2. verify</span><small>2 running</small></div>
+                  <div class="workflow-agent-grid">
+                    <article class="workflow-view-node workflow-agent done"><div class="workflow-node-top"><span>verify auth</span><b>done</b></div><small>Confirmed real.</small></article>
+                    <article class="workflow-view-node workflow-agent running"><div class="workflow-node-top"><span>verify layout</span><b>running</b></div><small>Reproduce rail behavior with many agents.</small></article>
+                    <article class="workflow-view-node workflow-agent running"><div class="workflow-node-top"><span>verify tests</span><b>running</b></div><small>Check if route tests cover journal rows.</small></article>
+                    <article class="workflow-view-node workflow-agent running"><div class="workflow-node-top"><span>verify perf</span><b>queued</b></div><small>Look for expensive polling.</small></article>
+                  </div>
+                </section>
+                <section class="workflow-lane">
+                  <div class="workflow-lane-head"><span>3. synthesize</span><small>0/1 done</small></div>
+                  <div class="workflow-agent-grid">
+                    <article class="workflow-view-node workflow-agent running"><div class="workflow-node-top"><span>synthesize final</span><b>queued</b></div><small>Write final review after verifiers finish.</small></article>
+                  </div>
+                </section>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <button id="diff-box" class="diff-box flow-card" type="button"><span>changes</span><strong>2 files edited · 0 lines</strong></button>
+    </aside>
+  </main>
+</body>
+</html>

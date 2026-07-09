@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="930" viewBox="0 0 1600 930" role="img" aria-labelledby="title desc">
+<title id="title">Workbench remote architecture</title>
+<desc id="desc">Browser talks to the Node control plane; the control plane provisions Daytona, starts a bridge in a sandbox, syncs auth, posts runs, and relays SSE output back to the browser.</desc>
+<defs>
+  <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+    <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
+  </marker>
+  <marker id="greenArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+    <path d="M 0 0 L 10 5 L 0 10 z" fill="#047857"/>
+  </marker>
+  <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+    <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#0f172a" flood-opacity="0.10"/>
+  </filter>
+  <style>
+    .title { font: 700 34px Inter, system-ui, sans-serif; fill: #0f172a; }
+    .subtitle { font: 500 18px Inter, system-ui, sans-serif; fill: #475569; }
+    .box-title { font: 700 22px Inter, system-ui, sans-serif; fill: #0f172a; }
+    .box-code { font: 600 16px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #334155; }
+    .body { font: 500 17px Inter, system-ui, sans-serif; fill: #334155; }
+    .small { font: 500 14px Inter, system-ui, sans-serif; fill: #475569; }
+    .label { font: 700 14px Inter, system-ui, sans-serif; fill: #334155; }
+    .arrow { stroke: #334155; stroke-width: 3; fill: none; marker-end: url(#arrow); }
+    .arrow-green { stroke: #047857; stroke-width: 3; fill: none; marker-end: url(#greenArrow); }
+    .dashed { stroke-dasharray: 8 8; }
+  </style>
+</defs>
+<rect width="1600" height="930" fill="#f8fafc"/>
+
+<text x="70" y="62" class="title">Workbench remote architecture</text>
+<text x="70" y="94" class="subtitle">The browser never talks to Daytona or the sandbox directly; the Node backend owns lifecycle, auth sync, and SSE relay.</text>
+<rect x="70" y="150" width="270" height="210" rx="22" fill="#dbeafe" stroke="#2563eb" stroke-width="2" filter="url(#shadow)"/>
+<text x="100" y="195" class="box-title">Browser / Electron</text>
+<text x="100" y="223" class="box-title">Workbench UI</text>
+<text x="100" y="255" class="body">Starts sessions/runs</text>
+<text x="100" y="282" class="body">Shows streamed output</text>
+<text x="100" y="309" class="body">No Daytona credentials</text>
+<text x="100" y="334" class="box-code">frontend/</text>
+<rect x="420" y="130" width="340" height="250" rx="22" fill="#dcfce7" stroke="#16a34a" stroke-width="2" filter="url(#shadow)"/>
+<text x="450" y="175" class="box-title">Node control plane</text>
+<text x="450" y="220" class="body">Single browser-facing backend</text>
+<text x="450" y="247" class="body">Owns auth, sessions, run state</text>
+<text x="450" y="274" class="body">Relays bridge SSE to the UI</text>
+<text x="450" y="317" class="box-code">src/server/*</text>
+<text x="450" y="340" class="box-code">src/providers/daytona.js</text>
+<rect x="840" y="155" width="260" height="190" rx="22" fill="#fef3c7" stroke="#d97706" stroke-width="2" filter="url(#shadow)"/>
+<text x="870" y="200" class="box-title">Daytona API</text>
+<text x="870" y="245" class="body">Creates/reuses sandboxes</text>
+<text x="870" y="272" class="body">Runs setup scripts</text>
+<text x="870" y="299" class="body">Issues preview URL + token</text>
+<text x="870" y="322" class="box-code">@daytona/sdk</text>
+<rect x="1180" y="120" width="340" height="500" rx="22" fill="#fae8ff" stroke="#a21caf" stroke-width="2" filter="url(#shadow)"/>
+<text x="1210" y="166" class="box-title">Remote Daytona sandbox</text>
+<text x="1210" y="208" class="body">Repo and agent runtime live here</text>
+<rect x="1210" y="240" width="280" height="82" rx="14" fill="#ffffff" stroke="#c084fc" stroke-width="2" filter="url(#shadow)"/>
+<text x="1230" y="272" class="box-code">/srv/workspace</text>
+<text x="1230" y="300" class="small">cloned Git repo or blank repo</text>
+<rect x="1210" y="340" width="280" height="82" rx="14" fill="#ffffff" stroke="#c084fc" stroke-width="2" filter="url(#shadow)"/>
+<text x="1230" y="372" class="box-code">/srv/workbench</text>
+<text x="1230" y="400" class="small">bridge env, setup, logs</text>
+<rect x="1210" y="440" width="280" height="75" rx="14" fill="#ffffff" stroke="#c084fc" stroke-width="2" filter="url(#shadow)"/>
+<text x="1230" y="472" class="box-code">pi-bridge.service :4310</text>
+<text x="1230" y="500" class="small">/healthz /auth /runs</text>
+<rect x="1210" y="535" width="280" height="65" rx="14" fill="#ffffff" stroke="#c084fc" stroke-width="2" filter="url(#shadow)"/>
+<text x="1230" y="572" class="box-code">Pi SDK agent + tools</text>
+<rect x="420" y="520" width="340" height="145" rx="22" fill="#e0f2fe" stroke="#0284c7" stroke-width="2" filter="url(#shadow)"/>
+<text x="450" y="563" class="box-title">State + secrets boundary</text>
+<text x="450" y="605" class="body">Sessions/profile in data/* or D1</text>
+<text x="450" y="630" class="body">Daytona token stays server-side</text>
+<text x="450" y="655" class="body">Pi/GitHub auth synced per run</text>
+<rect x="840" y="705" width="310" height="120" rx="22" fill="#f1f5f9" stroke="#64748b" stroke-width="2" filter="url(#shadow)"/>
+<text x="870" y="748" class="box-title">GitHub / remote repo</text>
+<text x="870" y="790" class="body">clone, push, draft PR</text>
+<text x="870" y="815" class="body">using synced GitHub token</text>
+<rect x="70" y="725" width="650" height="100" rx="22" fill="#fff7ed" stroke="#ea580c" stroke-width="2" filter="url(#shadow)"/>
+<text x="100" y="765" class="box-title">Important non-feature</text>
+<text x="100" y="805" class="body">No bidirectional local file sync: files live in Git + the sandbox workspace; delivery is via Git/PR.</text>
+<path d="M 340 250 L 420 250" class="arrow"/>
+<text x="380.0" y="238.0" class="label" text-anchor="middle">REST + app SSE</text>
+<text x="380.0" y="256.0" class="label" text-anchor="middle">/api/*</text>
+<path d="M 760 250 L 840 250" class="arrow"/>
+<text x="800.0" y="238.0" class="label" text-anchor="middle">lifecycle +</text>
+<text x="800.0" y="256.0" class="label" text-anchor="middle">process/file APIs</text>
+<path d="M 1100 250 L 1180 250" class="arrow"/>
+<text x="1140.0" y="238.0" class="label" text-anchor="middle">provision</text>
+<text x="1140.0" y="256.0" class="label" text-anchor="middle">preview URL</text>
+<path d="M 760 350 L 1210 475" class="arrow-green"/>
+<text x="990" y="430" class="label" text-anchor="middle">via Daytona preview:</text>
+<text x="990" y="448" class="label" text-anchor="middle">/healthz, /auth, POST /runs</text>
+<path d="M 1210 505 L 760 375" class="arrow-green"/>
+<text x="980" y="545" class="label" text-anchor="middle">SSE: /runs/:id/stream</text>
+<text x="980" y="563" class="label" text-anchor="middle">stdout/tool/status events</text>
+<path d="M 1350 515 L 1350 535" class="arrow"/>
+<path d="M 1350 600 L 1000 705" class="arrow"/>
+<text x="1175.0" y="640.5" class="label" text-anchor="middle">git clone / push / PR</text>
+<path d="M 590 520 L 590 380" class="arrow"/>
+<text x="590.0" y="438.0" class="label" text-anchor="middle">session records</text>
+<text x="590.0" y="456.0" class="label" text-anchor="middle">run state</text>
+<path d="M 760 595 L 1210 385" class="arrow dashed"/>
+<text x="1000" y="645" class="label" text-anchor="middle">Pi profile + provider settings</text>
+<text x="1000" y="663" class="label" text-anchor="middle">GitHub credentials</text>
+<path d="M 1350 535 L 1350 322" class="arrow"/>
+<text x="1450" y="405" class="label" text-anchor="middle">tools read/write/edit/bash</text>
+<text x="1450" y="423" class="label" text-anchor="middle">in the sandbox</text>
+<rect x="70" y="865" width="1450" height="1" fill="#cbd5e1"/>
+<text x="70" y="895" class="subtitle">Fast path: UI → Node backend → Daytona sandbox → pi-bridge → Pi SDK → SSE back through Node to UI.</text>
+</svg>

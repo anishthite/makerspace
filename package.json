@@ -1,5 +1,5 @@
 {
-  "name": "workbench",
+  "name": "spanner",
   "version": "0.0.7",
   "private": true,
   "type": "module",
@@ -18,9 +18,9 @@
     "frontend:dev": "vite --host 127.0.0.1",
     "build": "vite build",
     "test": "node --test test/*.test.js",
-    "desktop:dev": "VITE_WORKBENCH_API_BASE= npm run build && electron desktop/main.js",
+    "desktop:dev": "VITE_SPANNER_API_BASE= npm run build && electron desktop/main.js",
     "desktop:package": "bash scripts/package-desktop.sh",
-    "desktop:release": "SIGN_IDENTITY=\"Developer ID Application: Mahesh Thite (2EJKM9WA68)\" TEAM_ID=2EJKM9WA68 NOTARY_PROFILE=workbench-notary bash scripts/package-desktop.sh",
+    "desktop:release": "SIGN_IDENTITY=\"Developer ID Application: Mahesh Thite (2EJKM9WA68)\" TEAM_ID=2EJKM9WA68 NOTARY_PROFILE=spanner bash scripts/package-desktop.sh",
     "release:push": "bash scripts/release-push.sh",
     "desktop:install": "bash scripts/install-desktop-app.sh"
   },

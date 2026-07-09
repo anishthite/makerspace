@@ -7,15 +7,15 @@ const settingsJs = readFileSync(new URL('../frontend/src/runtime/settings.js', i
 
 test('settings page omits URL query token backend controls', () => {
   assert.doesNotMatch(settingsJs, /const connectionParams = new URLSearchParams\(location\.search\);/);
-  assert.doesNotMatch(settingsJs, /apiFromUrl|tokenFromUrl|workbenchApiBase|workbenchApiToken/);
+  assert.doesNotMatch(settingsJs, /apiFromUrl|tokenFromUrl|spannerApiBase|spannerApiToken/);
   assert.doesNotMatch(settingsPage, /id="api-base"|id="api-token"|id="connection-summary"/);
   assert.doesNotMatch(settingsJs, /connectionSummary/);
-  assert.match(settingsJs, /import\.meta\.env\?\.VITE_WORKBENCH_API_BASE/);
+  assert.match(settingsJs, /import\.meta\.env\?\.VITE_SPANNER_API_BASE/);
 });
 
 test('settings API wrapper reports non-JSON backend responses clearly', () => {
   assert.match(settingsJs, /const text = await response\.text\(\);/);
-  assert.match(settingsJs, /Set VITE_WORKBENCH_API_BASE to the backend URL and redeploy/);
+  assert.match(settingsJs, /Set VITE_SPANNER_API_BASE to the backend URL and redeploy/);
   assert.doesNotMatch(settingsJs, /const payload = await response\.json\(\);/);
 });
 
@@ -28,7 +28,7 @@ test('settings page exposes Pi profile editor wiring', () => {
 });
 
 test('settings page hides unavailable GitHub auth actions', () => {
-  assert.match(settingsJs, /githubLogin\.hidden = connected;/);
+  assert.match(settingsJs, /githubLogin\.hidden = connected && !needsReconnect;/);
   assert.match(settingsJs, /githubLogout\.hidden = !connected;/);
   assert.match(settingsJs, /githubLogout\.hidden = true;/);
 });

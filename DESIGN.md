@@ -1,6 +1,6 @@
-# Workbench design system
+# Spanner design system
 
-Workbench should feel like engineering paper for agent work: warm, technical, trustworthy, and not magical.
+Spanner should feel like engineering paper for agent work: warm, technical, trustworthy, and not magical.
 
 ## Principles
 

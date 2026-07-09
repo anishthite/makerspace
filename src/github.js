@@ -1,7 +1,17 @@
+export const GITHUB_OAUTH_SCOPES = ['repo', 'read:user', 'workflow'];
+export const GITHUB_REMOTE_GIT_SCOPES = ['repo', 'workflow'];
+
+export function missingGitHubOAuthScopes(record, requiredScopes = GITHUB_REMOTE_GIT_SCOPES) {
+  const granted = new Set((Array.isArray(record?.scopes) ? record.scopes : [])
+    .map((scope) => String(scope || '').trim().toLowerCase())
+    .filter(Boolean));
+  return requiredScopes.filter((scope) => !granted.has(String(scope).toLowerCase()));
+}
+
 function githubHeaders(token, extra = {}) {
   return {
     accept: 'application/vnd.github+json',
-    'user-agent': 'workbench',
+    'user-agent': 'spanner',
     ...(token ? { authorization: `Bearer ${token}` } : {}),
     ...extra,
   };
@@ -29,7 +39,7 @@ export function buildGitHubAuthorizeUrl(config, redirectUri, state) {
   const url = new URL('https://github.com/login/oauth/authorize');
   url.searchParams.set('client_id', config.githubClientId);
   url.searchParams.set('redirect_uri', redirectUri);
-  url.searchParams.set('scope', 'repo read:user');
+  url.searchParams.set('scope', GITHUB_OAUTH_SCOPES.join(' '));
   url.searchParams.set('state', state);
   return url.toString();
 }

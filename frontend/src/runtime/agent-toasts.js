@@ -1,8 +1,22 @@
-const BROWSER_SESSION_KEY = 'workbenchBrowserSession';
-const PROJECT_KEY = 'workbenchSelectedProject';
+const BROWSER_SESSION_KEY = 'spannerBrowserSession';
+const PROJECT_KEY = 'spannerSelectedProject';
+
+function migrateStorageKey(legacyKey, nextKey) {
+  try {
+    if (localStorage.getItem(nextKey) === null) {
+      const value = localStorage.getItem(legacyKey);
+      if (value !== null) localStorage.setItem(nextKey, value);
+    }
+    localStorage.removeItem(legacyKey);
+  } catch {}
+}
+
+migrateStorageKey('workbenchBrowserSession', BROWSER_SESSION_KEY);
+migrateStorageKey('workbenchSelectedProject', PROJECT_KEY);
+
 const ACTIVE_THREAD_STATUSES = ['launching', 'starting', 'queued', 'running'];
 const FINISHED_THREAD_STATUSES = ['completed', 'ready', 'failed'];
-const API_BASE = String(import.meta.env?.VITE_WORKBENCH_API_BASE || '').trim().replace(/\/+$/, '');
+const API_BASE = String(import.meta.env?.VITE_SPANNER_API_BASE || '').trim().replace(/\/+$/, '');
 
 let loadedThreadSnapshot = false;
 let knownThreadStatuses = new Map();
@@ -19,7 +33,7 @@ function getBrowserSessionId() {
 }
 
 function authHeaders() {
-  return { 'x-workbench-session': getBrowserSessionId() };
+  return { 'x-spanner-session': getBrowserSessionId() };
 }
 
 async function fetchJson(path) {
@@ -72,7 +86,7 @@ function toastHost() {
   host = document.createElement('div');
   host.id = 'agent-toast-stack';
   host.setAttribute('aria-live', 'polite');
-  host.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:1000;display:grid;gap:8px;max-width:min(360px,calc(100vw - 32px));pointer-events:none';
+  host.style.cssText = 'position:fixed;right:18px;bottom:var(--thread-composer-clearance,18px);z-index:1000;display:grid;gap:8px;max-width:min(360px,calc(100vw - 32px));pointer-events:none';
   document.body.append(host);
   return host;
 }

@@ -56,7 +56,7 @@ export function createBridgeService({ config, provider, auth, runState }) {
   async function recordBridgeLaunchLog(sessionOrName, phase, details = {}) {
     const name = typeof sessionOrName === 'string' ? sessionOrName : sessionOrName?.name;
     const entry = { at: new Date().toISOString(), phase, ...safeLaunchLogDetails(details) };
-    console.info('[workbench][bridge]', JSON.stringify({ session: name || '', ...entry }));
+    console.info('[spanner][bridge]', JSON.stringify({ session: name || '', ...entry }));
     if (!name || !config.sessionFile) return entry;
 
     try {
@@ -71,7 +71,7 @@ export function createBridgeService({ config, provider, auth, runState }) {
         updatedAt: entry.at,
       });
     } catch (error) {
-      console.warn(`[workbench][bridge] failed to persist launch log for ${name}: ${error.message}`);
+      console.warn(`[spanner][bridge] failed to persist launch log for ${name}: ${error.message}`);
     }
     return entry;
   }
@@ -190,7 +190,7 @@ export function createBridgeService({ config, provider, auth, runState }) {
     try {
       sessions = await listStoredSessions(config.sessionFile);
     } catch (error) {
-      console.warn(`[workbench] failed to list sessions for idle bridge pruning: ${error.message}`);
+      console.warn(`[spanner] failed to list sessions for idle bridge pruning: ${error.message}`);
       return;
     }
 
@@ -200,7 +200,7 @@ export function createBridgeService({ config, provider, auth, runState }) {
         await removeStoredSession(config.sessionFile, session.name);
         activeRuns.delete(session.name);
       } catch (error) {
-        console.warn(`[workbench] failed to destroy expired idle sandbox ${session.name}: ${error.message}`);
+        console.warn(`[spanner] failed to destroy expired idle sandbox ${session.name}: ${error.message}`);
       }
     }
   }

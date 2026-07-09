@@ -12,8 +12,11 @@ import {
   fetchGitHubRepo,
   parseGitHubRepoUrl,
   fetchGitHubUser,
+  GITHUB_OAUTH_SCOPES,
+  GITHUB_REMOTE_GIT_SCOPES,
   githubAuthConfigured,
   listGitHubRepos,
+  missingGitHubOAuthScopes,
 } from '../github.js';
 import {
   buildGitHubAppInstallUrl,
@@ -150,7 +153,7 @@ async function exchangeHostedClaudeCode(code, state, verifier) {
 
 export function createAuthService({ config, http }) {
   const { sendJson, requestToken, originFor, clientError } = http;
-  const BROWSER_SESSION_HEADER = 'x-workbench-session';
+  const BROWSER_SESSION_HEADER = 'x-spanner-session';
   const authLogins = new Map();
   const githubLogins = new Map();
   const githubAppInstalls = new Map();
@@ -164,7 +167,7 @@ export function createAuthService({ config, http }) {
   }
 
   function cookieName() {
-    return config.authCookieName || 'workbench_auth';
+    return config.authCookieName || 'spanner_auth';
   }
 
   function githubNonceCookieName() {
@@ -174,11 +177,11 @@ export function createAuthService({ config, http }) {
   function authSecret() {
     return String(
       config.authSecret ||
-      process.env.WORKBENCH_AUTH_SECRET ||
+      process.env.SPANNER_AUTH_SECRET ||
       process.env.AUTH_SECRET ||
       config.controlApiToken ||
       config.githubClientSecret ||
-      'workbench-dev-auth-secret',
+      'spanner-dev-auth-secret',
     );
   }
 
@@ -227,8 +230,16 @@ export function createAuthService({ config, http }) {
     return proto === 'https' || Boolean(request.headers['x-forwarded-host']);
   }
 
+  function configuredAllowedOrigins() {
+    return Array.isArray(config.allowedOrigins) && config.allowedOrigins.length ? config.allowedOrigins : [config.allowedOrigin].filter(Boolean);
+  }
+
+  function isConfiguredAllowedOrigin(origin) {
+    return configuredAllowedOrigins().includes(origin);
+  }
+
   function cookieSameSite() {
-    return String(config.authCookieSameSite || (config.allowedOrigin ? 'None' : 'Lax')).trim() || 'Lax';
+    return String(config.authCookieSameSite || (configuredAllowedOrigins().length ? 'None' : 'Lax')).trim() || 'Lax';
   }
 
   function authCookieHeader(request, token) {
@@ -295,7 +306,7 @@ export function createAuthService({ config, http }) {
       }
 
       const url = new URL(text);
-      return url.origin === originFor(request) || config.allowedOrigin && url.origin === config.allowedOrigin ? url.toString() : fallback;
+      return url.origin === originFor(request) || isConfiguredAllowedOrigin(url.origin) ? url.toString() : fallback;
     } catch {
       return fallback;
     }
@@ -347,7 +358,7 @@ export function createAuthService({ config, http }) {
       return true;
     }
     const origin = requestSiteOrigin(request);
-    if (origin && origin !== originFor(request) && origin !== config.allowedOrigin) {
+    if (origin && origin !== originFor(request) && !isConfiguredAllowedOrigin(origin)) {
       sendJson(response, 403, { error: 'Auth changes need a same-origin request.' });
       return true;
     }
@@ -801,9 +812,14 @@ export function createAuthService({ config, http }) {
     };
   }
 
-  async function githubTokenForUser(user) {
-    if (!user?.id) return '';
-    return (await authStore.getOAuthToken(user.id, 'github'))?.accessToken || '';
+  async function githubOAuthTokenRecordForUser(user) {
+    return user?.id ? authStore.getOAuthToken(user.id, 'github') : null;
+  }
+
+  async function githubTokenForUser(user, requiredScopes = GITHUB_REMOTE_GIT_SCOPES) {
+    const record = await githubOAuthTokenRecordForUser(user);
+    if (!record?.accessToken) return '';
+    return missingGitHubOAuthScopes(record, requiredScopes).length ? '' : record.accessToken;
   }
 
   async function githubAppInstallationsForUser(userId) {
@@ -822,7 +838,13 @@ export function createAuthService({ config, http }) {
   }
 
   async function githubOAuthAuthForUser(user) {
-    return githubAuthIdentity(user, await githubTokenForUser(user));
+    const record = await githubOAuthTokenRecordForUser(user);
+    if (!record?.accessToken) return null;
+    const missingScopes = missingGitHubOAuthScopes(record, GITHUB_REMOTE_GIT_SCOPES);
+    if (missingScopes.length) {
+      throw clientError(`Reconnect GitHub to allow remote git workflow writes (${missingScopes.join(', ')} scope).`, 401);
+    }
+    return githubAuthIdentity(user, record.accessToken);
   }
 
   async function githubAppAuthForSession(session = {}, user = null) {
@@ -869,9 +891,13 @@ export function createAuthService({ config, http }) {
   async function publicGitHubAuth(sessionOrUser) {
     const maybeUser = sessionOrUser?.id ? sessionOrUser : null;
     if (maybeUser) {
+      const tokenRecord = await githubOAuthTokenRecordForUser(maybeUser);
+      const missingScopes = tokenRecord?.accessToken ? missingGitHubOAuthScopes(tokenRecord, GITHUB_REMOTE_GIT_SCOPES) : [];
       return {
         configured: githubAuthConfigured(config),
-        connected: Boolean(await githubTokenForUser(maybeUser)),
+        connected: Boolean(tokenRecord?.accessToken),
+        needsReconnect: Boolean(missingScopes.length),
+        missingScopes,
         user: publicUser(maybeUser),
         app: await publicGitHubAppAuth(maybeUser),
       };
@@ -894,7 +920,7 @@ export function createAuthService({ config, http }) {
   }
 
   async function githubRepoPayload(sessionId, session, user = null) {
-    const token = user ? await githubTokenForUser(user) : session?.githubToken;
+    const token = user ? await githubTokenForUser(user, []) : session?.githubToken;
     if (!token) {
       throw clientError(user ? 'Sign in with GitHub again.' : 'GitHub is not connected in this browser.', 401);
     }
@@ -1113,7 +1139,7 @@ export function createAuthService({ config, http }) {
       if (!userAllowed(githubUser)) {
         const redirectTo = new URL(login.returnTo);
         redirectTo.searchParams.set('github', 'denied');
-        redirectTo.searchParams.set('message', 'This GitHub account is not enabled for this Workbench.');
+        redirectTo.searchParams.set('message', 'This GitHub account is not enabled for this Spanner.');
         return { location: redirectTo.toString(), headers: { 'set-cookie': clearNonce } };
       }
       if (login.userId && login.userId !== nextUserId) {
@@ -1129,7 +1155,7 @@ export function createAuthService({ config, http }) {
         name: githubUser.name,
         avatarUrl: githubUser.avatarUrl,
       });
-      await authStore.upsertOAuthToken({ userId: user.id, provider: 'github', accessToken: token, scopes: ['repo', 'read:user'] });
+      await authStore.upsertOAuthToken({ userId: user.id, provider: 'github', accessToken: token, scopes: GITHUB_OAUTH_SCOPES });
       if (!authRequired()) writeBrowserSession(login.sessionId, { githubToken: token, githubUser, githubRepos: [] });
 
       const sessionToken = randomBytes(32).toString('base64url');

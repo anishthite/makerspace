@@ -1,5 +1,7 @@
-const SESSION_TABLE = 'workbench_sessions';
-const KV_TABLE = 'workbench_kv';
+const SESSION_TABLE = 'spanner_sessions';
+const KV_TABLE = 'spanner_kv';
+const LEGACY_SESSION_TABLE = 'workbench_sessions';
+const LEGACY_KV_TABLE = 'workbench_kv';
 
 function clean(value) {
   return String(value || '').trim();
@@ -15,7 +17,7 @@ function d1Config(env = process.env) {
 }
 
 export function stateStoreFromEnv(env = process.env) {
-  const explicit = clean(env.WORKBENCH_STATE_STORE || env.STATE_STORE).toLowerCase();
+  const explicit = clean(env.SPANNER_STATE_STORE || env.STATE_STORE).toLowerCase();
   if (explicit) return explicit;
 
   const config = d1Config(env);
@@ -33,7 +35,7 @@ function requireD1Config(env = process.env) {
   if (!config.accountId) missing.push('CLOUDFLARE_ACCOUNT_ID');
   if (!config.databaseId) missing.push('CLOUDFLARE_D1_DATABASE_ID');
   if (!config.apiToken) missing.push('CLOUDFLARE_API_TOKEN');
-  if (missing.length) throw new Error(`WORKBENCH_STATE_STORE=d1 needs ${missing.join(', ')}.`);
+  if (missing.length) throw new Error(`SPANNER_STATE_STORE=d1 needs ${missing.join(', ')}.`);
   return config;
 }
 
@@ -64,6 +66,7 @@ function normalizeSession(row) {
 
 export function createD1StateClient({ env = process.env, fetchImpl = globalThis.fetch } = {}) {
   let schemaReady = null;
+  let migrationReady = null;
 
   async function request(body) {
     const config = requireD1Config(env);
@@ -84,6 +87,29 @@ export function createD1StateClient({ env = process.env, fetchImpl = globalThis.
     return payload;
   }
 
+  async function tableExists(name) {
+    const rows = parseRows(await request({
+      sql: "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1",
+      params: [name],
+    }));
+    return rows.length > 0;
+  }
+
+  async function migrateLegacyTables() {
+    if (await tableExists(LEGACY_SESSION_TABLE)) {
+      await request({
+        sql: `INSERT OR IGNORE INTO ${SESSION_TABLE} (name, data, created_at, updated_at) SELECT name, data, created_at, updated_at FROM ${LEGACY_SESSION_TABLE}`,
+        params: [],
+      });
+    }
+    if (await tableExists(LEGACY_KV_TABLE)) {
+      await request({
+        sql: `INSERT OR IGNORE INTO ${KV_TABLE} (key, value, updated_at) SELECT key, value, updated_at FROM ${LEGACY_KV_TABLE}`,
+        params: [],
+      });
+    }
+  }
+
   async function ensureSchema() {
     if (!schemaReady) {
       schemaReady = request({
@@ -97,13 +123,15 @@ export function createD1StateClient({ env = process.env, fetchImpl = globalThis.
             params: [],
           },
           {
-            sql: `CREATE INDEX IF NOT EXISTS workbench_sessions_created_at_idx ON ${SESSION_TABLE} (created_at DESC)`,
+            sql: `CREATE INDEX IF NOT EXISTS spanner_sessions_created_at_idx ON ${SESSION_TABLE} (created_at DESC)`,
             params: [],
           },
         ],
       });
     }
     await schemaReady;
+    if (!migrationReady) migrationReady = migrateLegacyTables();
+    await migrationReady;
   }
 
   async function query(sql, params = []) {

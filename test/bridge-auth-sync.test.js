@@ -47,7 +47,7 @@ function runStateStub() {
 }
 
 test('ready bridge reuse syncs current Codex auth before running', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workbench-bridge-auth-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-bridge-auth-'));
   const previousFetch = globalThis.fetch;
   const requests = [];
 
@@ -114,7 +114,7 @@ test('ready bridge reuse syncs current Codex auth before running', async () => {
 });
 
 test('bridge follower back-syncs refreshed remote Pi auth on terminal runs', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workbench-bridge-auth-back-sync-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-bridge-auth-back-sync-'));
   const sessionFile = path.join(root, 'sessions.json');
   const previousFetch = globalThis.fetch;
   const encoder = new TextEncoder();
@@ -264,7 +264,7 @@ test('thread output sync does not create a dead run before bridge URL exists', a
 });
 
 test('thread bridge launch persists safe diagnostics', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workbench-bridge-diagnostics-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-bridge-diagnostics-'));
   const sessionFile = path.join(root, 'sessions.json');
 
   try {
@@ -316,7 +316,7 @@ test('thread bridge launch persists safe diagnostics', async () => {
 });
 
 test('bridge follower records structured remote events', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workbench-bridge-events-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-bridge-events-'));
   const sessionFile = path.join(root, 'sessions.json');
   const previousFetch = globalThis.fetch;
   const encoder = new TextEncoder();

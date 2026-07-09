@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Agentic next-message dataset</title>
+<meta name="task" content="Export local agent conversation traces into current-turn to next-user-message examples.">
+<meta name="date-started" content="2026-07-07">
+<meta name="date-updated" content="2026-07-07">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="makerspace,pi,claude-code,codex,dataset,suggestions">
+<meta name="related" content="2026-07-05-suggested-next-steps.html,2026-06-25-pi-session-traces.html,2026-07-02-lookback-thread-analysis.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code, pre { font-family: ui-monospace, Menlo, monospace; }
+  code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  pre { background: #f6f6f6; padding: .55rem .7rem; border-radius: 4px; overflow-x: auto; font-size: 12.5px; line-height: 1.4; }
+  ul, ol { margin: .3rem 0 .8rem 1.2rem; padding: 0; }
+  li { margin: .15rem 0; }
+  .blast-low { color: #2a7a2a; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>Agentic next-message dataset</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-07 · status <b>shipped</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Write a local dataset folder with examples mapping visible turn context to the next human user message.</div><b>Source</b><div><code>~/.workbench</code>, <code>~/.makerspace</code>, <code>~/.pi/agent/sessions</code>, <code>~/.claude/projects</code>, <code>~/.codex/sessions</code>, and <code>~/.codex/archived_sessions</code>.</div><b>Surface</b><div><code>agentic-next-suggestions-dataset/dataset.jsonl</code>, <code>manifest.json</code>, <code>build_dataset.py</code>, <code>README.md</code>.</div><b>Schema</b><div>Filesystem-only JSONL export; no app schema changes.</div><b>Privacy</b><div>Keep output local and add folder <code>.gitignore</code> for generated private data.</div><b>Open Qs</b><div>0.</div></div>
+<h2>Algorithm</h2>
+<ol><li>Parse each JSONL source with stdlib JSON and extract only human-visible <code>user</code>/<code>assistant</code> text.</li><li>Skip Claude subagent journals and tool-result-only user entries because they are agent-generated, not human follow-ups.</li><li>For each consecutive human user pair, emit the recent visible context before the later user as <code>context_messages</code> and the later text as <code>next_user_message</code>.</li><li>Dedupe examples by message content hash and write counts plus skipped lines to <code>manifest.json</code>.</li></ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>agentic-next-suggestions-dataset/build_dataset.py</code></td><td>new</td><td>Extract examples from local trace formats with no dependencies.</td></tr><tr><td><code>agentic-next-suggestions-dataset/dataset.jsonl</code></td><td>new</td><td>Store private full-text training examples.</td></tr><tr><td><code>agentic-next-suggestions-dataset/manifest.json</code></td><td>new</td><td>Record source counts and validation totals.</td></tr><tr><td><code>agentic-next-suggestions-dataset/README.md</code></td><td>new</td><td>Document schema and regeneration command.</td></tr><tr><td><code>agentic-next-suggestions-dataset/.gitignore</code></td><td>new</td><td>Prevent committing generated private text.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Emit full local text, not redacted text. The user asked for a dataset to train suggestions later.</td></tr><tr><td>D-002</td><td>Keep a tiny Python extractor in the dataset folder. Stdlib handles JSONL and SQLite path discovery is unnecessary for the current source files.</td></tr><tr><td>D-003</td><td>Use <code>context_messages</code> plus <code>next_user_message</code>. Suggestion models need the assistant answer that triggered the follow-up.</td></tr><tr><td>D-004</td><td>Filter injected <code>AGENTS.md</code>, interrupted-turn, and Codex apply-patch warning user records. They are harness artifacts, not human next messages.</td></tr><tr><td>D-005</td><td>Add <code>omitted_context_messages</code> and <code>context_char_trimmed</code>. A boolean alone hid whether messages or text were shortened.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>Local ignored folder over app-integrated export. Avoid UI and persistence changes for a one-off data pull.</td></tr><tr><td>T-002</td><td>Consecutive human-message pairs over every event transition. Tool chatter is not the prediction target.</td></tr></table>
+<h2>Assumptions</h2>
+<ul><li>A-001 · “Makerspace” includes current <code>~/.workbench</code> and legacy <code>~/.makerspace</code>; if wrong: adjust source roots and rerun.</li><li>A-002 · Claude Code subagent prompts are not the user's messages; if wrong: remove the subagent path filter.</li></ul>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Delete <code>agentic-next-suggestions-dataset/</code> and this note; no source traces are modified.</p>
+<h2>Definition of done</h2>
+<ul><li><code>dataset.jsonl</code> exists with non-empty examples from requested source families.</li><li><code>manifest.json</code> validates entry counts and skipped parse lines.</li><li><code>python3 build_dataset.py</code> regenerates the same artifact shape.</li></ul>
+<h2>Verification</h2>
+<table><tr><th>ID</th><th>Check</th><th>Result</th></tr><tr><td>V-001</td><td><code>python3 -m py_compile agentic-next-suggestions-dataset/build_dataset.py</code></td><td>Passed.</td></tr><tr><td>V-002</td><td><code>python3 agentic-next-suggestions-dataset/build_dataset.py</code></td><td>Wrote <code>3023</code> examples across <code>makerspace</code>, <code>pi</code>, <code>claude_code</code>, and <code>codex</code> after filtering injected harness prompts.</td></tr><tr><td>V-003</td><td>JSONL validation script.</td><td><code>3023</code> valid lines, <code>0</code> missing required fields, <code>0</code> duplicate IDs.</td></tr><tr><td>V-004</td><td>Quality audit script.</td><td>Found source imbalance, clear truncation metadata, no remaining injected harness prompt classes, and expected short/long human-message edge cases.</td></tr></table>
+</body>
+</html>

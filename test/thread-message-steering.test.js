@@ -48,7 +48,7 @@ function createService(config, bridgeCalls) {
 }
 
 test('bridge steering is held until the remote Pi session is running', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workbench-steering-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-steering-'));
   const sessionFile = path.join(root, 'sessions.json');
   const baseSession = {
     name: 'bridge-thread',

@@ -4,11 +4,11 @@ import path from 'node:path';
 import { collectForwardedEnv } from '../config.js';
 import { buildSetupScript } from '../setup-script.js';
 
-const APP_LABEL_KEY = 'workbench';
+const APP_LABEL_KEY = 'spanner';
 const APP_LABEL_VALUE = '1';
-const SESSION_LABEL_KEY = 'workbenchSession';
-const OWNER_LABEL_KEY = 'workbenchOwner';
-const DEFAULT_SETUP_PATH = '/tmp/workbench-setup.sh';
+const SESSION_LABEL_KEY = 'spannerSession';
+const OWNER_LABEL_KEY = 'spannerOwner';
+const DEFAULT_SETUP_PATH = '/tmp/spanner-setup.sh';
 
 function shellQuote(value) {
   const escaped = String(value).replace(/'/g, `'\\''`);
@@ -57,8 +57,8 @@ function normalizeSandbox(raw, fallbackName, extra = {}) {
     bridgeUrl: extra.bridgeUrl || extra.httpsUrl || null,
     previewToken: extra.previewToken || null,
     connectCommand: connectTarget ? `daytona ssh ${connectTarget}` : null,
-    runAgentCommand: connectTarget ? `daytona ssh ${connectTarget} -- bash ${extra.remoteControlDir || '/srv/workbench'}/run-pi.sh` : null,
-    tailLogCommand: connectTarget ? `daytona ssh ${connectTarget} -- tail -n 120 ${extra.remoteControlDir || '/srv/workbench'}/pi.log` : null,
+    runAgentCommand: connectTarget ? `daytona ssh ${connectTarget} -- bash ${extra.remoteControlDir || '/srv/spanner'}/run-pi.sh` : null,
+    tailLogCommand: connectTarget ? `daytona ssh ${connectTarget} -- tail -n 120 ${extra.remoteControlDir || '/srv/spanner'}/pi.log` : null,
     daytonaSandboxId: sandbox.id || null,
     daytonaSandboxName: sandbox.name || name || null,
     daytonaState: sandbox.state || null,
@@ -106,12 +106,12 @@ function buildCommand(script, cwd = '/') {
 
 async function emitLaunchLog(session, imageSettings, phase, details = {}) {
   const payload = { session: session?.name || '', phase, ...details };
-  console.info('[workbench][daytona]', JSON.stringify(payload));
+  console.info('[spanner][daytona]', JSON.stringify(payload));
   if (typeof imageSettings?.onLaunchLog !== 'function') return;
   try {
     await imageSettings.onLaunchLog(phase, details);
   } catch (error) {
-    console.warn(`[workbench][daytona] launch log callback failed for ${session?.name || 'session'}: ${error.message}`);
+    console.warn(`[spanner][daytona] launch log callback failed for ${session?.name || 'session'}: ${error.message}`);
   }
 }
 
@@ -257,8 +257,8 @@ export function createDaytonaProvider(config, options = {}) {
       },
       envVars: {
         ...envVars,
-        WORKBENCH_SESSION_NAME: session.name,
-        ...(session.ownerUserId ? { WORKBENCH_OWNER_USER_ID: session.ownerUserId } : {}),
+        SPANNER_SESSION_NAME: session.name,
+        ...(session.ownerUserId ? { SPANNER_OWNER_USER_ID: session.ownerUserId } : {}),
       },
       user: config.remoteUser || 'daytona',
       public: false,
@@ -308,7 +308,7 @@ export function createDaytonaProvider(config, options = {}) {
     );
 
     if (canStream) {
-      const sessionId = `workbench-${randomUUID()}`;
+      const sessionId = `spanner-${randomUUID()}`;
       try {
         await processApi.createSession(sessionId).catch((error) => {
           if (!/already exists/i.test(String(error?.message || error))) throw error;

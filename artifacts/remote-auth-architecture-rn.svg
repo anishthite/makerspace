@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="760" viewBox="0 0 1280 760" role="img" aria-labelledby="title desc">
+  <title id="title">Workbench remote auth and sandbox architecture</title>
+  <desc id="desc">Current flow between browser, Node backend, Cloudflare D1, GitHub OAuth/App, and Daytona sandbox Pi bridge.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#334155"/>
+    </marker>
+    <style>
+      .box{fill:#ffffff;stroke:#334155;stroke-width:2;rx:16;ry:16}
+      .hosted{fill:#eff6ff;stroke:#2563eb}
+      .state{fill:#f0fdf4;stroke:#16a34a}
+      .sandbox{fill:#fff7ed;stroke:#ea580c}
+      .external{fill:#f8fafc;stroke:#64748b}
+      .warn{fill:#fef2f2;stroke:#dc2626}
+      .title{font:700 20px ui-monospace,SFMono-Regular,Menlo,monospace;fill:#0f172a}
+      .label{font:600 15px ui-monospace,SFMono-Regular,Menlo,monospace;fill:#0f172a}
+      .text{font:13px ui-monospace,SFMono-Regular,Menlo,monospace;fill:#334155}
+      .small{font:12px ui-monospace,SFMono-Regular,Menlo,monospace;fill:#475569}
+      .arrow{stroke:#334155;stroke-width:2;fill:none;marker-end:url(#arrow)}
+      .dash{stroke-dasharray:7 6}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1280" height="760" fill="#f8fafc"/>
+  <text x="48" y="46" class="title">Remote architecture: backend owns auth/state; Daytona owns execution</text>
+  <text x="48" y="70" class="small">Browser never talks directly to D1 or the sandbox bridge.</text>
+
+  <rect class="box hosted" x="48" y="120" width="250" height="150"/>
+  <text x="72" y="150" class="label">Browser / Vercel UI</text>
+  <text x="72" y="180" class="text">• static Vite app</text>
+  <text x="72" y="202" class="text">• GitHub sign-in cookie</text>
+  <text x="72" y="224" class="text">• x-workbench-session</text>
+  <text x="72" y="246" class="text">• SSE from backend only</text>
+
+  <rect class="box hosted" x="390" y="104" width="330" height="220"/>
+  <text x="418" y="136" class="label">Node control backend</text>
+  <text x="418" y="166" class="text">• /api/* auth gate</text>
+  <text x="418" y="188" class="text">• signs/reads auth cookie</text>
+  <text x="418" y="210" class="text">• owns Daytona + Cloudflare secrets</text>
+  <text x="418" y="232" class="text">• filters sessions by ownerUserId</text>
+  <text x="418" y="254" class="text">• syncs Pi/GitHub auth to bridge</text>
+  <text x="418" y="276" class="text">• relays bridge SSE to browser</text>
+  <text x="418" y="298" class="small">CONTROL_API_TOKEN = admin bypass only</text>
+
+  <rect class="box state" x="820" y="96" width="360" height="178"/>
+  <text x="848" y="128" class="label">Cloudflare D1 state store</text>
+  <text x="848" y="158" class="text">workbench_sessions: session JSON</text>
+  <text x="848" y="180" class="text">workbench_kv: settings, auth, profile</text>
+  <text x="848" y="202" class="text">auth:user / auth:session / oauth</text>
+  <text x="848" y="224" class="text">recent-projects:&lt;user&gt;, workspace index</text>
+  <text x="848" y="246" class="small">prod + complete D1 env ⇒ auto d1</text>
+
+  <rect class="box external" x="820" y="330" width="360" height="146"/>
+  <text x="848" y="362" class="label">GitHub</text>
+  <text x="848" y="392" class="text">• account OAuth: repo/read:user/workflow</text>
+  <text x="848" y="414" class="text">• optional App installation token wins</text>
+  <text x="848" y="436" class="text">• clone/push/gh credentials per user</text>
+  <text x="848" y="458" class="small">old OAuth missing workflow ⇒ reconnect</text>
+
+  <rect class="box sandbox" x="390" y="420" width="790" height="250"/>
+  <text x="418" y="452" class="label">Daytona sandbox</text>
+  <text x="418" y="482" class="text">created/reused via @daytona/sdk; labels include workbenchSession + workbenchOwner</text>
+  <text x="418" y="512" class="text">setup script clones repo to /srv/workspace, installs Pi, starts local bridge on :4310</text>
+  <text x="418" y="542" class="text">preview URL + x-daytona-preview-token expose bridge only to backend</text>
+  <rect class="box" x="430" y="570" width="330" height="70"/>
+  <text x="452" y="598" class="label">Pi bridge</text>
+  <text x="452" y="620" class="text">/auth, /runs, /runs/:id/stream</text>
+  <rect class="box" x="805" y="570" width="330" height="70"/>
+  <text x="827" y="598" class="label">Repo workspace</text>
+  <text x="827" y="620" class="text">git checkout or per-thread worktree</text>
+
+  <rect class="box warn" x="48" y="520" width="250" height="150"/>
+  <text x="72" y="552" class="label">Local env right now</text>
+  <text x="72" y="582" class="text">provider=local</text>
+  <text x="72" y="604" class="text">authRequired=false</text>
+  <text x="72" y="626" class="text">stateStore=file</text>
+  <text x="72" y="648" class="text">D1/App not configured here</text>
+
+  <path class="arrow" d="M298 180 C338 180 350 180 390 180"/>
+  <text x="315" y="166" class="small">cookie API + SSE</text>
+
+  <path class="arrow" d="M720 174 C770 174 770 174 820 174"/>
+  <text x="736" y="160" class="small">REST SQL</text>
+
+  <path class="arrow" d="M720 230 C770 292 770 354 820 396"/>
+  <text x="730" y="316" class="small">OAuth/App</text>
+
+  <path class="arrow" d="M565 324 C565 374 565 390 565 420"/>
+  <text x="585" y="372" class="small">create/start/upload setup</text>
+
+  <path class="arrow" d="M720 528 C774 554 800 580 805 604"/>
+  <text x="726" y="552" class="small">clone token during setup</text>
+
+  <path class="arrow" d="M760 604 C780 604 785 604 805 604"/>
+  <text x="760" y="590" class="small">git/gh creds</text>
+
+  <path class="arrow dash" d="M430 604 C360 604 348 250 390 250"/>
+  <text x="308" y="448" class="small">bridge SSE/results</text>
+
+  <path class="arrow dash" d="M555 420 C555 386 555 360 555 324"/>
+  <text x="570" y="398" class="small">/auth push + back-sync</text>
+</svg>

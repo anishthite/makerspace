@@ -62,16 +62,25 @@ function mutateFileStore(filePath, fn) {
 function authSecret(config = {}) {
   return String(
     config.authSecret ||
-    process.env.WORKBENCH_AUTH_SECRET ||
+    process.env.SPANNER_AUTH_SECRET ||
     process.env.AUTH_SECRET ||
     config.controlApiToken ||
     config.githubClientSecret ||
-    'workbench-dev-auth-secret',
+    'spanner-dev-auth-secret',
   );
 }
 
+function encryptionKeyForSecret(secret) {
+  return createHash('sha256').update(secret).digest();
+}
+
 function encryptionKey(config = {}) {
-  return createHash('sha256').update(authSecret(config)).digest();
+  return encryptionKeyForSecret(authSecret(config));
+}
+
+function legacyEncryptionKeys(config = {}) {
+  if (config.authSecret || process.env.SPANNER_AUTH_SECRET || process.env.AUTH_SECRET || config.controlApiToken || config.githubClientSecret) return [];
+  return [process.env.WORKBENCH_AUTH_SECRET || 'workbench-dev-auth-secret'].map(encryptionKeyForSecret);
 }
 
 export function hashAuthSessionId(value) {
@@ -93,12 +102,17 @@ export function decryptSecret(config, value) {
   if (!text) return '';
   const [version, ivText, tagText, ciphertextText] = text.split('.');
   if (version !== 'v1' || !ivText || !tagText || !ciphertextText) return '';
-  const decipher = createDecipheriv('aes-256-gcm', encryptionKey(config), Buffer.from(ivText, 'base64url'));
-  decipher.setAuthTag(Buffer.from(tagText, 'base64url'));
-  return Buffer.concat([
-    decipher.update(Buffer.from(ciphertextText, 'base64url')),
-    decipher.final(),
-  ]).toString('utf8');
+  for (const key of [encryptionKey(config), ...legacyEncryptionKeys(config)]) {
+    try {
+      const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(ivText, 'base64url'));
+      decipher.setAuthTag(Buffer.from(tagText, 'base64url'));
+      return Buffer.concat([
+        decipher.update(Buffer.from(ciphertextText, 'base64url')),
+        decipher.final(),
+      ]).toString('utf8');
+    } catch {}
+  }
+  return '';
 }
 
 function normalizeUser(input = {}) {

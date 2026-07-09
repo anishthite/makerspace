@@ -7,20 +7,20 @@ import path from 'node:path';
 import { prepareBuildContext } from '../src/image-builder.js';
 import { createPiResourceOptions, piDefaultsResourcePaths } from '../src/pi-defaults-package.js';
 
-const packageDir = path.resolve('packages/workbench-pi-defaults');
+const packageDir = path.resolve('packages/spanner-pi-defaults');
 
-test('workbench Pi defaults package exposes pi resources', async () => {
+test('spanner Pi defaults package exposes pi resources', async () => {
   const manifest = JSON.parse(await readFile(path.join(packageDir, 'package.json'), 'utf8'));
-  const skill = await readFile(path.join(packageDir, 'skills/workbench-implementation-notes/SKILL.md'), 'utf8');
-  const extension = await readFile(path.join(packageDir, 'extensions/workbench-defaults.ts'), 'utf8');
+  const skill = await readFile(path.join(packageDir, 'skills/spanner-implementation-notes/SKILL.md'), 'utf8');
+  const extension = await readFile(path.join(packageDir, 'extensions/spanner-defaults.ts'), 'utf8');
 
-  assert.equal(manifest.name, '@workbench/pi-defaults');
+  assert.equal(manifest.name, '@spanner/pi-defaults');
   assert.deepEqual(manifest.pi, {
     extensions: ['extensions/*.ts'],
     skills: ['skills'],
     prompts: ['prompts/*.md'],
   });
-  assert.match(skill, /name: workbench-implementation-notes/);
+  assert.match(skill, /name: spanner-implementation-notes/);
   assert.match(skill, /description: Keep concise append-only implementation notes/);
   assert.match(extension, /before_agent_start/);
   assert.match(extension, /context\/AGENTS\.md/);
@@ -67,7 +67,7 @@ test('createPiResourceOptions adds package resource paths when present', async (
   assert.match(agentsFiles[0].content, /Default to using fenced `openui` blocks for final user-facing responses/);
   assert.match(agentsFiles[0].content, /prefer a direct root such as `TextContent` or `Table`/);
   assert.match(agentsFiles[0].content, /## Interactive final-answer controls/);
-  assert.match(agentsFiles[0].content, /```workbench-ui/);
+  assert.match(agentsFiles[0].content, /```spanner-ui/);
   assert.match(agentsFiles[0].content, /actions fill the composer for user review/);
   assert.equal(agentsFiles[1].path, '/project/AGENTS.md');
   assert.equal(captured.reloaded, true);
@@ -115,7 +115,7 @@ test('createPiResourceOptions applies extension provider registrations', async (
 });
 
 test('prepareBuildContext copies defaults package into docker ctx', async () => {
-  const dir = await mkdtemp(path.join(os.tmpdir(), 'workbench-defaults-image-'));
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'spanner-defaults-image-'));
   const imageDir = path.join(dir, 'image');
   const packageSource = path.join(dir, 'defaults');
 
@@ -131,7 +131,7 @@ test('prepareBuildContext copies defaults package into docker ctx', async () => 
 
   try {
     assert.equal(
-      await readFile(path.join(prepared.contextDir, 'ctx/workbench-pi-defaults/package.json'), 'utf8'),
+      await readFile(path.join(prepared.contextDir, 'ctx/spanner-pi-defaults/package.json'), 'utf8'),
       '{"name":"defaults"}\n',
     );
   } finally {
@@ -141,5 +141,5 @@ test('prepareBuildContext copies defaults package into docker ctx', async () => 
 });
 
 test('piDefaultsResourcePaths returns null for absent package', () => {
-  assert.equal(piDefaultsResourcePaths('/definitely/missing/workbench-pi-defaults'), null);
+  assert.equal(piDefaultsResourcePaths('/definitely/missing/spanner-pi-defaults'), null);
 });

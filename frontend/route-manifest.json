@@ -156,8 +156,8 @@
       "mode": "copy"
     },
     {
-      "route": "/workbench-logo-options.html",
-      "file": "workbench-logo-options.html",
+      "route": "/spanner-logo-options.html",
+      "file": "spanner-logo-options.html",
       "mode": "copy"
     },
     {
@@ -172,6 +172,11 @@
     }
   ],
   "aliases": [
+    {
+      "route": "/homepage",
+      "target": "/desktop.html",
+      "source": "vercel.json"
+    },
     {
       "route": "/desktop",
       "target": "/desktop.html",
@@ -194,11 +199,11 @@
     }
   ],
   "storageKeys": [
-    "workbenchBrowserSession",
-    "workbenchSelectedProject",
-    "workbenchModelRef",
-    "workbenchThinkingLevel",
-    "workbenchSeenFinishedThreads",
-    "workbenchRecentProjects"
+    "spannerBrowserSession",
+    "spannerSelectedProject",
+    "spannerModelRef",
+    "spannerThinkingLevel",
+    "spannerSeenFinishedThreads",
+    "spannerRecentProjects"
   ]
 }

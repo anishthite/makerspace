@@ -37,7 +37,7 @@ function runStateStub() {
 }
 
 test('manual Daytona launch uses private clone auth without persisting it', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workbench-manual-private-auth-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-manual-private-auth-'));
   const sessionFile = path.join(root, 'sessions.json');
   let launched = null;
   try {
@@ -46,7 +46,7 @@ test('manual Daytona launch uses private clone auth without persisting it', asyn
       sessionFile,
       settingsFile: path.join(root, 'settings.json'),
       remoteWorkspaceDir: '/srv/workspace',
-      remoteControlDir: '/srv/workbench',
+      remoteControlDir: '/srv/spanner',
       bridgePort: 4310,
     };
     await writeFile(config.settingsFile, '{}\n');
@@ -84,7 +84,7 @@ test('manual Daytona launch uses private clone auth without persisting it', asyn
 });
 
 test('thread bridge launch strips private clone auth before persisting session', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workbench-private-auth-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-private-auth-'));
   const sessionFile = path.join(root, 'sessions.json');
   try {
     const config = {
@@ -92,7 +92,7 @@ test('thread bridge launch strips private clone auth before persisting session',
       sessionFile,
       settingsFile: path.join(root, 'settings.json'),
       remoteWorkspaceDir: '/srv/workspace',
-      remoteControlDir: '/srv/workbench',
+      remoteControlDir: '/srv/spanner',
       bridgePort: 4310,
       bridgeReadyTimeoutMs: 1000,
       bridgeReadyPollMs: 10,

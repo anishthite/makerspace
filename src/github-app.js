@@ -42,7 +42,7 @@ function githubAppHeaders(config, extra = {}) {
   return {
     accept: 'application/vnd.github+json',
     authorization: `Bearer ${buildGitHubAppJwt(config)}`,
-    'user-agent': 'workbench',
+    'user-agent': 'spanner',
     ...extra,
   };
 }

@@ -7,7 +7,7 @@ export function applyAppearance() {
     root.classList?.toggle?.('dark', true);
     root.dataset.font = APPEARANCE.font;
     root.dataset.palette = APPEARANCE.palette;
-    if (globalThis.workbenchDesktop) root.dataset.desktop = 'true';
+    if (globalThis.spannerDesktop) root.dataset.desktop = 'true';
     else delete root.dataset.desktop;
   }
   return { ...APPEARANCE };

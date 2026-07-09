@@ -124,16 +124,16 @@ export function createThreadService({ config, provider, http, auth, runState, br
     return error?.code === 'ENOENT' || /not found|no such file/i.test(error?.message || '');
   }
 
-  function workbenchWorkflowRunFile(runId) {
+  function spannerWorkflowRunFile(runId) {
     return path.join(config.workflowRunsDir || path.join(config.localDataDir || config.rootDir || process.cwd(), 'workflows', 'runs'), `${runId}.json`);
   }
 
-  async function readWorkbenchWorkflowRunFile(runId) {
-    return readFile(workbenchWorkflowRunFile(runId), 'utf8');
+  async function readSpannerWorkflowRunFile(runId) {
+    return readFile(spannerWorkflowRunFile(runId), 'utf8');
   }
 
-  async function writeWorkbenchWorkflowRunFile(runId, raw) {
-    const filePath = workbenchWorkflowRunFile(runId);
+  async function writeSpannerWorkflowRunFile(runId, raw) {
+    const filePath = spannerWorkflowRunFile(runId);
     await mkdir(path.dirname(filePath), { recursive: true });
     await writeFile(filePath, raw, 'utf8');
   }
@@ -148,11 +148,11 @@ export function createThreadService({ config, provider, http, auth, runState, br
   async function readThreadWorkflowRunFile(session, runId) {
     try {
       const raw = await readRuntimeWorkflowRunFile(session, runId);
-      await writeWorkbenchWorkflowRunFile(runId, raw);
+      await writeSpannerWorkflowRunFile(runId, raw);
       return raw;
     } catch (error) {
       if (!notFound(error)) throw error;
-      return readWorkbenchWorkflowRunFile(runId);
+      return readSpannerWorkflowRunFile(runId);
     }
   }
 

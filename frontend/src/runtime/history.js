@@ -1,11 +1,24 @@
 import './appearance.js?v=palette-2';
 
-const BROWSER_SESSION_KEY = 'workbenchBrowserSession';
-const PROJECT_KEY = 'workbenchSelectedProject';
+const BROWSER_SESSION_KEY = 'spannerBrowserSession';
+const PROJECT_KEY = 'spannerSelectedProject';
 const ACTIVE_STATUSES = new Set(['launching', 'queued', 'starting', 'running', 'reconnecting']);
-const API_BASE = String(import.meta.env?.VITE_WORKBENCH_API_BASE || '').trim().replace(/\/+$/, '');
+const API_BASE = String(import.meta.env?.VITE_SPANNER_API_BASE || '').trim().replace(/\/+$/, '');
 const doc = globalThis.document;
 const storage = globalThis.localStorage && typeof globalThis.localStorage.getItem === 'function' ? globalThis.localStorage : null;
+
+function migrateStorageKey(legacyKey, nextKey) {
+  try {
+    if (storage?.getItem(nextKey) === null) {
+      const value = storage.getItem(legacyKey);
+      if (value !== null) storage.setItem(nextKey, value);
+    }
+    storage?.removeItem(legacyKey);
+  } catch {}
+}
+
+migrateStorageKey('workbenchBrowserSession', BROWSER_SESSION_KEY);
+migrateStorageKey('workbenchSelectedProject', PROJECT_KEY);
 
 const projectLabel = doc?.querySelector('#project-label');
 const workspaceLabel = doc?.querySelector('#workspace-label');
@@ -91,7 +104,7 @@ export function filterSessionsByProject(sessions = [], project = null) {
 }
 
 function authHeaders() {
-  const headers = { 'x-workbench-session': getBrowserSessionId() };
+  const headers = { 'x-spanner-session': getBrowserSessionId() };
   const token = getApiToken();
   if (token) headers.authorization = `Bearer ${token}`;
   return headers;
@@ -203,7 +216,7 @@ export function filterHistoryRows(rows = [], query = '') {
 function renderProject(provider) {
   const project = provider?.project || {};
   const name = String(project.name || '').trim();
-  const visible = name && name !== 'workbench';
+  const visible = name && name !== 'spanner';
   if (!projectLabel) return;
   projectLabel.hidden = !visible;
   projectLabel.textContent = visible ? name : '';

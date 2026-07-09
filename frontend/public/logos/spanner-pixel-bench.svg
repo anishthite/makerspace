@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 220" role="img" aria-labelledby="title desc" shape-rendering="crispEdges">
+  <title id="title">Spanner logo option 5 — Pixel Bench</title>
+  <desc id="desc">A retro pixel art spanner mark beside the spanner wordmark.</desc>
+  <rect width="720" height="220" fill="none"/>
+  <g transform="translate(40 40)">
+    <rect width="140" height="140" rx="0" fill="#241A12"/>
+    <rect x="8" y="8" width="124" height="124" fill="#FAF8F3"/>
+    <rect x="20" y="28" width="100" height="12" fill="#1F5E9C"/>
+    <rect x="28" y="40" width="84" height="12" fill="#1F5E9C"/>
+    <rect x="36" y="60" width="16" height="44" fill="#1F5E9C"/>
+    <rect x="88" y="60" width="16" height="44" fill="#1F5E9C"/>
+    <rect x="28" y="104" width="84" height="12" fill="#0F766E"/>
+    <rect x="24" y="116" width="16" height="12" fill="#0F766E"/>
+    <rect x="100" y="116" width="16" height="12" fill="#0F766E"/>
+    <rect x="60" y="56" width="20" height="16" fill="#B7791F"/>
+    <rect x="56" y="72" width="28" height="12" fill="#B7791F"/>
+    <rect x="64" y="84" width="12" height="12" fill="#B7791F"/>
+    <rect x="112" y="16" width="8" height="8" fill="#22C55E"/>
+    <rect x="104" y="24" width="8" height="8" fill="#22C55E"/>
+    <rect x="120" y="24" width="8" height="8" fill="#22C55E"/>
+  </g>
+  <g font-family="Hack, 'JetBrains Mono', 'SF Mono', ui-monospace, monospace">
+    <text x="214" y="104" fill="#241A12" font-size="54" font-weight="900" letter-spacing="-2">spanner</text>
+    <text x="218" y="139" fill="#B7791F" font-size="15" font-weight="800" letter-spacing="3">8-BIT AGENT BENCH</text>
+  </g>
+</svg>

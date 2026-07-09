@@ -30,8 +30,8 @@ async function stopServer(child) {
   await new Promise((resolve) => child.once('exit', resolve));
 }
 
-test('thread workflow route returns Workbench Pi workflow journal steps', async () => {
-  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'workbench-workflow-'));
+test('thread workflow route returns Spanner Pi workflow journal steps', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'spanner-workflow-'));
   const sessionFile = path.join(tempDir, 'sessions.json');
   const settingsFile = path.join(tempDir, 'settings.json');
   const journalRunId = 'run-mqu123-journal';
@@ -106,7 +106,7 @@ test('thread workflow route returns Workbench Pi workflow journal steps', async 
     assert.equal(journalPayload.agents[1].label, 'review alternatives');
     assert.equal(journalPayload.agents[1].resultPreview, 'Good enough to show.');
 
-    const mirrored = JSON.parse(await readFile(path.join(tempDir, '.workbench/workflows/runs', `${journalRunId}.json`), 'utf8'));
+    const mirrored = JSON.parse(await readFile(path.join(tempDir, '.spanner/workflows/runs', `${journalRunId}.json`), 'utf8'));
     assert.equal(mirrored.runId, journalRunId);
     await rm(path.join(tempDir, '.pi/better-workflows/runs', `${journalRunId}.json`));
     const mirrorResponse = await fetch(`${baseUrl}/api/threads/viewer/workflows/${journalRunId}`, { headers });

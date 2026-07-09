@@ -31,7 +31,7 @@ async function stopServer(child) {
 }
 
 test('thread changes route returns tracked tool changes', async () => {
-  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'workbench-changes-'));
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'spanner-changes-'));
   const sessionFile = path.join(tempDir, 'sessions.json');
   const settingsFile = path.join(tempDir, 'settings.json');
   let server;

@@ -7,7 +7,7 @@ import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { archiveStoredSession, listStoredSessions, removeStoredSession, unarchiveStoredSession, upsertSession } from '../src/store.js';
 
 test('listStoredSessions ignores stale mock sessions', async () => {
-  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'workbench-store-'));
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'spanner-store-'));
   const filePath = path.join(tempDir, 'sessions.json');
 
   try {
@@ -25,7 +25,7 @@ test('listStoredSessions ignores stale mock sessions', async () => {
 });
 
 test('archiveStoredSession marks a session archived without deleting it', async () => {
-  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'workbench-store-'));
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'spanner-store-'));
   const filePath = path.join(tempDir, 'sessions.json');
 
   try {
@@ -44,7 +44,7 @@ test('archiveStoredSession marks a session archived without deleting it', async 
 });
 
 test('unarchiveStoredSession clears archivedAt without deleting the row', async () => {
-  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'workbench-store-'));
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'spanner-store-'));
   const filePath = path.join(tempDir, 'sessions.json');
 
   try {
@@ -63,7 +63,7 @@ test('unarchiveStoredSession clears archivedAt without deleting the row', async 
 });
 
 test('listStoredSessions backs up corrupt JSON and starts fresh', async () => {
-  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'workbench-store-'));
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'spanner-store-'));
   const filePath = path.join(tempDir, 'sessions.json');
   const corruptText = '[{ "name": "partial", "titleMode';
 
@@ -82,7 +82,7 @@ test('listStoredSessions backs up corrupt JSON and starts fresh', async () => {
 });
 
 test('upsertSession writes compact parseable JSON through a temp file', async () => {
-  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'workbench-store-'));
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'spanner-store-'));
   const filePath = path.join(tempDir, 'sessions.json');
 
   try {
@@ -98,7 +98,7 @@ test('upsertSession writes compact parseable JSON through a temp file', async ()
 });
 
 test('listStoredSessions refreshes when file stat changes', async () => {
-  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'workbench-store-'));
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'spanner-store-'));
   const filePath = path.join(tempDir, 'sessions.json');
 
   try {
@@ -113,7 +113,7 @@ test('listStoredSessions refreshes when file stat changes', async () => {
 });
 
 test('removeStoredSession deletes a session row', async () => {
-  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'workbench-store-'));
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'spanner-store-'));
   const filePath = path.join(tempDir, 'sessions.json');
 
   try {

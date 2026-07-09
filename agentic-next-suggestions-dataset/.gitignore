@@ -1,0 +1,4 @@
+# Generated local traces. These contain private conversation text.
+*.jsonl
+manifest.json
+__pycache__/

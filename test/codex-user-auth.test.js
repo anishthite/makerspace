@@ -26,7 +26,7 @@ function config(root) {
     authFile: path.join(root, 'auth.json'),
     authSecret: 'test-secret',
     authRequired: true,
-    authCookieName: 'workbench_auth',
+    authCookieName: 'spanner_auth',
     authSessionDays: 30,
   };
 }
@@ -40,7 +40,7 @@ async function occupyClaudeCallbackPort() {
 }
 
 test('hosted Codex and Claude Code auth are stored per user and formatted for Pi auth.json', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workbench-codex-auth-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-codex-auth-'));
   try {
     const auth = createAuthService({ config: config(root), http: testHttp() });
     const user = await auth.authStore.upsertUser({ githubId: '1', login: 'octo' });
@@ -72,7 +72,7 @@ test('hosted Codex and Claude Code auth are stored per user and formatted for Pi
 });
 
 test('hosted GitHub status ignores stale browser session auth', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workbench-github-status-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-github-status-'));
   try {
     const auth = createAuthService({ config: config(root), http: testHttp() });
     auth.writeBrowserSession('browser-session-1234567890', {
@@ -89,7 +89,7 @@ test('hosted GitHub status ignores stale browser session auth', async () => {
 });
 
 test('hosted Claude Code login exchanges pasted redirect without binding fixed callback port', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workbench-claude-manual-auth-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-claude-manual-auth-'));
   const blocker = await occupyClaudeCallbackPort();
   const previousFetch = globalThis.fetch;
   try {
@@ -127,7 +127,7 @@ test('hosted Claude Code login exchanges pasted redirect without binding fixed c
 });
 
 test('remote Pi auth back-sync updates hosted Codex credentials', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workbench-codex-auth-back-sync-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-codex-auth-back-sync-'));
   try {
     const auth = createAuthService({ config: config(root), http: testHttp() });
     const user = await auth.authStore.upsertUser({ githubId: '1', login: 'octo' });
@@ -144,7 +144,7 @@ test('remote Pi auth back-sync updates hosted Codex credentials', async () => {
 });
 
 test('readGitHubAuthForSession keeps GitHub tokens per user in multi-user mode', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'makerspace-github-auth-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-github-auth-'));
   const savedGhToken = process.env.GH_TOKEN;
   const savedGithubToken = process.env.GITHUB_TOKEN;
   process.env.GH_TOKEN = 'server-shared-token';
@@ -154,7 +154,7 @@ test('readGitHubAuthForSession keeps GitHub tokens per user in multi-user mode',
     const auth = createAuthService({ config: config(root), http: testHttp() });
     const user = await auth.authStore.upsertUser({ githubId: '1', login: 'octo', name: 'Octo Cat' });
     const other = await auth.authStore.upsertUser({ githubId: '2', login: 'mona' });
-    await auth.authStore.upsertOAuthToken({ userId: user.id, provider: 'github', accessToken: 'octo-token', scopes: ['repo'] });
+    await auth.authStore.upsertOAuthToken({ userId: user.id, provider: 'github', accessToken: 'octo-token', scopes: ['repo', 'read:user', 'workflow'] });
 
     const owned = await auth.readGitHubAuthForSession({ ownerUserId: user.id });
     assert.equal(owned.token, 'octo-token');
@@ -175,7 +175,7 @@ test('readGitHubAuthForSession keeps GitHub tokens per user in multi-user mode',
 });
 
 test('readGitHubAuthForSession falls back to the server token in single-user mode', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'makerspace-github-auth-single-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-github-auth-single-'));
   const savedGhToken = process.env.GH_TOKEN;
   const savedGithubToken = process.env.GITHUB_TOKEN;
   process.env.GH_TOKEN = 'server-shared-token';
@@ -194,7 +194,7 @@ test('readGitHubAuthForSession falls back to the server token in single-user mod
 });
 
 test('hosted Codex auth populates model picker defaults', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workbench-codex-models-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-codex-models-'));
   try {
     const auth = createAuthService({ config: config(root), http: testHttp() });
     const user = await auth.authStore.upsertUser({ githubId: '1', login: 'octo' });
