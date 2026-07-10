@@ -86,6 +86,8 @@ test('workflow rail renders workflow agents, not generic tool calls', () => {
   assert.doesNotMatch(js, /workflow-phase-strip|workflow-phase-pill|workflow-step-link|workflow-terminal|workflow run → journal/);
   assert.match(css, /workflow-view-node::before/);
   assert.match(css, /workflow-view-node\.running \.workflow-node-top b/);
+  assert.match(css, /\.agent-column \{[^}]*min-width: 0/);
+  assert.match(css, /\.workflow-view-node small \{[^}]*overflow-wrap: anywhere/);
   assert.doesNotMatch(css, /workflow-agent-stack \{[^}]*overflow-y: auto|workflow-phase-pill|workflow-agent-detail|workflow-terminal|workflow-step-link/);
   assert.match(js, /workflow agents appear here when a workflow starts/);
   assert.match(js, /\/workflows\/\$\{encodeURIComponent\(runId\)\}/);
