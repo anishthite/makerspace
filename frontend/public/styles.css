@@ -1304,9 +1304,9 @@ html[data-desktop="true"] .flow-topbar,
   gap: 0;
   padding: 0;
   border: 1px solid var(--thread-rule-strong);
-  border-radius: 14px;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--paper) 92%, var(--blue-soft)), color-mix(in srgb, var(--paper) 96%, var(--bg)));
-  box-shadow: var(--shadow-xl), var(--shadow);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--blue-soft) 54%, var(--paper));
+  box-shadow: var(--shadow);
   overflow: hidden;
 }
 .composer-field { display: contents; }
