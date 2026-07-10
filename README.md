@@ -170,7 +170,8 @@ PI_CODING_AGENT_DIR=~/.pi/agent
 PI_PROFILE_DATA_PATH=./data/pi-profile.json
 SPANNER_PI_DEFAULTS_PACKAGE_DIR=./packages/spanner-pi-defaults
 REMOTE_WORKSPACE_DIR=/srv/workspace
-REMOTE_CONTROL_DIR=/srv/spanner
+REMOTE_CONTROL_DIR=/home/daytona/.spanner/control
+DAYTONA_SUSPEND_AUTODELETE_MINUTES=-1
 REMOTE_PI_DEFAULTS_PACKAGE_DIR=/home/daytona/.pi/agent/spanner-pi-defaults
 PI_BRIDGE_PORT=4310
 PI_BRIDGE_READY_TIMEOUT_MS=240000
@@ -221,6 +222,9 @@ The settings page exposes the Spanner Pi profile from `packages/spanner-pi-defau
 - `POST /api/threads`
 - `GET /api/threads/:name`
 - `POST /api/threads/:name/messages`
+- `POST /api/threads/:name/suspend`
+- `POST /api/threads/:name/resume`
+- `POST /api/threads/:name/delete`
 - `GET /api/sessions`
 - `POST /api/sessions`
 - `POST /api/bridge-intents`

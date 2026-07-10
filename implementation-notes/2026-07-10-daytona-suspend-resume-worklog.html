@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Daytona suspend/resume worklog</title>
+<meta name="task" content="Plan the smallest safe Daytona save-state, suspend/resume, and remote .spanner cleanup path.">
+<meta name="date-started" content="2026-07-10">
+<meta name="date-updated" content="2026-07-10">
+<meta name="status" content="ready-for-review">
+<meta name="blast-radius" content="high">
+<meta name="tags" content="spanner,daytona,sandbox,lifecycle,suspend,resume,persistence">
+<meta name="related" content="2026-06-18-provider-boundary.html,2026-07-01-project-workspace-mode.html,2026-07-07-remote-launch-diagnostics.html,2026-07-09-hard-spanner-rename.html,2026-06-18-tiny-daytona-pi-snapshot.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:960px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code,pre{font-family:ui-monospace,Menlo,monospace}code{background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}pre{background:#f8f8f8;border:1px solid #ddd;border-radius:6px;padding:.7rem;overflow:auto}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:150px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.status-in-progress{color:#b85c00}.blast-high{color:#b00020;font-weight:600}.q{border-left:3px solid #b85c00;padding:.25rem .6rem;margin:.4rem 0;background:#fff8ee}</style>
+</head>
+<body>
+<h1>Daytona suspend/resume worklog</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-10 · status <b class="status-in-progress">ready-for-review</b> · blast <span class="blast-high">high</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Add honest save-state semantics: app state in Spanner, workspace state on Daytona disk, explicit suspend/resume for idle sandboxes.</div>
+  <b>Source</b><div>Conversation audit plus <code>artifacts/daytona-sandbox-lifecycle.svg</code>.</div>
+  <b>Critical fixes</b><div>Consume Daytona <code>list()</code> async iterator; stop deleting <code>/srv/workspace</code> on wake.</div>
+  <b>Delete safety</b><div>Manual destructive delete creates a sanitized Daytona snapshot first; provider autodelete must not be the primary cleanup path.</div>
+  <b>Remote layout</b><div>Move control files from <code>/srv/spanner</code> to <code>/home/daytona/.spanner/control</code>; keep repo files under <code>/srv/workspace</code>.</div>
+  <b>State model</b><div><code>sessions.json</code>/D1 stores control metadata; Daytona disk stores files until delete/autodelete; Git/PR remains durable code handoff.</div>
+  <b>API</b><div>Add <code>POST /api/threads/:name/suspend</code> and <code>POST /api/threads/:name/resume</code>.</div>
+  <b>Blast</b><div>High: wrong lifecycle defaults can delete user work or strand running sandboxes.</div>
+  <b>Verification</b><div><code>npm test</code> passed 265/265.</div>
+  <b>Open Qs</b><div>1.</div>
+</div>
+
+<h2>API contract</h2>
+<pre>POST /api/threads/:name/suspend
+→ 200 { provider, thread }
+
+POST /api/threads/:name/resume
+→ 202 { provider, thread }
+
+POST /api/threads/:name/delete
+→ 202 { provider, thread, snapshot }
+
+Rules:
+- suspend only when the thread is not actively running
+- suspend preserves daytonaSandboxId/daytonaSandboxName
+- resume starts the same sandbox, refreshes preview URL/token, syncs auth, returns ready/launching
+- delete snapshots first; if snapshot fails, do not delete
+</pre>
+
+<h2>Algorithm</h2>
+<ol>
+  <li>Fix Daytona list collection: <code>for await (const sandbox of client.list(query))</code>.</li>
+  <li>Make setup idempotent: if <code>/srv/workspace/.git</code> exists, fetch instead of <code>rm -rf</code>.</li>
+  <li>Default new remote control path to <code>/home/daytona/.spanner/control</code>; keep old path readable for existing sessions.</li>
+  <li>Add provider lifecycle calls: <code>suspendSession(session)</code> sets long/disabled autodelete then <code>sandbox.stop()</code>; <code>resumeSession(session)</code> calls <code>ensureStarted()</code>, setup, preview, auth sync.</li>
+  <li>Add destructive delete path: reject active runs, scrub sandbox secrets, call Daytona snapshot, persist snapshot ref, then delete sandbox.</li>
+  <li>Add thread service routes that reject active runs, update status to <code>suspended</code>/<code>ready</code>/<code>snapshotting</code>, and retain sandbox refs.</li>
+  <li>Teach UI to show suspended state with a resume action; do not call it pause.</li>
+  <li>Add one provider unit test for list collection and one setup-script test proving existing git checkout is not removed.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>src/providers/daytona.js</code></td><td>touch</td><td>Collect async iterator lists; add suspend/resume/delete wrappers around SDK start/stop/autodelete/preview/snapshot.</td></tr>
+  <tr><td><code>src/setup-script.js</code></td><td>touch</td><td>Preserve existing normal git checkout and write control files under remote <code>.spanner</code>.</td></tr>
+  <tr><td><code>src/config.js</code></td><td>touch</td><td>Change new default <code>REMOTE_CONTROL_DIR</code> to <code>/home/daytona/.spanner/control</code> after compatibility check.</td></tr>
+  <tr><td><code>src/server/bridge.js</code></td><td>touch</td><td>Reuse resume path for bridge health/auth/preview and keep existing run-start flow unchanged.</td></tr>
+  <tr><td><code>src/server/threads.js</code></td><td>touch</td><td>Add suspend/resume service methods and status guards.</td></tr>
+  <tr><td><code>src/server/routes.js</code></td><td>touch</td><td>Expose thread suspend/resume endpoints.</td></tr>
+  <tr><td><code>frontend/</code></td><td>touch</td><td>Show suspended status and resume button where stop/archive controls live.</td></tr>
+  <tr><td><code>test/provider.test.js</code></td><td>touch</td><td>Pin async iterator list reuse and suspend/resume SDK calls.</td></tr>
+  <tr><td><code>test/setup-script.test.js</code></td><td>touch</td><td>Pin non-destructive git setup and remote <code>.spanner</code> control path.</td></tr>
+  <tr><td><code>README.md</code></td><td>touch</td><td>Document save-state, suspend/resume, and remote path ownership.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Implement suspend as Daytona sandbox stop, not Pi process pause. Live LLM process checkpointing is not available.</td></tr>
+  <tr><td>D-002</td><td>Disable or extend autodelete before manual suspend. A user-initiated suspend must not delete work after the old 120-minute default.</td></tr>
+  <tr><td>D-003</td><td>Use <code>/home/daytona/.spanner/control</code> for machinery. Repo cleanup and Git diffs should not touch Spanner control files.</td></tr>
+  <tr><td>D-004</td><td>Keep Git/PR as the durable code save path. Daytona disk is runtime persistence, not backup.</td></tr>
+  <tr><td>D-005</td><td>Snapshot before app-owned destructive delete. If snapshot fails, keep the sandbox and surface the failure.</td></tr>
+  <tr><td>D-006</td><td>Sanitize before snapshot. Daytona snapshots capture the filesystem, so bridge env, git tokens, and Pi auth must be removed and later resynced.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td>Stop/start sandbox over snapshot on every suspend. Snapshots add latency/cost and belong on delete/reset/migration paths.</td></tr>
+  <tr><td>T-002</td><td>Idempotent setup over migration script first. New resumes stop losing work without touching every old sandbox.</td></tr>
+  <tr><td>T-003</td><td>Explicit <code>suspended</code> status over reusing <code>ready</code>. The UI needs to distinguish stopped compute from idle running bridge.</td></tr>
+</table>
+
+<h2>Verification</h2>
+<table>
+  <tr><th>Check</th><th>Result</th></tr>
+  <tr><td><code>npm test</code></td><td>Passed 265/265.</td></tr>
+  <tr><td><code>node --test test/thread-archive-control.test.js test/thread-lifecycle.test.js test/provider.test.js test/setup-script.test.js</code></td><td>Passed 25/25; covers UI wiring, service status transitions, async Daytona lists, suspend autodelete, snapshot-delete rollback, and non-wiping setup.</td></tr>
+</table>
+
+<h2>Open questions</h2>
+<div class="q"><b>Q-001 [OPEN]</b> Existing sandboxes. Assumed: support old <code>/srv/spanner</code> sessions until they expire; migrate only if a user resumes one and migration is cheap. Alternatives: hard cutover, one-time migration.</div>
+
+<h2>Assumptions</h2>
+<ul>
+  <li>A-001 · Daytona <code>sandbox.stop()</code> keeps disk and preview can be refreshed after <code>sandbox.start()</code>.</li>
+  <li>A-002 · Manual suspend is only allowed for non-active runs; active run stop remains the existing bridge <code>/runs/:id/stop</code>.</li>
+  <li>A-003 · Workspace mode remains the preferred durable repo path for signed-in user+repo projects.</li>
+</ul>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-high">high</span>. Revert provider suspend/resume endpoints and restore <code>REMOTE_CONTROL_DIR=/srv/spanner</code>; existing sandboxes keep their disk until Daytona policy deletes them.</p>
+
+<h2>Followups</h2>
+<ul>
+  <li>L-001 · Add optional snapshot/export only for reset/delete/migration flows.</li>
+  <li>L-002 · Add a cleanup job for abandoned suspended sandboxes after product policy exists.</li>
+</ul>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>Daytona list/reuse works with the installed async-iterator SDK.</li>
+  <li>Waking a normal git sandbox never deletes existing uncommitted files in <code>/srv/workspace</code>.</li>
+  <li>Suspending an idle thread stops compute and preserves its sandbox refs.</li>
+  <li>Resuming starts the same sandbox, refreshes bridge URL/token, syncs auth, preserves a marker file in <code>/srv/workspace</code>, and accepts a new prompt.</li>
+  <li>Manual delete persists a sanitized snapshot ref before sandbox deletion; failed snapshots block deletion.</li>
+  <li>Remote Spanner machinery no longer lives under the repo/worktree path.</li>
+</ul>
+</body>
+</html>

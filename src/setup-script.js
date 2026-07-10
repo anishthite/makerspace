@@ -63,30 +63,33 @@ function buildRepoLines(session, config) {
       ];
     }
 
-    if (session.branch) {
-      const branchClone = [
-        ...gitArgs,
-        'clone',
-        '--depth=1',
-        '--branch',
-        shellQuote(session.branch),
-        shellQuote(session.repoUrl),
-        shellQuote(workspaceDir),
-      ].join(' ');
-      return [
-        'export GIT_TERMINAL_PROMPT=0',
-        `rm -rf ${shellQuote(workspaceDir)}`,
-        `${branchClone} || { rm -rf ${shellQuote(workspaceDir)}; ${plainClone}; }`,
-        `cd ${shellQuote(workspaceDir)}`,
-      ];
-    }
+    const branchClone = session.branch
+      ? [
+          ...gitArgs,
+          'clone',
+          '--depth=1',
+          '--branch',
+          shellQuote(session.branch),
+          shellQuote(session.repoUrl),
+          shellQuote(workspaceDir),
+        ].join(' ')
+      : plainClone;
+    const fetchCommand = session.branch
+      ? `${gitArgs.join(' ')} fetch --prune origin ${shellQuote(session.branch)} || true`
+      : `${gitArgs.join(' ')} fetch --prune origin || true`;
 
     return [
       'export GIT_TERMINAL_PROMPT=0',
-      `rm -rf ${shellQuote(workspaceDir)}`,
-      plainClone,
+      `if [ -d ${shellQuote(`${workspaceDir}/.git`)} ]; then`,
+      `  cd ${shellQuote(workspaceDir)}`,
+      `  ${fetchCommand}`,
+      'else',
+      `  if [ -e ${shellQuote(workspaceDir)} ] && [ -n "$(ls -A ${shellQuote(workspaceDir)} 2>/dev/null)" ]; then exit 1; fi`,
+      `  rm -rf ${shellQuote(workspaceDir)}`,
+      `  ${branchClone} || { rm -rf ${shellQuote(workspaceDir)}; ${plainClone}; }`,
+      'fi',
       `cd ${shellQuote(workspaceDir)}`,
-    ];
+    ].filter(Boolean);
   }
 
   const initBranch = shellQuote(session.branch || 'main');

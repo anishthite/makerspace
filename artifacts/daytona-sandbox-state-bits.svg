@@ -1,0 +1,251 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1280" viewBox="0 0 1800 1280" role="img" aria-labelledby="title desc">
+  <title id="title">Daytona sandbox lifecycle state bits</title>
+  <desc id="desc">A detailed state-bit diagram showing what is true at every Spanner and Daytona lifecycle point, including app metadata, sandbox compute, bridge process, Pi run, files, auth, preview URLs, and deletion risk.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#111827"/></marker>
+    <marker id="dashArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#92400e"/></marker>
+    <style>
+      .bg{fill:#f9fafb}.title{font:800 34px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;fill:#111827}.sub{font:14px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;fill:#4b5563}.box{fill:#fff;stroke:#111827;stroke-width:2;rx:14}.soft{fill:#f3f4f6;stroke:#9ca3af}.state{fill:#ffffff;stroke:#111827;stroke-width:2;rx:12}.danger{fill:#fff1f2;stroke:#991b1b}.backup{fill:#faf5ff;stroke:#6b21a8}.label{font:800 14px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;fill:#111827}.small{font:12px ui-monospace,SFMono-Regular,Menlo,monospace;fill:#374151}.tiny{font:10.5px ui-monospace,SFMono-Regular,Menlo,monospace;fill:#6b7280}.head{font:800 12px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;fill:#111827}.bitOn{fill:#dcfce7;stroke:#166534}.bitOff{fill:#fee2e2;stroke:#991b1b}.bitMaybe{fill:#fef3c7;stroke:#92400e}.bitText{font:800 10px ui-monospace,SFMono-Regular,Menlo,monospace;fill:#111827;text-anchor:middle;dominant-baseline:middle}.arrow{stroke:#111827;stroke-width:2.3;fill:none;marker-end:url(#arrow)}.dash{stroke:#92400e;stroke-width:2.1;fill:none;marker-end:url(#dashArrow);stroke-dasharray:7 5}.line{stroke:#d1d5db;stroke-width:1}.callout{fill:#fffbeb;stroke:#d97706;stroke-width:1.5;rx:12}.code{font:12px ui-monospace,SFMono-Regular,Menlo,monospace;fill:#111827}.mono{font:11px ui-monospace,SFMono-Regular,Menlo,monospace;fill:#111827}
+    </style>
+  </defs>
+
+  <rect class="bg" width="1800" height="1280"/>
+  <text x="40" y="55" class="title">Daytona suspend/resume: actual state bits</text>
+  <text x="40" y="82" class="sub">Deeper view: each lifecycle state is just a bundle of booleans across app metadata, Daytona compute, bridge, Pi run, filesystem, auth, preview URL, and deletion risk.</text>
+
+  <!-- state row -->
+  <rect x="40" y="115" width="1720" height="190" class="box"/>
+  <text x="65" y="145" class="label">Main path</text>
+
+  <g id="s1">
+    <rect x="80" y="175" width="165" height="85" class="state"/>
+    <text x="100" y="202" class="label">1 · New row</text>
+    <text x="100" y="224" class="small">status=launching</text>
+    <text x="100" y="244" class="small">no sandbox yet</text>
+  </g>
+  <g id="s2">
+    <rect x="300" y="175" width="165" height="85" class="state"/>
+    <text x="320" y="202" class="label">2 · Lookup/create</text>
+    <text x="320" y="224" class="small">get(id)</text>
+    <text x="320" y="244" class="small">or list(labels)</text>
+  </g>
+  <g id="s3">
+    <rect x="520" y="175" width="165" height="85" class="state"/>
+    <text x="540" y="202" class="label">3 · Setup</text>
+    <text x="540" y="224" class="small">upload script</text>
+    <text x="540" y="244" class="small">repo + bridge</text>
+  </g>
+  <g id="s4">
+    <rect x="740" y="175" width="165" height="85" class="state"/>
+    <text x="760" y="202" class="label">4 · Ready</text>
+    <text x="760" y="224" class="small">bridge healthy</text>
+    <text x="760" y="244" class="small">auth synced</text>
+  </g>
+  <g id="s5">
+    <rect x="960" y="175" width="165" height="85" class="state"/>
+    <text x="980" y="202" class="label">5 · Running</text>
+    <text x="980" y="224" class="small">Pi run active</text>
+    <text x="980" y="244" class="small">SSE stream</text>
+  </g>
+  <g id="s6">
+    <rect x="1180" y="175" width="165" height="85" class="state"/>
+    <text x="1200" y="202" class="label">6 · Terminal</text>
+    <text x="1200" y="224" class="small">completed/failed</text>
+    <text x="1200" y="244" class="small">new run later</text>
+  </g>
+  <g id="s7">
+    <rect x="1400" y="175" width="165" height="85" class="state"/>
+    <text x="1420" y="202" class="label">7 · Suspended</text>
+    <text x="1420" y="224" class="small">sandbox stopped</text>
+    <text x="1420" y="244" class="small">disk retained</text>
+  </g>
+
+  <path class="arrow" d="M245 217 H300"/>
+  <path class="arrow" d="M465 217 H520"/>
+  <path class="arrow" d="M685 217 H740"/>
+  <path class="arrow" d="M905 217 H960"/>
+  <path class="arrow" d="M1125 217 H1180"/>
+  <path class="arrow" d="M1345 217 H1400"/>
+  <path class="dash" d="M1482 260 C1482 320 822 320 822 260"/>
+  <text x="1115" y="298" class="tiny">resume: start same sandbox → rerun safe setup → ready</text>
+
+  <!-- bit matrix -->
+  <rect x="40" y="335" width="1720" height="500" class="box"/>
+  <text x="65" y="365" class="label">State-bit matrix</text>
+  <text x="65" y="388" class="tiny">Y = true/present · N = false/gone · M = maybe/stale/being built</text>
+
+  <!-- column headings -->
+  <g font-size="12">
+    <text x="390" y="425" class="head">1 New</text>
+    <text x="530" y="425" class="head">2 Lookup/create</text>
+    <text x="700" y="425" class="head">3 Setup</text>
+    <text x="850" y="425" class="head">4 Ready</text>
+    <text x="1000" y="425" class="head">5 Running</text>
+    <text x="1160" y="425" class="head">6 Terminal</text>
+    <text x="1320" y="425" class="head">7 Suspended</text>
+    <text x="1490" y="425" class="head">Deleted</text>
+  </g>
+
+  <!-- helper grid lines -->
+  <g>
+    <line x1="350" y1="440" x2="350" y2="805" class="line"/>
+    <line x1="490" y1="440" x2="490" y2="805" class="line"/>
+    <line x1="650" y1="440" x2="650" y2="805" class="line"/>
+    <line x1="810" y1="440" x2="810" y2="805" class="line"/>
+    <line x1="960" y1="440" x2="960" y2="805" class="line"/>
+    <line x1="1120" y1="440" x2="1120" y2="805" class="line"/>
+    <line x1="1280" y1="440" x2="1280" y2="805" class="line"/>
+    <line x1="1440" y1="440" x2="1440" y2="805" class="line"/>
+  </g>
+
+  <!-- bit function via manual circles -->
+  <!-- rows y: 460,500,540,580,620,660,700,740,780 -->
+  <text x="75" y="464" class="head">App session row exists</text>
+  <text x="75" y="504" class="head">daytonaSandboxId/name known</text>
+  <text x="75" y="544" class="head">Daytona compute running</text>
+  <text x="75" y="584" class="head">Sandbox disk exists</text>
+  <text x="75" y="624" class="head">Bridge process running</text>
+  <text x="75" y="664" class="head">Preview URL/token valid</text>
+  <text x="75" y="704" class="head">Pi agent run active</text>
+  <text x="75" y="744" class="head">Files safe from setup wipe</text>
+  <text x="75" y="784" class="head">Autodelete risk soon</text>
+
+  <!-- row horizontal lines -->
+  <g>
+    <line x1="60" y1="475" x2="1700" y2="475" class="line"/>
+    <line x1="60" y1="515" x2="1700" y2="515" class="line"/>
+    <line x1="60" y1="555" x2="1700" y2="555" class="line"/>
+    <line x1="60" y1="595" x2="1700" y2="595" class="line"/>
+    <line x1="60" y1="635" x2="1700" y2="635" class="line"/>
+    <line x1="60" y1="675" x2="1700" y2="675" class="line"/>
+    <line x1="60" y1="715" x2="1700" y2="715" class="line"/>
+    <line x1="60" y1="755" x2="1700" y2="755" class="line"/>
+    <line x1="60" y1="795" x2="1700" y2="795" class="line"/>
+  </g>
+
+  <!-- circles: centers x 410,570,730,880,1035,1195,1355,1515 -->
+  <!-- row 1 all Y until deleted app row maybe Y -->
+  <g>
+    <circle cx="410" cy="460" r="13" class="bitOn"/><text x="410" y="460" class="bitText">Y</text>
+    <circle cx="570" cy="460" r="13" class="bitOn"/><text x="570" y="460" class="bitText">Y</text>
+    <circle cx="730" cy="460" r="13" class="bitOn"/><text x="730" y="460" class="bitText">Y</text>
+    <circle cx="880" cy="460" r="13" class="bitOn"/><text x="880" y="460" class="bitText">Y</text>
+    <circle cx="1035" cy="460" r="13" class="bitOn"/><text x="1035" y="460" class="bitText">Y</text>
+    <circle cx="1195" cy="460" r="13" class="bitOn"/><text x="1195" y="460" class="bitText">Y</text>
+    <circle cx="1355" cy="460" r="13" class="bitOn"/><text x="1355" y="460" class="bitText">Y</text>
+    <circle cx="1515" cy="460" r="13" class="bitMaybe"/><text x="1515" y="460" class="bitText">M</text>
+
+    <circle cx="410" cy="500" r="13" class="bitOff"/><text x="410" y="500" class="bitText">N</text>
+    <circle cx="570" cy="500" r="13" class="bitMaybe"/><text x="570" y="500" class="bitText">M</text>
+    <circle cx="730" cy="500" r="13" class="bitOn"/><text x="730" y="500" class="bitText">Y</text>
+    <circle cx="880" cy="500" r="13" class="bitOn"/><text x="880" y="500" class="bitText">Y</text>
+    <circle cx="1035" cy="500" r="13" class="bitOn"/><text x="1035" y="500" class="bitText">Y</text>
+    <circle cx="1195" cy="500" r="13" class="bitOn"/><text x="1195" y="500" class="bitText">Y</text>
+    <circle cx="1355" cy="500" r="13" class="bitOn"/><text x="1355" y="500" class="bitText">Y</text>
+    <circle cx="1515" cy="500" r="13" class="bitMaybe"/><text x="1515" y="500" class="bitText">M</text>
+
+    <circle cx="410" cy="540" r="13" class="bitOff"/><text x="410" y="540" class="bitText">N</text>
+    <circle cx="570" cy="540" r="13" class="bitMaybe"/><text x="570" y="540" class="bitText">M</text>
+    <circle cx="730" cy="540" r="13" class="bitOn"/><text x="730" y="540" class="bitText">Y</text>
+    <circle cx="880" cy="540" r="13" class="bitOn"/><text x="880" y="540" class="bitText">Y</text>
+    <circle cx="1035" cy="540" r="13" class="bitOn"/><text x="1035" y="540" class="bitText">Y</text>
+    <circle cx="1195" cy="540" r="13" class="bitOn"/><text x="1195" y="540" class="bitText">Y</text>
+    <circle cx="1355" cy="540" r="13" class="bitOff"/><text x="1355" y="540" class="bitText">N</text>
+    <circle cx="1515" cy="540" r="13" class="bitOff"/><text x="1515" y="540" class="bitText">N</text>
+
+    <circle cx="410" cy="580" r="13" class="bitOff"/><text x="410" y="580" class="bitText">N</text>
+    <circle cx="570" cy="580" r="13" class="bitMaybe"/><text x="570" y="580" class="bitText">M</text>
+    <circle cx="730" cy="580" r="13" class="bitOn"/><text x="730" y="580" class="bitText">Y</text>
+    <circle cx="880" cy="580" r="13" class="bitOn"/><text x="880" y="580" class="bitText">Y</text>
+    <circle cx="1035" cy="580" r="13" class="bitOn"/><text x="1035" y="580" class="bitText">Y</text>
+    <circle cx="1195" cy="580" r="13" class="bitOn"/><text x="1195" y="580" class="bitText">Y</text>
+    <circle cx="1355" cy="580" r="13" class="bitOn"/><text x="1355" y="580" class="bitText">Y</text>
+    <circle cx="1515" cy="580" r="13" class="bitOff"/><text x="1515" y="580" class="bitText">N</text>
+
+    <circle cx="410" cy="620" r="13" class="bitOff"/><text x="410" y="620" class="bitText">N</text>
+    <circle cx="570" cy="620" r="13" class="bitOff"/><text x="570" y="620" class="bitText">N</text>
+    <circle cx="730" cy="620" r="13" class="bitMaybe"/><text x="730" y="620" class="bitText">M</text>
+    <circle cx="880" cy="620" r="13" class="bitOn"/><text x="880" y="620" class="bitText">Y</text>
+    <circle cx="1035" cy="620" r="13" class="bitOn"/><text x="1035" y="620" class="bitText">Y</text>
+    <circle cx="1195" cy="620" r="13" class="bitOn"/><text x="1195" y="620" class="bitText">Y</text>
+    <circle cx="1355" cy="620" r="13" class="bitOff"/><text x="1355" y="620" class="bitText">N</text>
+    <circle cx="1515" cy="620" r="13" class="bitOff"/><text x="1515" y="620" class="bitText">N</text>
+
+    <circle cx="410" cy="660" r="13" class="bitOff"/><text x="410" y="660" class="bitText">N</text>
+    <circle cx="570" cy="660" r="13" class="bitOff"/><text x="570" y="660" class="bitText">N</text>
+    <circle cx="730" cy="660" r="13" class="bitMaybe"/><text x="730" y="660" class="bitText">M</text>
+    <circle cx="880" cy="660" r="13" class="bitOn"/><text x="880" y="660" class="bitText">Y</text>
+    <circle cx="1035" cy="660" r="13" class="bitOn"/><text x="1035" y="660" class="bitText">Y</text>
+    <circle cx="1195" cy="660" r="13" class="bitOn"/><text x="1195" y="660" class="bitText">Y</text>
+    <circle cx="1355" cy="660" r="13" class="bitOff"/><text x="1355" y="660" class="bitText">N</text>
+    <circle cx="1515" cy="660" r="13" class="bitOff"/><text x="1515" y="660" class="bitText">N</text>
+
+    <circle cx="410" cy="700" r="13" class="bitOff"/><text x="410" y="700" class="bitText">N</text>
+    <circle cx="570" cy="700" r="13" class="bitOff"/><text x="570" y="700" class="bitText">N</text>
+    <circle cx="730" cy="700" r="13" class="bitOff"/><text x="730" y="700" class="bitText">N</text>
+    <circle cx="880" cy="700" r="13" class="bitOff"/><text x="880" y="700" class="bitText">N</text>
+    <circle cx="1035" cy="700" r="13" class="bitOn"/><text x="1035" y="700" class="bitText">Y</text>
+    <circle cx="1195" cy="700" r="13" class="bitOff"/><text x="1195" y="700" class="bitText">N</text>
+    <circle cx="1355" cy="700" r="13" class="bitOff"/><text x="1355" y="700" class="bitText">N</text>
+    <circle cx="1515" cy="700" r="13" class="bitOff"/><text x="1515" y="700" class="bitText">N</text>
+
+    <circle cx="410" cy="740" r="13" class="bitMaybe"/><text x="410" y="740" class="bitText">M</text>
+    <circle cx="570" cy="740" r="13" class="bitMaybe"/><text x="570" y="740" class="bitText">M</text>
+    <circle cx="730" cy="740" r="13" class="bitMaybe"/><text x="730" y="740" class="bitText">M</text>
+    <circle cx="880" cy="740" r="13" class="bitOn"/><text x="880" y="740" class="bitText">Y</text>
+    <circle cx="1035" cy="740" r="13" class="bitOn"/><text x="1035" y="740" class="bitText">Y</text>
+    <circle cx="1195" cy="740" r="13" class="bitOn"/><text x="1195" y="740" class="bitText">Y</text>
+    <circle cx="1355" cy="740" r="13" class="bitOn"/><text x="1355" y="740" class="bitText">Y</text>
+    <circle cx="1515" cy="740" r="13" class="bitOff"/><text x="1515" y="740" class="bitText">N</text>
+
+    <circle cx="410" cy="780" r="13" class="bitOff"/><text x="410" y="780" class="bitText">N</text>
+    <circle cx="570" cy="780" r="13" class="bitOff"/><text x="570" y="780" class="bitText">N</text>
+    <circle cx="730" cy="780" r="13" class="bitOff"/><text x="730" y="780" class="bitText">N</text>
+    <circle cx="880" cy="780" r="13" class="bitOff"/><text x="880" y="780" class="bitText">N</text>
+    <circle cx="1035" cy="780" r="13" class="bitOff"/><text x="1035" y="780" class="bitText">N</text>
+    <circle cx="1195" cy="780" r="13" class="bitOff"/><text x="1195" y="780" class="bitText">N</text>
+    <circle cx="1355" cy="780" r="13" class="bitMaybe"/><text x="1355" y="780" class="bitText">M</text>
+    <circle cx="1515" cy="780" r="13" class="bitOff"/><text x="1515" y="780" class="bitText">N</text>
+  </g>
+
+  <!-- procedures -->
+  <rect x="40" y="865" width="835" height="240" class="box"/>
+  <text x="65" y="895" class="label">Suspend procedure</text>
+  <text x="65" y="922" class="mono">1. Load thread row from JSON/D1.</text>
+  <text x="65" y="944" class="mono">2. Reject if runStatus is active: launching | starting | running.</text>
+  <text x="65" y="966" class="mono">3. Find sandbox by daytonaSandboxId/daytonaSandboxName.</text>
+  <text x="65" y="988" class="mono">4. Set autoDeleteInterval long or -1 before stopping.</text>
+  <text x="65" y="1010" class="mono">5. Call sandbox.stop(timeout, force=false).</text>
+  <text x="65" y="1032" class="mono">6. Persist status=\"suspended\", keep sandbox refs, clear live run fields.</text>
+  <text x="65" y="1054" class="mono">7. UI shows Resume, not Continue.</text>
+  <rect x="585" y="900" width="255" height="165" class="callout"/>
+  <text x="605" y="930" class="label">What suspend kills</text>
+  <text x="605" y="954" class="code">bridge process</text>
+  <text x="605" y="976" class="code">shell/node child procs</text>
+  <text x="605" y="998" class="code">preview connection</text>
+  <text x="605" y="1020" class="code">live LLM stream</text>
+  <text x="605" y="1042" class="code">CPU/RAM billing</text>
+
+  <rect x="925" y="865" width="835" height="240" class="box"/>
+  <text x="950" y="895" class="label">Resume procedure</text>
+  <text x="950" y="922" class="mono">1. Load suspended row; require sandbox refs.</text>
+  <text x="950" y="944" class="mono">2. sandbox.start(); waitUntilStarted(); refreshData().</text>
+  <text x="950" y="966" class="mono">3. Upload + run setup script; setup must not wipe /srv/workspace.</text>
+  <text x="950" y="988" class="mono">4. Start bridge service; poll /healthz.</text>
+  <text x="950" y="1010" class="mono">5. getPreviewLink(4310); persist fresh bridgeUrl/previewToken.</text>
+  <text x="950" y="1032" class="mono">6. POST /auth to sync Pi/GitHub profile.</text>
+  <text x="950" y="1054" class="mono">7. Persist status=ready; next prompt creates a new bridgeRunId.</text>
+  <rect x="1455" y="900" width="270" height="165" class="callout"/>
+  <text x="1475" y="930" class="label">What resume cannot do</text>
+  <text x="1475" y="954" class="code">continue old stream</text>
+  <text x="1475" y="976" class="code">restore process memory</text>
+  <text x="1475" y="998" class="code">reopen sockets</text>
+  <text x="1475" y="1020" class="code">undo sandbox deletion</text>
+  <text x="1475" y="1042" class="code">save unpushed Git forever</text>
+
+  <!-- snapshot box -->
+  <rect x="40" y="1135" width="1720" height="100" class="backup" rx="14"/>
+  <text x="65" y="1165" class="label">Snapshot side path</text>
+  <text x="65" y="1192" class="mono">Snapshot = filesystem image of the sandbox at a point in time. It is useful before delete/reset/migration or after expensive installs.</text>
+  <text x="65" y="1216" class="mono">It does not capture active Pi process memory, in-flight LLM calls, open sockets, bridge clients, or an SSE stream. Restore means create a new sandbox from that image.</text>
+</svg>

@@ -43,8 +43,10 @@ test('buildSetupScript clones a repo and auto-runs pi when requested', () => {
   assert.ok(Buffer.byteLength(script, 'utf8') < 15 * 1024);
   assert.match(script, /if \[ "\$\(id -u\)" -ne 0 \]; then exec sudo -E \/bin\/bash "\$0" "\$@"; fi/);
   assert.match(script, /export GIT_TERMINAL_PROMPT=0/);
+  assert.match(script, /if \[ -d '\/srv\/workspace\/\.git' \]; then/);
+  assert.match(script, new RegExp(`git -c 'http.extraHeader=${authHeader.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}' fetch --prune origin 'main' \\|\\| true`));
+  assert.match(script, /ls -A '\/srv\/workspace'/);
   assert.match(script, new RegExp(`git -c 'http.extraHeader=${authHeader.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}' clone --depth=1 --branch 'main' 'https:\\/\\/github.com\\/acme\\/demo\\.git' '\\/srv\\/workspace'`));
-  assert.match(script, new RegExp(`\\|\\| \\{ rm -rf '\\/srv\\/workspace'; git -c 'http.extraHeader=${authHeader.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}' clone --depth=1 'https:\\/\\/github.com\\/acme\\/demo\\.git' '\\/srv\\/workspace'; \\}`));
   assert.match(script, /https:\/\/x-access-token:secret-token@github\.com/);
   assert.match(script, /oauth_token: "secret-token"/);
   assert.match(script, /chown -R 'daytona:daytona' '\/home\/daytona\/\.git-credentials' '\/home\/daytona\/\.config'/);

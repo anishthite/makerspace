@@ -86,6 +86,29 @@ function ensureOk(result, command) {
   return { stdout, stderr, output, exitCode };
 }
 
+async function collectSandboxes(value) {
+  value = await value;
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  const sandboxes = [];
+  if (typeof value[Symbol.asyncIterator] === 'function') {
+    for await (const sandbox of value) sandboxes.push(sandbox);
+    return sandboxes;
+  }
+  if (typeof value[Symbol.iterator] === 'function') return [...value];
+  return [];
+}
+
+function safeSnapshotName(sessionOrName) {
+  const raw = typeof sessionOrName === 'string' ? sessionOrName : sessionOrName?.name;
+  const slug = String(raw || 'sandbox')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 48) || 'sandbox';
+  return `spanner-${slug}-${randomUUID().slice(0, 8)}`;
+}
+
 async function loadDaytonaClass() {
   const sdk = await import('@daytona/sdk');
   return sdk.Daytona;
@@ -134,8 +157,7 @@ export function createDaytonaProvider(config, options = {}) {
   async function listSandboxesForSession(name) {
     const client = await getClient();
     const labels = { [APP_LABEL_KEY]: APP_LABEL_VALUE, [SESSION_LABEL_KEY]: name };
-    const list = await client.list({ labels });
-    return Array.isArray(list) ? list : [];
+    return collectSandboxes(client.list({ labels }));
   }
 
   async function getSandboxBySession(sessionOrName) {
@@ -225,6 +247,36 @@ export function createDaytonaProvider(config, options = {}) {
       httpsUrl: preview?.url || null,
       previewToken: preview?.token || null,
     };
+  }
+
+  async function setSuspendAutodelete(sandbox) {
+    const interval = Number(config.daytonaSuspendAutodeleteMinutes ?? -1);
+    if (Number.isFinite(interval) && interval >= -1) {
+      await sandbox.setAutoDeleteInterval?.(interval);
+    }
+  }
+
+  async function scrubSandboxForSnapshot(sandbox) {
+    const remoteUser = config.remoteUser || 'daytona';
+    const remoteHomeDir = config.remoteHomeDir || `/home/${remoteUser}`;
+    const controlDir = config.remoteControlDir || '/srv/spanner';
+    const script = [
+      'set -euo pipefail',
+      `rm -f ${shellQuote(`${controlDir}/bridge-env.sh`)} ${shellQuote(`${controlDir}/TASK.md`)}`,
+      `rm -f ${shellQuote(`${remoteHomeDir}/.git-credentials`)} ${shellQuote(`${remoteHomeDir}/.config/gh/hosts.yml`)}`,
+      `rm -f ${shellQuote(`${remoteHomeDir}/.pi/agent/auth.json`)} ${shellQuote(`${remoteHomeDir}/.pi/agent/settings.json`)}`,
+    ].join('\n');
+    await executeScriptInSandbox(sandbox, script, { timeoutMs: 30_000 });
+  }
+
+  async function snapshotSandboxBeforeDelete(sandbox, sessionOrName, options = {}) {
+    const snapshotName = options.snapshotName || safeSnapshotName(sessionOrName);
+    if (typeof sandbox._experimental_createSnapshot !== 'function') {
+      throw new Error('Installed Daytona SDK does not expose sandbox snapshot creation.');
+    }
+    await scrubSandboxForSnapshot(sandbox);
+    await sandbox._experimental_createSnapshot(snapshotName, Math.max(1, Math.ceil((options.timeoutMs || 10 * 60_000) / 1000)));
+    return snapshotName;
   }
 
   async function createSandbox(session, imageSettings = {}) {
@@ -375,8 +427,7 @@ export function createDaytonaProvider(config, options = {}) {
     },
     async listSessions() {
       const client = await getClient();
-      const response = await client.list({ labels: { [APP_LABEL_KEY]: APP_LABEL_VALUE } });
-      const sandboxes = Array.isArray(response) ? response : [];
+      const sandboxes = await collectSandboxes(client.list({ labels: { [APP_LABEL_KEY]: APP_LABEL_VALUE } }));
       return sandboxes.map((sandbox) => normalizeSandbox(sandbox, sandbox.name || sandbox.id, {
         remoteControlDir: config.remoteControlDir,
       }));
@@ -437,6 +488,42 @@ export function createDaytonaProvider(config, options = {}) {
         ...preview,
         remoteControlDir: config.remoteControlDir,
       });
+    },
+    async suspendSession(session) {
+      const sandbox = await getSandboxBySession(session);
+      await setSuspendAutodelete(sandbox);
+      if (sandbox.stop) {
+        await sandbox.stop(60, false);
+      } else {
+        const client = await getClient();
+        await client.stop?.(sandbox);
+      }
+      if (sandbox.refreshData) await sandbox.refreshData().catch(() => {});
+      return normalizeSandbox(sandbox, typeof session === 'string' ? session : session?.name, {
+        remoteControlDir: config.remoteControlDir,
+      });
+    },
+    async resumeSession(session, imageSettings = {}) {
+      return this.createSession(session, imageSettings);
+    },
+    async deleteSessionWithSnapshot(session, options = {}) {
+      const sandbox = await ensureStarted(await getSandboxBySession(session));
+      const snapshotName = await snapshotSandboxBeforeDelete(sandbox, session, options);
+      if (sandbox.delete) {
+        await sandbox.delete(60);
+      } else {
+        const client = await getClient();
+        await client.delete(sandbox, 60);
+      }
+      const name = typeof session === 'string' ? session : session?.name;
+      sandboxCache.delete(name);
+      if (sandbox.id) sandboxCache.delete(sandbox.id);
+      return {
+        snapshotName,
+        snapshotCreatedAt: new Date().toISOString(),
+        daytonaSandboxId: sandbox.id || null,
+        daytonaSandboxName: sandbox.name || name || null,
+      };
     },
     async destroySession(name) {
       const sandbox = await getSandboxBySession(name);

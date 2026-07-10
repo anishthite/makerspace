@@ -9,7 +9,7 @@ import { analyzePiTraceText, summarizeThreadPerformanceList } from '../performan
 import { normalizeImageAttachments, normalizeModelOptions, normalizeThreadRequest } from '../session.js';
 import { readSavedSettings } from '../settings.js';
 import { archiveStoredSession, getStoredSession, listStoredSessions, unarchiveStoredSession, upsertSession } from '../store.js';
-import { normalizeSubmittedAtMs } from './utils.js';
+import { normalizeSubmittedAtMs, trimTrailingSlash } from './utils.js';
 
 export function createThreadService({ config, provider, http, auth, runState, bridge }) {
   const { clientError } = http;
@@ -38,7 +38,7 @@ export function createThreadService({ config, provider, http, auth, runState, br
     persistHostDispatchMetric,
     persistHostDispatchStatus,
   } = runState;
-  const { startThreadBridgeLaunch, refreshBridgeSessionIfNeeded, startBridgeRun, fetchBridgeJson } = bridge;
+  const { startThreadBridgeLaunch, refreshBridgeSessionIfNeeded, startBridgeRun, fetchBridgeJson, waitForBridge, syncBridgeAuth } = bridge;
   const MAX_EXCALIDRAW_BYTES = 8 * 1024 * 1024;
   const MAX_IMAGE_ARTIFACT_BYTES = 16 * 1024 * 1024;
   const IMAGE_ARTIFACT_TYPES = new Map([
@@ -559,6 +559,136 @@ export function createThreadService({ config, provider, http, auth, runState, br
     return markThreadStopped(existing);
   }
 
+  function assertRemoteLifecycleAllowed(session, action) {
+    if (session.localMode) throw clientError(`Local main agents do not support ${action}.`, 400);
+    const status = activeControlStatus(session);
+    if (isActiveRunStatus(status)) throw clientError(`Only idle main agents can be ${action}.`, 409);
+    return status;
+  }
+
+  async function suspendThreadSession(name, viewerSessionId = '', trusted = false, user = null) {
+    const existing = await getThreadSession(name);
+    if (!canAccessSession(existing, viewerSessionId, trusted, user)) {
+      throw clientError(`Main agent ${name} belongs to a different user.`, 403);
+    }
+    if (!provider.suspendSession) throw clientError('Current provider does not support suspend.', 501);
+    const status = assertRemoteLifecycleAllowed(existing, 'suspended');
+    if (['suspended', 'deleted'].includes(status)) throw clientError(`Main agent is already ${status}.`, 409);
+
+    appendRunOutput(name, '[system] Suspending the Daytona sandbox. Files stay on the sandbox disk.\n', 'suspended');
+    const remote = await provider.suspendSession(existing);
+    const now = new Date().toISOString();
+    const suspended = await upsertSession(config.sessionFile, {
+      ...existing,
+      ...remote,
+      status: 'suspended',
+      runStatus: 'suspended',
+      warning: null,
+      suspendedAt: now,
+      updatedAt: now,
+    });
+    setRunState(name, { runStatus: 'suspended', warning: null });
+    appendRunStatus(name, 'suspended', { done: true });
+    return suspended;
+  }
+
+  async function resumeThreadSession(name, viewerSessionId = '', trusted = false, user = null) {
+    const existing = await getThreadSession(name);
+    if (!canAccessSession(existing, viewerSessionId, trusted, user)) {
+      throw clientError(`Main agent ${name} belongs to a different user.`, 403);
+    }
+    if (!provider.resumeSession) throw clientError('Current provider does not support resume.', 501);
+    const status = assertRemoteLifecycleAllowed(existing, 'resumed');
+    if (status !== 'suspended') throw clientError('Only suspended main agents can be resumed.', 409);
+
+    resetRunState(name, 'launching');
+    appendRunOutput(name, '[system] Resuming the Daytona sandbox.\n', 'launching');
+    const imageSettings = await readSavedSettings(config.settingsFile);
+    const remote = await provider.resumeSession(existing, imageSettings);
+    const bridgeUrl = trimTrailingSlash(remote.bridgeUrl || remote.httpsUrl || existing.bridgeUrl || '');
+    const launching = await upsertSession(config.sessionFile, {
+      ...existing,
+      ...remote,
+      bridgeUrl,
+      status: 'launching',
+      runStatus: 'launching',
+      warning: null,
+      updatedAt: new Date().toISOString(),
+    });
+
+    await waitForBridge(launching);
+    await syncBridgeAuth(launching);
+    const ready = await upsertSession(config.sessionFile, {
+      ...launching,
+      status: 'ready',
+      runStatus: 'ready',
+      resumedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    setRunState(name, { runStatus: 'ready', warning: null });
+    appendRunOutput(name, '[system] Sandbox resumed. Send a prompt to start a new run.\n', 'ready');
+    return ready;
+  }
+
+  async function deleteThreadSession(name, viewerSessionId = '', trusted = false, user = null) {
+    const existing = await getThreadSession(name);
+    if (!canAccessSession(existing, viewerSessionId, trusted, user)) {
+      throw clientError(`Main agent ${name} belongs to a different user.`, 403);
+    }
+    if (!provider.deleteSessionWithSnapshot) throw clientError('Current provider does not support snapshot-before-delete.', 501);
+    const status = assertRemoteLifecycleAllowed(existing, 'deleted');
+    if (status === 'deleted') throw clientError('Main agent is already deleted.', 409);
+
+    const previous = { status: existing.status, runStatus: existing.runStatus };
+    resetRunState(name, 'snapshotting');
+    appendRunOutput(name, '[system] Creating a sanitized Daytona snapshot before deleting the sandbox.\n', 'snapshotting');
+    await upsertSession(config.sessionFile, {
+      ...existing,
+      status: 'snapshotting',
+      runStatus: 'snapshotting',
+      warning: null,
+      updatedAt: new Date().toISOString(),
+    });
+
+    try {
+      const snapshot = await provider.deleteSessionWithSnapshot(existing);
+      const now = new Date().toISOString();
+      const deleted = await upsertSession(config.sessionFile, {
+        ...existing,
+        snapshotName: snapshot.snapshotName,
+        snapshotCreatedAt: snapshot.snapshotCreatedAt,
+        deletedDaytonaSandboxId: snapshot.daytonaSandboxId || existing.daytonaSandboxId || null,
+        deletedDaytonaSandboxName: snapshot.daytonaSandboxName || existing.daytonaSandboxName || null,
+        daytonaSandboxId: null,
+        daytonaSandboxName: null,
+        daytonaState: 'deleted',
+        bridgeUrl: '',
+        httpsUrl: '',
+        previewToken: null,
+        status: 'deleted',
+        runStatus: 'deleted',
+        deletedAt: now,
+        updatedAt: now,
+      });
+      setRunState(name, { runStatus: 'deleted', warning: null });
+      appendRunOutput(name, `[system] Snapshot saved: ${snapshot.snapshotName}. Sandbox deleted.\n`, 'deleted');
+      appendRunStatus(name, 'deleted', { done: true });
+      return { thread: deleted, snapshot };
+    } catch (error) {
+      const current = (await getStoredSession(config.sessionFile, name)) || existing;
+      await upsertSession(config.sessionFile, {
+        ...current,
+        status: previous.status,
+        runStatus: previous.runStatus,
+        warning: error.message,
+        updatedAt: new Date().toISOString(),
+      });
+      setRunState(name, { runStatus: previous.runStatus || previous.status || 'ready', warning: error.message });
+      appendRunOutput(name, `[system] Snapshot failed; sandbox was not deleted: ${error.message}\n`, previous.runStatus || previous.status || 'ready');
+      throw error;
+    }
+  }
+
   function normalizeMessageDelivery(value) {
     return value === 'followUp' ? 'followUp' : 'steer';
   }
@@ -787,6 +917,9 @@ export function createThreadService({ config, provider, http, auth, runState, br
     archiveThreadSession,
     unarchiveThreadSession,
     stopThreadSession,
+    suspendThreadSession,
+    resumeThreadSession,
+    deleteThreadSession,
     createThreadSession,
     promptThreadSession,
     resolveLocalRepoPath,

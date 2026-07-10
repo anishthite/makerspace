@@ -42,6 +42,9 @@ const title = document.querySelector('#thread-title');
 const meta = document.querySelector('#thread-meta');
 const statusNode = document.querySelector('#thread-status');
 const stopButton = document.querySelector('#stop-thread');
+const suspendButton = document.querySelector('#suspend-thread');
+const resumeButton = document.querySelector('#resume-thread');
+const deleteButton = document.querySelector('#delete-thread');
 const archiveButton = document.querySelector('#archive-thread');
 const timeline = document.querySelector('#timeline');
 const traceTimeline = document.querySelector('#trace-timeline');
@@ -605,6 +608,24 @@ function canStopThread(thread) {
   return isActiveStatus(effectiveStatus(thread));
 }
 
+function isRemoteLifecycleThread(thread) {
+  return Boolean(thread && !thread.localMode && String(thread.provider || '').toLowerCase() !== 'local');
+}
+
+function canSuspendThread(thread) {
+  const status = String(effectiveStatus(thread) || '').toLowerCase();
+  return isRemoteLifecycleThread(thread) && !isActiveStatus(status) && !['suspended', 'deleted', 'snapshotting'].includes(status);
+}
+
+function canResumeThread(thread) {
+  return isRemoteLifecycleThread(thread) && String(effectiveStatus(thread) || '').toLowerCase() === 'suspended';
+}
+
+function canDeleteThread(thread) {
+  const status = String(effectiveStatus(thread) || '').toLowerCase();
+  return isRemoteLifecycleThread(thread) && !isActiveStatus(status) && !['deleted', 'snapshotting'].includes(status);
+}
+
 function isRunningThread(thread = currentThread) {
   return String(effectiveStatus(thread) || '').toLowerCase() === 'running';
 }
@@ -623,16 +644,24 @@ function queueCountCopy() {
 function renderComposerState(thread = currentThread) {
   const running = isRunningThread(thread);
   const starting = isStartingThread(thread);
+  const status = String(effectiveStatus(thread) || '').toLowerCase();
+  const blocked = ['suspended', 'deleted', 'snapshotting'].includes(status);
   if (composerHint) {
-    composerHint.textContent = running
-      ? `Enter steers the running agent · Alt+Enter queues a follow-up${queueCountCopy()}`
-      : starting
-        ? 'Agent is starting · steering unlocks once it is live'
-        : 'Enter sends · Shift+Enter adds a line';
+    composerHint.textContent = status === 'suspended'
+      ? 'Sandbox is suspended · resume before sending a prompt'
+      : status === 'deleted'
+        ? 'Sandbox was deleted after snapshot backup'
+        : status === 'snapshotting'
+          ? 'Snapshotting before delete…'
+          : running
+            ? `Enter steers the running agent · Alt+Enter queues a follow-up${queueCountCopy()}`
+            : starting
+              ? 'Agent is starting · steering unlocks once it is live'
+              : 'Enter sends · Shift+Enter adds a line';
   }
-  if (promptInput) promptInput.placeholder = running ? 'Steer the running agent…' : 'Next task…';
+  if (promptInput) promptInput.placeholder = blocked ? 'Lifecycle action required…' : running ? 'Steer the running agent…' : 'Next task…';
   if (sendButton) {
-    sendButton.disabled = submitInFlight || starting;
+    sendButton.disabled = submitInFlight || starting || blocked;
     sendButton.textContent = running ? 'steer' : 'send';
   }
 }
@@ -720,6 +749,24 @@ function renderStopButton(thread = currentThread) {
   stopButton.textContent = 'stop';
 }
 
+function renderLifecycleButtons(thread = currentThread) {
+  if (suspendButton) {
+    suspendButton.hidden = !canSuspendThread(thread);
+    suspendButton.disabled = false;
+    suspendButton.textContent = 'suspend';
+  }
+  if (resumeButton) {
+    resumeButton.hidden = !canResumeThread(thread);
+    resumeButton.disabled = false;
+    resumeButton.textContent = 'resume';
+  }
+  if (deleteButton) {
+    deleteButton.hidden = !canDeleteThread(thread);
+    deleteButton.disabled = false;
+    deleteButton.textContent = 'delete';
+  }
+}
+
 function threadDisplayTitle(thread = currentThread) {
   return thread?.title || thread?.name || name || 'main agent';
 }
@@ -760,6 +807,7 @@ function renderThread(thread) {
   else if (!thinkingDetail.textContent) thinkingDetail.textContent = graphStatus;
   setStatus(graphStatus, statusTone(rawStatus), isActiveStatus(rawStatus));
   renderStopButton(thread);
+  renderLifecycleButtons(thread);
   renderArchiveButton(thread);
   renderAgentGraph();
   renderSuggestedNextSteps(thread);
@@ -1992,6 +2040,7 @@ function streamRun() {
       currentThread = { ...currentThread, status: doneStatus, runStatus: doneStatus };
       setStatus(doneStatus === 'completed' ? 'done' : 'failed', statusTone(doneStatus));
       renderStopButton(currentThread);
+      renderLifecycleButtons(currentThread);
       renderArchiveButton(currentThread);
       scheduleDiffRefresh(0);
       submitInFlight = false;
@@ -2043,6 +2092,32 @@ stopButton?.addEventListener('click', async () => {
     stopButton.textContent = 'stop';
     setStatus(error.message, 'error');
   }
+});
+
+async function postLifecycleAction(button, route, busyCopy, statusCopy) {
+  button.disabled = true;
+  button.textContent = busyCopy;
+  setStatus(statusCopy, 'warning', true);
+  try {
+    const payload = await fetchJson(`/api/threads/${encodeURIComponent(name)}/${route}`, { method: 'POST' });
+    if (payload.thread) renderThread(payload.thread);
+  } catch (error) {
+    renderLifecycleButtons();
+    setStatus(error.message, 'error');
+  }
+}
+
+suspendButton?.addEventListener('click', () => {
+  void postLifecycleAction(suspendButton, 'suspend', 'suspending…', 'suspending');
+});
+
+resumeButton?.addEventListener('click', () => {
+  void postLifecycleAction(resumeButton, 'resume', 'resuming…', 'resuming');
+});
+
+deleteButton?.addEventListener('click', () => {
+  if (!confirm('Create a snapshot, then delete this sandbox?')) return;
+  void postLifecycleAction(deleteButton, 'delete', 'snapshotting…', 'snapshotting');
 });
 
 archiveButton?.addEventListener('click', async () => {

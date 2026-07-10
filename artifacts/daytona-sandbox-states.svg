@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="880" viewBox="0 0 1320 880" role="img" aria-labelledby="title desc">
+  <title id="title">Daytona sandbox state machine for Spanner</title>
+  <desc id="desc">State diagram for Spanner's Daytona sandbox lifecycle: create, ready, running, stop run, suspend, resume, autostop, autodelete, delete, and snapshot backup.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#334155" />
+    </marker>
+    <marker id="warnArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#b45309" />
+    </marker>
+    <marker id="badArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#b91c1c" />
+    </marker>
+    <style>
+      .bg{fill:#f8fafc}.state{fill:#fff;stroke:#334155;stroke-width:2;rx:18}.app{fill:#e0f2fe;stroke:#0369a1}.compute{fill:#dcfce7;stroke:#15803d}.run{fill:#dbeafe;stroke:#1d4ed8}.stopped{fill:#fef3c7;stroke:#b45309}.dead{fill:#fee2e2;stroke:#b91c1c}.backup{fill:#ede9fe;stroke:#7c3aed}.title{font:700 30px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;fill:#0f172a}.label{font:700 16px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;fill:#0f172a}.body{font:13px ui-monospace,SFMono-Regular,Menlo,monospace;fill:#334155}.small{font:12px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;fill:#64748b}.arrow{stroke:#334155;stroke-width:2.4;fill:none;marker-end:url(#arrow)}.warnArrow{stroke:#b45309;stroke-width:2.4;fill:none;marker-end:url(#warnArrow);stroke-dasharray:7 5}.badArrow{stroke:#b91c1c;stroke-width:2.4;fill:none;marker-end:url(#badArrow)}.note{fill:#fff7ed;stroke:#fdba74;stroke-width:1.5;rx:12}.legend{font:12px ui-monospace,SFMono-Regular,Menlo,monospace;fill:#334155}
+    </style>
+  </defs>
+
+  <rect class="bg" width="1320" height="880" />
+  <text x="42" y="52" class="title">Spanner + Daytona sandbox states</text>
+  <text x="42" y="78" class="small">Suspend stops compute and keeps disk. Stop run aborts the Pi run only. Snapshot is backup/clone, not normal pause.</text>
+
+  <rect x="60" y="135" width="210" height="120" class="state app" />
+  <text x="82" y="166" class="label">No sandbox</text>
+  <text x="82" y="195" class="body">metadata only</text>
+  <text x="82" y="216" class="body">no Daytona disk</text>
+  <text x="82" y="237" class="body">new thread/chat</text>
+
+  <rect x="340" y="135" width="250" height="120" class="state compute" />
+  <text x="362" y="166" class="label">Creating / provisioning</text>
+  <text x="362" y="195" class="body">client.create() or get()</text>
+  <text x="362" y="216" class="body">upload setup script</text>
+  <text x="362" y="237" class="body">start bridge</text>
+
+  <rect x="675" y="135" width="250" height="120" class="state compute" />
+  <text x="697" y="166" class="label">Ready</text>
+  <text x="697" y="195" class="body">sandbox started</text>
+  <text x="697" y="216" class="body">disk present</text>
+  <text x="697" y="237" class="body">bridge healthy</text>
+
+  <rect x="1010" y="135" width="250" height="120" class="state run" />
+  <text x="1032" y="166" class="label">Running Pi run</text>
+  <text x="1032" y="195" class="body">POST /runs</text>
+  <text x="1032" y="216" class="body">LLM/tools active</text>
+  <text x="1032" y="237" class="body">SSE streaming</text>
+
+  <rect x="675" y="350" width="250" height="120" class="state app" />
+  <text x="697" y="381" class="label">Completed / failed</text>
+  <text x="697" y="410" class="body">run ended</text>
+  <text x="697" y="431" class="body">thread history saved</text>
+  <text x="697" y="452" class="body">sandbox still started</text>
+
+  <rect x="345" y="350" width="250" height="120" class="state stopped" />
+  <text x="367" y="381" class="label">Suspended</text>
+  <text x="367" y="410" class="body">sandbox.stop()</text>
+  <text x="367" y="431" class="body">CPU/RAM stopped</text>
+  <text x="367" y="452" class="body">disk + id kept</text>
+
+  <rect x="345" y="575" width="250" height="120" class="state compute" />
+  <text x="367" y="606" class="label">Resuming</text>
+  <text x="367" y="635" class="body">sandbox.start()</text>
+  <text x="367" y="656" class="body">safe setup reruns</text>
+  <text x="367" y="677" class="body">fresh preview token</text>
+
+  <rect x="675" y="575" width="250" height="120" class="state stopped" />
+  <text x="697" y="606" class="label">Autostopped</text>
+  <text x="697" y="635" class="body">Daytona idle policy</text>
+  <text x="697" y="656" class="body">compute stopped</text>
+  <text x="697" y="677" class="body">disk still present</text>
+
+  <rect x="1010" y="575" width="250" height="120" class="state dead" />
+  <text x="1032" y="606" class="label">Deleted / lost</text>
+  <text x="1032" y="635" class="body">sandbox.delete()</text>
+  <text x="1032" y="656" class="body">or autodelete</text>
+  <text x="1032" y="677" class="body">disk gone</text>
+
+  <rect x="60" y="575" width="210" height="120" class="state backup" />
+  <text x="82" y="606" class="label">Snapshot</text>
+  <text x="82" y="635" class="body">filesystem image</text>
+  <text x="82" y="656" class="body">backup/clone only</text>
+  <text x="82" y="677" class="body">not live pause</text>
+
+  <path class="arrow" d="M270 195 H340" />
+  <text x="284" y="183" class="small">create thread</text>
+
+  <path class="arrow" d="M590 195 H675" />
+  <text x="608" y="183" class="small">setup ok</text>
+
+  <path class="arrow" d="M925 195 H1010" />
+  <text x="943" y="183" class="small">prompt</text>
+
+  <path class="arrow" d="M1135 255 V320 C1135 342 1112 350 1088 350 H925" />
+  <text x="1072" y="318" class="small">finish</text>
+
+  <path class="badArrow" d="M1010 410 H925" />
+  <text x="932" y="398" class="small">stop run = abort Pi only</text>
+
+  <path class="arrow" d="M800 350 V255" />
+  <text x="813" y="312" class="small">next prompt</text>
+
+  <path class="arrow" d="M675 410 H595" />
+  <text x="604" y="398" class="small">manual suspend</text>
+
+  <path class="arrow" d="M470 470 V575" />
+  <text x="482" y="530" class="small">resume</text>
+
+  <path class="arrow" d="M595 635 H675" />
+  <text x="608" y="623" class="small">bridge healthy</text>
+
+  <path class="arrow" d="M800 575 V470" />
+  <text x="813" y="532" class="small">wake on prompt</text>
+
+  <path class="warnArrow" d="M800 255 V575" />
+  <text x="812" y="505" class="small">idle autostop</text>
+
+  <path class="badArrow" d="M925 635 H1010" />
+  <text x="936" y="623" class="small">autodelete/delete</text>
+
+  <path class="warnArrow" d="M345 635 H270" />
+  <text x="276" y="623" class="small">optional backup</text>
+
+  <path class="badArrow" d="M270 635 H345" />
+  <text x="279" y="676" class="small">restore = create new sandbox</text>
+
+  <rect x="60" y="745" width="1200" height="86" class="note" />
+  <text x="82" y="775" class="label">Files/state in each bucket</text>
+  <text x="82" y="804" class="legend">/srv/workspace = repo/worktrees/user changes  •  /home/daytona/.spanner/control = Spanner bridge/log/control files  •  /home/daytona/.pi/agent = Pi auth/settings/profile</text>
+</svg>

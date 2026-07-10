@@ -1,0 +1,229 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1120" viewBox="0 0 1600 1120" role="img" aria-labelledby="title desc">
+  <title id="title">Deep Spanner Daytona lifecycle</title>
+  <desc id="desc">Detailed swimlane state diagram showing app metadata, Daytona sandbox compute, remote bridge, Pi run, and filesystem state across create, run, stop, suspend, resume, autostop, delete, and snapshot.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#334155"/></marker>
+    <marker id="badArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#b91c1c"/></marker>
+    <marker id="warnArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#b45309"/></marker>
+    <style>
+      .bg{fill:#f8fafc}.lane{fill:#ffffff;stroke:#cbd5e1;stroke-width:1.5;rx:16}.laneLabel{font:700 15px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;fill:#0f172a}.title{font:700 31px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;fill:#0f172a}.subtitle{font:13px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;fill:#64748b}.box{stroke-width:2;rx:12}.app{fill:#e0f2fe;stroke:#0369a1}.daytona{fill:#dcfce7;stroke:#15803d}.bridge{fill:#ede9fe;stroke:#7c3aed}.run{fill:#dbeafe;stroke:#1d4ed8}.files{fill:#fef9c3;stroke:#a16207}.dead{fill:#fee2e2;stroke:#b91c1c}.snap{fill:#fce7f3;stroke:#be185d}.label{font:700 13px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;fill:#0f172a}.text{font:11.5px ui-monospace,SFMono-Regular,Menlo,monospace;fill:#334155}.tiny{font:10.5px ui-monospace,SFMono-Regular,Menlo,monospace;fill:#64748b}.arrow{stroke:#334155;stroke-width:2;fill:none;marker-end:url(#arrow)}.bad{stroke:#b91c1c;stroke-width:2;fill:none;marker-end:url(#badArrow)}.warn{stroke:#b45309;stroke-width:2;fill:none;marker-end:url(#warnArrow);stroke-dasharray:7 5}.callout{fill:#fff7ed;stroke:#fdba74;stroke-width:1.5;rx:12}.thin{stroke-width:1.5}.dash{stroke-dasharray:6 5}.code{font:11.5px ui-monospace,SFMono-Regular,Menlo,monospace;fill:#0f172a}
+    </style>
+  </defs>
+  <rect class="bg" width="1600" height="1120"/>
+  <text x="40" y="48" class="title">One level deeper: what changes state during Daytona suspend/resume</text>
+  <text x="40" y="76" class="subtitle">Read left to right. Lanes show separate state machines that move together but are not the same thing.</text>
+
+  <!-- column guides -->
+  <text x="210" y="112" class="tiny">new thread</text>
+  <text x="420" y="112" class="tiny">provider.createSession()</text>
+  <text x="660" y="112" class="tiny">bridge ready</text>
+  <text x="890" y="112" class="tiny">agent run</text>
+  <text x="1115" y="112" class="tiny">idle/terminal</text>
+  <text x="1325" y="112" class="tiny">suspend/resume/delete</text>
+
+  <!-- lanes -->
+  <rect x="40" y="130" width="1520" height="130" class="lane"/>
+  <text x="60" y="158" class="laneLabel">Spanner app metadata</text>
+  <rect x="40" y="285" width="1520" height="145" class="lane"/>
+  <text x="60" y="313" class="laneLabel">Daytona sandbox</text>
+  <rect x="40" y="455" width="1520" height="145" class="lane"/>
+  <text x="60" y="483" class="laneLabel">Remote bridge</text>
+  <rect x="40" y="625" width="1520" height="145" class="lane"/>
+  <text x="60" y="653" class="laneLabel">Pi agent run</text>
+  <rect x="40" y="795" width="1520" height="175" class="lane"/>
+  <text x="60" y="823" class="laneLabel">Filesystem / persistence</text>
+
+  <!-- app metadata boxes -->
+  <rect x="180" y="170" width="180" height="58" class="box app"/>
+  <text x="198" y="194" class="label">stored row created</text>
+  <text x="198" y="215" class="text">status=launching</text>
+
+  <rect x="420" y="170" width="180" height="58" class="box app"/>
+  <text x="438" y="194" class="label">remote refs saved</text>
+  <text x="438" y="215" class="text">sandboxId/name</text>
+
+  <rect x="660" y="170" width="180" height="58" class="box app"/>
+  <text x="678" y="194" class="label">ready</text>
+  <text x="678" y="215" class="text">bridgeUrl/token</text>
+
+  <rect x="900" y="170" width="180" height="58" class="box app"/>
+  <text x="918" y="194" class="label">running</text>
+  <text x="918" y="215" class="text">bridgeRunId</text>
+
+  <rect x="1140" y="170" width="180" height="58" class="box app"/>
+  <text x="1158" y="194" class="label">terminal/ready</text>
+  <text x="1158" y="215" class="text">messages saved</text>
+
+  <rect x="1380" y="170" width="150" height="58" class="box app"/>
+  <text x="1398" y="194" class="label">suspended</text>
+  <text x="1398" y="215" class="text">refs retained</text>
+
+  <!-- daytona boxes -->
+  <rect x="180" y="335" width="180" height="68" class="box daytona"/>
+  <text x="198" y="360" class="label">none / lookup</text>
+  <text x="198" y="381" class="text">get(id) or list(labels)</text>
+  <text x="198" y="398" class="tiny">list bug blocks reuse</text>
+
+  <rect x="420" y="335" width="180" height="68" class="box daytona"/>
+  <text x="438" y="360" class="label">creating</text>
+  <text x="438" y="381" class="text">client.create(params)</text>
+  <text x="438" y="398" class="text">autostop/delete set</text>
+
+  <rect x="660" y="335" width="180" height="68" class="box daytona"/>
+  <text x="678" y="360" class="label">started</text>
+  <text x="678" y="381" class="text">waitUntilStarted()</text>
+  <text x="678" y="398" class="text">CPU/RAM billing</text>
+
+  <rect x="1140" y="335" width="180" height="68" class="box daytona"/>
+  <text x="1158" y="360" class="label">started idle</text>
+  <text x="1158" y="381" class="text">disk mounted</text>
+  <text x="1158" y="398" class="text">bridge may run</text>
+
+  <rect x="1380" y="335" width="150" height="68" class="box daytona"/>
+  <text x="1398" y="360" class="label">stopped</text>
+  <text x="1398" y="381" class="text">sandbox.stop()</text>
+  <text x="1398" y="398" class="text">disk kept</text>
+
+  <rect x="1380" y="250" width="150" height="50" class="box dead"/>
+  <text x="1398" y="273" class="label">deleted</text>
+  <text x="1398" y="292" class="text">disk gone</text>
+
+  <!-- bridge boxes -->
+  <rect x="420" y="505" width="180" height="68" class="box bridge"/>
+  <text x="438" y="530" class="label">setup script</text>
+  <text x="438" y="551" class="text">upload + run</text>
+  <text x="438" y="568" class="text">write bridge files</text>
+
+  <rect x="660" y="505" width="180" height="68" class="box bridge"/>
+  <text x="678" y="530" class="label">bridge booting</text>
+  <text x="678" y="551" class="text">systemd/nohup</text>
+  <text x="678" y="568" class="text">healthz poll</text>
+
+  <rect x="900" y="505" width="180" height="68" class="box bridge"/>
+  <text x="918" y="530" class="label">bridge ready</text>
+  <text x="918" y="551" class="text">POST /auth</text>
+  <text x="918" y="568" class="text">preview token</text>
+
+  <rect x="1140" y="505" width="180" height="68" class="box bridge"/>
+  <text x="1158" y="530" class="label">idle bridge</text>
+  <text x="1158" y="551" class="text">can accept /runs</text>
+  <text x="1158" y="568" class="text">until stop/autostop</text>
+
+  <rect x="1380" y="505" width="150" height="68" class="box bridge"/>
+  <text x="1398" y="530" class="label">not running</text>
+  <text x="1398" y="551" class="text">process gone</text>
+  <text x="1398" y="568" class="text">preview stale</text>
+
+  <!-- run boxes -->
+  <rect x="660" y="675" width="180" height="68" class="box run"/>
+  <text x="678" y="700" class="label">no active run</text>
+  <text x="678" y="721" class="text">safe to suspend</text>
+  <text x="678" y="738" class="text">ready state</text>
+
+  <rect x="900" y="675" width="180" height="68" class="box run"/>
+  <text x="918" y="700" class="label">active run</text>
+  <text x="918" y="721" class="text">LLM/tools/stream</text>
+  <text x="918" y="738" class="text">not suspendable</text>
+
+  <rect x="1140" y="675" width="180" height="68" class="box run"/>
+  <text x="1158" y="700" class="label">done/stopped</text>
+  <text x="1158" y="721" class="text">history persisted</text>
+  <text x="1158" y="738" class="text">new prompt=new run</text>
+
+  <rect x="1380" y="675" width="150" height="68" class="box run"/>
+  <text x="1398" y="700" class="label">no process</text>
+  <text x="1398" y="721" class="text">resume cannot</text>
+  <text x="1398" y="738" class="text">continue stream</text>
+
+  <!-- files boxes -->
+  <rect x="180" y="845" width="220" height="90" class="box files"/>
+  <text x="198" y="870" class="label">/srv/workspace</text>
+  <text x="198" y="891" class="text">repo/worktree/user files</text>
+  <text x="198" y="908" class="text">must survive wake</text>
+  <text x="198" y="925" class="tiny">fix: no rm -rf on resume</text>
+
+  <rect x="470" y="845" width="245" height="90" class="box files"/>
+  <text x="488" y="870" class="label">~/.spanner/control</text>
+  <text x="488" y="891" class="text">bridge env/script/logs</text>
+  <text x="488" y="908" class="text">STATUS/TASK/pi-sessions</text>
+  <text x="488" y="925" class="tiny">regenerated by setup</text>
+
+  <rect x="785" y="845" width="230" height="90" class="box files"/>
+  <text x="803" y="870" class="label">~/.pi/agent</text>
+  <text x="803" y="891" class="text">Pi auth/settings/profile</text>
+  <text x="803" y="908" class="text">npm SDK package cache</text>
+  <text x="803" y="925" class="tiny">Pi-owned state</text>
+
+  <rect x="1085" y="845" width="220" height="90" class="box snap"/>
+  <text x="1103" y="870" class="label">snapshot backup</text>
+  <text x="1103" y="891" class="text">filesystem image</text>
+  <text x="1103" y="908" class="text">not process memory</text>
+  <text x="1103" y="925" class="tiny">use before delete/migrate</text>
+
+  <rect x="1370" y="845" width="160" height="90" class="box dead"/>
+  <text x="1388" y="870" class="label">deleted disk</text>
+  <text x="1388" y="891" class="text">workspace gone</text>
+  <text x="1388" y="908" class="text">control gone</text>
+  <text x="1388" y="925" class="text">Pi state gone</text>
+
+  <!-- arrows app -->
+  <path class="arrow" d="M360 199 H420"/>
+  <path class="arrow" d="M600 199 H660"/>
+  <path class="arrow" d="M840 199 H900"/>
+  <path class="arrow" d="M1080 199 H1140"/>
+  <path class="arrow" d="M1320 199 H1380"/>
+
+  <!-- arrows daytona -->
+  <path class="arrow" d="M360 369 H420"/>
+  <path class="arrow" d="M600 369 H660"/>
+  <path class="arrow" d="M840 369 H1140"/>
+  <path class="arrow" d="M1320 369 H1380"/>
+  <path class="bad" d="M1455 335 V300"/>
+  <path class="warn" d="M1230 403 C1230 460 1455 460 1455 403"/>
+  <text x="1290" y="456" class="tiny">manual suspend or idle autostop</text>
+
+  <!-- bridge arrows -->
+  <path class="arrow" d="M600 539 H660"/>
+  <path class="arrow" d="M840 539 H900"/>
+  <path class="arrow" d="M1080 539 H1140"/>
+  <path class="warn" d="M1320 539 H1380"/>
+
+  <!-- run arrows -->
+  <path class="arrow" d="M840 709 H900"/>
+  <path class="bad" d="M1080 709 H1140"/>
+  <text x="1088" y="697" class="tiny">finish or /stop</text>
+  <path class="warn" d="M1320 709 H1380"/>
+
+  <!-- vertical dependency arrows -->
+  <path class="arrow thin" d="M510 403 V505"/>
+  <path class="arrow thin" d="M750 403 V505"/>
+  <path class="arrow thin" d="M990 573 V675"/>
+  <path class="arrow thin" d="M750 573 V675"/>
+  <path class="warn thin" d="M1455 403 V505"/>
+  <path class="warn thin" d="M1455 573 V675"/>
+
+  <!-- resume loop -->
+  <path class="arrow" d="M1380 369 C1270 790 520 790 510 403"/>
+  <text x="625" y="789" class="tiny">resume: sandbox.start() → safe setup → fresh bridge preview/auth</text>
+
+  <!-- snapshot/delete -->
+  <path class="warn" d="M1195 845 C1195 780 1280 770 1370 845"/>
+  <text x="1225" y="800" class="tiny">snapshot before risky delete/reset/migration</text>
+  <path class="bad" d="M1305 890 H1370"/>
+
+  <!-- callouts -->
+  <rect x="60" y="995" width="470" height="82" class="callout"/>
+  <text x="80" y="1022" class="label">Important distinction</text>
+  <text x="80" y="1046" class="code">Stop run = POST bridge /runs/:id/stop</text>
+  <text x="80" y="1064" class="code">Suspend = Daytona sandbox.stop()</text>
+
+  <rect x="565" y="995" width="450" height="82" class="callout"/>
+  <text x="585" y="1022" class="label">Before suspend</text>
+  <text x="585" y="1046" class="code">setAutoDeleteInterval(long or -1)</text>
+  <text x="585" y="1064" class="code">otherwise stopped disk can disappear</text>
+
+  <rect x="1050" y="995" width="480" height="82" class="callout"/>
+  <text x="1070" y="1022" class="label">Snapshot meaning</text>
+  <text x="1070" y="1046" class="code">captures files, not running memory/sockets/streams</text>
+  <text x="1070" y="1064" class="code">restore creates a new sandbox, not a resumed process</text>
+</svg>

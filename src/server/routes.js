@@ -54,6 +54,9 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
     archiveThreadSession,
     unarchiveThreadSession,
     stopThreadSession,
+    suspendThreadSession,
+    resumeThreadSession,
+    deleteThreadSession,
     threadDiffPayload,
     createThreadPullRequestPayload,
     threadWorkflowPayload,
@@ -332,6 +335,40 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
         sendJson(response, 200, {
           provider: provider.info(),
           thread: decorateLiveSession(thread),
+        });
+        return;
+      }
+
+      const suspendThreadMatch = pathname.match(/^\/api\/threads\/([^/]+)\/suspend$/);
+      if (request.method === 'POST' && suspendThreadMatch) {
+        const name = decodeURIComponent(suspendThreadMatch[1]);
+        const thread = await suspendThreadSession(name, viewerSessionId, trusted, user);
+        sendJson(response, 200, {
+          provider: provider.info(),
+          thread: decorateLiveSession(thread),
+        });
+        return;
+      }
+
+      const resumeThreadMatch = pathname.match(/^\/api\/threads\/([^/]+)\/resume$/);
+      if (request.method === 'POST' && resumeThreadMatch) {
+        const name = decodeURIComponent(resumeThreadMatch[1]);
+        const thread = await resumeThreadSession(name, viewerSessionId, trusted, user);
+        sendJson(response, 202, {
+          provider: provider.info(),
+          thread: decorateLiveSession(thread),
+        });
+        return;
+      }
+
+      const deleteThreadMatch = pathname.match(/^\/api\/threads\/([^/]+)\/delete$/);
+      if (request.method === 'POST' && deleteThreadMatch) {
+        const name = decodeURIComponent(deleteThreadMatch[1]);
+        const result = await deleteThreadSession(name, viewerSessionId, trusted, user);
+        sendJson(response, 202, {
+          provider: provider.info(),
+          thread: decorateLiveSession(result.thread),
+          snapshot: result.snapshot,
         });
         return;
       }

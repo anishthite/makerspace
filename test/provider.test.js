@@ -11,6 +11,7 @@ const config = {
   daytonaSnapshot: 'spanner-base',
   daytonaAutostopMinutes: 60,
   daytonaAutodeleteMinutes: 120,
+  daytonaSuspendAutodeleteMinutes: -1,
   remoteUser: 'daytona',
   remoteHomeDir: '/home/daytona',
   remoteControlDir: '/srv/spanner',
@@ -60,6 +61,13 @@ function makeSandbox(overrides = {}) {
     async getPreviewLink(port) {
       calls.push(['getPreviewLink', port]);
       return { url: `https://preview.example/${port}`, token: 'preview-token' };
+    },
+    async stop(timeout, force) {
+      calls.push(['stop', timeout, force]);
+      this.state = 'stopped';
+    },
+    async _experimental_createSnapshot(name, timeout) {
+      calls.push(['createSnapshot', name, timeout]);
     },
     async delete() {
       calls.push(['delete']);
@@ -150,6 +158,54 @@ test('createSession creates a Daytona sandbox and returns bridge preview metadat
   assert.equal(remote.connectCommand, 'daytona ssh sandbox-123');
   assert.equal(sandbox.calls.some((call) => call[0] === 'uploadFile' && call[1] === '/tmp/spanner-setup.sh'), true);
   assert.equal(sandbox.calls.some((call) => call[0] === 'executeCommand' && String(call[1]).includes('/tmp/spanner-setup.sh')), true);
+});
+
+test('listSessions consumes Daytona async iterable results', async () => {
+  const sandbox = makeSandbox();
+  const provider = createProvider(config, {
+    daytonaClient: {
+      list() {
+        return (async function* sandboxes() {
+          yield sandbox;
+        })();
+      },
+    },
+  });
+
+  const sessions = await provider.listSessions();
+
+  assert.equal(sessions.length, 1);
+  assert.equal(sessions[0].daytonaSandboxId, 'sandbox-123');
+});
+
+test('createSession reuses a Daytona sandbox found by async iterable labels', async () => {
+  const sandbox = makeSandbox({ id: 'listed-id', name: 'thread-one' });
+  let createCalled = false;
+  const provider = createProvider(config, {
+    daytonaClient: {
+      list() {
+        return (async function* sandboxes() {
+          yield sandbox;
+        })();
+      },
+      async create() {
+        createCalled = true;
+        throw new Error('should not create');
+      },
+    },
+  });
+
+  const remote = await provider.createSession({
+    name: 'thread-one',
+    repoMode: 'empty',
+    branch: '',
+    taskPrompt: 'Run pi.',
+    bridgeMode: true,
+    bridgeToken: 'bridge-token',
+  }, {});
+
+  assert.equal(createCalled, false);
+  assert.equal(remote.daytonaSandboxId, 'listed-id');
 });
 
 test('createSession reuses a stored Daytona sandbox id before creating', async () => {
@@ -300,6 +356,42 @@ test('runRemoteScript fails fast when Daytona omits the streaming command id', a
     /command id/,
   );
   assert.equal(calls.some((call) => call[0] === 'executeCommand'), false);
+});
+
+test('suspendSession disables autodelete before stopping sandbox compute', async () => {
+  const sandbox = makeSandbox({ id: 'sandbox-123', name: 'thread-one' });
+  const provider = createProvider(config, {
+    daytonaClient: {
+      async get() { return sandbox; },
+      async list() { return []; },
+    },
+  });
+
+  const remote = await provider.suspendSession({ name: 'thread-one', daytonaSandboxId: 'sandbox-123' });
+
+  assert.equal(remote.status, 'stopped');
+  assert.deepEqual(sandbox.calls.filter((call) => call[0] === 'setAutoDeleteInterval').at(-1), ['setAutoDeleteInterval', -1]);
+  assert.deepEqual(sandbox.calls.find((call) => call[0] === 'stop'), ['stop', 60, false]);
+});
+
+test('deleteSessionWithSnapshot scrubs secrets, snapshots, then deletes', async () => {
+  const sandbox = makeSandbox({ id: 'sandbox-123', name: 'thread-one' });
+  const provider = createProvider(config, {
+    daytonaClient: {
+      async get() { return sandbox; },
+      async list() { return []; },
+    },
+  });
+
+  const result = await provider.deleteSessionWithSnapshot(
+    { name: 'thread-one', daytonaSandboxId: 'sandbox-123' },
+    { snapshotName: 'snapshot-one', timeoutMs: 120_000 },
+  );
+
+  assert.equal(result.snapshotName, 'snapshot-one');
+  assert.equal(sandbox.calls.some((call) => call[0] === 'executeCommand' && String(call[1]).includes('.git-credentials')), true);
+  assert.deepEqual(sandbox.calls.find((call) => call[0] === 'createSnapshot'), ['createSnapshot', 'snapshot-one', 120]);
+  assert.equal(sandbox.calls.at(-1)[0], 'delete');
 });
 
 test('readOutput returns launching before a sandbox id is known', async () => {
