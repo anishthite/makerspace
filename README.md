@@ -2,6 +2,8 @@
 
 A tiny control plane for talking to `pi` inside fresh Daytona sandboxes.
 
+Tiny README smoke-test edit: repository writes are working.
+
 ## What this app does
 
 - shows one repo-agent form for a Git repo and starting prompt
