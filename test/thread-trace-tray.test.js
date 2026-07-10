@@ -212,13 +212,17 @@ test('running thread composer labels steer and follow-up delivery', () => {
 test('thread timeline and toasts clear the sticky composer', () => {
   const agentToasts = readFileSync(new URL('../frontend/src/runtime/agent-toasts.js', import.meta.url), 'utf8');
   const appJs = readFileSync(new URL('../frontend/src/runtime/app.js', import.meta.url), 'utf8');
+  const entryJs = readFileSync(new URL('../frontend/src/entry.jsx', import.meta.url), 'utf8');
   assert.match(js, /function syncComposerClearance\(\)/);
   assert.match(js, /--thread-composer-clearance/);
   assert.match(js, /getBoundingClientRect\(\)\.height \+ bottom \+ 18/);
   assert.match(js, /ResizeObserver/);
   assert.match(css, /\.conversation-main \.timeline-flow \{ padding-bottom: max\(126px, var\(--thread-composer-clearance, 220px\)\); \}/);
-  assert.match(agentToasts, /bottom:var\(--thread-composer-clearance,18px\)/);
-  assert.match(appJs, /bottom:var\(--thread-composer-clearance,18px\)/);
+  assert.match(agentToasts, /import \{ toast \} from 'sonner'/);
+  assert.match(agentToasts, /toast\.(?:success|error)\(/);
+  assert.match(appJs, /import \{ toast \} from 'sonner'/);
+  assert.match(appJs, /toast\.(?:success|error)\(/);
+  assert.match(entryJs, /bottom: 'var\(--thread-composer-clearance,18px\)'/);
   assert.match(threadHtml, /styles\.css\?v=thread-overlap-1/);
 });
 

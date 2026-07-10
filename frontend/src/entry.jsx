@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { pages } from './pages.jsx';
+import { Toaster } from '#components/ui/sonner';
 import { applyAppearance } from './runtime/appearance.js';
 import { startAgentToastWatcher } from './runtime/agent-toasts.js';
 import './styles/fluid-ui.css';
@@ -46,7 +47,16 @@ function App({ page }) {
     };
   }, [page]);
 
-  return <Page />;
+  return (
+    <>
+      <Page />
+      <Toaster
+        theme="dark"
+        position="bottom-right"
+        offset={{ right: '18px', bottom: 'var(--thread-composer-clearance,18px)' }}
+      />
+    </>
+  );
 }
 
 applyAppearance();

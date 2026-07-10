@@ -1,3 +1,5 @@
+import { toast } from 'sonner';
+
 import './appearance.js?v=palette-2';
 import { bindImageDropZone, clearImageInput, filesToImageAttachments, imageInputFiles, updateImageStatus } from './image-attachments.js';
 import { submitOnEnter } from './submit-on-enter.js';
@@ -80,32 +82,10 @@ function escapeHtml(value) {
     .replaceAll("'", '&#39;');
 }
 
-function toastHost() {
-  let host = document.querySelector('#agent-toast-stack');
-  if (host) return host;
-  host = document.createElement('div');
-  host.id = 'agent-toast-stack';
-  host.setAttribute('aria-live', 'polite');
-  host.style.cssText = 'position:fixed;right:18px;bottom:var(--thread-composer-clearance,18px);z-index:1000;display:grid;gap:8px;max-width:min(360px,calc(100vw - 32px));pointer-events:none';
-  document.body.append(host);
-  return host;
-}
-
 function showAgentToast(title, detail = '', tone = 'success') {
-  const node = document.createElement('button');
-  node.type = 'button';
-  node.className = `agent-toast${tone === 'error' ? ' error' : ''}`;
-  const label = document.createElement('strong');
-  label.textContent = title;
-  node.append(label);
-  if (detail) {
-    const copy = document.createElement('small');
-    copy.textContent = detail;
-    node.append(copy);
-  }
-  node.addEventListener('click', () => node.remove());
-  toastHost().append(node);
-  setTimeout(() => node.remove(), 8000);
+  const options = { duration: 8000, description: detail || undefined };
+  if (tone === 'error') toast.error(title, options);
+  else toast.success(title, options);
 }
 
 function readSeenFinishedThreads() {
