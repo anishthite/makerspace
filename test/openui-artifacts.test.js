@@ -42,6 +42,33 @@ test('openui source normalizes triple-quoted string literals', () => {
   );
 });
 
+test('markdown tables synthesize an OpenUI table artifact', () => {
+  const text = `Before
+| Operation | What happens |
+|---|---|
+| Create/start | \`client.create()\` runs |
+| Stop | POST /stop |
+After`;
+
+  const artifacts = extractOpenUIArtifacts(text);
+  assert.equal(artifacts.length, 1);
+  assert.equal(
+    artifacts[0].source,
+    'root = Table([Col("Operation", col0), Col("What happens", col1)])\ncol0 = ["Create/start","Stop"]\ncol1 = ["`client.create()` runs","POST /stop"]',
+  );
+  assert.equal(stripOpenUIArtifactBlocks(text), 'Before\nAfter');
+});
+
+test('markdown table guard does not convert code fences', () => {
+  const text = `\`\`\`md
+| A | B |
+|---|---|
+| 1 | 2 |
+\`\`\``;
+  assert.deepEqual(extractOpenUIArtifacts(text), []);
+  assert.equal(stripOpenUIArtifactBlocks(text), text);
+});
+
 test('openui action prompt keeps user review in the composer', () => {
   assert.equal(
     openUIActionPrompt({

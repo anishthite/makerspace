@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — OpenUI Markdown table guard</title>
+<meta name="task" content="Render plain Markdown assistant tables as OpenUI tables.">
+<meta name="date-started" content="2026-07-10">
+<meta name="date-updated" content="2026-07-10">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,ui,thread,openui,markdown,table">
+<meta name="related" content="2026-07-08-openui-fenced-blocks.html,2026-07-08-openui-flat-roots.html,2026-07-09-openui-triple-string-normalization.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code, pre { font-family: ui-monospace, Menlo, monospace; }
+  code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  .blast-low { color: #2a7a2a; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>OpenUI Markdown table guard</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-10 · status <b>shipped</b> · blast <span class="blast-low">low</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Render assistant-authored Markdown tables as OpenUI tables when no <code>openui</code> fence exists.</div>
+  <b>Source</b><div>Plain assistant message text in <code>/thread.html</code>.</div>
+  <b>Surface</b><div><code>frontend/src/runtime/openui-artifacts.js</code> extraction and stripping.</div>
+  <b>Schema</b><div>None.</div>
+  <b>Mobile</b><div>Inherits existing OpenUI table rendering.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>Algorithm</h2>
+<ol>
+  <li>Keep explicit <code>openui</code> fences authoritative.</li>
+  <li>When no fence renders, scan outside fenced code blocks for <code>| header |</code>, divider, and data rows.</li>
+  <li>Emit <code>root = Table([Col(...)])</code> plus column arrays and strip the original Markdown table from visible text.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>frontend/src/runtime/openui-artifacts.js</code></td><td>touch</td><td>Synthesize OpenUI <code>Table</code> artifacts from Markdown tables.</td></tr>
+  <tr><td><code>test/openui-artifacts.test.js</code></td><td>touch</td><td>Pin table synthesis, stripping, and code-fence avoidance.</td></tr>
+  <tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Convert at artifact extraction. Existing thread render flow already strips and mounts artifacts.</td></tr>
+  <tr><td>D-002</td><td>Do not mutate assistant output upstream. Renderer guard covers saved and streamed messages uniformly.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td>Small Markdown-table parser over Markdown dependency. The guard only needs GFM pipe tables.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Revert <code>markdownTableArtifacts()</code> and its tests.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>Markdown tables without <code>openui</code> fences render as OpenUI <code>Table</code> artifacts.</li>
+  <li>Code-fenced Markdown tables stay as literal text.</li>
+  <li><code>node --test test/openui-artifacts.test.js test/thread-trace-tray.test.js</code> passes.</li>
+</ul>
+</body>
+</html>
