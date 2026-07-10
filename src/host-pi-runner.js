@@ -67,6 +67,15 @@ function toolCallFromMessageEvent(messageEvent = {}) {
   return content?.type === 'toolCall' ? content : null;
 }
 
+export function assistantTraceFields(event = {}, messageEvent = {}) {
+  const messageTimestamp = Number(event.message?.timestamp ?? messageEvent.partial?.timestamp);
+  const contentIndex = Number(messageEvent.contentIndex);
+  return {
+    ...(Number.isFinite(messageTimestamp) && messageTimestamp > 0 ? { messageTimestamp } : {}),
+    ...(Number.isInteger(contentIndex) ? { contentIndex } : {}),
+  };
+}
+
 function toolCallPlanningEvent(messageEvent) {
   const toolCall = toolCallFromMessageEvent(messageEvent);
   const args = toolCall?.arguments && typeof toolCall.arguments === 'object' ? toolCall.arguments : null;
@@ -478,6 +487,7 @@ async function runCreatedPiSession({ createSession, session, emitOutput, emitMet
             type: 'thinking',
             delta: messageEvent.delta,
             runStatus: 'running',
+            ...assistantTraceFields(event, messageEvent),
           });
           return;
         }

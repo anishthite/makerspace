@@ -90,7 +90,8 @@ test('buildSetupScript clones a repo and auto-runs pi when requested', () => {
   assert.match(bridgeScript, /let streamedAssistantText = ""/);
   assert.match(bridgeScript, /event\.type === "agent_end"/);
   assert.match(bridgeScript, /e\.type === "thinking_delta"/);
-  assert.match(bridgeScript, /type: "thinking", delta: e\.delta/);
+  assert.match(bridgeScript, /messageTimestamp = Number\(event\.message\?\.timestamp \?\? e\.partial\?\.timestamp\)/);
+  assert.match(bridgeScript, /type: "thinking", delta: e\.delta, runStatus: "running", \.\.\.\(Number\.isFinite\(messageTimestamp\)/);
   assert.match(bridgeScript, /\["toolcall_start", "toolcall_delta", "toolcall_end"\]\.includes\(e\.type\)/);
   assert.match(bridgeScript, /phase: e\.type === "toolcall_end" \? "planned" : "planning"/);
   assert.match(bridgeScript, /await waitForWorkflowContinuation\(\)/);

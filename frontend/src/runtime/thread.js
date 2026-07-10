@@ -1798,10 +1798,16 @@ function traceRunKey(event = {}) {
   return String(event.runId || event.bridgeRunId || event.submittedAtMs || currentRunId(currentThread) || 'latest');
 }
 
+function thinkingTraceKey(event = {}) {
+  const messageTimestamp = String(event.messageTimestamp || '').trim();
+  if (!messageTimestamp) return traceRunKey(event);
+  return `${traceRunKey(event)}:message:${messageTimestamp}:content:${event.contentIndex ?? 'thinking'}`;
+}
+
 function renderTimelineThinkingEvent(event) {
   if (!traceTimeline || !event.delta) return;
   const follow = shouldFollowTrace();
-  const key = traceRunKey(event);
+  const key = thinkingTraceKey(event);
   let node = thinkingCards.get(key);
 
   if (!node) {

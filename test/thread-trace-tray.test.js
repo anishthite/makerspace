@@ -62,6 +62,7 @@ test('workflow trace shows thinking steps and answer summaries', () => {
   assert.match(pages, /<span>workflow trace<\/span><strong>events<\/strong>/);
   assert.match(js, /const thinkingCards = new Map\(\)/);
   assert.match(js, /function renderTimelineThinkingEvent/);
+  assert.match(js, /const key = thinkingTraceKey\(event\)/);
   assert.match(js, /thinking steps/);
   assert.match(js, /function renderTimelineSummaryEvent/);
   assert.match(js, /event\.type === 'answer_summary' && isNewEvent/);
@@ -69,6 +70,28 @@ test('workflow trace shows thinking steps and answer summaries', () => {
   assert.match(css, /\.thinking-card/);
   assert.doesNotMatch(js, /formatTime/);
   assert.doesNotMatch(js, /data-thinking-time/);
+});
+
+test('thinking trace keys separate messages inside one run', () => {
+  const start = js.indexOf('function traceRunKey');
+  const end = js.indexOf('function renderTimelineThinkingEvent');
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+  const context = {};
+  runInNewContext(`
+    let currentThread = { bridgeRunId: 'run-same' };
+    function currentRunId(thread) { return String(thread?.bridgeRunId || thread?.submittedAtMs || ''); }
+    ${js.slice(start, end)}
+    globalThis.result = [
+      thinkingTraceKey({ type: 'thinking', runId: 'run-same', messageTimestamp: 111, contentIndex: 0 }),
+      thinkingTraceKey({ type: 'thinking', runId: 'run-same', messageTimestamp: 222, contentIndex: 0 }),
+      thinkingTraceKey({ type: 'thinking', runId: 'run-same', messageTimestamp: 111, contentIndex: 0 }),
+      thinkingTraceKey({ type: 'thinking', runId: 'run-same' }),
+    ];
+  `, context);
+  assert.notEqual(context.result[0], context.result[1]);
+  assert.equal(context.result[0], context.result[2]);
+  assert.equal(context.result[3], 'run-same');
 });
 
 test('workflow rail renders workflow agents, not generic tool calls', () => {
