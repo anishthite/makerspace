@@ -86,7 +86,7 @@ function toastHost() {
   host = document.createElement('div');
   host.id = 'agent-toast-stack';
   host.setAttribute('aria-live', 'polite');
-  host.style.cssText = 'position:fixed;right:18px;bottom:var(--thread-composer-clearance,18px);z-index:1000;display:grid;gap:8px;max-width:min(360px,calc(100vw - 32px));pointer-events:none';
+  host.style.cssText = 'position:fixed;top:18px;right:18px;z-index:1000;display:grid;gap:8px;max-width:min(360px,calc(100vw - 32px));pointer-events:none';
   document.body.append(host);
   return host;
 }
