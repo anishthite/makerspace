@@ -640,7 +640,7 @@ export function createThreadService({ config, provider, http, auth, runState, br
     if (!existing.localMode && existing.runStatus === 'failed') {
       throw new Error(`Main agent ${name} failed; create a new main agent.`);
     }
-    if (!existing.localMode && existing.bridgeClaimed && existing.taskPrompt) {
+    if (!existing.localMode && existing.bridgeClaimed && existing.taskPrompt && isActiveRunStatus(status)) {
       if (status !== 'running') throw clientError('Main agent is starting; try again in a moment.', 409);
       return sendActiveBridgeThreadMessage(existing, prompt, submittedAtMs, delivery, images);
     }
@@ -669,7 +669,7 @@ export function createThreadService({ config, provider, http, auth, runState, br
 
     resetRunState(name, 'launching');
 
-    if (existing.status === 'ready' && existing.bridgeUrl && existing.bridgeToken) {
+    if (['ready', 'completed'].includes(status) && existing.bridgeUrl && existing.bridgeToken) {
       appendRunOutput(name, '[system] Starting main agent on this repo.\n', 'launching');
       try {
         const runnable = await refreshBridgeSessionIfNeeded(claimed, existing);

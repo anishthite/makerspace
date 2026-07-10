@@ -134,7 +134,7 @@ export function ProjectPage() {
         </InputGroup>
         <div id="project-repo-tray" className="repo-tray project-repo-toolbar">
           <Button id="project-repo-refresh" variant="ghost" type="button"><ArrowsClockwiseIcon {...buttonIconProps} />refresh repos</Button>
-          <p id="project-repo-hint" className="muted">Type a repo name, paste a URL, or choose a local folder.</p>
+          <p id="project-repo-hint" className="muted"></p>
         </div>
         <Button id="project-submit" variant="primary" type="submit"><ArrowRightIcon {...buttonIconProps} />open workspace</Button>
         <p id="project-status" className="status-line" aria-live="polite"></p>
@@ -169,6 +169,12 @@ export function WorkspacePage() {
       <div className="advanced-fields launch-details"><input name="name" placeholder="main agent name" /><div id="provider-banner" className="notice" aria-live="polite">Connecting…</div></div>
       <p id="thread-status" className="status-line"></p>
     </InputMessage>
+    <section id="launch-suggestions" className="launch-suggestions" aria-label="Suggested starter prompts">
+      <span>suggested</span>
+      <button type="button" data-suggested-prompt="Review this project for quick wins, bugs, and confusing code. Keep fixes small.">review this repo</button>
+      <button type="button" data-suggested-prompt="Run the smallest relevant tests, fix one failure, and verify it.">fix a test</button>
+      <button type="button" data-suggested-prompt="Map the main files and explain where to make the next change.">explain the code</button>
+    </section>
     <Surface id="agents-section" className="home-recent action-center" aria-label="Agents">
       <div className="section-row"><div><h2>Agents</h2></div><div className="inline-actions"><Button as="a" variant="ghost" href="/history.html"><ClockCounterClockwiseIcon {...buttonIconProps} />history</Button><Button id="refresh-threads" variant="ghost" type="button"><ArrowsClockwiseIcon {...buttonIconProps} />refresh</Button></div></div>
       <ScrollArea id="threads-list" className="action-lanes"></ScrollArea>

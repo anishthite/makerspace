@@ -531,6 +531,12 @@ button.primary {
 .launch-details { display: grid; grid-template-columns: 1fr 1fr minmax(240px, 2fr); gap: 8px; padding: 10px 12px; border-top: 1px solid var(--rule); background: var(--paper); }
 .status-line { margin: 0; padding: 10px 14px; border-top: 1px solid var(--rule); color: var(--ink-3); font-size: 13px; }
 .status-line:empty { display: none; }
+.launch-suggestions { display: flex; align-items: center; flex-wrap: wrap; gap: 0; width: min(760px, 100%); margin: 8px auto 0; padding: 0 2px; color: var(--ink-4); font-size: 12px; }
+.launch-suggestions span { color: var(--ink-4); font: 600 11px/1 var(--sans); }
+.launch-suggestions button { display: inline-flex; align-items: center; gap: 10px; border: 0; background: transparent; color: var(--ink-4); padding: 3px 7px; font: 500 12px/1 var(--sans); letter-spacing: 0; text-transform: none; cursor: pointer; }
+.launch-suggestions button + button::before { content: ''; width: 1px; height: 11px; background: color-mix(in srgb, var(--ink-4) 42%, transparent); }
+.launch-suggestions button:hover,
+.launch-suggestions button:focus-visible { outline: 0; color: var(--ink-2); }
 .home-recent { width: min(1180px, 100%); margin: 28px auto 0; padding: 0 2px; border: 0; background: transparent; box-shadow: none; }
 .home-recent .section-row > div { min-width: 0; }
 .home-recent h2 { margin-bottom: 4px; }
@@ -621,12 +627,13 @@ body[data-home-ui="ops"] .home-shell {
   width: min(900px, calc(100% - 56px));
   display: grid;
   grid-template-columns: 1fr;
-  grid-template-areas: "nav" "launch" "recent";
-  gap: 28px;
+  grid-template-areas: "nav" "launch" "suggestions" "recent";
+  gap: 22px;
   align-items: start;
   padding-top: 36px;
 }
 body[data-home-ui="ops"] .home-topbar { grid-area: nav; }
+body[data-home-ui="ops"] .launch-suggestions { grid-area: suggestions; width: 100%; margin: -8px 0 -8px; }
 body[data-home-ui="ops"] .launch-card {
   grid-area: launch;
   width: 100%;
@@ -647,7 +654,7 @@ body[data-home-ui="ops"] .inbox-item { padding: 18px 14px; }
 
 .project-shell { width: min(900px, calc(100% - clamp(40px, 12vw, 280px))); margin: 0 auto; padding: 28px 0 72px; display: grid; gap: clamp(16px, 2.4vw, 24px); }
 .project-hero { max-width: 760px; margin: clamp(22px, 5vh, 52px) 0 0; }
-.project-hero h1 { margin-bottom: 8px; font-size: clamp(38px, 6vw, 70px); line-height: .9; letter-spacing: -.07em; }
+.project-hero h1 { margin-bottom: 8px; font-size: clamp(24px, 3.2vw, 36px); line-height: 1.05; letter-spacing: -.04em; }
 .signin-nav-button { min-width: 84px; }
 .signin-gate { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(280px, .7fr); gap: clamp(18px, 3vw, 34px); align-items: stretch; border: 1px solid color-mix(in srgb, var(--blue) 46%, var(--rule)); border-radius: 24px; padding: clamp(18px, 3vw, 34px); background: radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--blue-soft) 82%, transparent), transparent 34rem), linear-gradient(135deg, color-mix(in srgb, var(--paper) 96%, var(--blue-soft)), color-mix(in srgb, var(--paper) 90%, var(--bg))); box-shadow: var(--shadow-xl), var(--shadow); }
 .signin-gate.compact { grid-area: launch; width: min(920px, 100%); margin: 18px auto 14px; }
@@ -1471,6 +1478,7 @@ select:focus { border-color: var(--blue); box-shadow: none; outline: none; }
   .agent-edge { display: none; }
   .subagent-stack { margin-left: 0; }
   body[data-home-ui="ops"] .home-shell { display: block; width: min(900px, calc(100% - 32px)); padding-top: 24px; }
+  body[data-home-ui="ops"] .launch-suggestions { width: min(760px, 100%); margin: 10px auto 0; }
   body[data-home-ui="ops"] .home-recent { margin-top: 24px; }
   .signin-gate,
   .project-grid,

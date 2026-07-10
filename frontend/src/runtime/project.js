@@ -633,7 +633,7 @@ repoInput.addEventListener('focus', renderRepoSuggestions);
 repoInput.addEventListener('input', () => {
   const value = repoInput.value.trim();
   if (!selectedRepo || !repoMatchesInput(selectedRepo, value)) {
-    resetRepoSelection(value ? 'Type to filter GitHub repos, or paste a URL.' : 'Type a repo name, paste a URL, or choose a local folder.');
+    resetRepoSelection(value ? 'Type to filter GitHub repos, or paste a URL.' : '');
   }
   activeRepoMatchIndex = -1;
   renderRepoSuggestions();

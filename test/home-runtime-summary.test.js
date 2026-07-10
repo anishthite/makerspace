@@ -39,6 +39,16 @@ test('home rows avoid workspace folder details', () => {
   assert.match(runState, /latestActivity: latestActivity \|\| undefined/);
 });
 
+test('workspace starter suggestions sit between launch composer and agents', () => {
+  const formIndex = pages.indexOf('id="thread-form"');
+  const suggestionsIndex = pages.indexOf('id="launch-suggestions"');
+  const agentsIndex = pages.indexOf('id="agents-section"');
+  assert.ok(formIndex > -1 && formIndex < suggestionsIndex && suggestionsIndex < agentsIndex);
+  assert.match(pages, /data-suggested-prompt="Review this project/);
+  assert.match(js, /const launchSuggestions = document\.querySelector\('#launch-suggestions'\);/);
+  assert.match(js, /promptInput\.value = button\.dataset\.suggestedPrompt \|\| '';/);
+});
+
 test('home history and finished clear controls are near agent refresh', () => {
   assert.doesNotMatch(pages, /main-screen-variations|>concepts<\/a>/);
   assert.match(pages, /href="\/history\.html">.*history<\/Button><Button id="refresh-threads"/);

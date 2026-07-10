@@ -55,6 +55,7 @@ const repoHint = document.querySelector('#repo-hint');
 const threadForm = document.querySelector('#thread-form');
 const threadSubmit = document.querySelector('#thread-submit');
 const threadStatus = document.querySelector('#thread-status');
+const launchSuggestions = document.querySelector('#launch-suggestions');
 const threadsList = document.querySelector('#threads-list');
 const refreshThreads = document.querySelector('#refresh-threads');
 
@@ -791,6 +792,14 @@ threadForm.addEventListener('submit', async (event) => {
     threadStatus.textContent = error.message;
     threadSubmit.disabled = false;
   }
+});
+
+launchSuggestions?.addEventListener('click', (event) => {
+  const button = event.target?.closest?.('[data-suggested-prompt]');
+  if (!button) return;
+  promptInput.value = button.dataset.suggestedPrompt || '';
+  promptInput.focus();
+  threadStatus.textContent = 'tweak the suggestion, then start agent';
 });
 
 refreshThreads.addEventListener('click', async () => {
