@@ -334,22 +334,30 @@ export function createDaytonaProvider(config, options = {}) {
     return ensureStarted(sandbox);
   }
 
-  async function waitForSessionCommandExit(processApi, sessionId, cmdId) {
-    if (!processApi.getSessionCommand) return { exitCode: 0 };
+  async function waitForSessionCommandExit(processApi, sessionId, cmdId, deadline) {
+    if (!processApi.getSessionCommand) {
+      throw new Error('Command did not report exit code');
+    }
 
     let info = null;
-    for (let attempt = 0; attempt < 20; attempt += 1) {
+    while (true) {
+      if (Date.now() > deadline) break;
       info = await processApi.getSessionCommand(sessionId, cmdId);
-      const exitCode = Number(info?.exitCode);
-      if (Number.isFinite(exitCode)) return { ...info, exitCode };
+      if (info?.exitCode != null) {
+        const exitCode = Number(info.exitCode);
+        if (Number.isFinite(exitCode)) return { ...info, exitCode };
+      }
+      if (Date.now() > deadline) break;
       await new Promise((resolve) => setTimeout(resolve, 500));
     }
-    return { ...(info || {}), exitCode: 0 };
+    throw new Error('Command did not report exit code');
   }
 
   async function executeScriptInSandbox(sandbox, script, options = {}) {
     const cwd = options.cwd || '/';
-    const timeoutSec = Math.max(1, Math.ceil((options.timeoutMs || 120_000) / 1000));
+    const timeoutMs = Number.isFinite(options.timeoutMs) && options.timeoutMs > 0 ? options.timeoutMs : 120_000;
+    const timeoutSec = Math.max(1, Math.ceil(timeoutMs / 1000));
+    const commandStartTimeoutSec = Math.min(timeoutSec, 60);
     const command = buildCommand(script, cwd);
     const processApi = sandbox.process;
     const canStream = Boolean(
@@ -360,12 +368,36 @@ export function createDaytonaProvider(config, options = {}) {
     );
 
     if (canStream) {
+      if (options.signal?.aborted) {
+        throw new Error('Script aborted');
+      }
+
       const sessionId = `spanner-${randomUUID()}`;
+      const deadline = Date.now() + timeoutMs;
+      let deleteSessionPromise = null;
+      async function closeSession() {
+        if (deleteSessionPromise) return deleteSessionPromise;
+        deleteSessionPromise = (processApi.deleteSession?.(sessionId) || Promise.resolve()).catch(() => {});
+        return deleteSessionPromise;
+      }
+      const cleanup = [];
+      function clearCleanup() {
+        cleanup.forEach((fn) => fn());
+        cleanup.length = 0;
+      }
       try {
         await processApi.createSession(sessionId).catch((error) => {
           if (!/already exists/i.test(String(error?.message || error))) throw error;
         });
-        const started = await processApi.executeSessionCommand(sessionId, { command, runAsync: true }, timeoutSec);
+        if (options.signal?.aborted) {
+          throw new Error('Script aborted');
+        }
+
+        const started = await processApi.executeSessionCommand(
+          sessionId,
+          { command, runAsync: true },
+          commandStartTimeoutSec,
+        );
         const cmdId = started?.cmdId || started?.id;
         if (!cmdId) {
           throw new Error(`Daytona did not return a command id for: ${command}`);
@@ -373,7 +405,7 @@ export function createDaytonaProvider(config, options = {}) {
 
         let stdout = '';
         let stderr = '';
-        await processApi.getSessionCommandLogs(
+        const logPromise = processApi.getSessionCommandLogs(
           sessionId,
           cmdId,
           (chunk) => {
@@ -385,10 +417,46 @@ export function createDaytonaProvider(config, options = {}) {
             options.onData(Buffer.from(String(chunk)));
           },
         );
-        const final = await waitForSessionCommandExit(processApi, sessionId, cmdId);
+        logPromise.catch(() => {});
+
+        const remaining = Math.max(0, deadline - Date.now());
+        if (remaining <= 0) {
+          throw new Error(`Command timeout after ${timeoutMs}ms`);
+        }
+
+        const timeoutPromise = new Promise((_, reject) => {
+          const id = setTimeout(() => {
+            closeSession().catch(() => {});
+            reject(new Error(`Command timeout after ${timeoutMs}ms`));
+          }, remaining);
+          cleanup.push(() => clearTimeout(id));
+        });
+
+        let signalPromise = null;
+        if (options.signal) {
+          signalPromise = new Promise((_, reject) => {
+            if (options.signal.aborted) {
+              reject(new Error('Script aborted'));
+              return;
+            }
+            const handler = () => {
+              closeSession().catch(() => {});
+              reject(new Error('Script aborted'));
+            };
+            options.signal.addEventListener('abort', handler, { once: true });
+            cleanup.push(() => options.signal.removeEventListener('abort', handler));
+          });
+        }
+
+        const race = signalPromise ? [logPromise, timeoutPromise, signalPromise] : [logPromise, timeoutPromise];
+        await Promise.race(race);
+        clearCleanup();
+
+        const final = await waitForSessionCommandExit(processApi, sessionId, cmdId, deadline);
         return ensureOk({ ...final, stdout, stderr, output: stdout + (stderr ? `\n${stderr}` : '') }, command);
       } finally {
-        await processApi.deleteSession?.(sessionId).catch(() => {});
+        clearCleanup();
+        await closeSession();
       }
     }
 
@@ -632,14 +700,19 @@ function parseOutputEnvelope(text, fallbackOffset) {
 }
 
 export function isTransientSandboxError(error) {
-  const message = String(error?.message || error || '');
+  const message = String(error?.message || error?.code || error || '');
 
   return [
     'timed out after',
+    'timeout of',
     'did not reach',
     'ECONNRESET',
     'ECONNREFUSED',
     'ETIMEDOUT',
+    'ECONNABORTED',
+    'EAI_AGAIN',
+    'ENOTFOUND',
+    'UND_ERR_SOCKET',
     'not started',
     'starting',
     'temporarily unavailable',

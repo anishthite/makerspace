@@ -33,6 +33,13 @@ function truthy(value) {
   return ['1', 'true', 'yes', 'on'].includes(String(value || '').trim().toLowerCase());
 }
 
+function parseNumberEnv(value, defaultValue = 0) {
+  const raw = typeof value === 'string' ? value.trim() : value;
+  if (raw === undefined || raw === null || raw === '') return defaultValue;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : defaultValue;
+}
+
 function moveLegacyDir(legacyDir, nextDir) {
   if (!legacyDir || !nextDir || legacyDir === nextDir || existsSync(nextDir) || !existsSync(legacyDir)) return;
   try {
@@ -93,7 +100,7 @@ export function getConfig() {
     projectName: projectNameFromEnv(localDataDir),
     localDataDir,
     host: process.env.HOST || (provider === 'local' ? '127.0.0.1' : ''),
-    port: Number(process.env.PORT || 8787),
+    port: parseNumberEnv(process.env.PORT, 8787),
     controlApiToken: process.env.CONTROL_API_TOKEN || '',
     authRequired: process.env.SPANNER_AUTH_REQUIRED || process.env.SPANNER_MULTI_USER
       ? truthy(process.env.SPANNER_AUTH_REQUIRED || process.env.SPANNER_MULTI_USER)
@@ -101,7 +108,7 @@ export function getConfig() {
     authSecret: process.env.SPANNER_AUTH_SECRET || process.env.AUTH_SECRET || '',
     authCookieName: process.env.SPANNER_AUTH_COOKIE || 'spanner_auth',
     authCookieSameSite: process.env.SPANNER_AUTH_SAMESITE || '',
-    authSessionDays: Number(process.env.SPANNER_AUTH_SESSION_DAYS || 30),
+    authSessionDays: parseNumberEnv(process.env.SPANNER_AUTH_SESSION_DAYS, 30),
     allowHostedLocalProvider: truthy(process.env.SPANNER_ALLOW_HOSTED_LOCAL_PROVIDER),
     allowedOrigin: allowedOrigins[0] || '',
     allowedOrigins,
@@ -112,8 +119,8 @@ export function getConfig() {
     daytonaTarget: process.env.DAYTONA_TARGET || '',
     daytonaSnapshot: process.env.DAYTONA_SNAPSHOT || '',
     workspaceMode,
-    daytonaAutostopMinutes: Number(process.env.DAYTONA_AUTOSTOP_MINUTES || 60),
-    daytonaAutodeleteMinutes: Number(process.env.DAYTONA_AUTODELETE_MINUTES || (workspaceMode ? 10080 : 120)),
+    daytonaAutostopMinutes: parseNumberEnv(process.env.DAYTONA_AUTOSTOP_MINUTES, 60),
+    daytonaAutodeleteMinutes: parseNumberEnv(process.env.DAYTONA_AUTODELETE_MINUTES, workspaceMode ? 10080 : 120),
     remoteUser: process.env.DAYTONA_USER || 'daytona',
     remoteHomeDir: process.env.DAYTONA_HOME || '/home/daytona',
     defaultCpu: process.env.DAYTONA_CPU || '2',
@@ -134,13 +141,13 @@ export function getConfig() {
     authFile: process.env.AUTH_DATA_PATH || process.env.SPANNER_AUTH_DATA_PATH || path.join(defaultDataDir, 'auth.json'),
     remoteWorkspaceDir: process.env.REMOTE_WORKSPACE_DIR || '/srv/workspace',
     remoteControlDir: process.env.REMOTE_CONTROL_DIR || `/home/${process.env.DAYTONA_USER || 'daytona'}/.spanner/control`,
-    daytonaSuspendAutodeleteMinutes: Number(process.env.DAYTONA_SUSPEND_AUTODELETE_MINUTES ?? -1),
-    bridgePort: Number(process.env.PI_BRIDGE_PORT || 4310),
-    bridgeReadyTimeoutMs: Number(process.env.PI_BRIDGE_READY_TIMEOUT_MS || 240000),
-    bridgeReadyPollMs: Number(process.env.PI_BRIDGE_READY_POLL_MS || 1000),
-    bridgeStreamStallMs: Number(process.env.PI_BRIDGE_STREAM_STALL_MS || 60000),
-    warmBridgePoolSize: Number(process.env.WARM_BRIDGE_POOL_SIZE || 0),
-    idleBridgeTtlMs: Number(process.env.IDLE_BRIDGE_TTL_MS || 60 * 60 * 1000),
+    daytonaSuspendAutodeleteMinutes: parseNumberEnv(process.env.DAYTONA_SUSPEND_AUTODELETE_MINUTES, -1),
+    bridgePort: parseNumberEnv(process.env.PI_BRIDGE_PORT, 4310),
+    bridgeReadyTimeoutMs: parseNumberEnv(process.env.PI_BRIDGE_READY_TIMEOUT_MS, 240000),
+    bridgeReadyPollMs: parseNumberEnv(process.env.PI_BRIDGE_READY_POLL_MS, 1000),
+    bridgeStreamStallMs: parseNumberEnv(process.env.PI_BRIDGE_STREAM_STALL_MS, 60000),
+    warmBridgePoolSize: parseNumberEnv(process.env.WARM_BRIDGE_POOL_SIZE, 0),
+    idleBridgeTtlMs: parseNumberEnv(process.env.IDLE_BRIDGE_TTL_MS, 60 * 60 * 1000),
     hostDispatchEnabled: provider !== 'local' && ['1', 'true', 'yes'].includes(String(process.env.PI_HOST_DISPATCH || process.env.PI_LOCAL_DISPATCH || '').toLowerCase()),
     piSdkPackageDir: process.env.PI_SDK_PACKAGE_DIR || '',
     piAgentDir: process.env.PI_CODING_AGENT_DIR || path.join(homedir(), '.pi', 'agent'),
@@ -158,13 +165,13 @@ export function getConfig() {
       process.env.DEFAULT_TASK_PROMPT ||
       'Use the Spanner defaults context from $SPANNER_PI_DEFAULTS_PACKAGE_DIR/context/AGENTS.md when set, otherwise packages/spanner-pi-defaults/context/AGENTS.md if present. Do not require a repo-root AGENTS.md. Then inspect the repo and complete the requested task.',
     threadTitleModel: process.env.THREAD_TITLE_MODEL || 'openai-codex/gpt-5.4-mini',
-    threadTitleTimeoutMs: Number(process.env.THREAD_TITLE_TIMEOUT_MS || 15000),
+    threadTitleTimeoutMs: parseNumberEnv(process.env.THREAD_TITLE_TIMEOUT_MS, 15000),
     threadSummaryModel: process.env.THREAD_SUMMARY_MODEL || process.env.THREAD_TITLE_MODEL || 'openai-codex/gpt-5.4-mini',
-    threadSummaryTimeoutMs: Number(process.env.THREAD_SUMMARY_TIMEOUT_MS || 15000),
+    threadSummaryTimeoutMs: parseNumberEnv(process.env.THREAD_SUMMARY_TIMEOUT_MS, 15000),
     threadTurnStatusModel: process.env.THREAD_TURN_STATUS_MODEL || process.env.THREAD_SUMMARY_MODEL || process.env.THREAD_TITLE_MODEL || 'openai-codex/gpt-5.4-mini',
-    threadTurnStatusTimeoutMs: Number(process.env.THREAD_TURN_STATUS_TIMEOUT_MS || 15000),
+    threadTurnStatusTimeoutMs: parseNumberEnv(process.env.THREAD_TURN_STATUS_TIMEOUT_MS, 15000),
     threadNextStepsModel: process.env.THREAD_NEXT_STEPS_MODEL || process.env.THREAD_SUMMARY_MODEL || process.env.THREAD_TITLE_MODEL || 'openai-codex/gpt-5.4-mini',
-    threadNextStepsTimeoutMs: Number(process.env.THREAD_NEXT_STEPS_TIMEOUT_MS || 15000),
+    threadNextStepsTimeoutMs: parseNumberEnv(process.env.THREAD_NEXT_STEPS_TIMEOUT_MS, 15000),
     sessionFile:
       process.env.SESSION_DATA_PATH || path.join(defaultDataDir, 'sessions.json'),
     piSessionTraceDir:
