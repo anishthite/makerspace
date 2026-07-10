@@ -88,7 +88,7 @@ test('hosted GitHub status ignores stale browser session auth', async () => {
   }
 });
 
-test('hosted Claude Code login exchanges pasted redirect without binding fixed callback port', async () => {
+test('hosted Claude Code login uses copy-paste code flow without binding fixed callback port', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-claude-manual-auth-'));
   const blocker = await occupyClaudeCallbackPort();
   const previousFetch = globalThis.fetch;
@@ -99,7 +99,7 @@ test('hosted Claude Code login exchanges pasted redirect without binding fixed c
       assert.equal(String(url), 'https://platform.claude.com/v1/oauth/token');
       const body = JSON.parse(String(options.body || '{}'));
       assert.equal(body.grant_type, 'authorization_code');
-      assert.equal(body.redirect_uri, 'http://localhost:53692/callback');
+      assert.equal(body.redirect_uri, 'https://platform.claude.com/oauth/code/callback');
       assert.equal(body.state, body.code_verifier);
       assert.equal(body.code, 'claude-code');
       return new Response(JSON.stringify({ access_token: 'claude-access', refresh_token: 'claude-refresh', expires_in: 3600 }), {
@@ -114,7 +114,9 @@ test('hosted Claude Code login exchanges pasted redirect without binding fixed c
     assert.match(login.auth.url, /^https:\/\/claude\.ai\/oauth\/authorize\?/);
 
     const job = auth.getAuthLogin(login.id, user);
-    auth.submitClaudeCodeLoginCode(login.id, user, { redirectUrl: `http://localhost:53692/callback?code=claude-code&state=${job.verifier}` });
+    assert.match(login.auth.url, /redirect_uri=https%3A%2F%2Fplatform\.claude\.com%2Foauth%2Fcode%2Fcallback/);
+
+    auth.submitClaudeCodeLoginCode(login.id, user, { authorizationCode: `claude-code#${job.verifier}` });
     await job.exchangePromise;
 
     const authText = await auth.readPiAuthForSession({ ownerUserId: user.id });

@@ -38,7 +38,7 @@ const GITHUB_APP_INSTALLATIONS_KEY = 'githubAppInstallations';
 const CLAUDE_CODE_CLIENT_ID = Buffer.from('OWQxYzI1MGEtZTYxYi00NGQ5LTg4ZWQtNTk0NGQxOTYyZjVl', 'base64').toString('utf8');
 const CLAUDE_CODE_AUTHORIZE_URL = 'https://claude.ai/oauth/authorize';
 const CLAUDE_CODE_TOKEN_URL = 'https://platform.claude.com/v1/oauth/token';
-const CLAUDE_CODE_REDIRECT_URI = 'http://localhost:53692/callback';
+const CLAUDE_CODE_REDIRECT_URI = 'https://platform.claude.com/oauth/code/callback';
 const CLAUDE_CODE_SCOPES = 'org:create_api_key user:profile user:inference user:sessions:claude_code user:mcp_servers user:file_upload';
 
 function normalizeOAuthCredential(raw, provider = '') {
@@ -80,18 +80,11 @@ function parseClaudeCodeAuthorizationInput(input) {
     };
   } catch {}
 
-  if (value.includes('#')) {
-    const [code, state] = value.split('#', 2);
-    return { code, state };
-  }
+  const queryMatch = value.match(/(?:^|[?&#\s])code=([^\s&#]+)(?:.*(?:^|[?&#\s])state=([^\s&#]+))?/);
+  if (queryMatch) return { code: queryMatch[1], state: queryMatch[2] || undefined };
 
-  if (value.includes('code=')) {
-    const params = new URLSearchParams(value);
-    return {
-      code: params.get('code') || undefined,
-      state: params.get('state') || undefined,
-    };
-  }
+  const hashMatch = value.match(/([A-Za-z0-9._~-]+)#([A-Za-z0-9._~-]+)/);
+  if (hashMatch) return { code: hashMatch[1], state: hashMatch[2] };
 
   return { code: value };
 }
@@ -746,7 +739,7 @@ export function createAuthService({ config, http }) {
       status: 'waiting',
       auth: {
         url,
-        instructions: 'Approve Claude Code access, then paste the final localhost redirect URL.',
+        instructions: 'Approve Claude Code access, then paste the code Claude shows.',
       },
       manual: true,
       hostedManual: true,
@@ -759,11 +752,11 @@ export function createAuthService({ config, http }) {
 
   function submitHostedClaudeCodeLoginCode(job, body = {}) {
     const input = String(body.code || body.authorizationCode || body.redirectUrl || '').trim();
-    if (!input) throw clientError('Paste the Claude Code redirect URL or authorization code.');
+    if (!input) throw clientError('Paste the Claude Code code or callback URL.');
     if (job.exchangePromise) return publicAuthLogin(job);
 
     const parsed = parseClaudeCodeAuthorizationInput(input);
-    if (!parsed.code) throw clientError('Paste a Claude Code redirect URL with a code parameter, or paste the code itself.');
+    if (!parsed.code) throw clientError('Paste the Claude Code code or a callback URL with a code parameter.');
     if (parsed.state && parsed.state !== job.verifier) throw clientError('Claude Code OAuth state mismatch. Start sign-in again.', 400);
 
     job.status = 'exchanging';

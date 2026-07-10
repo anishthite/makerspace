@@ -54,6 +54,8 @@ test('project selector offers desktop local folders', () => {
   assert.match(settingsJs, /function navigateCodexTab\(codexTab, url\)/);
   assert.match(settingsJs, /function openWebClaudeCodeTab\(\)/);
   assert.match(settingsJs, /\/api\/auth\/claude-code/);
+  assert.match(settingsJs, /Paste the code Claude showed/);
+  assert.match(pages, /id="claude-code-paste"/);
   assert.match(settingsJs, /globalThis\.open\?\.\('about:blank', '_blank'\)/);
   assert.match(styles, /\.home-actions \.auth-pill \{[^}]*border-color: transparent;/);
   assert.match(styles, /\.project-shell \{[^}]*width: min\(900px, calc\(100% - clamp\(40px, 12vw, 280px\)\)\)/);

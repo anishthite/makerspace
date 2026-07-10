@@ -20,6 +20,7 @@ const claudeCodeStatus = document.querySelector('#claude-code-status');
 const claudeCodeAuth = document.querySelector('#claude-code-auth');
 const claudeCodeCodeForm = document.querySelector('#claude-code-code-form');
 const claudeCodeCodeInput = document.querySelector('#claude-code-code');
+const claudeCodePaste = document.querySelector('#claude-code-paste');
 const claudeCodeCodeSubmit = document.querySelector('#claude-code-code-submit');
 const githubLogin = document.querySelector('#github-login');
 const githubLogout = document.querySelector('#github-logout');
@@ -204,7 +205,16 @@ function navigateCodexTab(codexTab, url) {
 }
 
 function navigateClaudeCodeTab(claudeTab, url) {
-  navigateAuthTab(claudeTab, 'Claude Code sign-in', 'Claude Code', url);
+  if (!claudeTab || !url) return;
+  const safeUrl = escapeHtml(url);
+  const scriptUrl = JSON.stringify(url).replaceAll('</', '<\\/');
+  writeAuthTab(claudeTab, 'Claude Code sign-in', `
+    <h1 style="margin:0 0 12px">Claude sign-in</h1>
+    <p>After approval, Claude shows a code.</p>
+    <p><b>Copy that code, return to Spanner, and paste it.</b></p>
+    <p><a href="${safeUrl}">Continue to Claude</a></p>
+    <script>setTimeout(function(){ location.replace(${scriptUrl}); }, 1200);</script>
+  `);
 }
 
 function renderCodexDevice(login, codexTab = null) {
@@ -229,7 +239,9 @@ function renderClaudeCodeAuth(login, claudeTab = null) {
   navigateClaudeCodeTab(claudeTab, auth.url);
   claudeCodeAuth.classList.remove('hidden');
   claudeCodeCodeForm.classList.remove('hidden');
-  claudeCodeAuth.innerHTML = `<a href="${escapeHtml(auth.url)}" target="_blank" rel="noreferrer">Claude</a>: approve access, then paste the final localhost redirect URL below.`;
+  claudeCodeCodeInput.value = '';
+  claudeCodeCodeInput.focus();
+  claudeCodeAuth.innerHTML = `Step 1: approve access in <a href="${escapeHtml(auth.url)}" target="_blank" rel="noreferrer">Claude</a>. Step 2: copy the code Claude shows. Step 3: paste it here; Spanner finishes the rest.`;
 }
 
 async function pollCodexLogin(id) {
@@ -424,13 +436,19 @@ claudeCodeLogin.addEventListener('click', async () => {
   }
 });
 
-claudeCodeCodeForm.addEventListener('submit', async (event) => {
-  event.preventDefault();
+async function submitClaudeCodeInput() {
   if (!activeClaudeCodeLoginId) {
     claudeCodeStatus.textContent = 'Start Claude Code sign-in first.';
     return;
   }
+  if (!claudeCodeCodeInput.value.trim()) {
+    claudeCodeStatus.textContent = 'Paste the code Claude showed.';
+    claudeCodeCodeInput.focus();
+    return;
+  }
+  if (claudeCodeCodeSubmit.disabled) return;
   claudeCodeCodeSubmit.disabled = true;
+  if (claudeCodePaste) claudeCodePaste.disabled = true;
   claudeCodeStatus.textContent = 'Exchanging…';
   try {
     await fetchJson(`/api/auth/claude-code/login/${encodeURIComponent(activeClaudeCodeLoginId)}/code`, {
@@ -442,6 +460,28 @@ claudeCodeCodeForm.addEventListener('submit', async (event) => {
     claudeCodeStatus.textContent = error.message;
   } finally {
     claudeCodeCodeSubmit.disabled = false;
+    if (claudeCodePaste) claudeCodePaste.disabled = false;
+  }
+}
+
+claudeCodeCodeForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitClaudeCodeInput();
+});
+
+claudeCodeCodeInput.addEventListener('paste', () => {
+  setTimeout(() => {
+    if (claudeCodeCodeInput.value.trim()) claudeCodeCodeForm.requestSubmit();
+  }, 0);
+});
+
+claudeCodePaste?.addEventListener('click', async () => {
+  try {
+    claudeCodeCodeInput.value = await navigator.clipboard.readText();
+    await submitClaudeCodeInput();
+  } catch {
+    claudeCodeStatus.textContent = 'Click the code box and press paste.';
+    claudeCodeCodeInput.focus();
   }
 });
 
