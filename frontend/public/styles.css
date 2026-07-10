@@ -531,15 +531,6 @@ button.primary {
 .launch-details { display: grid; grid-template-columns: 1fr 1fr minmax(240px, 2fr); gap: 8px; padding: 10px 12px; border-top: 1px solid var(--rule); background: var(--paper); }
 .status-line { margin: 0; padding: 10px 14px; border-top: 1px solid var(--rule); color: var(--ink-3); font-size: 13px; }
 .status-line:empty { display: none; }
-.launch-suggestions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: min(760px, 100%); margin: 12px auto 0; padding: 0 2px; color: var(--ink-4); }
-.launch-suggestions button:not(.primary-btn):not(.textbtn):not(.run-summary):not(.agent-toast):not(.copy-button) { display: grid; gap: 3px; width: 100%; border: 0; border-radius: 0; background: transparent; color: var(--ink-4); padding: 6px 14px 7px; text-align: left; letter-spacing: 0; text-transform: none; cursor: pointer; box-shadow: inset -1px 0 0 color-mix(in srgb, var(--ink-4) 22%, transparent); }
-.launch-suggestions button:last-child { box-shadow: none; }
-.launch-suggestions strong { color: var(--ink-3); font: 600 13px/1.2 var(--sans); }
-.launch-suggestions span { color: var(--ink-4); font: 400 12px/1.3 var(--sans); }
-.launch-suggestions button:not(.primary-btn):not(.textbtn):not(.run-summary):not(.agent-toast):not(.copy-button):hover,
-.launch-suggestions button:not(.primary-btn):not(.textbtn):not(.run-summary):not(.agent-toast):not(.copy-button):focus-visible { border: 0; background: transparent; outline: 0; }
-.launch-suggestions button:hover strong,
-.launch-suggestions button:focus-visible strong { color: var(--ink-2); }
 .home-recent { width: min(1180px, 100%); margin: 28px auto 0; padding: 0 2px; border: 0; background: transparent; box-shadow: none; }
 .home-recent .section-row > div { min-width: 0; }
 .home-recent h2 { margin-bottom: 4px; }
@@ -630,13 +621,12 @@ body[data-home-ui="ops"] .home-shell {
   width: min(900px, calc(100% - 56px));
   display: grid;
   grid-template-columns: 1fr;
-  grid-template-areas: "nav" "launch" "suggestions" "recent";
+  grid-template-areas: "nav" "launch" "recent";
   gap: 22px;
   align-items: start;
   padding-top: 36px;
 }
 body[data-home-ui="ops"] .home-topbar { grid-area: nav; }
-body[data-home-ui="ops"] .launch-suggestions { grid-area: suggestions; width: 100%; margin: -6px 0 -4px; }
 body[data-home-ui="ops"] .launch-card {
   grid-area: launch;
   width: 100%;
@@ -1494,7 +1484,6 @@ select:focus { border-color: var(--blue); box-shadow: none; outline: none; }
   .agent-edge { display: none; }
   .subagent-stack { margin-left: 0; }
   body[data-home-ui="ops"] .home-shell { display: block; width: min(900px, calc(100% - 32px)); padding-top: 24px; }
-  body[data-home-ui="ops"] .launch-suggestions { width: min(760px, 100%); margin: 10px auto 0; }
   body[data-home-ui="ops"] .home-recent { margin-top: 24px; }
   .signin-gate,
   .project-grid,
@@ -1525,9 +1514,6 @@ select:focus { border-color: var(--blue); box-shadow: none; outline: none; }
   .home-topbar .header-actions { margin-left: 0; }
   .home-actions { justify-content: flex-start; }
   .launch-card { grid-template-columns: 1fr; }
-  .launch-suggestions { grid-template-columns: 1fr; }
-  .launch-suggestions button:not(.primary-btn):not(.textbtn):not(.run-summary):not(.agent-toast):not(.copy-button) { padding: 10px 2px 11px; box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--ink-4) 22%, transparent); }
-  .launch-suggestions button:last-child { box-shadow: none; }
   .launch-card > textarea,
   body[data-home-ui="ops"] .launch-card > textarea { min-height: 104px; }
   .launch-controls { grid-column: 1; flex-wrap: wrap; padding: 0 10px 8px; }

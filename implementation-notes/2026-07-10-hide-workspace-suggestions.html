@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Hide workspace suggestions</title>
+<meta name="task" content="Hide suggested starter inputs on the workspace main screen for now.">
+<meta name="date-started" content="2026-07-10">
+<meta name="date-updated" content="2026-07-10">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,ui,workspace,prompts,suggestions,cleanup">
+<meta name="related" content="2026-07-10-workspace-contextual-suggestions.html,2026-07-09-workspace-starter-suggestions.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-shipped{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Hide workspace suggestions</h1>
+<p class="meta"><code>hide-main-suggested-inputs</code> · worktree <code>/srv/workspace</code> · 2026-07-10 · status <b class="status-shipped">shipped</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Keep the workspace main screen cleaner by removing the suggested starter input row.</div><b>Source</b><div>User asked to hide suggested inputs on main for now.</div><b>Surface</b><div><code>/workspace.html</code> launch composer area.</div><b>Scope</b><div>Workspace-only; thread-level suggested next steps remain unchanged.</div></div>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Delta</th></tr><tr><td><code>frontend/src/pages.jsx</code></td><td>Remove the <code>#launch-suggestions</code> starter row from the workspace page.</td></tr><tr><td><code>frontend/src/runtime/app.js</code></td><td>Remove launch-suggestion rendering/click handling that no longer has a host element.</td></tr><tr><td><code>frontend/public/styles.css</code></td><td>Drop launch-suggestion CSS and the empty ops-grid area.</td></tr><tr><td><code>test/home-runtime-summary.test.js</code></td><td>Pin that workspace main omits suggestion markup, runtime wiring, and styles.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Remove the row instead of hiding with CSS so the main screen does no unused suggestion work.</td></tr><tr><td>D-002</td><td>Leave thread follow-up suggestions alone because the request targeted main/workspace inputs.</td></tr></table>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>node --test test/home-runtime-summary.test.js</code></td><td>Passed 12/12.</td></tr><tr><td><code>npm test</code></td><td>Passed 265/265.</td></tr><tr><td><code>npx vite build --ssr src/pages.jsx --outDir /tmp/spanner-pages-check --emptyOutDir</code></td><td>Passed.</td></tr><tr><td><code>npm run build -- --minify=false</code></td><td>Passed.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Restore the workspace row and launch-suggestion runtime/style blocks from the related suggestion notes if the prompts should return.</p>
+</body>
+</html>

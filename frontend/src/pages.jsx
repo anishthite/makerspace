@@ -169,11 +169,6 @@ export function WorkspacePage() {
       <div className="advanced-fields launch-details"><input name="name" placeholder="main agent name" /><div id="provider-banner" className="notice" aria-live="polite">Connecting…</div></div>
       <p id="thread-status" className="status-line"></p>
     </InputMessage>
-    <section id="launch-suggestions" className="launch-suggestions" aria-label="Suggested starter prompts">
-      <button type="button" data-suggested-prompt="Review the current diff, recent implementation notes, and latest finished agents, then pick the highest-leverage next task and do the smallest safe piece."><strong>Find next move</strong><span>Review diff, notes, and recent agents; do the smallest safe piece.</span></button>
-      <button type="button" data-suggested-prompt="Use the product's main flow, identify one confusing or broken interaction, fix it, and run the narrowest check that proves it."><strong>Fix a paper cut</strong><span>Walk the core flow, repair one edge, and verify it.</span></button>
-      <button type="button" data-suggested-prompt="Read the current workspace state and prepare a concise handoff with risks, next commands, and one safe cleanup if obvious."><strong>Prep a handoff</strong><span>Summarize risks, next commands, and one safe cleanup.</span></button>
-    </section>
     <Surface id="agents-section" className="home-recent action-center" aria-label="Agents">
       <div className="section-row"><div><h2>Agents</h2></div><div className="inline-actions"><Button as="a" variant="ghost" href="/history.html"><ClockCounterClockwiseIcon {...buttonIconProps} />history</Button><Button id="refresh-threads" variant="ghost" type="button"><ArrowsClockwiseIcon {...buttonIconProps} />refresh</Button></div></div>
       <ScrollArea id="threads-list" className="action-lanes"></ScrollArea>

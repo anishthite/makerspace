@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 const pages = readFileSync(new URL('../frontend/src/pages.jsx', import.meta.url), 'utf8');
 const entry = readFileSync(new URL('../frontend/src/entry.jsx', import.meta.url), 'utf8');
 const js = readFileSync(new URL('../frontend/src/runtime/app.js', import.meta.url), 'utf8');
+const styles = readFileSync(new URL('../frontend/public/styles.css', import.meta.url), 'utf8');
 const agentToasts = readFileSync(new URL('../frontend/src/runtime/agent-toasts.js', import.meta.url), 'utf8');
 const runState = readFileSync(new URL('../src/server/run-state.js', import.meta.url), 'utf8');
 const threads = readFileSync(new URL('../src/server/threads.js', import.meta.url), 'utf8');
@@ -39,18 +40,16 @@ test('home rows avoid workspace folder details', () => {
   assert.match(runState, /latestActivity: latestActivity \|\| undefined/);
 });
 
-test('workspace starter suggestions sit between launch composer and agents', () => {
+test('workspace main hides starter suggestions', () => {
   const formIndex = pages.indexOf('id="thread-form"');
-  const suggestionsIndex = pages.indexOf('id="launch-suggestions"');
   const agentsIndex = pages.indexOf('id="agents-section"');
-  assert.ok(formIndex > -1 && formIndex < suggestionsIndex && suggestionsIndex < agentsIndex);
-  assert.match(pages, /data-suggested-prompt="Review the current diff/);
-  assert.match(pages, /<strong>Find next move<\/strong>/);
-  assert.match(js, /const launchSuggestions = document\.querySelector\('#launch-suggestions'\);/);
-  assert.match(js, /function launchSuggestionsFromThreads\(threads\)/);
-  assert.match(js, /thread\?\.suggestedNextSteps/);
-  assert.match(js, /renderLaunchSuggestions\(launchSuggestionsFromThreads\(threads\)\);/);
-  assert.match(js, /promptInput\.value = button\.dataset\.suggestedPrompt \|\| '';/);
+  assert.ok(formIndex > -1 && formIndex < agentsIndex);
+  assert.doesNotMatch(pages, /id="launch-suggestions"/);
+  assert.doesNotMatch(pages, /data-suggested-prompt=/);
+  assert.doesNotMatch(js, /launchSuggestions/);
+  assert.doesNotMatch(js, /data-suggested-prompt/);
+  assert.doesNotMatch(styles, /launch-suggestions/);
+  assert.doesNotMatch(styles, /"suggestions"/);
 });
 
 test('home history and finished clear controls are near agent refresh', () => {
