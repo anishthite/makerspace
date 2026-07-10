@@ -44,8 +44,12 @@ test('workspace starter suggestions sit between launch composer and agents', () 
   const suggestionsIndex = pages.indexOf('id="launch-suggestions"');
   const agentsIndex = pages.indexOf('id="agents-section"');
   assert.ok(formIndex > -1 && formIndex < suggestionsIndex && suggestionsIndex < agentsIndex);
-  assert.match(pages, /data-suggested-prompt="Review this project/);
+  assert.match(pages, /data-suggested-prompt="Review the current diff/);
+  assert.match(pages, /<strong>Find next move<\/strong>/);
   assert.match(js, /const launchSuggestions = document\.querySelector\('#launch-suggestions'\);/);
+  assert.match(js, /function launchSuggestionsFromThreads\(threads\)/);
+  assert.match(js, /thread\?\.suggestedNextSteps/);
+  assert.match(js, /renderLaunchSuggestions\(launchSuggestionsFromThreads\(threads\)\);/);
   assert.match(js, /promptInput\.value = button\.dataset\.suggestedPrompt \|\| '';/);
 });
 

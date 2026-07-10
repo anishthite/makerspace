@@ -15,6 +15,12 @@ migrateStorageKey('workbenchBrowserSession', BROWSER_SESSION_KEY);
 const codexLogin = document.querySelector('#codex-login');
 const codexStatus = document.querySelector('#codex-status');
 const codexDevice = document.querySelector('#codex-device');
+const codexDeviceDialog = document.querySelector('#codex-device-dialog');
+const codexDeviceClose = document.querySelector('#codex-device-close');
+const codexDeviceCode = document.querySelector('#codex-device-code');
+const codexDeviceCopy = document.querySelector('#codex-device-copy');
+const codexDeviceOpen = document.querySelector('#codex-device-open');
+const codexDeviceDialogStatus = document.querySelector('#codex-device-dialog-status');
 const claudeCodeLogin = document.querySelector('#claude-code-login');
 const claudeCodeStatus = document.querySelector('#claude-code-status');
 const claudeCodeAuth = document.querySelector('#claude-code-auth');
@@ -179,11 +185,60 @@ function writeAuthTab(authTab, title, body) {
   } catch {}
 }
 
-function openWebCodexTab() {
-  if (globalThis.spannerDesktop) return null;
-  const codexTab = globalThis.open?.('about:blank', '_blank') || null;
-  if (codexTab) writeAuthTab(codexTab, 'Codex sign-in', 'Opening Codex sign-in…');
-  return codexTab;
+function setCodexDialogStatus(message = '') {
+  if (codexDeviceDialogStatus) codexDeviceDialogStatus.textContent = message;
+}
+
+function openCodexDeviceDialog(message = 'Starting…') {
+  setCodexDialogStatus(message);
+  if (!codexDeviceDialog || codexDeviceDialog.open) return;
+  try {
+    if (codexDeviceDialog.showModal) codexDeviceDialog.showModal();
+    else codexDeviceDialog.setAttribute('open', '');
+  } catch {
+    codexDeviceDialog.setAttribute('open', '');
+  }
+}
+
+function closeCodexDeviceDialog() {
+  if (!codexDeviceDialog) return;
+  if (codexDeviceDialog.open) codexDeviceDialog.close?.();
+  codexDeviceDialog.removeAttribute('open');
+}
+
+function resetCodexDeviceDialog() {
+  if (codexDeviceCode) codexDeviceCode.textContent = 'Loading…';
+  if (codexDeviceCopy) {
+    codexDeviceCopy.disabled = true;
+    codexDeviceCopy.textContent = 'Copy code';
+    delete codexDeviceCopy.dataset.code;
+  }
+  if (codexDeviceOpen) {
+    codexDeviceOpen.removeAttribute('href');
+    codexDeviceOpen.setAttribute('aria-disabled', 'true');
+  }
+  openCodexDeviceDialog('Starting Codex sign-in…');
+}
+
+async function copyToClipboard(value) {
+  const text = String(value || '');
+  if (!text) return false;
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {}
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.append(textarea);
+  textarea.select();
+  const ok = Boolean(document.execCommand?.('copy'));
+  textarea.remove();
+  return ok;
 }
 
 function openWebClaudeCodeTab() {
@@ -200,10 +255,6 @@ function navigateAuthTab(authTab, title, label, url) {
   writeAuthTab(authTab, title, `Opening ${escapeHtml(label)} sign-in… <a href="${safeUrl}">Open manually</a><script>window.opener=null;location.replace(${scriptUrl});</script>`);
 }
 
-function navigateCodexTab(codexTab, url) {
-  navigateAuthTab(codexTab, 'Codex sign-in', 'Codex', url);
-}
-
 function navigateClaudeCodeTab(claudeTab, url) {
   if (!claudeTab || !url) return;
   const safeUrl = escapeHtml(url);
@@ -217,17 +268,35 @@ function navigateClaudeCodeTab(claudeTab, url) {
   `);
 }
 
-function renderCodexDevice(login, codexTab = null) {
+function renderCodexDevice(login) {
   const device = login.device;
   if (!device) {
-    codexTab?.close?.();
+    closeCodexDeviceDialog();
     return;
   }
-  navigateCodexTab(codexTab, device.verificationUri);
-  const verificationUri = escapeHtml(device.verificationUri);
-  const userCode = escapeHtml(device.userCode);
+  const verificationUri = String(device.verificationUri || '');
+  const userCode = String(device.userCode || '');
+  openCodexDeviceDialog('Copy the code, then open sign-in.');
+  if (codexDeviceCode) codexDeviceCode.textContent = userCode || 'Code unavailable';
+  if (codexDeviceCopy) {
+    codexDeviceCopy.disabled = !userCode;
+    codexDeviceCopy.textContent = 'Copy code';
+    codexDeviceCopy.dataset.code = userCode;
+  }
+  if (codexDeviceOpen) {
+    codexDeviceOpen.textContent = 'Open sign-in';
+    if (verificationUri) {
+      codexDeviceOpen.setAttribute('href', verificationUri);
+      codexDeviceOpen.removeAttribute('aria-disabled');
+    } else {
+      codexDeviceOpen.removeAttribute('href');
+      codexDeviceOpen.setAttribute('aria-disabled', 'true');
+    }
+  }
+  const safeUri = escapeHtml(verificationUri);
+  const safeCode = escapeHtml(userCode);
   codexDevice.classList.remove('hidden');
-  codexDevice.innerHTML = `If Codex sign-in does not open, go to <a href="${verificationUri}" target="_blank" rel="noreferrer">${verificationUri}</a> and enter <code>${userCode}</code>.`;
+  codexDevice.innerHTML = `Copy <code>${safeCode}</code>, then open <a href="${safeUri}" target="_blank" rel="noreferrer">${safeUri}</a>.`;
 }
 
 function renderClaudeCodeAuth(login, claudeTab = null) {
@@ -250,6 +319,7 @@ async function pollCodexLogin(id) {
     if (login.status === 'complete') {
       codexStatus.textContent = 'Signed in';
       codexDevice.classList.add('hidden');
+      closeCodexDeviceDialog();
       await loadCodexAuth();
       return;
     }
@@ -396,20 +466,36 @@ function initDesktopUpdates() {
 
 getBrowserSessionId();
 initDesktopUpdates();
+codexDeviceClose?.addEventListener('click', closeCodexDeviceDialog);
+
+codexDeviceCopy?.addEventListener('click', async () => {
+  const ok = await copyToClipboard(codexDeviceCopy.dataset.code || codexDeviceCode?.textContent || '');
+  codexDeviceCopy.textContent = ok ? 'Copied' : 'Select code';
+  setCodexDialogStatus(ok ? 'Copied. Now open sign-in.' : 'Copy failed. Select the code, then open sign-in.');
+});
+
+codexDeviceOpen?.addEventListener('click', (event) => {
+  if (!codexDeviceOpen.hasAttribute('href')) {
+    event.preventDefault();
+    return;
+  }
+  setCodexDialogStatus('OpenAI is open in a new tab. Paste the copied code there.');
+});
+
 codexLogin.addEventListener('click', async () => {
-  const codexTab = openWebCodexTab();
+  resetCodexDeviceDialog();
   await persistConnectionInputs();
   codexLogin.disabled = true;
   codexStatus.textContent = 'Starting…';
   codexDevice.classList.add('hidden');
   try {
     const login = await fetchJson('/api/auth/openai-codex/login', { method: 'POST' });
-    renderCodexDevice(login, codexTab);
+    renderCodexDevice(login);
     codexStatus.textContent = 'Waiting…';
     await pollCodexLogin(login.id);
   } catch (error) {
-    codexTab?.close?.();
     codexStatus.textContent = error.message;
+    setCodexDialogStatus(error.message);
   } finally {
     codexLogin.disabled = false;
   }

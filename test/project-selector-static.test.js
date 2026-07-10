@@ -50,8 +50,14 @@ test('project selector offers desktop local folders', () => {
   assert.match(pages, /id="codex"/);
   assert.match(pages, /id="claude-code"/);
   assert.match(pages, /id="github"/);
-  assert.match(settingsJs, /function openWebCodexTab\(\)/);
-  assert.match(settingsJs, /function navigateCodexTab\(codexTab, url\)/);
+  assert.match(pages, /id="codex-device-dialog"/);
+  assert.match(pages, /id="codex-device-copy"/);
+  assert.match(settingsJs, /const codexDeviceDialog = document\.querySelector\('#codex-device-dialog'\)/);
+  assert.match(settingsJs, /function resetCodexDeviceDialog\(\)/);
+  assert.match(settingsJs, /navigator\.clipboard\?\.writeText/);
+  assert.match(settingsJs, /codexDeviceOpen\.setAttribute\('href', verificationUri\)/);
+  assert.doesNotMatch(settingsJs, /function openWebCodexTab/);
+  assert.doesNotMatch(settingsJs, /navigateCodexTab/);
   assert.match(settingsJs, /function openWebClaudeCodeTab\(\)/);
   assert.match(settingsJs, /\/api\/auth\/claude-code/);
   assert.match(settingsJs, /Paste the code Claude showed/);

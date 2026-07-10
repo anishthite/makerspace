@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Workspace subagent defaults</title>
+<meta name="task" content="Point workspace agents at the bundled Spanner defaults context instead of a repo-root AGENTS.md.">
+<meta name="date-started" content="2026-07-10">
+<meta name="date-updated" content="2026-07-10">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,pi,workspace,agents,defaults">
+<meta name="related" content="2026-07-01-makerspace-default-agents-context.html,2026-06-26-pi-profile-settings.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code { font-family: ui-monospace, Menlo, monospace; background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+  .blast-low { color: #2a7a2a; }
+</style>
+</head>
+<body>
+<h1>Workspace subagent defaults</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-10 · status <b>shipped</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Workspace agents use the bundled Spanner defaults context directly.</div>
+  <b>Source</b><div><code>$SPANNER_PI_DEFAULTS_PACKAGE_DIR/context/AGENTS.md</code> in sandboxes and <code>packages/spanner-pi-defaults/context/AGENTS.md</code> in local source.</div>
+  <b>Surface</b><div>Default task prompt and bundled <code>AGENTS.md</code> operating guidance.</div>
+  <b>Schema</b><div>None.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>src/config.js</code></td><td>touch</td><td>Point default workspace task prompts at the defaults package path and env var.</td></tr>
+  <tr><td><code>packages/spanner-pi-defaults/context/AGENTS.md</code></td><td>touch</td><td>Tell subagents not to probe for missing root <code>AGENTS.md</code> to load Spanner defaults.</td></tr>
+  <tr><td><code>test/config.test.js</code></td><td>touch</td><td>Pin the default prompt path and old root-file wording removal.</td></tr>
+  <tr><td><code>AGENTS.md</code></td><td>delete</td><td>Remove the temporary root symlink created during diagnosis.</td></tr>
+</table>
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Use the package/env path instead of a root symlink. Sandboxes and other developer machines should not depend on this checkout having a top-level forwarding file.</td></tr>
+  <tr><td>D-002</td><td>Keep real repo instruction discovery separate from Spanner defaults loading. Project-specific instructions still win when they exist.</td></tr>
+</table>
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td>Prompt guidance over workflow UI error hiding. The agent should stop making the noisy failing read.</td></tr>
+</table>
+<h2>Verification</h2>
+<table>
+  <tr><th>Check</th><th>Result</th></tr>
+  <tr><td><code>test ! -e AGENTS.md &amp;&amp; node --check src/config.js &amp;&amp; node --test test/config.test.js test/pi-defaults-package.test.js test/setup-script.test.js</code></td><td>Passed 17/17.</td></tr>
+  <tr><td>Inline Node smoke for <code>getConfig()</code> and <code>buildSetupScript()</code></td><td>Passed; prompt and setup script include defaults paths and omit old root-file wording.</td></tr>
+  <tr><td><code>npm test</code></td><td>Passed 257/257.</td></tr>
+</table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Revert the prompt string, bundled guidance, and focused test to restore root <code>AGENTS.md</code> probing.</p>
+<h2>Definition of done</h2>
+<ul>
+  <li>Default workspace task prompt references the defaults package path.</li>
+  <li>Bundled Spanner defaults tell subagents not to require root <code>AGENTS.md</code>.</li>
+  <li>No root <code>AGENTS.md</code> symlink remains.</li>
+  <li><code>node --check src/config.js &amp;&amp; node --test test/config.test.js test/pi-defaults-package.test.js</code> passes.</li>
+</ul>
+</body>
+</html>

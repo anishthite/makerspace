@@ -156,7 +156,7 @@ export function getConfig() {
       'npm install -g --ignore-scripts @earendil-works/pi-coding-agent',
     defaultTaskPrompt:
       process.env.DEFAULT_TASK_PROMPT ||
-      'Read AGENTS.md if present, inspect the repo, and complete the requested task.',
+      'Use the Spanner defaults context from $SPANNER_PI_DEFAULTS_PACKAGE_DIR/context/AGENTS.md when set, otherwise packages/spanner-pi-defaults/context/AGENTS.md if present. Do not require a repo-root AGENTS.md. Then inspect the repo and complete the requested task.',
     threadTitleModel: process.env.THREAD_TITLE_MODEL || 'openai-codex/gpt-5.4-mini',
     threadTitleTimeoutMs: Number(process.env.THREAD_TITLE_TIMEOUT_MS || 15000),
     threadSummaryModel: process.env.THREAD_SUMMARY_MODEL || process.env.THREAD_TITLE_MODEL || 'openai-codex/gpt-5.4-mini',

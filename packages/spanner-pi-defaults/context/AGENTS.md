@@ -28,7 +28,7 @@ names = ["thread UI", "prompt defaults"]
 results = ["passed", "passed"]
 ```
 
-Rules: prefer a direct root such as `TextContent` or `Table`; use `Card` only when the answer truly needs multiple stacked components. Spanner flattens the outer Card so it reads like message content, not a nested panel. Do not make a table unless the answer is genuinely tabular. Do not include secrets. Do not rely on browser-side tool execution. Buttons/forms should use `@ToAssistant(...)` so the user can review the composer text before sending. If inline media/artifact detection needs a real path, also mention that relative path plainly outside links/code; exact-format user requests still win.
+Rules: prefer a direct root such as `TextContent` or `Table`; use `Card` only when the answer truly needs multiple stacked components. Spanner flattens the outer Card so it reads like message content, not a nested panel. Do not make a table unless the answer is genuinely tabular. Use plain Markdown, not `openui`, for ASCII mockups, code dumps, or multiline prose that would require fragile escaping. Do not include secrets. Do not rely on browser-side tool execution. Buttons/forms should use `@ToAssistant(...)` so the user can review the composer text before sending. If inline media/artifact detection needs a real path, also mention that relative path plainly outside links/code; exact-format user requests still win.
 
 ## Interactive final-answer controls
 
@@ -53,7 +53,7 @@ Minimal `spanner-ui` companion:
 ## Operating style
 
 - Prefer the smallest working change over new architecture.
-- Read repo instructions before editing a repository.
+- Read real repo instructions before editing, but do not probe for a missing root `AGENTS.md` just to load Spanner defaults. In Spanner workspaces, defaults are already loaded from `packages/spanner-pi-defaults/context/AGENTS.md` or `$SPANNER_PI_DEFAULTS_PACKAGE_DIR/context/AGENTS.md`.
 - Keep user files and credentials private; never copy personal dotfiles into public artifacts.
 - When changing code, run the smallest relevant check that would catch the change breaking.
 - For non-trivial implementation work, maintain an append-only HTML note under `implementation-notes/` when that directory exists.

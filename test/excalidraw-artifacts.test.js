@@ -54,11 +54,20 @@ test('diagramImageArtifactPaths finds rendered diagram images with intent', () =
     diagramImageArtifactPaths('Saved rendered screenshot at `output/playwright/project-selector-layout.png`.'),
     ['output/playwright/project-selector-layout.png'],
   );
+  assert.deepEqual(
+    diagramImageArtifactPaths('```openui\nroot = TextContent("artifacts/flow.svg artifacts/flow.png artifacts/flow.webp artifacts/flow.gif artifacts/flow.jpg")\n```'),
+    ['artifacts/flow.svg', 'artifacts/flow.png', 'artifacts/flow.webp', 'artifacts/flow.gif', 'artifacts/flow.jpg'],
+  );
+  assert.deepEqual(
+    diagramImageArtifactPaths('```openui\nroot = TextContent("output/playwright/thread-preview.png")\n```'),
+    ['output/playwright/thread-preview.png'],
+  );
   assert.equal(normalizeDiagramImageArtifactPath('./output/playwright/demo.png'), 'output/playwright/demo.png');
 });
 
 test('diagramImageArtifactPaths ignores generic static asset mentions', () => {
   assert.deepEqual(diagramImageArtifactPaths('Added `public/logo.svg` and `public/favicon.svg`.'), []);
+  assert.deepEqual(diagramImageArtifactPaths('```openui\nroot = TextContent("frontend/public/logo.svg")\n```'), []);
   assert.deepEqual(diagramImageArtifactPaths('Do not push `codex-sign-in-flow.png`; it is unrelated.'), []);
   assert.equal(normalizeDiagramImageArtifactPath('../secret.png'), '');
   assert.equal(normalizeDiagramImageArtifactPath('https://example.com/a.png'), '');
@@ -76,6 +85,10 @@ test('artifactMediaOpenUISource turns media paths into Spanner OpenUI', () => {
   assert.equal(
     artifactMediaOpenUISource('Rendered diagram artifact: `infra-options-decision.png`; source: `infra-options-decision.excalidraw`.'),
     'root = ArtifactGallery([artifact1])\nartifact1 = ArtifactImage("infra-options-decision.png", "infra-options-decision.excalidraw")',
+  );
+  assert.equal(
+    artifactMediaOpenUISource('```openui\nroot = TextContent("artifacts/mockup.svg")\n```'),
+    'root = ArtifactGallery([artifact1])\nartifact1 = ArtifactImage("artifacts/mockup.svg")',
   );
   assert.equal(
     artifactMediaOpenUISource('Created `flow.excalidraw` and rendered it inline.'),

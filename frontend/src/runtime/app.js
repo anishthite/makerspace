@@ -56,6 +56,7 @@ const threadForm = document.querySelector('#thread-form');
 const threadSubmit = document.querySelector('#thread-submit');
 const threadStatus = document.querySelector('#thread-status');
 const launchSuggestions = document.querySelector('#launch-suggestions');
+const launchSuggestionsInitialHtml = launchSuggestions?.innerHTML || '';
 const threadsList = document.querySelector('#threads-list');
 const refreshThreads = document.querySelector('#refresh-threads');
 
@@ -653,6 +654,40 @@ function dismissFinishedIndicator(indicator) {
   indicator.setAttribute('aria-hidden', 'true');
 }
 
+function clipSuggestionText(value, max = 140) {
+  const text = String(value || '').replace(/\s+/g, ' ').trim();
+  return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
+}
+
+function launchSuggestionsFromThreads(threads) {
+  const suggestions = [];
+  const seen = new Set();
+  const recent = [...threads].filter((thread) => !isActiveThread(thread)).sort((left, right) => finishedAtMs(right) - finishedAtMs(left));
+  for (const thread of recent) {
+    for (const step of Array.isArray(thread?.suggestedNextSteps) ? thread.suggestedNextSteps : []) {
+      const label = clipSuggestionText(step?.label, 40);
+      const prompt = String(step?.prompt || '').replace(/\s+/g, ' ').trim();
+      const key = prompt.toLowerCase();
+      if (!label || !prompt || seen.has(key)) continue;
+      seen.add(key);
+      suggestions.push({ label, prompt, displayPrompt: clipSuggestionText(prompt, 220) });
+      if (suggestions.length === 3) return suggestions;
+    }
+  }
+  return suggestions;
+}
+
+function renderLaunchSuggestions(suggestions) {
+  if (!launchSuggestions) return;
+  if (!suggestions?.length) {
+    launchSuggestions.innerHTML = launchSuggestionsInitialHtml;
+    return;
+  }
+  launchSuggestions.innerHTML = suggestions.map((suggestion) => `
+    <button type="button" data-suggested-prompt="${escapeHtml(suggestion.prompt)}"><strong>${escapeHtml(suggestion.label)}</strong><span>${escapeHtml(suggestion.displayPrompt || suggestion.prompt)}</span></button>
+  `).join('');
+}
+
 function renderThreads(threads) {
   const lanes = [
     { key: 'running', title: 'Running', empty: 'No agents running.' },
@@ -663,6 +698,7 @@ function renderThreads(threads) {
   grouped.done.sort((left, right) => finishedAtMs(right) - finishedAtMs(left));
 
   finishedThreadNames = grouped.done.filter(canArchiveThread).map((thread) => thread.name);
+  renderLaunchSuggestions(launchSuggestionsFromThreads(threads));
   threadsList.innerHTML = lanes.map((lane) => `
     <section class="action-lane" aria-label="${escapeHtml(lane.title)} agents">
       <div class="action-lane-head">

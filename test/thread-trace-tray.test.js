@@ -237,6 +237,12 @@ test('html assistant messages still render mentioned image artifacts', () => {
   assert.doesNotMatch(js, /renderExcalidrawArtifacts\(node, raw, \{ includeImages: false \}\)/);
 });
 
+test('openui assistant messages still scan raw text for media artifacts', () => {
+  assert.match(js, /const displayText = allowHtml \? stripOpenUIArtifactBlocks\(stripInteractiveArtifactBlocks\(raw\)\) : raw;/);
+  assert.match(js, /node\.textContent = displayText;\n\s*renderMessageAttachments\(node, images\);\n\s*renderExcalidrawArtifacts\(node, raw\);/);
+  assert.match(js, /renderExcalidrawArtifacts\(node, raw, \{ skipImagePaths: htmlImageArtifactPaths\(displayText\) \}\);/);
+});
+
 test('openui fenced blocks render after assistant message text without extra chrome', () => {
   assert.match(js, /stripOpenUIArtifactBlocks\(stripInteractiveArtifactBlocks\(raw\)\)/);
   assert.match(js, /classList\.toggle\('openui-rendered'/);

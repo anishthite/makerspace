@@ -116,6 +116,15 @@ test('host dispatch is opt-in for remote providers', () => {
   });
 });
 
+test('default task prompt points workspace agents at Spanner defaults', () => {
+  withEnv({ DEFAULT_TASK_PROMPT: undefined, INFRA_PROVIDER: 'local', SPANNER_HOME: '/tmp/spanner-test-home' }, () => {
+    const prompt = getConfig().defaultTaskPrompt;
+    assert.match(prompt, /\$SPANNER_PI_DEFAULTS_PACKAGE_DIR\/context\/AGENTS\.md/);
+    assert.match(prompt, /packages\/spanner-pi-defaults\/context\/AGENTS\.md/);
+    assert.doesNotMatch(prompt, /Read AGENTS\.md if present/);
+  });
+});
+
 test('workspace mode extends default Daytona autodelete', () => {
   withEnv({ SPANNER_WORKSPACE_MODE: '1', DAYTONA_AUTODELETE_MINUTES: undefined }, () => {
     const config = getConfig();
