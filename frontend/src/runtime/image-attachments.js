@@ -2,6 +2,7 @@ const IMAGE_MIME_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image
 const MAX_IMAGES = 4;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const droppedImageFiles = new WeakMap();
+const imagePreviewUrls = new WeakMap();
 
 function imageMimeType(file) {
   const type = String(typeof file === 'string' ? file : file?.type || '').toLowerCase();
@@ -38,12 +39,82 @@ export function clearImageInput(input) {
   droppedImageFiles.delete(input);
 }
 
+function imageCountText(count) {
+  return `${count} image${count === 1 ? '' : 's'} added`;
+}
+
+function clearNode(node) {
+  if (typeof node.replaceChildren === 'function') node.replaceChildren();
+  else node.textContent = '';
+}
+
+function revokeImagePreviewUrls(node) {
+  const urls = imagePreviewUrls.get(node) || [];
+  for (const url of urls) {
+    try { globalThis.URL?.revokeObjectURL?.(url); } catch {}
+  }
+  imagePreviewUrls.delete(node);
+}
+
+function objectUrlForFile(file) {
+  try { return globalThis.URL?.createObjectURL?.(file) || ''; } catch { return ''; }
+}
+
+function renderImagePreviewTile(doc, file, urls) {
+  const tile = doc.createElement('span');
+  tile.className = 'attachment-preview';
+  tile.title = file?.name || 'attached image';
+  const src = objectUrlForFile(file);
+  if (!src) {
+    tile.className += ' is-fallback';
+    tile.textContent = 'img';
+    return tile;
+  }
+
+  urls.push(src);
+  const img = doc.createElement('img');
+  img.src = src;
+  img.alt = '';
+  img.setAttribute?.('aria-hidden', 'true');
+  tile.append(img);
+  return tile;
+}
+
 export function updateImageStatus(input, node) {
   if (!input || !node) return;
-  const count = imageInputFiles(input).length;
-  node.textContent = count ? `✓ ${count} image${count === 1 ? '' : 's'} added` : '';
+  const files = imageInputFiles(input);
+  const count = files.length;
+  const text = count ? imageCountText(count) : '';
+  revokeImagePreviewUrls(node);
+  clearNode(node);
+  node.title = count ? files.map((file) => file?.name).filter(Boolean).join(', ') : '';
+  node.setAttribute?.('aria-label', text);
+  if (!count) node.removeAttribute?.('aria-label');
   node.classList?.toggle('has-images', count > 0);
   node.classList?.toggle('muted', count === 0);
+  if (!count) return;
+
+  const doc = node.ownerDocument || globalThis.document;
+  if (!doc?.createElement || typeof node.append !== 'function') {
+    node.textContent = `✓ ${text}`;
+    return;
+  }
+
+  const label = doc.createElement('span');
+  label.className = 'sr-only';
+  label.textContent = text;
+  node.append(label);
+
+  const urls = [];
+  const visibleFiles = files.slice(0, count > MAX_IMAGES ? MAX_IMAGES - 1 : MAX_IMAGES);
+  for (const file of visibleFiles) node.append(renderImagePreviewTile(doc, file, urls));
+  if (count > visibleFiles.length) {
+    const more = doc.createElement('span');
+    more.className = 'attachment-preview attachment-preview-more';
+    more.textContent = `+${count - visibleFiles.length}`;
+    node.append(more);
+  }
+  imagePreviewUrls.set(node, urls);
 }
 
 export function acceptedImageFiles(files) {
