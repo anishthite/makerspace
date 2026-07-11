@@ -64,8 +64,8 @@ test('project selector offers desktop local folders', () => {
   assert.match(pages, /id="claude-code-paste"/);
   assert.match(settingsJs, /globalThis\.open\?\.\('about:blank', '_blank'\)/);
   assert.match(styles, /\.home-actions \.auth-pill \{[^}]*border-color: transparent;/);
-  assert.match(styles, /\.project-shell \{[^}]*width: min\(900px, calc\(100% - clamp\(40px, 12vw, 280px\)\)\)/);
-  assert.match(styles, /\.project-grid \{[^}]*grid-template-columns: 1fr/);
+  assert.match(styles, /\.project-shell \{[^}]*width: min\(1120px, calc\(100% - clamp\(40px, 10vw, 180px\)\)\)/);
+  assert.match(styles, /\.project-grid \{[^}]*grid-template-columns: minmax\(0, 1\.12fr\) minmax\(300px, \.88fr\)/);
   assert.match(styles, /#project-form \{[^}]*display: grid;[^}]*gap: 12px;/);
   assert.match(styles, /\.repo-suggestions \{/);
   assert.match(styles, /\.project-card \.repo-tray \{[^}]*display: flex;/);

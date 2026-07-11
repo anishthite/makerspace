@@ -117,13 +117,24 @@ export function ProjectPage() {
     </nav>
 
     <header id="project-hero" className="project-hero">
-      <h1 id="project-welcome">Welcome back.</h1>
-      <p className="lede">Choose a project to continue.</p>
+      <div>
+        <p className="eyebrow">workspace launcher</p>
+        <h1 id="project-welcome">Pick up where you left off.</h1>
+        <p className="lede">Open a local folder or connect a repository. Spanner gets you from a project to a working session in one step.</p>
+      </div>
+      <div className="project-hero-note" aria-label="Spanner workspace features">
+        <span className="project-hero-note-icon"><CubeIcon aria-hidden="true" /></span>
+        <span><strong>One focused workspace</strong><small>Agents, history, and changes stay together.</small></span>
+      </div>
     </header>
     <GitHubSignInCard />
 
     <section id="project-grid" className="project-grid">
       <Surface as="form" id="project-form" className="project-card" aria-label="Select project">
+        <div className="project-card-heading">
+          <span className="project-card-icon"><FolderOpenIcon aria-hidden="true" /></span>
+          <div><p className="eyebrow">start fresh</p><h2>Open a project</h2><p className="muted">Use a local folder or a GitHub repository.</p></div>
+        </div>
         <input id="project-repo-source" name="repoSource" type="hidden" value="" readOnly />
         <input id="project-branch" name="branch" type="hidden" value="" readOnly />
         <label className="sr-only" htmlFor="project-repo-url">folder or repo</label>
@@ -140,7 +151,10 @@ export function ProjectPage() {
         <p id="project-status" className="status-line" aria-live="polite"></p>
       </Surface>
       <Surface className="project-card recent-projects" aria-label="Recent projects">
-        <div className="section-row"><div><h2>Recent projects</h2><p className="muted">One click back into a workspace.</p></div></div>
+        <div className="project-card-heading">
+          <span className="project-card-icon project-card-icon-muted"><ClockCounterClockwiseIcon aria-hidden="true" /></span>
+          <div><p className="eyebrow">continue working</p><h2>Recent projects</h2><p className="muted">One click back into a workspace.</p></div>
+        </div>
         <div id="project-recent-list" className="project-list"></div>
       </Surface>
     </section>
