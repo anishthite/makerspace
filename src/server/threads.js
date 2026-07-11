@@ -142,7 +142,7 @@ export function createThreadService({ config, provider, http, auth, runState, br
     const runPath = path.posix.join('.pi/better-workflows/runs', `${runId}.json`);
     if (session.repoPath) return readFile(path.join(homedir(), runPath), 'utf8');
     if (!provider.readRemoteFile) throw clientError('Workflow run details are unavailable for this provider.', 501);
-    return provider.readRemoteFile(session, path.posix.join(config.remoteHomeDir || '/home/daytona', runPath));
+    return provider.readRemoteFile(session, path.posix.join(config.remoteHomeDir || '/home/root', runPath));
   }
 
   async function readThreadWorkflowRunFile(session, runId) {
@@ -575,7 +575,7 @@ export function createThreadService({ config, provider, http, auth, runState, br
     const status = assertRemoteLifecycleAllowed(existing, 'suspended');
     if (['suspended', 'deleted'].includes(status)) throw clientError(`Main agent is already ${status}.`, 409);
 
-    appendRunOutput(name, '[system] Suspending the Daytona sandbox. Files stay on the sandbox disk.\n', 'suspended');
+    appendRunOutput(name, '[system] Backing up the sandbox, then suspending compute.\n', 'suspended');
     const remote = await provider.suspendSession(existing);
     const now = new Date().toISOString();
     const suspended = await upsertSession(config.sessionFile, {
@@ -602,7 +602,7 @@ export function createThreadService({ config, provider, http, auth, runState, br
     if (status !== 'suspended') throw clientError('Only suspended main agents can be resumed.', 409);
 
     resetRunState(name, 'launching');
-    appendRunOutput(name, '[system] Resuming the Daytona sandbox.\n', 'launching');
+    appendRunOutput(name, '[system] Restoring the Cloudflare sandbox.\n', 'launching');
     const imageSettings = await readSavedSettings(config.settingsFile);
     const remote = await provider.resumeSession(existing, imageSettings);
     const bridgeUrl = trimTrailingSlash(remote.bridgeUrl || remote.httpsUrl || existing.bridgeUrl || '');
@@ -635,33 +635,33 @@ export function createThreadService({ config, provider, http, auth, runState, br
     if (!canAccessSession(existing, viewerSessionId, trusted, user)) {
       throw clientError(`Main agent ${name} belongs to a different user.`, 403);
     }
-    if (!provider.deleteSessionWithSnapshot) throw clientError('Current provider does not support snapshot-before-delete.', 501);
+    if (!provider.deleteSessionWithBackup) throw clientError('Current provider does not support backup-before-delete.', 501);
     const status = assertRemoteLifecycleAllowed(existing, 'deleted');
     if (status === 'deleted') throw clientError('Main agent is already deleted.', 409);
 
     const previous = { status: existing.status, runStatus: existing.runStatus };
-    resetRunState(name, 'snapshotting');
-    appendRunOutput(name, '[system] Creating a sanitized Daytona snapshot before deleting the sandbox.\n', 'snapshotting');
+    resetRunState(name, 'backing_up');
+    appendRunOutput(name, '[system] Backing up the sandbox before deleting it.\n', 'backing_up');
     await upsertSession(config.sessionFile, {
       ...existing,
-      status: 'snapshotting',
-      runStatus: 'snapshotting',
+      status: 'backing_up',
+      runStatus: 'backing_up',
       warning: null,
       updatedAt: new Date().toISOString(),
     });
 
     try {
-      const snapshot = await provider.deleteSessionWithSnapshot(existing);
+      const backup = await provider.deleteSessionWithBackup(existing);
       const now = new Date().toISOString();
       const deleted = await upsertSession(config.sessionFile, {
         ...existing,
-        snapshotName: snapshot.snapshotName,
-        snapshotCreatedAt: snapshot.snapshotCreatedAt,
-        deletedDaytonaSandboxId: snapshot.daytonaSandboxId || existing.daytonaSandboxId || null,
-        deletedDaytonaSandboxName: snapshot.daytonaSandboxName || existing.daytonaSandboxName || null,
-        daytonaSandboxId: null,
-        daytonaSandboxName: null,
-        daytonaState: 'deleted',
+        cloudflareBackups: backup.cloudflareBackups || existing.cloudflareBackups || [],
+        cloudflareBackupCreatedAt: backup.cloudflareBackupCreatedAt || now,
+        deletedSandboxId: backup.cloudflareSandboxId || existing.cloudflareSandboxId || existing.sandboxId || null,
+        sandboxId: null,
+        cloudflareSandboxId: null,
+        cloudflareSandboxName: null,
+        cloudflareState: 'deleted',
         bridgeUrl: '',
         httpsUrl: '',
         previewToken: null,
@@ -671,9 +671,9 @@ export function createThreadService({ config, provider, http, auth, runState, br
         updatedAt: now,
       });
       setRunState(name, { runStatus: 'deleted', warning: null });
-      appendRunOutput(name, `[system] Snapshot saved: ${snapshot.snapshotName}. Sandbox deleted.\n`, 'deleted');
+      appendRunOutput(name, '[system] Backup saved. Sandbox deleted.\n', 'deleted');
       appendRunStatus(name, 'deleted', { done: true });
-      return { thread: deleted, snapshot };
+      return { thread: deleted, backup };
     } catch (error) {
       const current = (await getStoredSession(config.sessionFile, name)) || existing;
       await upsertSession(config.sessionFile, {
@@ -684,7 +684,7 @@ export function createThreadService({ config, provider, http, auth, runState, br
         updatedAt: new Date().toISOString(),
       });
       setRunState(name, { runStatus: previous.runStatus || previous.status || 'ready', warning: error.message });
-      appendRunOutput(name, `[system] Snapshot failed; sandbox was not deleted: ${error.message}\n`, previous.runStatus || previous.status || 'ready');
+      appendRunOutput(name, `[system] Backup failed; sandbox was not deleted: ${error.message}\n`, previous.runStatus || previous.status || 'ready');
       throw error;
     }
   }

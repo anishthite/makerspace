@@ -25,7 +25,7 @@ test('stop control uses the running-thread stop route', () => {
   assert.match(js, /fetchJson\(`\/api\/threads\/\$\{encodeURIComponent\(name\)\}\/stop`, \{ method: 'POST' \}\)/);
 });
 
-test('sandbox lifecycle controls use suspend, resume, and snapshot-delete routes', () => {
+test('sandbox lifecycle controls use suspend, resume, and backup-delete routes', () => {
   assert.match(js, /const suspendButton = document\.querySelector\('#suspend-thread'\);/);
   assert.match(js, /const resumeButton = document\.querySelector\('#resume-thread'\);/);
   assert.match(js, /const deleteButton = document\.querySelector\('#delete-thread'\);/);
@@ -35,8 +35,8 @@ test('sandbox lifecycle controls use suspend, resume, and snapshot-delete routes
   assert.match(js, /fetchJson\(`\/api\/threads\/\$\{encodeURIComponent\(name\)\}\/\$\{route\}`, \{ method: 'POST' \}\)/);
   assert.match(js, /postLifecycleAction\(suspendButton, 'suspend', 'suspending…', 'suspending'\)/);
   assert.match(js, /postLifecycleAction\(resumeButton, 'resume', 'resuming…', 'resuming'\)/);
-  assert.match(js, /confirm\('Create a snapshot, then delete this sandbox\?'\)/);
-  assert.match(js, /postLifecycleAction\(deleteButton, 'delete', 'snapshotting…', 'snapshotting'\)/);
+  assert.match(js, /confirm\('Back up, then delete this sandbox\?'\)/);
+  assert.match(js, /postLifecycleAction\(deleteButton, 'delete', 'backing up…', 'backing_up'\)/);
   assert.match(js, /Sandbox is suspended · resume before sending a prompt/);
 });
 

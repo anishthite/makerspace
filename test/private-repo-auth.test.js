@@ -36,7 +36,7 @@ function runStateStub() {
   };
 }
 
-test('manual Daytona launch uses private clone auth without persisting it', async () => {
+test('manual Cloudflare launch uses private clone auth without persisting it', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-manual-private-auth-'));
   const sessionFile = path.join(root, 'sessions.json');
   let launched = null;

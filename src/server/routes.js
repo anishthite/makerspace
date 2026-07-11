@@ -368,7 +368,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
         sendJson(response, 202, {
           provider: provider.info(),
           thread: decorateLiveSession(result.thread),
-          snapshot: result.snapshot,
+          backup: result.backup,
         });
         return;
       }

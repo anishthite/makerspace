@@ -1,0 +1,15 @@
+{
+  "name": "spanner-sandbox-broker",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@cloudflare/sandbox": "^0.12.3"
+  },
+  "devDependencies": {
+    "wrangler": "^4.53.0"
+  },
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  }
+}

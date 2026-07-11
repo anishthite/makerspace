@@ -64,7 +64,7 @@ export function buildWorkspaceIdentity({ ownerUserId, repoUrl }) {
 }
 
 export function workspacePaths(config, threadName = '') {
-  const root = String(config.remoteWorkspaceDir || '/srv/workspace').replace(/\/+$/, '');
+  const root = String(config.remoteWorkspaceDir || '/workspace').replace(/\/+$/, '');
   const safeThread = slugify(threadName, 'thread');
   return {
     root,
@@ -83,9 +83,10 @@ export function workspaceRemotePatch(workspace = {}) {
     connectCommand: workspace.connectCommand || null,
     runAgentCommand: workspace.runAgentCommand || null,
     tailLogCommand: workspace.tailLogCommand || null,
-    daytonaSandboxId: workspace.daytonaSandboxId || workspace.sandboxId || null,
-    daytonaSandboxName: workspace.daytonaSandboxName || null,
-    daytonaState: workspace.daytonaState || null,
+    sandboxId: workspace.sandboxId || workspace.cloudflareSandboxId || null,
+    cloudflareSandboxId: workspace.cloudflareSandboxId || workspace.sandboxId || null,
+    cloudflareSandboxName: workspace.cloudflareSandboxName || null,
+    cloudflareState: workspace.cloudflareState || null,
   };
 }
 
@@ -169,7 +170,7 @@ export function buildWorktreeScript(session, config) {
 }
 
 export function assertWorkspaceCwd(cwd, root) {
-  const workspaceRoot = path.posix.resolve(String(root || '/srv/workspace'));
+  const workspaceRoot = path.posix.resolve(String(root || '/workspace'));
   const resolved = path.posix.resolve(String(cwd || workspaceRoot));
   if (resolved !== workspaceRoot && !resolved.startsWith(`${workspaceRoot}/`)) {
     throw new Error('Run cwd must stay inside the workspace root.');

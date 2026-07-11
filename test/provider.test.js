@@ -1,406 +1,123 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
-import { realpath } from 'node:fs/promises';
+import test from 'node:test';
 
 import { createProvider, isTransientSandboxError } from '../src/provider.js';
 
 const config = {
-  daytonaApiKey: 'test-key',
-  daytonaApiUrl: 'https://app.daytona.io/api',
-  daytonaTarget: 'us',
-  daytonaSnapshot: 'spanner-base',
-  daytonaAutostopMinutes: 60,
-  daytonaAutodeleteMinutes: 120,
-  daytonaSuspendAutodeleteMinutes: -1,
-  remoteUser: 'daytona',
-  remoteHomeDir: '/home/daytona',
-  remoteControlDir: '/srv/spanner',
-  remoteWorkspaceDir: '/srv/workspace',
+  provider: 'cloudflare',
+  cloudflareBrokerUrl: 'https://broker.example.test',
+  cloudflareBrokerToken: 'broker-token',
+  cloudflareMachine: 'standard-2',
+  cloudflareSleepAfter: '15m',
+  remoteUser: 'root',
+  remoteHomeDir: '/home/root',
+  remoteWorkspaceDir: '/workspace',
+  remoteControlDir: '/home/root/.spanner/control',
+  remotePiDefaultsPackageDir: '/home/root/.pi/agent/spanner-pi-defaults',
   bridgePort: 4310,
-  bridgeReadyTimeoutMs: 240000,
-  defaultCpu: '2',
-  defaultMemory: '8',
-  defaultDisk: '10',
-  image: '',
-  forwardEnvKeys: [],
-  piInstallCommand: 'npm install -g pi',
-  defaultTaskPrompt: 'Do the task.',
+  forwardEnvKeys: ['ANTHROPIC_API_KEY'],
+  piInstallCommand: 'npm install -g --ignore-scripts @earendil-works/pi-coding-agent',
+  defaultTaskPrompt: 'Do the thing.',
 };
 
-function makeSandbox(overrides = {}) {
+function fakeFetch() {
   const calls = [];
-  return {
-    id: 'sandbox-123',
-    name: 'thread-one',
-    state: 'started',
-    calls,
-    fs: {
-      async uploadFile(content, filePath) {
-        calls.push(['uploadFile', filePath, Buffer.byteLength(content)]);
-      },
-    },
-    process: {
-      async executeCommand(command, cwd, env, timeout) {
-        calls.push(['executeCommand', command, cwd, env, timeout]);
-        return { exitCode: 0, result: '' };
-      },
-    },
-    async refreshData() {
-      calls.push(['refreshData']);
-    },
-    async waitUntilStarted() {
-      calls.push(['waitUntilStarted']);
-      this.state = 'started';
-    },
-    async setAutostopInterval(minutes) {
-      calls.push(['setAutostopInterval', minutes]);
-    },
-    async setAutoDeleteInterval(minutes) {
-      calls.push(['setAutoDeleteInterval', minutes]);
-    },
-    async getPreviewLink(port) {
-      calls.push(['getPreviewLink', port]);
-      return { url: `https://preview.example/${port}`, token: 'preview-token' };
-    },
-    async stop(timeout, force) {
-      calls.push(['stop', timeout, force]);
-      this.state = 'stopped';
-    },
-    async _experimental_createSnapshot(name, timeout) {
-      calls.push(['createSnapshot', name, timeout]);
-    },
-    async delete() {
-      calls.push(['delete']);
-    },
-    ...overrides,
+  const fetch = async (url, options = {}) => {
+    const body = options.body ? JSON.parse(options.body) : null;
+    calls.push({ url: String(url), method: options.method || 'GET', headers: options.headers || {}, body });
+    if (String(url).endsWith('/sessions')) return Response.json({ id: body.name, name: body.name, state: 'ready' });
+    if (String(url).includes('/ports/')) return Response.json({ bridgeUrl: 'https://bridge.example.test/', httpsUrl: 'https://bridge.example.test/' });
+    if (String(url).includes('/backup')) return Response.json({ backup: { id: `${body.name || 'backup'}-id`, dir: body.dir } });
+    if (String(url).includes('/files') && (options.method || 'GET') === 'GET') return Response.json({ content: 'file text' });
+    if (String(url).includes('/exec')) return Response.json({ success: true, exitCode: 0, stdout: 'ok\n', stderr: '' });
+    return Response.json({ ok: true });
   };
+  fetch.calls = calls;
+  return fetch;
 }
 
-test('isTransientSandboxError catches startup reachability failures', () => {
-  assert.equal(isTransientSandboxError(new Error('ECONNREFUSED while starting')), true);
-  assert.equal(isTransientSandboxError(new Error('sandbox did not reach started')), true);
-  assert.equal(isTransientSandboxError(new Error('invalid api key')), false);
-});
+test('createProvider exposes Cloudflare metadata without touching the broker', () => {
+  const provider = createProvider(config, { fetch: fakeFetch() });
 
-test('createProvider exposes Daytona metadata without importing the SDK', () => {
-  const provider = createProvider(config, { daytonaClient: { list: async () => [] } });
-
-  assert.equal(provider.kind, 'daytona');
-  assert.equal(provider.info().kind, 'daytona');
-  assert.equal(provider.info().transport, '@daytona/sdk');
+  assert.equal(provider.kind, 'cloudflare');
+  assert.equal(provider.info().kind, 'cloudflare');
+  assert.equal(provider.info().transport, 'cloudflare-sandbox-broker');
   assert.equal(provider.info().ready, true);
-  assert.deepEqual(provider.bridgeHeaders({ previewToken: 'preview-token' }), { 'x-daytona-preview-token': 'preview-token' });
-  assert.deepEqual(provider.bridgeHeaders({}), {});
-  assert.equal(provider.shouldRefreshSession({ updatedAt: '2000-01-01T00:00:00.000Z' }), true);
-  assert.equal(provider.shouldRefreshSession({ updatedAt: new Date().toISOString() }), false);
-  assert.deepEqual(provider.info().env, {
-    apiKey: true,
-    apiUrl: true,
-    target: true,
-    snapshot: true,
-    autostopMinutes: 60,
-    autodeleteMinutes: 120,
-  });
+  assert.equal(provider.info().machine, 'standard-2');
+  assert.deepEqual(provider.bridgeHeaders({ bridgeToken: 'secret' }), { authorization: 'Bearer secret' });
 });
 
-test('createProvider rejects unknown infrastructure providers', () => {
-  assert.throws(
-    () => createProvider({ ...config, provider: 'nope' }, { daytonaClient: { list: async () => [] } }),
-    /Unknown infrastructure provider: nope/,
-  );
+test('createProvider rejects unknown remote providers', () => {
+  assert.throws(() => createProvider({ ...config, provider: 'legacy-remote' }, { fetch: fakeFetch() }), /Unknown infrastructure provider: legacy-remote/);
 });
 
-test('createProvider exposes local metadata and validates repo paths', async () => {
-  const provider = createProvider({ ...config, provider: 'local', projectName: 'api', localDataDir: '/tmp/spanner-test' });
-
-  assert.equal(provider.kind, 'local');
-  assert.equal(provider.info().transport, 'local-process');
-  assert.equal(provider.info().ready, true);
-  assert.deepEqual(provider.info().project, { name: 'api', home: '/tmp/spanner-test' });
-  assert.equal(await provider.resolveRepoPath('.'), await realpath('.'));
-  await assert.rejects(() => provider.resolveRepoPath('/definitely/missing/spanner'), /ENOENT|no such file/i);
-});
-
-test('createSession creates a Daytona sandbox and returns bridge preview metadata', async () => {
-  const sandbox = makeSandbox();
-  let createParams = null;
-  const client = {
-    async list() {
-      return [];
-    },
-    async create(params) {
-      createParams = params;
-      return sandbox;
-    },
-  };
-  const provider = createProvider(config, { daytonaClient: client });
-
-  const session = {
-    name: 'thread-one',
-    repoMode: 'empty',
-    branch: '',
-    taskPrompt: 'Run pi.',
-    bridgeMode: true,
-    bridgeToken: 'bridge-token',
-    autoRunAgent: true,
-  };
-  const remote = await provider.createSession(session, {});
-
-  assert.equal(createParams.name, 'thread-one');
-  assert.equal(createParams.snapshot, 'spanner-base');
-  assert.equal(createParams.resources, undefined);
-  assert.equal(createParams.labels.spanner, '1');
-  assert.equal(createParams.labels.spannerSession, 'thread-one');
-  assert.equal(remote.name, 'thread-one');
-  assert.equal(remote.bridgeUrl, 'https://preview.example/4310');
-  assert.equal(remote.previewToken, 'preview-token');
-  assert.equal(remote.daytonaSandboxId, 'sandbox-123');
-  assert.equal(remote.connectCommand, 'daytona ssh sandbox-123');
-  assert.equal(sandbox.calls.some((call) => call[0] === 'uploadFile' && call[1] === '/tmp/spanner-setup.sh'), true);
-  assert.equal(sandbox.calls.some((call) => call[0] === 'executeCommand' && String(call[1]).includes('/tmp/spanner-setup.sh')), true);
-});
-
-test('listSessions consumes Daytona async iterable results', async () => {
-  const sandbox = makeSandbox();
-  const provider = createProvider(config, {
-    daytonaClient: {
-      list() {
-        return (async function* sandboxes() {
-          yield sandbox;
-        })();
-      },
-    },
-  });
-
-  const sessions = await provider.listSessions();
-
-  assert.equal(sessions.length, 1);
-  assert.equal(sessions[0].daytonaSandboxId, 'sandbox-123');
-});
-
-test('createSession reuses a Daytona sandbox found by async iterable labels', async () => {
-  const sandbox = makeSandbox({ id: 'listed-id', name: 'thread-one' });
-  let createCalled = false;
-  const provider = createProvider(config, {
-    daytonaClient: {
-      list() {
-        return (async function* sandboxes() {
-          yield sandbox;
-        })();
-      },
-      async create() {
-        createCalled = true;
-        throw new Error('should not create');
-      },
-    },
-  });
+test('createSession provisions through the broker and runs root setup', async () => {
+  const fetch = fakeFetch();
+  const provider = createProvider(config, { fetch });
 
   const remote = await provider.createSession({
     name: 'thread-one',
-    repoMode: 'empty',
-    branch: '',
-    taskPrompt: 'Run pi.',
     bridgeMode: true,
+    sharePort: 4310,
+    taskPrompt: 'Test prompt',
     bridgeToken: 'bridge-token',
-  }, {});
+    repoAuthHeader: `AUTHORIZATION: basic ${Buffer.from('x-access-token:repo-token').toString('base64')}`,
+  }, { anthropicApiKey: 'anthropic-key' });
 
-  assert.equal(createCalled, false);
-  assert.equal(remote.daytonaSandboxId, 'listed-id');
+  assert.equal(remote.cloudflareSandboxId, 'thread-one');
+  assert.equal(remote.bridgeUrl, 'https://bridge.example.test/');
+  assert.equal(fetch.calls[0].method, 'POST');
+  assert.equal(fetch.calls[0].url, 'https://broker.example.test/sessions');
+  assert.equal(fetch.calls[0].headers.authorization, 'Bearer broker-token');
+  assert.equal(fetch.calls[0].body.machine, 'standard-2');
+  assert.equal(fetch.calls[0].body.sleepAfter, '15m');
+  assert.equal(fetch.calls[0].body.keepAlive, true);
+  assert.deepEqual(fetch.calls[0].body.envVars, [{ key: 'ANTHROPIC_API_KEY', value: 'anthropic-key' }]);
+
+  const setupWrite = fetch.calls.find((call) => call.method === 'PUT' && call.url.endsWith('/files'));
+  assert.match(setupWrite.body.content, /mkdir -p '\/home\/root' '\/home\/root\/\.config\/gh'/);
+  assert.match(setupWrite.body.content, /printf 'export PI_BRIDGE_PACKAGE_DIR=%s\\n' '\/home\/root\/\.pi\/agent\/npm'/);
+
+  const setupExec = fetch.calls.find((call) => call.url.endsWith('/exec') && call.body.command.includes('/tmp/spanner-setup.sh'));
+  assert.deepEqual(setupExec.body.env, [{ key: 'ANTHROPIC_API_KEY', value: 'anthropic-key' }]);
+  assert.equal(fetch.calls.at(-1).url, 'https://broker.example.test/sessions/thread-one/ports/4310');
 });
 
-test('createSession reuses a stored Daytona sandbox id before creating', async () => {
-  const sandbox = makeSandbox({ id: 'stored-id', name: 'thread-one' });
-  let createCalled = false;
-  const provider = createProvider(config, {
-    daytonaClient: {
-      async get(id) {
-        assert.equal(id, 'stored-id');
-        return sandbox;
-      },
-      async list() {
-        return [];
-      },
-      async create() {
-        createCalled = true;
-        throw new Error('should not create');
-      },
-    },
-  });
+test('remote script and file helpers use broker endpoints', async () => {
+  const fetch = fakeFetch();
+  const provider = createProvider(config, { fetch });
+  let streamed = '';
 
-  const remote = await provider.createSession({
-    name: 'thread-one',
-    daytonaSandboxId: 'stored-id',
-    repoMode: 'empty',
-    branch: '',
-    taskPrompt: 'Run pi.',
-    bridgeMode: true,
-    bridgeToken: 'bridge-token',
-  }, {});
-
-  assert.equal(createCalled, false);
-  assert.equal(remote.daytonaSandboxId, 'stored-id');
-  assert.equal(remote.bridgeUrl, 'https://preview.example/4310');
-});
-
-test('createSession falls back to existing sandbox lookup on duplicate create', async () => {
-  const sandbox = makeSandbox({ id: 'duplicate-id', name: 'thread-one' });
-  const gets = [];
-  const provider = createProvider(config, {
-    daytonaClient: {
-      async list() {
-        return [];
-      },
-      async create() {
-        throw new Error('Sandbox with name thread-one already exists');
-      },
-      async get(id) {
-        gets.push(id);
-        return sandbox;
-      },
-    },
-  });
-
-  const remote = await provider.createSession({
-    name: 'thread-one',
-    repoMode: 'empty',
-    branch: '',
-    taskPrompt: 'Run pi.',
-    bridgeMode: true,
-    bridgeToken: 'bridge-token',
-  }, {});
-
-  assert.deepEqual(gets, ['thread-one']);
-  assert.equal(remote.daytonaSandboxId, 'duplicate-id');
-  assert.equal(remote.bridgeUrl, 'https://preview.example/4310');
-});
-
-function makeStreamingProcess(calls, overrides = {}) {
-  return {
-    async executeCommand(command) {
-      calls.push(['executeCommand', command]);
-      return { exitCode: 0, result: '' };
-    },
-    async createSession(sessionId) {
-      calls.push(['createSession', sessionId]);
-    },
-    async executeSessionCommand(sessionId, request, timeout) {
-      calls.push(['executeSessionCommand', request.command, request.runAsync, timeout]);
-      return { cmdId: 'cmd-1' };
-    },
-    async getSessionCommandLogs(sessionId, cmdId, onStdout, onStderr) {
-      calls.push(['getSessionCommandLogs', cmdId]);
-      onStdout('hello ');
-      onStderr('warn ');
-      onStdout('world');
-    },
-    async getSessionCommand(sessionId, cmdId) {
-      calls.push(['getSessionCommand', cmdId]);
-      return { exitCode: 0 };
-    },
-    async deleteSession(sessionId) {
-      calls.push(['deleteSession', sessionId]);
-    },
-    ...overrides,
-  };
-}
-
-test('runRemoteScript streams session command logs without re-running the command', async () => {
-  const calls = [];
-  const sandbox = makeSandbox({ process: makeStreamingProcess(calls) });
-  const provider = createProvider(config, {
-    daytonaClient: {
-      async list() { return [sandbox]; },
-      async get() { return sandbox; },
-    },
-  });
-
-  const chunks = [];
-  const result = await provider.runRemoteScript(
-    { name: 'thread-one', daytonaSandboxId: 'sandbox-123' },
-    'echo hi',
-    { onData: (buffer) => chunks.push(String(buffer)) },
-  );
+  const result = await provider.runRemoteScript('thread-one', 'echo hi', { cwd: '/workspace', onData: (text) => { streamed += text; } });
+  await provider.writeRemoteFile('thread-one', '/tmp/a.txt', 'hello');
+  const content = await provider.readRemoteFile('thread-one', '/tmp/a.txt');
 
   assert.equal(result.exitCode, 0);
-  assert.equal(result.stdout, 'hello world');
-  assert.equal(result.stderr, 'warn ');
-  assert.deepEqual(chunks, ['hello ', 'warn ', 'world']);
-  assert.equal(calls.some((call) => call[0] === 'executeCommand'), false);
-  assert.equal(calls.filter((call) => call[0] === 'executeSessionCommand').length, 1);
-  assert.equal(calls.some((call) => call[0] === 'deleteSession'), true);
+  assert.equal(streamed, 'ok\n');
+  assert.equal(content, 'file text');
+  assert.match(fetch.calls[0].body.command, /cd '\/workspace' && bash -lc 'echo hi'/);
+  assert.equal(fetch.calls[1].method, 'PUT');
+  assert.equal(fetch.calls[2].method, 'GET');
 });
 
-test('runRemoteScript fails fast when Daytona omits the streaming command id', async () => {
-  const calls = [];
-  const sandbox = makeSandbox({
-    process: makeStreamingProcess(calls, {
-      async executeSessionCommand(sessionId, request, timeout) {
-        calls.push(['executeSessionCommand', request.command, request.runAsync, timeout]);
-        return {};
-      },
-    }),
-  });
-  const provider = createProvider(config, {
-    daytonaClient: {
-      async list() { return [sandbox]; },
-      async get() { return sandbox; },
-    },
-  });
+test('suspend and delete create Cloudflare backups before destroying sandbox', async () => {
+  const fetch = fakeFetch();
+  const provider = createProvider(config, { fetch });
 
-  await assert.rejects(
-    () => provider.runRemoteScript(
-      { name: 'thread-one', daytonaSandboxId: 'sandbox-123' },
-      'echo hi',
-      { onData: () => {} },
-    ),
-    /command id/,
+  const suspended = await provider.suspendSession({ name: 'thread-one' });
+  const deleted = await provider.deleteSessionWithBackup({ name: 'thread-two', cloudflareSandboxId: 'thread-two' });
+
+  assert.equal(suspended.status, 'suspended');
+  assert.equal(suspended.cloudflareBackups.length, 2);
+  assert.equal(deleted.cloudflareBackups.length, 2);
+  assert.deepEqual(
+    fetch.calls.filter((call) => call.url.endsWith('/backup')).map((call) => call.body.dir),
+    ['/workspace', '/home/root/.spanner/control/pi-sessions', '/workspace', '/home/root/.spanner/control/pi-sessions'],
   );
-  assert.equal(calls.some((call) => call[0] === 'executeCommand'), false);
+  assert.equal(fetch.calls.filter((call) => call.method === 'DELETE').length, 2);
 });
 
-test('suspendSession disables autodelete before stopping sandbox compute', async () => {
-  const sandbox = makeSandbox({ id: 'sandbox-123', name: 'thread-one' });
-  const provider = createProvider(config, {
-    daytonaClient: {
-      async get() { return sandbox; },
-      async list() { return []; },
-    },
-  });
-
-  const remote = await provider.suspendSession({ name: 'thread-one', daytonaSandboxId: 'sandbox-123' });
-
-  assert.equal(remote.status, 'stopped');
-  assert.deepEqual(sandbox.calls.filter((call) => call[0] === 'setAutoDeleteInterval').at(-1), ['setAutoDeleteInterval', -1]);
-  assert.deepEqual(sandbox.calls.find((call) => call[0] === 'stop'), ['stop', 60, false]);
-});
-
-test('deleteSessionWithSnapshot scrubs secrets, snapshots, then deletes', async () => {
-  const sandbox = makeSandbox({ id: 'sandbox-123', name: 'thread-one' });
-  const provider = createProvider(config, {
-    daytonaClient: {
-      async get() { return sandbox; },
-      async list() { return []; },
-    },
-  });
-
-  const result = await provider.deleteSessionWithSnapshot(
-    { name: 'thread-one', daytonaSandboxId: 'sandbox-123' },
-    { snapshotName: 'snapshot-one', timeoutMs: 120_000 },
-  );
-
-  assert.equal(result.snapshotName, 'snapshot-one');
-  assert.equal(sandbox.calls.some((call) => call[0] === 'executeCommand' && String(call[1]).includes('.git-credentials')), true);
-  assert.deepEqual(sandbox.calls.find((call) => call[0] === 'createSnapshot'), ['createSnapshot', 'snapshot-one', 120]);
-  assert.equal(sandbox.calls.at(-1)[0], 'delete');
-});
-
-test('readOutput returns launching before a sandbox id is known', async () => {
-  const provider = createProvider(config, { daytonaClient: { list: async () => [] } });
-  const output = await provider.readOutput({}, { offset: 0 });
-
-  assert.deepEqual(output, {
-    chunk: '',
-    nextOffset: 0,
-    runStatus: 'launching',
-  });
+test('transient sandbox error detection stays provider-neutral', () => {
+  assert.equal(isTransientSandboxError(new Error('503 timeout from broker')), true);
+  assert.equal(isTransientSandboxError(new Error('validation failed')), false);
 });

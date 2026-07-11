@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Cloudflare sandbox migration plan</title>
+<meta name="task" content="Plan the switch from Daytona sandboxes to Cloudflare Sandboxes for Spanner.">
+<meta name="date-started" content="2026-07-10">
+<meta name="date-updated" content="2026-07-10">
+<meta name="status" content="ready-for-review">
+<meta name="blast-radius" content="high">
+<meta name="tags" content="spanner,cloudflare,sandbox,daytona,migration,provider,plan">
+<meta name="related" content="2026-07-10-daytona-suspend-resume-worklog.html,2026-07-07-remote-launch-diagnostics.html,2026-07-06-remote-state-persistence.html,/Users/anishthite/workspace/board/implementation-notes/2026-06-16-cloudflare-sandbox-backend.html,/Users/anishthite/workspace/board/implementation-notes/2026-06-21-sandbox-runtime-no-bootstrap-write.html,/Users/anishthite/workspace/board/implementation-notes/2026-06-17-d1-backed-pi-resume.html">
+<style>
+  body { font: 14px/1.5 -apple-system, system-ui, sans-serif; max-width: 1040px; margin: 2rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 22px; margin: 0 0 .25rem; }
+  h2 { font-size: 16px; margin: 1.4rem 0 .45rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 5px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  pre { background: #f6f6f6; padding: .65rem .8rem; overflow: auto; font-size: 12.5px; line-height: 1.4; }
+  ul, ol { margin: .35rem 0 .8rem 1.2rem; padding: 0; }
+  li { margin: .16rem 0; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .blast-high { color: #b00020; font-weight: 600; }
+  .kv { display: grid; grid-template-columns: 150px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>Cloudflare sandbox migration plan</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-10 · status <b>ready-for-review</b> · blast <span class="blast-high">high</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Switch the default cloud runtime from <code>daytona</code> to Cloudflare Sandboxes without rewriting the Spanner UI or Pi bridge.</div>
+  <b>Source</b><div>User preference for Board-like Cloudflare speed plus current Daytona launch slowness.</div>
+  <b>Board lessons</b><div>Baked runner image, Worker broker, <code>transport: "http"</code>, <code>sleepAfter</code>, D1-backed resume, and visible startup timings.</div>
+  <b>Surface</b><div><code>src/provider.js</code>, <code>src/providers/*</code>, <code>src/config.js</code>, Cloudflare Worker broker, sandbox image, setup script, tests, deploy docs.</div>
+  <b>Schema</b><div>Add provider fields; avoid destructive session migration until canary passes.</div>
+  <b>Default shape</b><div><code>standard-2</code>, <code>sleepAfter=30m</code>, no warm pool, backup <code>/srv/workspace</code> and Pi session state to R2.</div>
+  <b>Blast</b><div>High: provider, auth, persistence, and production deploy path change together.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>API contract</h2>
+<pre>Spanner Node backend → Cloudflare sandbox broker Worker
+Authorization: Bearer $CLOUDFLARE_SANDBOX_BROKER_TOKEN
+
+POST /sessions { name, labels, env, repo, bridgeMode, sharePort }
+→ { name, status, bridgeUrl, httpsUrl, previewToken?, cloudflareSandboxId, providerState }
+
+POST /sessions/:id/exec { command, cwd, timeoutMs, stream? }
+→ { stdout, stderr, output, exitCode }
+
+GET /sessions/:id/files?path=/abs/path
+PUT /sessions/:id/files { path, contentBase64 }
+POST /sessions/:id/ports { port, token? }
+POST /sessions/:id/backup { dir, name, useGitignore, ttl }
+POST /sessions/:id/restore { backup }
+DELETE /sessions/:id</pre>
+
+<h2>Step-by-step plan</h2>
+<ol>
+  <li>Measure current Daytona phases with <code>bridgeLaunchLog</code>; keep this as the before baseline.</li>
+  <li>Add <code>INFRA_PROVIDER=cloudflare</code> behind the existing provider factory; do not remove Daytona.</li>
+  <li>Create a small Cloudflare Worker broker with <code>export { Sandbox } from "@cloudflare/sandbox"</code>, <code>proxyToSandbox()</code>, one Durable Object binding, one container binding, and broker-token auth.</li>
+  <li>Port Board's <code>CloudflareSandboxClient</code> pattern into the broker: <code>getSandbox(binding, id, { transport: "http", enableDefaultSession: false, normalizeId: true, sleepAfter: "30m" })</code>.</li>
+  <li>Build a Spanner sandbox image from Cloudflare's base with Node, git, gh, Pi, <code>spanner-pi-defaults</code>, and the bridge runner preinstalled; make setup a health check, not an installer.</li>
+  <li>Implement the provider minimum: <code>createSession</code>, <code>listSessions</code>, <code>destroySession</code>, <code>runRemoteScript</code>, <code>readRemoteFile</code>, <code>writeRemoteFile</code>, <code>remoteAccess</code>, <code>setShare</code>, and <code>bridgeHeaders</code>.</li>
+  <li>Map paths to provider-neutral config: <code>CLOUDFLARE_HOME=/root</code>, <code>CLOUDFLARE_CONTROL_DIR=/root/.spanner/control</code>, <code>CLOUDFLARE_WORKSPACE_DIR=/srv/workspace</code>; remove Daytona path assumptions from shared routes.</li>
+  <li>Return Cloudflare preview URLs from <code>exposePort(4310)</code>; keep Spanner bridge bearer auth as the real access control.</li>
+  <li>Persist cross-sleep state before enabling sleep: backup <code>/srv/workspace</code>, <code>/root/.spanner/control/pi-sessions</code>, and required Pi profile/auth state; exclude secrets and generated dependency folders.</li>
+  <li>Restore backup handles on <code>createSession</code> for existing threads; treat local container disk as a cache like Board treats <code>/root/.pi/sessions</code>.</li>
+  <li>Add startup debug rows matching Board: create, restore, setup, expose-port, bridge-health, first bridge event, first LLM call.</li>
+  <li>Shadow-run one internal thread with <code>INFRA_PROVIDER=cloudflare</code>; compare time-to-ready, first LLM latency, tool exec latency, file read/write, artifact preview, and draft PR creation.</li>
+  <li>Canary hosted users behind <code>SPANNER_CLOUDFLARE_CANARY_USERS</code>; keep Daytona as fallback per session.</li>
+  <li>Flip the default only after canary passes: <code>INFRA_PROVIDER=cloudflare</code>, <code>CLOUDFLARE_INSTANCE_TYPE=standard-2</code>, <code>CLOUDFLARE_SLEEP_AFTER=30m</code>, <code>WARM_BRIDGE_POOL_SIZE=0</code>.</li>
+  <li>Keep Daytona provider for durable workspace mode until Cloudflare backup/restore survives a full suspend/resume/delete cycle.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>cloudflare-sandbox-worker/</code></td><td>new</td><td>Add the Worker broker, Wrangler config, and container image.</td></tr>
+  <tr><td><code>src/providers/cloudflare.js</code></td><td>new</td><td>Call the broker and normalize Cloudflare sessions to Spanner's provider contract.</td></tr>
+  <tr><td><code>src/provider.js</code></td><td>touch</td><td>Register <code>cloudflare</code> next to <code>daytona</code> and <code>local</code>.</td></tr>
+  <tr><td><code>src/config.js</code></td><td>touch</td><td>Add Cloudflare broker URL/token, instance type, sleep, backup bucket, and provider-specific path defaults.</td></tr>
+  <tr><td><code>src/setup-script.js</code></td><td>touch</td><td>Skip apt/npm/chown work when the Cloudflare image already has the runtime.</td></tr>
+  <tr><td><code>src/server/bridge.js</code></td><td>touch</td><td>Record Cloudflare launch phases and provider-neutral bridge URL headers.</td></tr>
+  <tr><td><code>test/*cloudflare*.test.js</code></td><td>new</td><td>Pin broker client behavior without live Cloudflare calls.</td></tr>
+  <tr><td><code>README.md</code></td><td>touch</td><td>Document Cloudflare env, canary, fallback, and default resource settings.</td></tr>
+  <tr><td><code>artifacts/cloudflare-sandbox-migration.excalidraw</code></td><td>new</td><td>Show the broker, sandbox, bridge, D1, and R2 state flow.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Use a Worker broker instead of importing <code>@cloudflare/sandbox</code> into the Node backend. Sandbox needs Worker Durable Object and Container bindings.</td></tr>
+  <tr><td>D-002</td><td>Keep Spanner's existing Pi bridge. It already solves browser streaming, auth, tool execution, and follow-up turns.</td></tr>
+  <tr><td>D-003</td><td>Start with <code>transport: "http"</code>. Board found the RPC control-connection upgrade path brittle.</td></tr>
+  <tr><td>D-004</td><td>Use a baked image. Board removed runtime file writes and npm installs from startup; Spanner should not repeat that mistake.</td></tr>
+  <tr><td>D-005</td><td>Use D1/session-store plus R2 backups as source of truth. Cloudflare container disk is a cache after sleep.</td></tr>
+  <tr><td>D-006</td><td>Canary before default switch. Provider bugs affect auth, git writes, and user repo state.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td>Broker sidecar over full backend migration to Workers. It preserves the Node control plane and deletes less code.</td></tr>
+  <tr><td>T-002</td><td>Backup/restore over <code>keepAlive=true</code>. Sleep saves money; keepAlive hides persistence bugs and burns idle spend.</td></tr>
+  <tr><td>T-003</td><td><code>standard-2</code> default over <code>standard-3</code>. Most Spanner work waits on LLMs and short test bursts; upgrade only when repos prove large.</td></tr>
+  <tr><td>T-004</td><td>Daytona fallback over big-bang cutover. Existing workspace persistence is safer while Cloudflare persistence is being proven.</td></tr>
+</table>
+
+<h2>Assumptions</h2>
+<ul>
+  <li>A-001 · Cloudflare account has Workers Paid, Containers, R2, and Durable Objects enabled; if wrong, broker deploy blocks before app changes.</li>
+  <li>A-002 · Spanner bridge works over Cloudflare <code>exposePort(4310)</code> with SSE; if wrong, host-dispatch can still validate tool execution first.</li>
+  <li>A-003 · R2 backups of workspace plus Pi session files are enough for follow-up continuity; if wrong, add D1-backed Pi JSONL replay like Board.</li>
+</ul>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-high">high</span>. Set <code>INFRA_PROVIDER=daytona</code> and leave Cloudflare broker deployed but unused.</p>
+
+<h2>Followups</h2>
+<ul>
+  <li>L-001 · Re-test Cloudflare <code>transport: "rpc"</code> after the broker is stable.</li>
+  <li>L-002 · Add an automated launch benchmark that compares Daytona and Cloudflare on the same repo and prompt.</li>
+</ul>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>Cloudflare can launch a fresh Spanner thread and reach bridge health.</li>
+  <li>Remote tools pass <code>bash</code>, <code>read</code>, <code>write</code>, <code>edit</code>, artifact preview, and draft PR smoke checks.</li>
+  <li>A stopped/slept Cloudflare thread restores workspace and Pi context.</li>
+  <li>Startup timings prove Cloudflare beats the measured Daytona path for typical Makerspace repos.</li>
+  <li>Hosted default can flip back to Daytona with one env var.</li>
+</ul>
+</body>
+</html>

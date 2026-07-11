@@ -12,6 +12,7 @@ data/pi-sessions/
 .vercel
 .pi/
 .playwright-cli/
+.wrangler/
 output/
 test-results/
 implementation-notes/artifacts/

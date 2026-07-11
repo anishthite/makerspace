@@ -1,0 +1,31 @@
+name = "spanner-sandbox-broker"
+main = "src/index.js"
+compatibility_date = "2026-07-10"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+routes = [
+  { pattern = "sandbox.spanner.sh/*", zone_name = "spanner.sh" },
+  { pattern = "*.sandbox.spanner.sh/*", zone_name = "spanner.sh" },
+]
+
+# Set CLOUDFLARE_ACCOUNT_ID in your shell; keep account_id out of git.
+# Set BROKER_TOKEN with: wrangler secret put BROKER_TOKEN
+
+[[containers]]
+class_name = "Sandbox"
+image = "../image/Dockerfile"
+image_build_context = ".."
+instance_type = "standard-2"
+max_instances = 10
+
+[[durable_objects.bindings]]
+name = "Sandbox"
+class_name = "Sandbox"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Sandbox"]
+
+[[r2_buckets]]
+binding = "BACKUP_BUCKET"
+bucket_name = "spanner-sandbox-backups"

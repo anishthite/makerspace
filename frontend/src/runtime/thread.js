@@ -614,7 +614,7 @@ function isRemoteLifecycleThread(thread) {
 
 function canSuspendThread(thread) {
   const status = String(effectiveStatus(thread) || '').toLowerCase();
-  return isRemoteLifecycleThread(thread) && !isActiveStatus(status) && !['suspended', 'deleted', 'snapshotting'].includes(status);
+  return isRemoteLifecycleThread(thread) && !isActiveStatus(status) && !['suspended', 'deleted', 'backing_up'].includes(status);
 }
 
 function canResumeThread(thread) {
@@ -623,7 +623,7 @@ function canResumeThread(thread) {
 
 function canDeleteThread(thread) {
   const status = String(effectiveStatus(thread) || '').toLowerCase();
-  return isRemoteLifecycleThread(thread) && !isActiveStatus(status) && !['deleted', 'snapshotting'].includes(status);
+  return isRemoteLifecycleThread(thread) && !isActiveStatus(status) && !['deleted', 'backing_up'].includes(status);
 }
 
 function isRunningThread(thread = currentThread) {
@@ -645,14 +645,14 @@ function renderComposerState(thread = currentThread) {
   const running = isRunningThread(thread);
   const starting = isStartingThread(thread);
   const status = String(effectiveStatus(thread) || '').toLowerCase();
-  const blocked = ['suspended', 'deleted', 'snapshotting'].includes(status);
+  const blocked = ['suspended', 'deleted', 'backing_up'].includes(status);
   if (composerHint) {
     composerHint.textContent = status === 'suspended'
       ? 'Sandbox is suspended · resume before sending a prompt'
       : status === 'deleted'
-        ? 'Sandbox was deleted after snapshot backup'
-        : status === 'snapshotting'
-          ? 'Snapshotting before delete…'
+        ? 'Sandbox was deleted after backup'
+        : status === 'backing_up'
+          ? 'Backing up before delete…'
           : running
             ? `Enter steers the running agent · Alt+Enter queues a follow-up${queueCountCopy()}`
             : starting
@@ -2116,8 +2116,8 @@ resumeButton?.addEventListener('click', () => {
 });
 
 deleteButton?.addEventListener('click', () => {
-  if (!confirm('Create a snapshot, then delete this sandbox?')) return;
-  void postLifecycleAction(deleteButton, 'delete', 'snapshotting…', 'snapshotting');
+  if (!confirm('Back up, then delete this sandbox?')) return;
+  void postLifecycleAction(deleteButton, 'delete', 'backing up…', 'backing_up');
 });
 
 archiveButton?.addEventListener('click', async () => {

@@ -5,7 +5,7 @@ import path from 'node:path';
 import { piProfileResourceOverrides } from './pi-profile.js';
 
 export const PI_DEFAULTS_PACKAGE_NAME = '@spanner/pi-defaults';
-export const REMOTE_PI_DEFAULTS_PACKAGE_DIR = '/home/daytona/.pi/agent/spanner-pi-defaults';
+export const REMOTE_PI_DEFAULTS_PACKAGE_DIR = '/home/root/.pi/agent/spanner-pi-defaults';
 
 export function defaultPiDefaultsPackageDir(rootDir = process.cwd()) {
   return path.join(rootDir, 'packages', 'spanner-pi-defaults');

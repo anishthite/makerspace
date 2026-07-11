@@ -287,11 +287,8 @@ function renderProject(provider) {
 }
 
 function providerSummary(provider) {
-  if (provider?.kind === 'daytona') {
-    const env = provider.env || {};
-    const auth = env.apiKey ? 'api key' : 'no api key';
-    const snapshot = env.snapshot ? 'snapshot' : 'default image';
-    return `${auth}; ${snapshot}; stop ${env.autostopMinutes}m; delete ${env.autodeleteMinutes}m`;
+  if (provider?.kind === 'cloudflare') {
+    return provider.ready ? `Cloudflare ${provider.machine || 'sandbox'}` : 'Cloudflare broker missing';
   }
   if (provider?.kind === 'local') return 'local folders';
   return '';

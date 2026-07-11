@@ -107,11 +107,11 @@ test('getConfig infers D1 state store for production deployments with D1 credent
 });
 
 test('host dispatch is opt-in for remote providers', () => {
-  withEnv({ INFRA_PROVIDER: 'daytona', PI_HOST_DISPATCH: undefined, PI_LOCAL_DISPATCH: undefined }, () => {
+  withEnv({ INFRA_PROVIDER: 'cloudflare', PI_HOST_DISPATCH: undefined, PI_LOCAL_DISPATCH: undefined }, () => {
     assert.equal(getConfig().hostDispatchEnabled, false);
   });
 
-  withEnv({ INFRA_PROVIDER: 'daytona', PI_HOST_DISPATCH: '1', PI_LOCAL_DISPATCH: undefined }, () => {
+  withEnv({ INFRA_PROVIDER: 'cloudflare', PI_HOST_DISPATCH: '1', PI_LOCAL_DISPATCH: undefined }, () => {
     assert.equal(getConfig().hostDispatchEnabled, true);
   });
 });
@@ -125,14 +125,15 @@ test('default task prompt points workspace agents at Spanner defaults', () => {
   });
 });
 
-test('workspace mode extends default Daytona autodelete', () => {
-  withEnv({ SPANNER_WORKSPACE_MODE: '1', DAYTONA_AUTODELETE_MINUTES: undefined }, () => {
+test('Cloudflare sandbox defaults use root paths and standard-2', () => {
+  withEnv({ INFRA_PROVIDER: undefined, CLOUDFLARE_SANDBOX_MACHINE: undefined, CLOUDFLARE_SANDBOX_KEEPALIVE: undefined, REMOTE_HOME: undefined, REMOTE_CONTROL_DIR: undefined }, () => {
     const config = getConfig();
-    assert.equal(config.workspaceMode, true);
-    assert.equal(config.daytonaAutodeleteMinutes, 10080);
-  });
-
-  withEnv({ SPANNER_WORKSPACE_MODE: undefined, DAYTONA_AUTODELETE_MINUTES: undefined }, () => {
-    assert.equal(getConfig().daytonaAutodeleteMinutes, 120);
+    assert.equal(config.provider, 'cloudflare');
+    assert.equal(config.cloudflareMachine, 'standard-2');
+    assert.equal(config.cloudflareKeepAlive, true);
+    assert.equal(config.remoteUser, 'root');
+    assert.equal(config.remoteHomeDir, '/home/root');
+    assert.equal(config.remoteControlDir, '/home/root/.spanner/control');
+    assert.equal(config.remotePiDefaultsPackageDir, '/home/root/.pi/agent/spanner-pi-defaults');
   });
 });

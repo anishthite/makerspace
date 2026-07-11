@@ -81,11 +81,14 @@ function projectNameFromEnv(localDataDir) {
 
 export function getConfig() {
   const rootDir = process.cwd();
-  const provider = process.env.INFRA_PROVIDER || process.env.PROVIDER || 'daytona';
+  const provider = process.env.INFRA_PROVIDER || process.env.PROVIDER || 'cloudflare';
   const workspaceMode = truthy(process.env.SPANNER_WORKSPACE_MODE || process.env.PROJECT_WORKSPACE_MODE);
   const localDataDir = process.env.SPANNER_HOME || defaultLocalDataDir();
   const defaultDataDir = provider === 'local' ? localDataDir : path.join(rootDir, 'data');
   const allowedOrigins = allowedOriginsFromEnv();
+  const cloudflareKeepAlive = process.env.CLOUDFLARE_SANDBOX_KEEPALIVE === undefined
+    ? true
+    : truthy(process.env.CLOUDFLARE_SANDBOX_KEEPALIVE);
 
   return {
     rootDir,
@@ -107,20 +110,16 @@ export function getConfig() {
     allowedOrigins,
     allowedUsers: splitList(process.env.SPANNER_ALLOWED_USERS || process.env.SPANNER_ALLOWED_GITHUB_USERS || ''),
     stateStore: stateStoreFromEnv(),
-    daytonaApiKey: process.env.DAYTONA_API_KEY || '',
-    daytonaApiUrl: process.env.DAYTONA_API_URL || 'https://app.daytona.io/api',
-    daytonaTarget: process.env.DAYTONA_TARGET || '',
-    daytonaSnapshot: process.env.DAYTONA_SNAPSHOT || '',
+    cloudflareBrokerUrl: process.env.CLOUDFLARE_SANDBOX_BROKER_URL || process.env.CLOUDFLARE_BROKER_URL || '',
+    cloudflareBrokerToken: process.env.CLOUDFLARE_SANDBOX_BROKER_TOKEN || process.env.CLOUDFLARE_BROKER_TOKEN || '',
+    cloudflareMachine: process.env.CLOUDFLARE_SANDBOX_MACHINE || 'standard-2',
+    cloudflareSleepAfter: process.env.CLOUDFLARE_SANDBOX_SLEEP_AFTER || '15m',
+    cloudflareKeepAlive,
     workspaceMode,
-    daytonaAutostopMinutes: Number(process.env.DAYTONA_AUTOSTOP_MINUTES || 60),
-    daytonaAutodeleteMinutes: Number(process.env.DAYTONA_AUTODELETE_MINUTES || (workspaceMode ? 10080 : 120)),
-    remoteUser: process.env.DAYTONA_USER || 'daytona',
-    remoteHomeDir: process.env.DAYTONA_HOME || '/home/daytona',
-    defaultCpu: process.env.DAYTONA_CPU || '2',
-    defaultMemory: process.env.DAYTONA_MEMORY || '8',
-    defaultDisk: process.env.DAYTONA_DISK || '10',
-    image: process.env.DAYTONA_IMAGE || '',
-    registryAuth: process.env.DAYTONA_REGISTRY_AUTH || '',
+    remoteUser: process.env.REMOTE_USER || 'root',
+    remoteHomeDir: process.env.REMOTE_HOME || '/home/root',
+    image: process.env.CLOUDFLARE_SANDBOX_IMAGE || process.env.SANDBOX_IMAGE || '',
+    registryAuth: process.env.SANDBOX_REGISTRY_AUTH || '',
     githubClientId: process.env.GITHUB_CLIENT_ID || '',
     githubClientSecret: process.env.GITHUB_CLIENT_SECRET || '',
     githubAppId: process.env.GITHUB_APP_ID || '',
@@ -132,9 +131,8 @@ export function getConfig() {
     recentProjectsFile: process.env.RECENT_PROJECTS_DATA_PATH || path.join(defaultDataDir, 'recent-projects.json'),
     workflowRunsDir: process.env.SPANNER_WORKFLOW_RUNS_DIR || path.join(defaultDataDir, 'workflows', 'runs'),
     authFile: process.env.AUTH_DATA_PATH || process.env.SPANNER_AUTH_DATA_PATH || path.join(defaultDataDir, 'auth.json'),
-    remoteWorkspaceDir: process.env.REMOTE_WORKSPACE_DIR || '/srv/workspace',
-    remoteControlDir: process.env.REMOTE_CONTROL_DIR || `/home/${process.env.DAYTONA_USER || 'daytona'}/.spanner/control`,
-    daytonaSuspendAutodeleteMinutes: Number(process.env.DAYTONA_SUSPEND_AUTODELETE_MINUTES ?? -1),
+    remoteWorkspaceDir: process.env.REMOTE_WORKSPACE_DIR || '/workspace',
+    remoteControlDir: process.env.REMOTE_CONTROL_DIR || '/home/root/.spanner/control',
     bridgePort: Number(process.env.PI_BRIDGE_PORT || 4310),
     bridgeReadyTimeoutMs: Number(process.env.PI_BRIDGE_READY_TIMEOUT_MS || 240000),
     bridgeReadyPollMs: Number(process.env.PI_BRIDGE_READY_POLL_MS || 1000),
@@ -150,7 +148,7 @@ export function getConfig() {
       path.join(rootDir, 'packages', 'spanner-pi-defaults'),
     remotePiDefaultsPackageDir:
       process.env.REMOTE_PI_DEFAULTS_PACKAGE_DIR ||
-      `/home/${process.env.DAYTONA_USER || 'daytona'}/.pi/agent/spanner-pi-defaults`,
+      '/home/root/.pi/agent/spanner-pi-defaults',
     piInstallCommand:
       process.env.PI_INSTALL_COMMAND ||
       'npm install -g --ignore-scripts @earendil-works/pi-coding-agent',

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Implementation — Cloudflare-only sandbox replacement</title>
+<meta name="task" content="Replace the remote sandbox provider with Cloudflare Sandboxes and remove the legacy remote provider path.">
+<meta name="date-started" content="2026-07-10">
+<meta name="date-updated" content="2026-07-10">
+<meta name="status" content="in-progress">
+<meta name="blast-radius" content="high">
+<meta name="tags" content="spanner,cloudflare,sandbox,provider,no-fallback,implementation">
+<meta name="related" content="2026-07-10-cloudflare-sandbox-migration-plan.html,/Users/anishthite/workspace/board/implementation-notes/2026-06-16-cloudflare-sandbox-backend.html,/Users/anishthite/workspace/board/implementation-notes/2026-06-21-sandbox-runtime-no-bootstrap-write.html">
+<style>
+body{font:14px/1.5 -apple-system,system-ui,sans-serif;max-width:1040px;margin:2rem auto;padding:0 1rem;color:#111}h1{font-size:22px;margin:0 0 .25rem}h2{font-size:16px;margin:1.4rem 0 .45rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:5px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.blast{color:#b00020;font-weight:600}.kv{display:grid;grid-template-columns:150px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.kv b{color:#444;font-weight:600}ul{margin:.35rem 0 .8rem 1.2rem;padding:0}li{margin:.16rem 0}
+</style>
+</head>
+<body>
+<h1>Cloudflare-only sandbox replacement</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-10 · status <b>in-progress</b> · blast <span class="blast">high</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Remove the legacy cloud runtime entirely; Cloudflare Sandboxes become the only remote provider, with <code>local</code> retained for desktop/local-folder mode.</div>
+  <b>Supersedes</b><div><code>2026-07-10-cloudflare-sandbox-migration-plan.html</code> fallback/canary wording. No fallback remains in code, docs, or package deps.</div>
+  <b>Surface</b><div><code>src/provider.js</code>, <code>src/providers/cloudflare.js</code>, <code>src/config.js</code>, <code>src/server/threads.js</code>, <code>frontend/src/runtime/thread.js</code>, <code>cloudflare-sandbox-worker/</code>, <code>image/Dockerfile</code>, tests, docs.</div>
+  <b>Default</b><div><code>provider=cloudflare</code>, <code>standard-2</code>, <code>keepAlive=true</code>, remote user <code>root</code>, workspace <code>/workspace</code>, control <code>/home/root/.spanner/control</code>. Manual suspend/delete backs up then destroys.</div>
+  <b>Open Qs</b><div>0 for implementation; live Cloudflare deployment still needs account secret values.</div>
+</div>
+
+<h2>Decisions</h2>
+<table>
+<tr><th>ID</th><th>Decision</th></tr>
+<tr><td>D-001</td><td>Deleted the legacy remote provider file and dependency rather than leaving an env fallback. Rollback is now a git revert, not a runtime switch.</td></tr>
+<tr><td>D-002</td><td>Kept <code>local</code> provider because desktop/local folder mode is not a cloud fallback and does not mask Cloudflare production failures.</td></tr>
+<tr><td>D-003</td><td>Provider talks to a broker over HTTPS because <code>@cloudflare/sandbox</code> needs Worker/Durable Object/Container bindings.</td></tr>
+<tr><td>D-004</td><td>Suspend/delete mean backup then destroy; resume means create then restore. <code>keepAlive=true</code> prevents idle sleep from silently dropping filesystem state between explicit lifecycle actions.</td></tr>
+<tr><td>D-005</td><td>Cloudflare runtime keeps root user identity but stores writable home data under <code>/home/root</code>; no compatibility shim for old <code>/home/daytona</code> cloud paths.</td></tr>
+<tr><td>D-006</td><td>Changed Cloudflare paths to SDK-backup-safe roots: workspace <code>/workspace</code>, home/control under <code>/home/root</code>; <code>/srv</code> and <code>/root</code> are rejected by Cloudflare backup validation.</td></tr>
+</table>
+
+<h2>Implementation log</h2>
+<table>
+<tr><th>ID</th><th>Change</th><th>Files</th></tr>
+<tr><td>L-001</td><td>Added broker-backed Cloudflare provider with create/exec/file/share/backup/restore/delete methods.</td><td><code>src/providers/cloudflare.js</code>, <code>src/provider.js</code></td></tr>
+<tr><td>L-002</td><td>Moved remote defaults to Cloudflare/root paths and removed legacy env defaults.</td><td><code>src/config.js</code>, <code>src/setup-script.js</code>, <code>src/pi-defaults-package.js</code></td></tr>
+<tr><td>L-003</td><td>Changed lifecycle copy and persistence fields from snapshot/delete wording to backup/delete wording.</td><td><code>src/server/threads.js</code>, <code>src/server/routes.js</code>, <code>frontend/src/runtime/thread.js</code></td></tr>
+<tr><td>L-004</td><td>Added Worker broker and Cloudflare runtime image; image bakes Pi and Spanner defaults.</td><td><code>cloudflare-sandbox-worker/</code>, <code>image/Dockerfile</code>, <code>image/package.json</code></td></tr>
+<tr><td>L-005</td><td>Replaced dependency package and docs references.</td><td><code>package.json</code>, <code>package-lock.json</code>, <code>README.md</code>, <code>deploy/digitalocean/README.md</code></td></tr>
+<tr><td>L-008</td><td>Deployed Cloudflare broker and container application; Worker URL is <code>https://spanner-sandbox-broker.anishthite.workers.dev</code>.</td><td><code>cloudflare-sandbox-worker/</code>, <code>image/Dockerfile</code></td></tr>
+<tr><td>L-009</td><td>Live broker smoke passed: bearer health check, sandbox create, Node/Pi runtime exec, R2 backup, restore, and cleanup delete.</td><td>Cloudflare account <code>38136d7e8e51d4450fd5687cdba2ce2a</code>, R2 bucket <code>spanner-sandbox-backups</code></td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+<tr><th>ID</th><th>Tradeoff</th></tr>
+<tr><td>T-001</td><td>Broker exec returns buffered output for provider tools. Upgrade to streaming broker responses only if host-dispatch output latency matters.</td></tr>
+<tr><td>T-002</td><td>KeepAlive costs more than idle sleep, but it is the smallest safe no-fallback path until continuous backup-before-sleep exists.</td></tr>
+<tr><td>T-003</td><td>Session listing returns app-store rows rather than trying to list Durable Objects globally. The app already owns session metadata.</td></tr>
+<tr><td>T-004</td><td>Cloudflare image deploy replaces per-launch custom image building. Settings image fields are ignored for Cloudflare launch until the settings UI is simplified.</td></tr>
+<tr><td>T-005</td><td>Broker uses Cloudflare SDK <code>localBucket</code> backup mode to avoid managing separate R2 S3 credentials. Upgrade to presigned multipart uploads if large repo backups are too slow.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<ul>
+  <li>R-001 · Git revert restores the removed provider and dependency if needed.</li>
+  <li>R-002 · Session state retains generic <code>sandboxId</code> plus Cloudflare backup handles; old provider-specific fields are no longer written.</li>
+</ul>
+
+<h2>Followups</h2>
+<ul>
+  <li>L-006 · Simplify settings UI to remove custom registry build controls for Cloudflare deployments.</li>
+  <li>L-007 · Broker deploy and backup/restore smoke are done; remaining live smoke is backend-wired bridge SSE, git push, and draft PR creation.</li>
+  <li>Q-001 · Backend env deployment is blocked in this shell by missing DigitalOcean API access (<code>doctl</code>/<code>DIGITALOCEAN_ACCESS_TOKEN</code> absent). Need a DO token or manual App Platform env update.</li>
+</ul>
+</body>
+</html>

@@ -44,7 +44,7 @@ export function createSessionService({ config, provider, auth, runState, bridge 
     const stored = await upsertSession(config.sessionFile, {
       ...persistedSession,
       provider: provider.kind,
-      imageRef: imageSettings.imageRef || config.image || '',
+      imageRef: provider.kind === 'cloudflare' ? '' : imageSettings.imageRef || config.image || '',
       status: 'launching',
       runStatus: 'launching',
       createdAt: now,
@@ -57,7 +57,9 @@ export function createSessionService({ config, provider, auth, runState, bridge 
 
     void (async () => {
       try {
-        if (imageSettings.autoBuildImage && imageSettings.imageRef) {
+        if (provider.kind === 'cloudflare') {
+          appendRunOutput(session.name, '[system] Using the deployed Cloudflare sandbox runtime.\n', 'launching');
+        } else if (imageSettings.autoBuildImage && imageSettings.imageRef) {
           appendRunOutput(session.name, `[system] Building and pushing ${imageSettings.imageRef}...\n`, 'launching');
           await buildAndPushImage(config, imageSettings);
           appendRunOutput(session.name, '[system] Image pushed.\n', 'launching');
@@ -146,7 +148,9 @@ export function createSessionService({ config, provider, auth, runState, bridge 
 
   async function provisionHostDispatchRemote(session, imageSettings, stored) {
     try {
-      if (imageSettings.autoBuildImage && imageSettings.imageRef) {
+      if (provider.kind === 'cloudflare') {
+        appendRunOutput(session.name, '[system] Provisioning remote tools with the deployed Cloudflare runtime.\n', 'launching');
+      } else if (imageSettings.autoBuildImage && imageSettings.imageRef) {
         appendRunOutput(session.name, `[system] Building and pushing ${imageSettings.imageRef} for remote tools...\n`, 'launching');
         await buildAndPushImage(config, imageSettings);
         appendRunOutput(session.name, '[system] Image pushed for remote tools.\n', 'launching');
@@ -205,7 +209,7 @@ export function createSessionService({ config, provider, auth, runState, bridge 
     const stored = await upsertSession(config.sessionFile, {
       ...preparedSession,
       provider: provider.kind,
-      imageRef: imageSettings.imageRef || config.image || '',
+      imageRef: provider.kind === 'cloudflare' ? '' : imageSettings.imageRef || config.image || '',
       status: 'launching',
       runStatus: 'launching',
       remoteProvisionStatus: 'launching',

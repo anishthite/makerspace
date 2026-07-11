@@ -1,7 +1,7 @@
 {
   "name": "spanner-pi-runtime",
   "private": true,
-  "description": "Pi packages baked into Spanner Daytona bridge snapshots.",
+  "description": "Pi packages baked into Spanner Cloudflare sandbox runtimes.",
   "dependencies": {
     "@capyup/pi-goal": "0.6.0",
     "@earendil-works/pi-coding-agent": "0.79.7",

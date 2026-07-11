@@ -1,5 +1,5 @@
 # Backend container for DigitalOcean App Platform.
-# The Daytona sandbox image lives in image/Dockerfile; this one runs the control server.
+# The Cloudflare sandbox runtime image lives in image/Dockerfile; this one runs the control server.
 
 FROM node:22-bookworm-slim
 

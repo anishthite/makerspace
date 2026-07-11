@@ -183,9 +183,9 @@ test('decorateSession preserves provider commands and hides bridge secrets', () 
   const session = decorateSession(
     {
       name: 'hello-agent',
-      connectCommand: 'daytona ssh sandbox-123',
-      runAgentCommand: 'daytona ssh sandbox-123 -- bash /srv/spanner/run-pi.sh',
-      tailLogCommand: 'daytona ssh sandbox-123 -- tail -n 120 /srv/spanner/pi.log',
+      connectCommand: 'cloudflare sandbox shell sandbox-123',
+      runAgentCommand: 'cloudflare sandbox exec sandbox-123 -- bash /srv/spanner/run-pi.sh',
+      tailLogCommand: 'cloudflare sandbox exec sandbox-123 -- tail -n 120 /srv/spanner/pi.log',
       bridgeUrl: 'https://preview.example/4310',
       bridgeToken: 'secret-bridge-token',
       previewToken: 'secret-preview-token',
@@ -203,7 +203,7 @@ test('decorateSession preserves provider commands and hides bridge secrets', () 
   assert.equal(session.githubOwnerSessionId, undefined);
   assert.equal(session.images, undefined);
   assert.equal(session.hasBridgeToken, true);
-  assert.equal(session.commands.connect, 'daytona ssh sandbox-123');
-  assert.equal(session.commands.runAgent, 'daytona ssh sandbox-123 -- bash /srv/spanner/run-pi.sh');
-  assert.equal(session.commands.tailLog, 'daytona ssh sandbox-123 -- tail -n 120 /srv/spanner/pi.log');
+  assert.equal(session.commands.connect, 'cloudflare sandbox shell sandbox-123');
+  assert.equal(session.commands.runAgent, 'cloudflare sandbox exec sandbox-123 -- bash /srv/spanner/run-pi.sh');
+  assert.equal(session.commands.tailLog, 'cloudflare sandbox exec sandbox-123 -- tail -n 120 /srv/spanner/pi.log');
 });

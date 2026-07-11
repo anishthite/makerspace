@@ -5,13 +5,13 @@ import { gunzipSync } from 'node:zlib';
 import { buildSetupScript } from '../src/setup-script.js';
 
 const config = {
-  remoteWorkspaceDir: '/srv/workspace',
+  remoteWorkspaceDir: '/workspace',
   remoteControlDir: '/srv/spanner',
   piInstallCommand: 'npm install -g --ignore-scripts @earendil-works/pi-coding-agent',
   defaultTaskPrompt: 'Do the task.',
   bridgePort: 4310,
-  remoteUser: 'daytona',
-  remoteHomeDir: '/home/daytona',
+  remoteUser: 'root',
+  remoteHomeDir: '/home/root',
   forwardEnvKeys: ['ANTHROPIC_API_KEY'],
 };
 
@@ -43,13 +43,13 @@ test('buildSetupScript clones a repo and auto-runs pi when requested', () => {
   assert.ok(Buffer.byteLength(script, 'utf8') < 15 * 1024);
   assert.match(script, /if \[ "\$\(id -u\)" -ne 0 \]; then exec sudo -E \/bin\/bash "\$0" "\$@"; fi/);
   assert.match(script, /export GIT_TERMINAL_PROMPT=0/);
-  assert.match(script, /if \[ -d '\/srv\/workspace\/\.git' \]; then/);
+  assert.match(script, /if \[ -d '\/workspace\/\.git' \]; then/);
   assert.match(script, new RegExp(`git -c 'http.extraHeader=${authHeader.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}' fetch --prune origin 'main' \\|\\| true`));
-  assert.match(script, /ls -A '\/srv\/workspace'/);
-  assert.match(script, new RegExp(`git -c 'http.extraHeader=${authHeader.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}' clone --depth=1 --branch 'main' 'https:\\/\\/github.com\\/acme\\/demo\\.git' '\\/srv\\/workspace'`));
+  assert.match(script, /ls -A '\/workspace'/);
+  assert.match(script, new RegExp(`git -c 'http.extraHeader=${authHeader.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}' clone --depth=1 --branch 'main' 'https:\\/\\/github.com\\/acme\\/demo\\.git' '\\/workspace'`));
   assert.match(script, /https:\/\/x-access-token:secret-token@github\.com/);
   assert.match(script, /oauth_token: "secret-token"/);
-  assert.match(script, /chown -R 'daytona:daytona' '\/home\/daytona\/\.git-credentials' '\/home\/daytona\/\.config'/);
+  assert.match(script, /chown -R 'root:root' '\/home\/root\/\.git-credentials' '\/home\/root\/\.config'/);
   assert.match(script, /apt-get install -y gh/);
   assert.match(script, /githubcli-archive-keyring\.gpg/);
   assert.match(script, /git config --system credential\.helper store/);
@@ -57,11 +57,11 @@ test('buildSetupScript clones a repo and auto-runs pi when requested', () => {
   assert.match(script, /git config --system --add safe\.directory '\*'/);
   assert.match(script, /git config --system user\.email 'spanner-agent@users\.noreply\.github\.com'/);
   assert.match(script, /base64 -d<<'E'\|gzip -d>'\/srv\/spanner\/pi-bridge\.mjs'/);
-  assert.match(script, /if \[ ! -d '\/home\/daytona\/\.pi\/agent\/npm\/node_modules\/@earendil-works\/pi-coding-agent' \]; then\n  PI_VERSION=/);
+  assert.match(script, /if \[ ! -d '\/home\/root\/\.pi\/agent\/npm\/node_modules\/@earendil-works\/pi-coding-agent' \]; then\n  PI_VERSION=/);
   assert.match(script, /PI_SDK_SPEC='@earendil-works\/pi-coding-agent'/);
-  assert.match(script, /npm install --prefix '\/home\/daytona\/\.pi\/agent\/npm' --no-audit --no-fund --ignore-scripts --legacy-peer-deps "\$PI_SDK_SPEC"/);
-  assert.match(script, /mkdir -p '\/srv\/spanner' '\/srv\/workspace' '\/srv\/spanner\/pi-sessions'/);
-  assert.match(script, /chown -R 'daytona:daytona' '\/srv\/spanner' '\/srv\/workspace' '\/home\/daytona\/\.pi\/agent'/);
+  assert.match(script, /npm install --prefix '\/home\/root\/\.pi\/agent\/npm' --no-audit --no-fund --ignore-scripts --legacy-peer-deps "\$PI_SDK_SPEC"/);
+  assert.match(script, /mkdir -p '\/srv\/spanner' '\/workspace' '\/srv\/spanner\/pi-sessions'/);
+  assert.match(script, /chown -R 'root:root' '\/srv\/spanner' '\/workspace' '\/home\/root\/\.pi\/agent'/);
   assert.match(script, /Description=pi bridge/);
   assert.match(script, /systemctl enable --now pi-bridge\.service/);
   assert.match(script, /curl http:\/\/127\.0\.0\.1:4310\/healthz/);
@@ -116,17 +116,17 @@ test('buildSetupScript bootstraps workspace main without wiping workspace root',
       repoUrl: 'https://github.com/acme/demo.git',
       branch: 'main',
       workspaceBridge: true,
-      remoteWorkspaceDir: '/srv/workspace',
-      remoteWorkspaceMainDir: '/srv/workspace/main',
+      remoteWorkspaceDir: '/workspace',
+      remoteWorkspaceMainDir: '/workspace/main',
       autoRunAgent: false,
     },
     config,
   );
 
-  assert.match(script, /mkdir -p '\/srv\/workspace'/);
-  assert.match(script, /if \[ -d '\/srv\/workspace\/main\/\.git' \]; then/);
-  assert.match(script, /git clone --depth=1 --branch 'main' 'https:\/\/github.com\/acme\/demo\.git' '\/srv\/workspace\/main'/);
-  assert.doesNotMatch(script, /rm -rf '\/srv\/workspace'\n/);
+  assert.match(script, /mkdir -p '\/workspace'/);
+  assert.match(script, /if \[ -d '\/workspace\/main\/\.git' \]; then/);
+  assert.match(script, /git clone --depth=1 --branch 'main' 'https:\/\/github.com\/acme\/demo\.git' '\/workspace\/main'/);
+  assert.doesNotMatch(script, /rm -rf '\/workspace'\n/);
 });
 
 test('buildSetupScript initializes an empty repo when no repo URL is supplied', () => {
@@ -166,8 +166,8 @@ test('buildSetupScript skips direct pi auto-run for bridge-backed chat sessions'
 
   assert.ok(Buffer.byteLength(script, 'utf8') < 15 * 1024);
   assert.match(script, /printf 'export PI_BRIDGE_TOKEN=%s\\n' 'secret-token'/);
-  assert.match(script, /printf 'export PI_BRIDGE_PACKAGE_DIR=%s\\n' '\/home\/daytona\/\.pi\/agent\/npm'/);
-  assert.match(script, /printf 'export SPANNER_PI_DEFAULTS_PACKAGE_DIR=%s\\n' '\/home\/daytona\/\.pi\/agent\/spanner-pi-defaults'/);
+  assert.match(script, /printf 'export PI_BRIDGE_PACKAGE_DIR=%s\\n' '\/home\/root\/\.pi\/agent\/npm'/);
+  assert.match(script, /printf 'export SPANNER_PI_DEFAULTS_PACKAGE_DIR=%s\\n' '\/home\/root\/\.pi\/agent\/spanner-pi-defaults'/);
   assert.match(script, /systemctl enable --now pi-bridge\.service/);
   const bridgeScript = extractBridgeScript(script);
   assert.match(bridgeScript, /readFile, rm, writeFile/);

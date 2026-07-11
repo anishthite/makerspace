@@ -284,7 +284,7 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
     if (runStatus === 'ready') return 'ready';
     if (runStatus === 'suspended') return 'suspended';
     if (runStatus === 'deleted') return 'deleted';
-    if (runStatus === 'snapshotting') return 'launching';
+    if (runStatus === 'backing_up') return 'launching';
     return fallbackStatus;
   }
 

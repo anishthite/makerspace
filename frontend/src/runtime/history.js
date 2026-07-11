@@ -130,7 +130,7 @@ function statusValue(session = {}) {
 }
 
 function repoLabel(session = {}) {
-  return String(session.repoPath || session.repoUrl || session.daytonaSandboxName || 'no repo').trim();
+  return String(session.repoPath || session.repoUrl || session.cloudflareSandboxName || session.sandboxId || 'no repo').trim();
 }
 
 function promptText(session = {}) {

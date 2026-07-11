@@ -1,30 +1,13 @@
 <!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Sandbox provider guide: Daytona</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css">
-</head>
-<body>
-  <main class="shell narrow">
-    <section class="panel stack-lg">
-      <p class="eyebrow">sandbox provider</p>
-      <h1>Daytona is the runtime provider for spanner.</h1>
-      <p class="lede">The control backend uses <code>@daytona/sdk</code> to create sandboxes, run setup commands, manage files, and expose the Pi bridge through preview URLs.</p>
-    </section>
-    <section class="panel stack-lg">
-      <h2>Provider responsibilities</h2>
-      <ul>
-        <li><strong>Lifecycle:</strong> create, list, stop/delete, and apply idle lifecycle intervals.</li>
-        <li><strong>Bridge access:</strong> call <code>getPreviewLink(port)</code> and send the preview token only from the backend.</li>
-        <li><strong>Execution:</strong> run setup, direct Pi, log polling, and host-dispatch commands through Daytona process APIs.</li>
-        <li><strong>Files:</strong> route host-dispatch read/write/edit operations through Daytona filesystem APIs.</li>
-      </ul>
-    </section>
-  </main>
+<meta charset="utf-8">
+<title>Sandbox provider guide: Cloudflare</title>
+<body style="font-family:system-ui;margin:3rem;max-width:760px;line-height:1.5">
+  <h1>Cloudflare Sandboxes are the runtime provider for Spanner.</h1>
+  <p>The Node backend talks to a Cloudflare Worker broker. The broker owns <code>@cloudflare/sandbox</code>, Durable Objects, the container image, exposed bridge ports, and R2-backed backups.</p>
+  <ul>
+    <li><strong>Lifecycle:</strong> create, backup, restore, and destroy through the broker.</li>
+    <li><strong>Execution:</strong> run setup, direct Pi, log polling, and host-dispatch commands through broker exec.</li>
+    <li><strong>Files:</strong> route host-dispatch read/write/edit operations through broker file APIs.</li>
+    <li><strong>Bridge:</strong> expose the Pi bridge port through Cloudflare sandbox URLs or tunnels.</li>
+  </ul>
 </body>
-</html>

@@ -125,7 +125,7 @@ test('D1 client stores sessions and singleton values', async () => {
 
 test('D1 client copies legacy Workbench rows into Spanner tables', async () => {
   const { fetchImpl, calls } = makeFakeFetch({
-    legacySessions: [{ name: 'old-thread', data: JSON.stringify({ name: 'old-thread', provider: 'daytona' }), created_at: '2026-07-01T00:00:00.000Z', updated_at: '2026-07-01T00:00:00.000Z' }],
+    legacySessions: [{ name: 'old-thread', data: JSON.stringify({ name: 'old-thread', provider: 'cloudflare' }), created_at: '2026-07-01T00:00:00.000Z', updated_at: '2026-07-01T00:00:00.000Z' }],
     legacyKv: [{ key: 'settings', value: JSON.stringify({ imageRef: 'old-image' }), updated_at: '2026-07-01T00:00:00.000Z' }],
   });
   const client = createD1StateClient({

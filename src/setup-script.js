@@ -118,12 +118,12 @@ function tokenFromRepoAuthHeader(header) {
 function buildInitialGitAuthLines(session, config) {
   const token = tokenFromRepoAuthHeader(session.repoAuthHeader);
   if (!token) return [];
-  const remoteHomeDir = config.remoteHomeDir || '/home/daytona';
+  const remoteHomeDir = config.remoteHomeDir || '/home/root';
   const credentialsPath = `${remoteHomeDir}/.git-credentials`;
   const ghConfigDir = `${remoteHomeDir}/.config/gh`;
   const ghParentDir = `${remoteHomeDir}/.config`;
   const hostsPath = `${ghConfigDir}/hosts.yml`;
-  const remoteUser = config.remoteUser || 'daytona';
+  const remoteUser = config.remoteUser || 'root';
   return [
     `mkdir -p ${shellQuote(remoteHomeDir)} ${shellQuote(ghConfigDir)}`,
     `cat > ${shellQuote(credentialsPath)} <<'GITCRED'`,
@@ -163,7 +163,7 @@ function buildCompressedFileLines(filePath, content) {
 }
 
 function buildBridgeScriptSource(session, config) {
-  const remoteHomeDir = config.remoteHomeDir || '/home/daytona';
+  const remoteHomeDir = config.remoteHomeDir || '/home/root';
   const bridgePackageDir = `${remoteHomeDir}/.pi/agent/npm`;
   const authDir = `${remoteHomeDir}/.pi/agent`;
   const authPath = `${authDir}/auth.json`;
@@ -772,8 +772,8 @@ export function buildSetupScript(session, config) {
   const bridgeStartPath = `${controlDir}/start-bridge.sh`;
   const bridgeServicePath = '/etc/systemd/system/pi-bridge.service';
   const bridgePort = String(config.bridgePort || 4310);
-  const remoteUser = config.remoteUser || 'daytona';
-  const remoteHomeDir = config.remoteHomeDir || `/home/${remoteUser}`;
+  const remoteUser = config.remoteUser || 'root';
+  const remoteHomeDir = config.remoteHomeDir || (remoteUser === 'root' ? '/home/root' : `/home/${remoteUser}`);
   const authDir = `${remoteHomeDir}/.pi/agent`;
   const bridgePackageDir = `${authDir}/npm`;
   const piDefaultsPackageDir = config.remotePiDefaultsPackageDir || `${authDir}/spanner-pi-defaults`;

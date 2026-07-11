@@ -50,83 +50,85 @@ function createService(config, provider, bridgeCalls = []) {
 
 function baseSession(overrides = {}) {
   return {
-    name: 'daytona-thread',
-    provider: 'daytona',
+    name: 'cloudflare-thread',
+    provider: 'cloudflare',
     threadBridge: true,
     bridgeMode: true,
     status: 'ready',
     runStatus: 'ready',
     bridgeUrl: 'https://old.example.test',
-    daytonaSandboxId: 'sandbox-1',
-    daytonaSandboxName: 'daytona-thread',
+    sandboxId: 'sandbox-1',
+    cloudflareSandboxId: 'sandbox-1',
+    cloudflareSandboxName: 'cloudflare-thread',
     createdAt: '2026-07-10T00:00:00.000Z',
     updatedAt: '2026-07-10T00:00:00.000Z',
     ...overrides,
   };
 }
 
-test('thread lifecycle service suspends, resumes, and snapshot-deletes idle Daytona sessions', async () => {
+test('thread lifecycle service suspends, resumes, and backup-deletes idle Cloudflare sessions', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-lifecycle-'));
   const sessionFile = path.join(root, 'sessions.json');
   const settingsFile = path.join(root, 'settings.json');
   const calls = [];
   const bridgeCalls = [];
   const provider = {
-    kind: 'daytona',
-    info: () => ({ kind: 'daytona' }),
+    kind: 'cloudflare',
+    info: () => ({ kind: 'cloudflare' }),
     suspendSession: async (session) => {
       calls.push(['suspend', session.name]);
-      return { daytonaState: 'stopped' };
+      return { cloudflareState: 'stopped', cloudflareBackups: [{ key: 'workspace', backup: { id: 'backup-one' } }] };
     },
     resumeSession: async (session, settings) => {
       calls.push(['resume', session.name, settings.imageRef]);
-      return { bridgeUrl: 'https://new.example.test/', httpsUrl: 'https://new.example.test/', previewToken: 'preview-token', daytonaState: 'started' };
+      return { bridgeUrl: 'https://new.example.test/', httpsUrl: 'https://new.example.test/', cloudflareState: 'started' };
     },
-    deleteSessionWithSnapshot: async (session) => {
+    deleteSessionWithBackup: async (session) => {
       calls.push(['delete', session.name]);
-      return { snapshotName: 'snapshot-one', snapshotCreatedAt: '2026-07-10T01:00:00.000Z', daytonaSandboxId: 'sandbox-1', daytonaSandboxName: 'daytona-thread' };
+      return { cloudflareBackups: [{ key: 'workspace', backup: { id: 'backup-two' } }], cloudflareBackupCreatedAt: '2026-07-10T01:00:00.000Z', cloudflareSandboxId: 'sandbox-1' };
     },
   };
 
   try {
     await writeFile(sessionFile, `${JSON.stringify([baseSession()])}\n`);
-    await writeFile(settingsFile, `${JSON.stringify({ imageRef: 'image-one' })}\n`);
+    await writeFile(settingsFile, `${JSON.stringify({ imageRef: 'ignored-by-cloudflare' })}\n`);
     const service = createService({ sessionFile, settingsFile }, provider, bridgeCalls);
 
-    const suspended = await service.suspendThreadSession('daytona-thread');
+    const suspended = await service.suspendThreadSession('cloudflare-thread');
     assert.equal(suspended.runStatus, 'suspended');
-    assert.equal(suspended.daytonaState, 'stopped');
+    assert.equal(suspended.cloudflareState, 'stopped');
+    assert.equal(suspended.cloudflareBackups[0].backup.id, 'backup-one');
 
-    const resumed = await service.resumeThreadSession('daytona-thread');
+    const resumed = await service.resumeThreadSession('cloudflare-thread');
     assert.equal(resumed.runStatus, 'ready');
     assert.equal(resumed.bridgeUrl, 'https://new.example.test');
-    assert.deepEqual(bridgeCalls, [['waitForBridge', 'https://new.example.test'], ['syncBridgeAuth', 'daytona-thread']]);
+    assert.deepEqual(bridgeCalls, [['waitForBridge', 'https://new.example.test'], ['syncBridgeAuth', 'cloudflare-thread']]);
 
-    const { thread, snapshot } = await service.deleteThreadSession('daytona-thread');
-    assert.equal(snapshot.snapshotName, 'snapshot-one');
+    const { thread, backup } = await service.deleteThreadSession('cloudflare-thread');
+    assert.equal(backup.cloudflareBackups[0].backup.id, 'backup-two');
     assert.equal(thread.runStatus, 'deleted');
-    assert.equal(thread.snapshotName, 'snapshot-one');
-    assert.equal(thread.daytonaSandboxId, null);
-    assert.equal(thread.deletedDaytonaSandboxId, 'sandbox-1');
+    assert.equal(thread.cloudflareBackups[0].backup.id, 'backup-two');
+    assert.equal(thread.cloudflareSandboxId, null);
+    assert.equal(thread.deletedSandboxId, 'sandbox-1');
     assert.deepEqual(calls.map((call) => call[0]), ['suspend', 'resume', 'delete']);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
 });
 
-test('thread lifecycle rejects active runs and keeps sandbox when snapshot fails', async () => {
+test('thread lifecycle rejects active runs and keeps sandbox when backup fails', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-lifecycle-fail-'));
   const sessionFile = path.join(root, 'sessions.json');
   const settingsFile = path.join(root, 'settings.json');
   const calls = [];
   const provider = {
-    kind: 'daytona',
-    info: () => ({ kind: 'daytona' }),
+    kind: 'cloudflare',
+    info: () => ({ kind: 'cloudflare' }),
     suspendSession: async () => calls.push(['suspend']),
     resumeSession: async () => calls.push(['resume']),
-    deleteSessionWithSnapshot: async () => {
+    deleteSessionWithBackup: async () => {
       calls.push(['delete']);
-      throw new Error('snapshot API unavailable');
+      throw new Error('backup API unavailable');
     },
   };
 
@@ -135,7 +137,7 @@ test('thread lifecycle rejects active runs and keeps sandbox when snapshot fails
     await writeFile(settingsFile, '{}\n');
     const service = createService({ sessionFile, settingsFile }, provider);
 
-    await assert.rejects(() => service.suspendThreadSession('daytona-thread'), (error) => {
+    await assert.rejects(() => service.suspendThreadSession('cloudflare-thread'), (error) => {
       assert.equal(error.statusCode, 409);
       assert.match(error.message, /Only idle/);
       return true;
@@ -143,19 +145,19 @@ test('thread lifecycle rejects active runs and keeps sandbox when snapshot fails
     assert.deepEqual(calls, []);
 
     await writeFile(sessionFile, `${JSON.stringify([baseSession()])}\n`);
-    await assert.rejects(() => service.resumeThreadSession('daytona-thread'), (error) => {
+    await assert.rejects(() => service.resumeThreadSession('cloudflare-thread'), (error) => {
       assert.equal(error.statusCode, 409);
       assert.match(error.message, /Only suspended/);
       return true;
     });
     assert.deepEqual(calls, []);
 
-    await assert.rejects(() => service.deleteThreadSession('daytona-thread'), /snapshot API unavailable/);
-    const stored = await getStoredSession(sessionFile, 'daytona-thread');
+    await assert.rejects(() => service.deleteThreadSession('cloudflare-thread'), /backup API unavailable/);
+    const stored = await getStoredSession(sessionFile, 'cloudflare-thread');
     assert.equal(stored.runStatus, 'ready');
-    assert.equal(stored.daytonaSandboxId, 'sandbox-1');
+    assert.equal(stored.cloudflareSandboxId, 'sandbox-1');
     assert.equal(stored.deletedAt, undefined);
-    assert.equal(stored.warning, 'snapshot API unavailable');
+    assert.equal(stored.warning, 'backup API unavailable');
     assert.deepEqual(calls, [['delete']]);
   } finally {
     await rm(root, { recursive: true, force: true });
