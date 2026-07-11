@@ -1703,7 +1703,7 @@ function appendParsedLogDump(text, { allowLeftovers = false } = {}) {
 }
 
 function appendAssistantChunk(text) {
-  if (!text) return;
+  if (!String(text || '').trim()) return;
   if (looksLikeLegacySystemDump(text) && appendParsedLogDump(text, { allowLeftovers: true })) return;
   if (appendParsedLogDump(text)) return;
   queueAssistantChunk(text);
