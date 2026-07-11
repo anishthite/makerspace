@@ -70,11 +70,17 @@ async function fileRoute(request, env, id, url) {
   return json({ error: 'method not allowed' }, 405);
 }
 
+function portHostname(url, env) {
+  const configured = String(env.CLOUDFLARE_SANDBOX_PORT_HOSTNAME || '').trim();
+  if (configured) return configured;
+  return url.hostname.startsWith('sandbox.') ? url.hostname.slice('sandbox.'.length) : url.hostname;
+}
+
 async function portRoute(request, env, id, url) {
   const port = Number(url.pathname.match(/\/ports\/(\d+)$/)?.[1] || 0);
   if (!port) return json({ error: 'port is required' }, 400);
   const box = sandbox(env, id);
-  const { hostname } = url;
+  const hostname = portHostname(url, env);
   try {
     const exposed = await box.exposePort(port, { hostname, name: 'pi-bridge', token: 'bridge' });
     return json({ bridgeUrl: exposed.url, httpsUrl: exposed.url, port: exposed.port });

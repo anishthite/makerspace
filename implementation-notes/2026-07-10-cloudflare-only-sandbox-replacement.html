@@ -49,6 +49,7 @@ body{font:14px/1.5 -apple-system,system-ui,sans-serif;max-width:1040px;margin:2r
 <tr><td>L-008</td><td>Deployed Cloudflare broker and container application; Worker URL is <code>https://spanner-sandbox-broker.anishthite.workers.dev</code>.</td><td><code>cloudflare-sandbox-worker/</code>, <code>image/Dockerfile</code></td></tr>
 <tr><td>L-009</td><td>Live broker smoke passed: bearer health check, sandbox create, Node/Pi runtime exec, R2 backup, restore, and cleanup delete.</td><td>Cloudflare account <code>38136d7e8e51d4450fd5687cdba2ce2a</code>, R2 bucket <code>spanner-sandbox-backups</code></td></tr>
 <tr><td>L-010</td><td>Fixed Cloudflare setup launch from deleted cwd: setup exec now runs from <code>/</code>, and repo clone setup cds to <code>/</code> before removing an empty <code>/workspace</code>.</td><td><code>src/providers/cloudflare.js</code>, <code>src/setup-script.js</code>, <code>test/provider.test.js</code>, <code>test/setup-script.test.js</code></td></tr>
+<tr><td>L-011</td><td>Changed exposed bridge hostnames from nested <code>*.sandbox.spanner.sh</code> to one-label <code>*-bridge.spanner.sh</code> because Cloudflare Universal SSL covers <code>*.spanner.sh</code>, not second-level wildcards.</td><td><code>cloudflare-sandbox-worker/src/index.js</code>, <code>cloudflare-sandbox-worker/wrangler.toml</code>, <code>artifacts/cloudflare-production-cutover-checklist.md</code></td></tr>
 </table>
 
 <h2>Tradeoffs</h2>

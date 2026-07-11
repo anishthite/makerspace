@@ -5,7 +5,7 @@ compatibility_flags = ["nodejs_compat"]
 workers_dev = true
 routes = [
   { pattern = "sandbox.spanner.sh/*", zone_name = "spanner.sh" },
-  { pattern = "*.sandbox.spanner.sh/*", zone_name = "spanner.sh" },
+  { pattern = "*-bridge.spanner.sh/*", zone_name = "spanner.sh" },
 ]
 
 # Set CLOUDFLARE_ACCOUNT_ID in your shell; keep account_id out of git.

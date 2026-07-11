@@ -5,13 +5,13 @@
 In Cloudflare DNS for `spanner.sh`:
 
 - [ ] Add proxied AAAA record: `sandbox` → `100::`
-- [ ] Add proxied AAAA record: `*.sandbox` → `100::`
+- [ ] Add proxied AAAA record: `*` → `100::`
 - [ ] Confirm both records are **Proxied** / orange-clouded
 
 Why:
 - `sandbox.spanner.sh` is the broker API URL.
-- `*.sandbox.spanner.sh` is required for Cloudflare Sandbox port URLs, including the Pi bridge.
-- `workers.dev` works for basic broker smoke tests, but port exposure needs a custom wildcard domain.
+- `*-bridge.spanner.sh` routes Cloudflare Sandbox port URLs, including the Pi bridge.
+- `workers.dev` works for basic broker smoke tests, but port exposure needs a custom wildcard domain covered by TLS.
 
 ## 2. DigitalOcean backend env
 
@@ -68,5 +68,5 @@ In Spanner UI:
 
 - [ ] If `sandbox.spanner.sh` does not resolve, fix DNS/proxy first
 - [ ] If broker health returns `401`, the token is wrong/mismatched
-- [ ] If port/bridge URLs fail, check wildcard DNS: `*.sandbox.spanner.sh`
+- [ ] If port/bridge URLs fail, check wildcard DNS: `*.spanner.sh` (`*` → `100::`, proxied)
 - [ ] If backend still mentions Daytona, remove stale `DAYTONA_*` env vars and redeploy
