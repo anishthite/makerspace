@@ -79,6 +79,7 @@ test('createSession provisions through the broker and runs root setup', async ()
   assert.match(setupWrite.body.content, /printf 'export PI_BRIDGE_PACKAGE_DIR=%s\\n' '\/home\/root\/\.pi\/agent\/npm'/);
 
   const setupExec = fetch.calls.find((call) => call.url.endsWith('/exec') && call.body.command.includes('/tmp/spanner-setup.sh'));
+  assert.equal(setupExec.body.cwd, '/');
   assert.deepEqual(setupExec.body.env, [{ key: 'ANTHROPIC_API_KEY', value: 'anthropic-key' }]);
   assert.equal(fetch.calls.at(-1).url, 'https://broker.example.test/sessions/thread-one/ports/4310');
 });

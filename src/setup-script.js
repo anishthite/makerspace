@@ -85,6 +85,7 @@ function buildRepoLines(session, config) {
       `  ${fetchCommand}`,
       'else',
       `  if [ -e ${shellQuote(workspaceDir)} ] && [ -n "$(ls -A ${shellQuote(workspaceDir)} 2>/dev/null)" ]; then exit 1; fi`,
+      '  cd /',
       `  rm -rf ${shellQuote(workspaceDir)}`,
       `  ${branchClone} || { rm -rf ${shellQuote(workspaceDir)}; ${plainClone}; }`,
       'fi',

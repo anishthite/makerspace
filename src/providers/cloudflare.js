@@ -190,7 +190,7 @@ export function createCloudflareProvider(config, options = {}) {
       await restoreBackups(session);
       const setupScript = buildSetupScript(session, config);
       await this.writeRemoteFile(session.name, DEFAULT_SETUP_PATH, setupScript);
-      const setup = await exec(session.name, `chmod +x ${shellQuote(DEFAULT_SETUP_PATH)} && ${shellQuote(DEFAULT_SETUP_PATH)}`, { env: envVars, onData: session.onCreateLog });
+      const setup = await exec(session.name, `chmod +x ${shellQuote(DEFAULT_SETUP_PATH)} && ${shellQuote(DEFAULT_SETUP_PATH)}`, { cwd: '/', env: envVars, onData: session.onCreateLog });
       if (setup.exitCode !== 0) throw new Error(`Cloudflare setup failed: ${setup.stderr || setup.stdout || setup.exitCode}`);
       const port = await this.setShare(session.name, { sharePort: session.sharePort || config.bridgePort });
       return normalizeRemote({ ...remote, ...port }, session);

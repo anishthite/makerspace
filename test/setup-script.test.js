@@ -46,6 +46,7 @@ test('buildSetupScript clones a repo and auto-runs pi when requested', () => {
   assert.match(script, /if \[ -d '\/workspace\/\.git' \]; then/);
   assert.match(script, new RegExp(`git -c 'http.extraHeader=${authHeader.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}' fetch --prune origin 'main' \\|\\| true`));
   assert.match(script, /ls -A '\/workspace'/);
+  assert.match(script, /cd \/\n  rm -rf '\/workspace'/);
   assert.match(script, new RegExp(`git -c 'http.extraHeader=${authHeader.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}' clone --depth=1 --branch 'main' 'https:\\/\\/github.com\\/acme\\/demo\\.git' '\\/workspace'`));
   assert.match(script, /https:\/\/x-access-token:secret-token@github\.com/);
   assert.match(script, /oauth_token: "secret-token"/);
