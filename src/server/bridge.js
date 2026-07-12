@@ -435,6 +435,16 @@ export function createBridgeService({ config, provider, auth, runState }) {
               return;
             }
 
+            if (event.type === 'chunk' && event.chunk) {
+              recordRunEvent(sessionName, {
+                ...event,
+                type: 'chunk',
+                chunk: String(event.chunk),
+                runStatus: event.runStatus || ensureRunState(sessionName).runStatus || 'running',
+              });
+              return;
+            }
+
             if (event.type === 'tool' || event.type === 'thinking' || event.type === 'usage' || event.type === 'queue' || event.type === 'workflow_status' || event.type === 'workflow_result') {
               recordRunEvent(sessionName, {
                 ...event,

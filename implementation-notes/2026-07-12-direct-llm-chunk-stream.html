@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Direct LLM chunk stream</title>
+<style>
+  body { font: 14px/1.5 -apple-system, system-ui, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; color: #172033; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+  th, td { border: 1px solid #d9e2ef; padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { background: #f5f7fb; }
+  code { background: #f5f7fb; padding: 1px 4px; border-radius: 4px; }
+  .status { color: #047857; font-weight: 700; }
+</style>
+</head>
+<body>
+<h1>Direct LLM chunk stream</h1>
+<p><strong>Status:</strong> <span class="status">shipped</span> · <strong>Blast:</strong> medium · <strong>Tags:</strong> spanner, bridge, sse, llm, streaming</p>
+<table>
+  <thead><tr><th>ID</th><th>File</th><th>Decision</th><th>Reason</th></tr></thead>
+  <tbody>
+    <tr><td>D-1</td><td><code>src/setup-script.js</code></td><td>Remote bridge now publishes assistant text deltas and fallback final text as <code>type: "chunk"</code>.</td><td>Keeps model output tokens structured instead of labeling them as stdout.</td></tr>
+    <tr><td>D-2</td><td><code>src/server/bridge.js</code></td><td>Bridge follower records incoming <code>chunk</code> events directly before legacy stdout parsing.</td><td>Removes unnecessary text parsing on the hot token path while preserving old bridge compatibility.</td></tr>
+    <tr><td>D-3</td><td><code>src/host-pi-runner.js</code></td><td>Local and host-dispatch Pi runs emit assistant chunks through <code>emitEvent</code> when available.</td><td>Gives local and remote runs the same run-state event shape.</td></tr>
+    <tr><td>T-1</td><td><code>test/bridge-chunk-stream.test.js</code></td><td>Added direct bridge SSE relay coverage plus a generated-bridge source guard.</td><td>Prevents regressions back to <code>stdout</code> for assistant deltas.</td></tr>
+  </tbody>
+</table>
+<table>
+  <thead><tr><th>ID</th><th>Check</th><th>Result</th></tr></thead>
+  <tbody>
+    <tr><td>A-1</td><td><code>node --test test/bridge-chunk-stream.test.js test/log-format.test.js test/pi-resume.test.js test/thread-message-steering.test.js</code></td><td>passed</td></tr>
+    <tr><td>A-2</td><td><code>node --check src/server/bridge.js &amp;&amp; node --check src/host-pi-runner.js &amp;&amp; node --check src/setup-script.js</code></td><td>passed</td></tr>
+  </tbody>
+</table>
+</body>
+</html>
