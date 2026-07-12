@@ -5,6 +5,9 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 
+import { createRunState } from '../src/server/run-state.js';
+import { createThreadService } from '../src/server/threads.js';
+
 function waitForServer(child) {
   return new Promise((resolve, reject) => {
     let output = '';
@@ -29,6 +32,96 @@ async function stopServer(child) {
   child.kill('SIGTERM');
   await new Promise((resolve) => child.once('exit', resolve));
 }
+
+function httpStub() {
+  return {
+    clientError(message, statusCode = 400) {
+      const error = new Error(message);
+      error.statusCode = statusCode;
+      return error;
+    },
+  };
+}
+
+function createWorkflowService(config, provider) {
+  const runState = createRunState({
+    config,
+    provider,
+    loadPiSdk: async () => ({}),
+    loadPiAi: async () => ({}),
+    canAccessSession: () => true,
+  });
+  return createThreadService({
+    config,
+    provider,
+    http: httpStub(),
+    auth: {
+      canAccessSession: () => true,
+      enrichGitHubRepoSession: async (session) => session,
+      loadPiDefaults: async () => ({}),
+      githubTokenForUser: async () => '',
+      readBrowserSession: () => null,
+    },
+    runState,
+    bridge: {},
+  });
+}
+
+test('thread workflow payload uses mirrored agent data before remote reads', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'spanner-workflow-mirror-'));
+  const sessionFile = path.join(tempDir, 'sessions.json');
+  const workflowRunsDir = path.join(tempDir, 'workflows', 'runs');
+  const runId = 'run-cached-agents';
+  let remoteReads = 0;
+
+  try {
+    await mkdir(workflowRunsDir, { recursive: true });
+    await writeFile(path.join(workflowRunsDir, `${runId}.json`), `${JSON.stringify({
+      runId,
+      workflowName: 'cached workflow',
+      status: 'running',
+      agents: [{ id: 1, label: 'cached agent', phase: 'Review', status: 'running' }],
+    })}
+`);
+    await writeFile(sessionFile, `${JSON.stringify([{
+      name: 'remote-thread',
+      provider: 'cloudflare',
+      threadBridge: true,
+      bridgeMode: true,
+      status: 'running',
+      runStatus: 'running',
+      createdAt: '2026-07-12T00:00:00.000Z',
+    }])}
+`);
+
+    const service = createWorkflowService(
+      { sessionFile, workflowRunsDir, localDataDir: tempDir, remoteHomeDir: '/home/root' },
+      {
+        kind: 'cloudflare',
+        info: () => ({ kind: 'cloudflare' }),
+        readRemoteFile: async () => {
+          remoteReads += 1;
+          throw new Error('remote read should not block cached rail payloads');
+        },
+      },
+    );
+    const labels = [];
+    const payload = await service.threadWorkflowPayload('remote-thread', runId, '', true, null, {
+      traceStep: async (label, task) => {
+        labels.push(label);
+        return task();
+      },
+    });
+
+    assert.equal(payload.workflowName, 'cached workflow');
+    assert.equal(payload.agents[0].label, 'cached agent');
+    assert.equal(remoteReads, 0);
+    assert.ok(labels.includes('workflow.mirrorRead'));
+    assert.equal(labels.includes('workflow.remoteRead'), false);
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
 
 test('thread workflow route returns Spanner Pi workflow journal steps', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'spanner-workflow-'));

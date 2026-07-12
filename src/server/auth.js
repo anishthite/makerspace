@@ -518,6 +518,15 @@ export function createAuthService({ config, http }) {
     }
   }
 
+  function cheapPiDefaults() {
+    return {
+      model: 'Pi default model',
+      agent: 'Pi default model',
+      thinking: 'medium',
+      models: ['inference/nvidia/nemotron3-super'],
+    };
+  }
+
   async function computePiDefaults(user = null) {
     let model = 'Pi default model';
     let thinking = 'medium';
@@ -538,17 +547,56 @@ export function createAuthService({ config, http }) {
     };
   }
 
-  async function loadPiDefaults(user = null) {
+  function isPromiseLike(value) {
+    return value && typeof value.then === 'function';
+  }
+
+  function refreshPiDefaults(key, user, cached = {}) {
+    if (cached.refreshing) return cached.refreshing;
+    const refreshing = computePiDefaults(user);
+    defaultsCache.set(key, { ...cached, refreshing, refreshScheduled: false });
+    refreshing.then((resolved) => {
+      defaultsCache.set(key, { expiresAt: Date.now() + DEFAULTS_CACHE_TTL_MS, value: resolved, fallback: false });
+    }).catch(() => {
+      if (cached.value && !isPromiseLike(cached.value)) {
+        defaultsCache.set(key, { expiresAt: Date.now() + 5000, value: cached.value, fallback: cached.fallback !== false });
+      } else {
+        defaultsCache.delete(key);
+      }
+    });
+    return refreshing;
+  }
+
+  function schedulePiDefaultsRefresh(key, user, cached = {}) {
+    if (cached.refreshing || cached.refreshScheduled) return;
+    defaultsCache.set(key, { ...cached, refreshScheduled: true });
+    const timer = setTimeout(() => {
+      const latest = defaultsCache.get(key) || cached;
+      if (latest.expiresAt > Date.now() && latest.fallback === false && !isPromiseLike(latest.value)) return;
+      refreshPiDefaults(key, user, { ...latest, refreshScheduled: false });
+    }, 1000);
+    timer.unref?.();
+  }
+
+  async function loadPiDefaults(user = null, options = {}) {
     const key = `${authRequired() ? 'hosted' : 'local'}:${user?.id || 'anonymous'}`;
     const cached = defaultsCache.get(key);
     const now = Date.now();
-    if (cached && cached.expiresAt > now) return cached.value;
+    const staleOk = Boolean(options.staleOk);
+    if (cached && cached.expiresAt > now && (!cached.fallback || staleOk)) return cached.value;
+    if (cached?.fallback && cached.refreshing && !staleOk) return cached.refreshing;
+
+    if (staleOk) {
+      const fallback = cached?.value && !isPromiseLike(cached.value) ? cached.value : cheapPiDefaults();
+      schedulePiDefaultsRefresh(key, user, { ...cached, value: fallback, fallback: cached?.fallback ?? true, expiresAt: now + 5000 });
+      return fallback;
+    }
 
     const value = computePiDefaults(user);
-    defaultsCache.set(key, { expiresAt: now + DEFAULTS_CACHE_TTL_MS, value });
+    defaultsCache.set(key, { expiresAt: now + DEFAULTS_CACHE_TTL_MS, value, fallback: false });
     try {
       const resolved = await value;
-      defaultsCache.set(key, { expiresAt: Date.now() + DEFAULTS_CACHE_TTL_MS, value: resolved });
+      defaultsCache.set(key, { expiresAt: Date.now() + DEFAULTS_CACHE_TTL_MS, value: resolved, fallback: false });
       return resolved;
     } catch (error) {
       defaultsCache.delete(key);

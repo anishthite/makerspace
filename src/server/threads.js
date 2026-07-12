@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import path from 'node:path';
 
@@ -49,6 +49,11 @@ export function createThreadService({ config, provider, http, auth, runState, br
     ['.svg', 'image/svg+xml; charset=utf-8'],
     ['.webp', 'image/webp'],
   ]);
+  const WORKFLOW_MIRROR_FRESH_MS = 2000;
+
+  function traceStep(options, label, task) {
+    return options?.traceStep ? options.traceStep(label, task) : task();
+  }
 
   function safeRelativeArtifactPath(value, allowedExts, message) {
     const input = String(value || '').trim().replaceAll('\\', '/');
@@ -132,6 +137,12 @@ export function createThreadService({ config, provider, http, auth, runState, br
     return readFile(spannerWorkflowRunFile(runId), 'utf8');
   }
 
+  async function readSpannerWorkflowRunMirror(runId) {
+    const filePath = spannerWorkflowRunFile(runId);
+    const [raw, stats] = await Promise.all([readFile(filePath, 'utf8'), stat(filePath)]);
+    return { raw, ageMs: Math.max(0, Date.now() - stats.mtimeMs) };
+  }
+
   async function writeSpannerWorkflowRunFile(runId, raw) {
     const filePath = spannerWorkflowRunFile(runId);
     await mkdir(path.dirname(filePath), { recursive: true });
@@ -145,11 +156,42 @@ export function createThreadService({ config, provider, http, auth, runState, br
     return provider.readRemoteFile(session, path.posix.join(config.remoteHomeDir || '/home/root', runPath));
   }
 
-  async function readThreadWorkflowRunFile(session, runId) {
+  function workflowRawStatus(raw) {
     try {
-      const raw = await readRuntimeWorkflowRunFile(session, runId);
-      await writeSpannerWorkflowRunFile(runId, raw);
-      return raw;
+      return String(JSON.parse(raw)?.status || '').toLowerCase();
+    } catch {
+      return '';
+    }
+  }
+
+  function workflowStatusIsFinal(status) {
+    return ['aborted', 'cancelled', 'complete', 'completed', 'done', 'error', 'failed', 'success'].includes(status);
+  }
+
+  async function refreshThreadWorkflowRunFile(session, runId, options = {}) {
+    const raw = await traceStep(options, 'workflow.remoteRead', () => readRuntimeWorkflowRunFile(session, runId));
+    await traceStep(options, 'workflow.mirrorWrite', () => writeSpannerWorkflowRunFile(runId, raw));
+    return raw;
+  }
+
+  async function readThreadWorkflowRunFile(session, runId, options = {}) {
+    let mirror = null;
+    try {
+      mirror = await traceStep(options, 'workflow.mirrorRead', () => readSpannerWorkflowRunMirror(runId));
+    } catch (error) {
+      if (!notFound(error)) throw error;
+    }
+
+    if (mirror) {
+      const status = workflowRawStatus(mirror.raw);
+      if (workflowStatusIsFinal(status) || mirror.ageMs <= WORKFLOW_MIRROR_FRESH_MS) return mirror.raw;
+      // ponytail: stale rail data is good enough for first paint; poll refreshes the mirror.
+      refreshThreadWorkflowRunFile(session, runId).catch(() => {});
+      return mirror.raw;
+    }
+
+    try {
+      return await refreshThreadWorkflowRunFile(session, runId, options);
     } catch (error) {
       if (!notFound(error)) throw error;
       return readSpannerWorkflowRunFile(runId);
@@ -254,14 +296,15 @@ export function createThreadService({ config, provider, http, auth, runState, br
     };
   }
 
-  async function threadWorkflowPayload(name, runIdValue, viewerSessionId = '', trusted = false, user = null) {
-    const session = await getThreadSession(name);
+  async function threadWorkflowPayload(name, runIdValue, viewerSessionId = '', trusted = false, user = null, options = {}) {
+    const session = await traceStep(options, 'workflow.getThread', () => getThreadSession(name));
     if (!canAccessSession(session, viewerSessionId, trusted, user)) {
       throw clientError(`Main agent ${name} belongs to a different user.`, 403);
     }
     const runId = safeWorkflowRunId(runIdValue);
     try {
-      return workflowRunPayload(runId, await readThreadWorkflowRunFile(session, runId));
+      const raw = await readThreadWorkflowRunFile(session, runId, options);
+      return traceStep(options, 'workflow.parse', () => workflowRunPayload(runId, raw));
     } catch (error) {
       if (notFound(error)) {
         return { available: false, runId, workflowName: 'workflow', status: 'pending', phases: [], agents: [] };
@@ -326,17 +369,20 @@ export function createThreadService({ config, provider, http, auth, runState, br
     return { path: safePath, saved: true, byteLength: Buffer.byteLength(text) };
   }
 
-  async function listThreadsPayload(viewerSessionId = '', trusted = false, user = null) {
-    const sessions = await listStoredSessions(config.sessionFile);
+  async function listThreadsPayload(viewerSessionId = '', trusted = false, user = null, options = {}) {
+    const [sessions, defaults] = await Promise.all([
+      traceStep(options, 'threads.listSessions', () => listStoredSessions(config.sessionFile)),
+      traceStep(options, 'defaults.load', () => loadPiDefaults(user, { staleOk: true })),
+    ]);
     const visibleSessions = sessions
       .filter((session) => session.threadBridge && !session.archivedAt && canAccessSession(session, viewerSessionId, trusted, user));
-    const threads = await Promise.all(visibleSessions.map(async (session) => {
+    const threads = await traceStep(options, 'threads.decorate', () => Promise.all(visibleSessions.map(async (session) => {
       await reattachBridgeRun?.(session);
       return decorateLiveSession(session);
-    }));
+    })));
     return {
       provider: provider.info(),
-      defaults: await loadPiDefaults(user),
+      defaults,
       threads,
     };
   }

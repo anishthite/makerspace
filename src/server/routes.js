@@ -1,3 +1,5 @@
+import { performance } from 'node:perf_hooks';
+
 import { readPiProfile, savePiProfile } from '../pi-profile.js';
 import { listRecentProjects, saveRecentProject } from '../recent-projects.js';
 import { report } from '../report.js';
@@ -68,11 +70,34 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
   } = threads;
   const { createChatSession, createManualSession, syncRunOutput } = sessions;
 
+  function createTrace(url) {
+    const enabled = ['1', 'true', 'yes'].includes(String(url.searchParams.get('trace') || '').toLowerCase());
+    const started = performance.now();
+    const steps = [];
+    async function step(label, task) {
+      if (!enabled) return task();
+      const before = performance.now();
+      try {
+        return await task();
+      } finally {
+        steps.push({ label, ms: Math.round((performance.now() - before) * 10) / 10 });
+      }
+    }
+    return {
+      enabled,
+      step,
+      wrap(payload) {
+        return enabled ? { ...payload, trace: { totalMs: Math.round((performance.now() - started) * 10) / 10, steps } } : payload;
+      },
+    };
+  }
+
   return async function handleRequest(request, response) {
     try {
       bindCorsRequest?.(request, response);
       const url = new URL(request.url || '/', `http://${request.headers.host || 'localhost'}`);
       const pathname = url.pathname;
+      const trace = createTrace(url);
 
       if (request.method === 'OPTIONS') {
         response.writeHead(204, corsHeadersFor(request));
@@ -99,9 +124,9 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
         || pathname === '/api/auth/github/app/callback'
         || pathname === '/api/auth/github/logout'
         || pathname === '/api/auth/logout';
-      let user = await currentUser(request);
+      let user = await trace.step('auth.currentUser', () => currentUser(request));
       if (pathname.startsWith('/api/') && !publicApiRoute) {
-        const context = await requireUser(request, response, url, user);
+        const context = await trace.step('auth.requireUser', () => requireUser(request, response, url, user));
         if (!context) return;
         user = context.user;
       }
@@ -131,7 +156,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
             return;
           }
 
-          const thread = await getThreadSession(name);
+          const thread = await trace.step('thread.getSession', () => getThreadSession(name));
           if (!thread) {
             sendJson(response, 404, { error: `No stored session named ${name}.` });
             return;
@@ -139,7 +164,10 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
           if (requireSessionAccess(request, response, thread, url, user)) return;
 
           const offset = Number(url.searchParams.get('offset'));
-          const [defaults, run] = await Promise.all([loadPiDefaults(user), syncRunOutput(thread)]);
+          const [defaults, run] = await Promise.all([
+            trace.step('defaults.load', () => loadPiDefaults(user, { staleOk: true })),
+            trace.step('thread.syncOutput', () => syncRunOutput(thread)),
+          ]);
           const output = retainedOutputChunk(run, Number.isFinite(offset) && offset > 0 ? offset : 0);
           const session = decorateLiveSession({
             ...thread,
@@ -147,7 +175,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
             runStatus: run.runStatus,
           });
 
-          sendJson(response, 200, {
+          sendJson(response, 200, trace.wrap({
             provider: provider.info(),
             defaults,
             thread: session,
@@ -158,39 +186,40 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
               warning: run.warning,
               events: run.events,
             },
-          });
+          }));
           return;
         }
 
-        const [codex, github] = await Promise.all([
-          codexAuthStatus(user),
-          publicGitHubAuth(user || readBrowserSession(viewerSessionId)),
-        ]);
-        const basePayload = {
-          provider: provider.info(),
-          me: publicMe(user, trusted),
-          codex,
-          github,
-          defaults: {},
-          threads: [],
-        };
+        const githubSession = user || readBrowserSession(viewerSessionId);
+        const codexPromise = trace.step('auth.codex', () => codexAuthStatus(user));
+        const githubPromise = trace.step('auth.github', () => publicGitHubAuth(githubSession));
 
         if (!canReadProtected) {
-          sendJson(response, 200, page === 'project' ? { ...basePayload, recentProjects: [] } : basePayload);
+          const [codex, github] = await Promise.all([codexPromise, githubPromise]);
+          const basePayload = { provider: provider.info(), me: publicMe(user, trusted), codex, github, defaults: {}, threads: [] };
+          sendJson(response, 200, trace.wrap(page === 'project' ? { ...basePayload, recentProjects: [] } : basePayload));
           return;
         }
 
         if (page === 'project') {
-          const [threadPayload, recentProjects] = await Promise.all([
-            listThreadsPayload(viewerSessionId, trusted, user),
-            listRecentProjects(config.recentProjectsFile, user?.id || ''),
+          const [codex, github, threadPayload, recentProjects] = await Promise.all([
+            codexPromise,
+            githubPromise,
+            trace.step('threads.payload', () => listThreadsPayload(viewerSessionId, trusted, user, { traceStep: trace.step })),
+            trace.step('projects.recent', () => listRecentProjects(config.recentProjectsFile, user?.id || '')),
           ]);
-          sendJson(response, 200, { ...basePayload, ...threadPayload, recentProjects });
+          const basePayload = { provider: provider.info(), me: publicMe(user, trusted), codex, github, defaults: {}, threads: [] };
+          sendJson(response, 200, trace.wrap({ ...basePayload, ...threadPayload, recentProjects }));
           return;
         }
 
-        const threadPayload = await listThreadsPayload(viewerSessionId, trusted, user);
-        sendJson(response, 200, { ...basePayload, ...threadPayload });
+        const [codex, github, threadPayload] = await Promise.all([
+          codexPromise,
+          githubPromise,
+          trace.step('threads.payload', () => listThreadsPayload(viewerSessionId, trusted, user, { traceStep: trace.step })),
+        ]);
+        const basePayload = { provider: provider.info(), me: publicMe(user, trusted), codex, github, defaults: {}, threads: [] };
+        sendJson(response, 200, trace.wrap({ ...basePayload, ...threadPayload }));
         return;
       }
 
@@ -365,7 +394,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
       }
 
       if (request.method === 'GET' && pathname === '/api/threads') {
-        sendJson(response, 200, await listThreadsPayload(viewerSessionId, trusted, user));
+        sendJson(response, 200, trace.wrap(await listThreadsPayload(viewerSessionId, trusted, user, { traceStep: trace.step })));
         return;
       }
 
@@ -476,7 +505,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
       if (request.method === 'GET' && threadWorkflowMatch) {
         const name = decodeURIComponent(threadWorkflowMatch[1]);
         const runId = decodeURIComponent(threadWorkflowMatch[2]);
-        sendJson(response, 200, await threadWorkflowPayload(name, runId, viewerSessionId, trusted, user));
+        sendJson(response, 200, trace.wrap(await threadWorkflowPayload(name, runId, viewerSessionId, trusted, user, { traceStep: trace.step })));
         return;
       }
 
@@ -508,19 +537,22 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
       const threadMatch = pathname.match(/^\/api\/threads\/([^/]+)$/);
       if (request.method === 'GET' && threadMatch) {
         const name = decodeURIComponent(threadMatch[1]);
-        const thread = await getThreadSession(name);
+        const thread = await trace.step('thread.getSession', () => getThreadSession(name));
         if (requireSessionAccess(request, response, thread, url, user)) return;
-        const [defaults, run] = await Promise.all([loadPiDefaults(user), syncRunOutput(thread)]);
+        const [defaults, run] = await Promise.all([
+          trace.step('defaults.load', () => loadPiDefaults(user, { staleOk: true })),
+          trace.step('thread.syncRun', () => syncRunOutput(thread)),
+        ]);
         const liveThread = decorateLiveSession({
           ...thread,
           status: statusFromRunStatus(run.runStatus, thread.status),
           runStatus: run.runStatus,
         });
-        sendJson(response, 200, {
+        sendJson(response, 200, trace.wrap({
           provider: provider.info(),
           defaults,
           thread: liveThread,
-        });
+        }));
         return;
       }
 

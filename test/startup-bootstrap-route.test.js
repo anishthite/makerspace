@@ -62,7 +62,7 @@ test('startup bootstrap returns project data in one request', async () => {
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     const baseUrl = await waitForServer(server);
-    const response = await fetch(`${baseUrl}/api/bootstrap?page=project`, { headers: { authorization: 'Bearer test-token', 'x-spanner-session': 'browser-session-1234567890' } });
+    const response = await fetch(`${baseUrl}/api/bootstrap?page=project&trace=1`, { headers: { authorization: 'Bearer test-token', 'x-spanner-session': 'browser-session-1234567890' } });
     const payload = await response.json();
 
     assert.equal(response.status, 200);
@@ -72,6 +72,9 @@ test('startup bootstrap returns project data in one request', async () => {
     assert.equal(payload.github.connected, false);
     assert.equal(payload.codex.disabled, 'sign-in-required');
     assert.equal(payload.defaults.model, 'Pi default model');
+    assert.ok(payload.trace.totalMs >= 0);
+    assert.ok(payload.trace.steps.some((step) => step.label === 'threads.listSessions'));
+    assert.ok(payload.trace.steps.some((step) => step.label === 'defaults.load'));
   } finally {
     if (server) await stopServer(server);
     await rm(tempDir, { recursive: true, force: true });

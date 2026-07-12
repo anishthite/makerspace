@@ -123,6 +123,31 @@ test('D1 client stores sessions and singleton values', async () => {
   assert.equal(calls.filter((call) => /^CREATE TABLE/i.test(call.sql)).length, 2);
 });
 
+test('D1 client reuses recent session list reads', async () => {
+  const { fetchImpl, calls } = makeFakeFetch();
+  const client = createD1StateClient({
+    fetchImpl,
+    sessionCacheTtlMs: 60_000,
+    env: {
+      CLOUDFLARE_ACCOUNT_ID: 'acct',
+      CLOUDFLARE_D1_DATABASE_ID: 'db',
+      CLOUDFLARE_API_TOKEN: 'token',
+    },
+  });
+
+  await client.upsertSession({ name: 'cached', createdAt: '2026-07-12T00:00:00.000Z', value: 1 });
+  calls.length = 0;
+
+  assert.deepEqual((await client.listSessions()).map((session) => session.name), ['cached']);
+  assert.equal((await client.getSession('cached')).value, 1);
+  assert.equal(calls.filter((call) => /SELECT data FROM spanner_sessions WHERE name/i.test(call.sql)).length, 0);
+
+  await client.upsertSession({ name: 'cached', createdAt: '2026-07-12T00:00:00.000Z', value: 2 });
+  assert.equal((await client.getSession('cached')).value, 2);
+  await client.removeSession('cached');
+  assert.equal(await client.getSession('cached'), null);
+});
+
 test('D1 client copies legacy Workbench rows into Spanner tables', async () => {
   const { fetchImpl, calls } = makeFakeFetch({
     legacySessions: [{ name: 'old-thread', data: JSON.stringify({ name: 'old-thread', provider: 'cloudflare' }), created_at: '2026-07-01T00:00:00.000Z', updated_at: '2026-07-01T00:00:00.000Z' }],

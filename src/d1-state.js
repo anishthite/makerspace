@@ -2,6 +2,7 @@ const SESSION_TABLE = 'spanner_sessions';
 const KV_TABLE = 'spanner_kv';
 const LEGACY_SESSION_TABLE = 'workbench_sessions';
 const LEGACY_KV_TABLE = 'workbench_kv';
+const SESSION_CACHE_TTL_MS = 2000;
 
 function clean(value) {
   return String(value || '').trim();
@@ -64,9 +65,29 @@ function normalizeSession(row) {
   }
 }
 
-export function createD1StateClient({ env = process.env, fetchImpl = globalThis.fetch } = {}) {
+export function createD1StateClient({ env = process.env, fetchImpl = globalThis.fetch, sessionCacheTtlMs = SESSION_CACHE_TTL_MS } = {}) {
   let schemaReady = null;
   let migrationReady = null;
+  let sessionsCache = null;
+
+  function cachedSessions() {
+    if (!sessionsCache || sessionsCache.expiresAt <= Date.now()) return null;
+    return sessionsCache.sessions;
+  }
+
+  function cacheSessions(sessions) {
+    sessionsCache = { expiresAt: Date.now() + sessionCacheTtlMs, sessions };
+  }
+
+  function cachedSession(name) {
+    const sessions = cachedSessions();
+    if (!sessions) return { hit: false, session: null };
+    return { hit: true, session: sessions.find((session) => session.name === name) || null };
+  }
+
+  function sortSessions(sessions) {
+    return [...sessions].sort((left, right) => String(right.createdAt).localeCompare(String(left.createdAt)));
+  }
 
   async function request(body) {
     const config = requireD1Config(env);
@@ -141,11 +162,17 @@ export function createD1StateClient({ env = process.env, fetchImpl = globalThis.
 
   return {
     async listSessions() {
+      const cached = cachedSessions();
+      if (cached) return [...cached];
       const rows = await query(`SELECT data FROM ${SESSION_TABLE} ORDER BY created_at DESC`);
-      return rows.map(normalizeSession).filter(Boolean);
+      const sessions = rows.map(normalizeSession).filter(Boolean);
+      cacheSessions(sessions);
+      return [...sessions];
     },
 
     async getSession(name) {
+      const cached = cachedSession(name);
+      if (cached.hit) return cached.session;
       const rows = await query(`SELECT data FROM ${SESSION_TABLE} WHERE name = ? LIMIT 1`, [name]);
       return normalizeSession(rows[0]) || null;
     },
@@ -157,6 +184,7 @@ export function createD1StateClient({ env = process.env, fetchImpl = globalThis.
         `INSERT INTO ${SESSION_TABLE} (name, data, created_at, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(name) DO UPDATE SET data = excluded.data, created_at = excluded.created_at, updated_at = excluded.updated_at`,
         [session.name, JSON.stringify(session), createdAt, updatedAt],
       );
+      if (sessionsCache) cacheSessions(sortSessions([session, ...sessionsCache.sessions.filter((item) => item.name !== session.name)]));
       return session;
     },
 
@@ -164,6 +192,7 @@ export function createD1StateClient({ env = process.env, fetchImpl = globalThis.
       const existing = await this.getSession(name);
       if (!existing) return false;
       await query(`DELETE FROM ${SESSION_TABLE} WHERE name = ?`, [name]);
+      if (sessionsCache) cacheSessions(sessionsCache.sessions.filter((session) => session.name !== name));
       return true;
     },
 
