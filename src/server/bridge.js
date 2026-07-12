@@ -105,7 +105,9 @@ export function createBridgeService({ config, provider, auth, runState }) {
 
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(text.trim() || `Bridge request failed: ${response.status}`);
+      const error = new Error(text.trim() || `Bridge request failed: ${response.status}`);
+      error.status = response.status;
+      throw error;
     }
 
     return response.json();
@@ -144,7 +146,6 @@ export function createBridgeService({ config, provider, auth, runState }) {
     let buffer = '';
 
     for await (const chunk of response.body) {
-      onActivity?.();
       buffer += decoder.decode(chunk, { stream: true });
 
       while (true) {
@@ -162,9 +163,72 @@ export function createBridgeService({ config, provider, auth, runState }) {
           .trim();
 
         if (!data) continue;
-        await onEvent(JSON.parse(data));
+        const event = JSON.parse(data);
+        onActivity?.(event);
+        await onEvent(event);
       }
     }
+  }
+
+  function bridgeRunStaleMs() {
+    const value = Number(config.bridgeRunStaleMs);
+    return Number.isFinite(value) && value > 0 ? value : 45 * 60 * 1000;
+  }
+
+  function bridgeStaleBackupTimeoutMs() {
+    const value = Number(config.bridgeStaleBackupTimeoutMs);
+    return Number.isFinite(value) && value > 0 ? value : 30_000;
+  }
+
+  function bridgeRunMissingError(error) {
+    return Number(error?.status) === 404 || /(?:^|\b)(?:404|not found|run not found)(?:\b|$)/i.test(String(error?.message || ''));
+  }
+
+  async function staleRunBackupPatch(session) {
+    if (!provider.backupSession) return {};
+    const timeoutMs = bridgeStaleBackupTimeoutMs();
+    let timer = null;
+    const timeout = new Promise((resolve) => {
+      timer = setTimeout(() => resolve({ staleBackupError: `Stale-run backup timed out after ${Math.round(timeoutMs / 1000)}s.` }), timeoutMs);
+    });
+    try {
+      return await Promise.race([provider.backupSession(session), timeout]);
+    } catch (error) {
+      return { staleBackupError: error instanceof Error ? error.message : String(error) };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async function markBridgeRunStale(sessionName, session, warning, options = {}) {
+    const current = (await getStoredSession(config.sessionFile, sessionName)) || session;
+    if (!current) return null;
+    const runStatus = String(current.runStatus || current.status || '').toLowerCase();
+    if (['completed', 'failed', 'ready', 'suspended', 'deleted'].includes(runStatus)) return current;
+
+    await persistThreadAssistantMessage(sessionName);
+    const backup = options.skipBackup ? {} : await staleRunBackupPatch(current);
+    const now = new Date().toISOString();
+    const stale = await upsertSession(config.sessionFile, {
+      ...current,
+      ...backup,
+      taskPrompt: '',
+      images: [],
+      bridgeClaimed: false,
+      warmClaimed: false,
+      status: 'failed',
+      runStatus: 'failed',
+      warning,
+      staleAt: now,
+      staleReason: warning,
+      endedAt: current.endedAt || now,
+      runEndedAtMs: current.runEndedAtMs || Date.parse(now),
+      updatedAt: now,
+    });
+    setRunState(sessionName, { runStatus: 'failed', warning });
+    appendRunOutput(sessionName, `[system] ${warning}\n`, 'failed');
+    appendRunStatus(sessionName, 'failed', { warning, done: true, stale: true, missing: Boolean(options.missing) });
+    return stale;
   }
 
   function isIdleReusableBridge(session) {
@@ -309,6 +373,7 @@ export function createBridgeService({ config, provider, auth, runState }) {
 
     let after = 0;
     let done = false;
+    let lastRealEventAtMs = Date.now();
 
     try {
       while (!done) {
@@ -337,7 +402,9 @@ export function createBridgeService({ config, provider, auth, runState }) {
 
           if (!response.ok || !response.body) {
             const text = await response.text();
-            throw new Error(text.trim() || `Bridge stream failed: ${response.status}`);
+            const error = new Error(text.trim() || `Bridge stream failed: ${response.status}`);
+            error.status = response.status;
+            throw error;
           }
 
           await consumeSse(response, async (event) => {
@@ -407,13 +474,24 @@ export function createBridgeService({ config, provider, auth, runState }) {
                 done = true;
               }
             }
-          }, resetStallTimer);
+          }, () => {
+            lastRealEventAtMs = Date.now();
+            resetStallTimer();
+          });
 
           if (!done) {
             await sleep(500);
           }
         } catch (error) {
-          if (!stallController.signal.aborted) {
+          const staleMs = bridgeRunStaleMs();
+          const stale = bridgeRunMissingError(error)
+            ? await markBridgeRunStale(sessionName, session, 'Bridge run disappeared before it reported completion.', { missing: true })
+            : Date.now() - lastRealEventAtMs >= staleMs
+              ? await markBridgeRunStale(sessionName, session, `Bridge run stopped sending real events for ${Math.round(staleMs / 60000)} minutes.`)
+              : null;
+          if (stale) {
+            done = true;
+          } else if (!stallController.signal.aborted) {
             setRunState(sessionName, { warning: error.message });
           }
           if (!done) {
@@ -1031,6 +1109,8 @@ export function createBridgeService({ config, provider, auth, runState }) {
     fetchBridgeJson,
     waitForBridge,
     consumeSse,
+    bridgeRunMissingError,
+    markBridgeRunStale,
     isIdleReusableBridge,
     isExpiredIdleBridge,
     pruneExpiredIdleBridges,

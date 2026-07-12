@@ -137,6 +137,8 @@ export function getConfig() {
     bridgeReadyTimeoutMs: Number(process.env.PI_BRIDGE_READY_TIMEOUT_MS || 240000),
     bridgeReadyPollMs: Number(process.env.PI_BRIDGE_READY_POLL_MS || 1000),
     bridgeStreamStallMs: Number(process.env.PI_BRIDGE_STREAM_STALL_MS || 60000),
+    bridgeRunStaleMs: Number(process.env.PI_BRIDGE_RUN_STALE_MS || 45 * 60 * 1000),
+    bridgeStaleBackupTimeoutMs: Number(process.env.PI_BRIDGE_STALE_BACKUP_TIMEOUT_MS || 30000),
     warmBridgePoolSize: Number(process.env.WARM_BRIDGE_POOL_SIZE || 0),
     idleBridgeTtlMs: Number(process.env.IDLE_BRIDGE_TTL_MS || 60 * 60 * 1000),
     hostDispatchEnabled: provider !== 'local' && ['1', 'true', 'yes'].includes(String(process.env.PI_HOST_DISPATCH || process.env.PI_LOCAL_DISPATCH || '').toLowerCase()),

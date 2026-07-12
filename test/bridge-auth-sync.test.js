@@ -197,6 +197,30 @@ test('bridge SSE consumer parses CRLF-delimited remote events', async () => {
   ]);
 });
 
+test('bridge SSE consumer ignores heartbeat comments for liveness', async () => {
+  const bridge = createBridgeService({
+    config: {},
+    provider: {},
+    auth: {},
+    runState: runStateStub(),
+  });
+  const encoder = new TextEncoder();
+  const response = new Response(new ReadableStream({
+    start(controller) {
+      controller.enqueue(encoder.encode(': ping\n\n'));
+      controller.enqueue(encoder.encode('data: {"type":"status","runStatus":"running"}\n\n'));
+      controller.close();
+    },
+  }));
+  const events = [];
+  let activityCount = 0;
+
+  await bridge.consumeSse(response, (event) => events.push(event), () => { activityCount += 1; });
+
+  assert.equal(activityCount, 1);
+  assert.deepEqual(events, [{ type: 'status', runStatus: 'running' }]);
+});
+
 test('browser SSE route disables proxy buffering', async () => {
   const source = await readFile(new URL('../src/server/routes.js', import.meta.url), 'utf8');
   assert.match(source, /'x-accel-buffering': 'no'/);
@@ -354,6 +378,61 @@ test('bridge follower records structured remote events', async () => {
 
     assert.equal(runState.activeRuns.get('remote-thread').events[0].type, 'tool');
     assert.equal(runState.activeRuns.get('remote-thread').warning, 'done for test');
+  } finally {
+    globalThis.fetch = previousFetch;
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('bridge follower marks missing remote runs stale and snapshots when possible', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-bridge-stale-'));
+  const sessionFile = path.join(root, 'sessions.json');
+  const previousFetch = globalThis.fetch;
+  let backups = 0;
+
+  globalThis.fetch = async () => new Response('{"error":"Run not found."}', { status: 404, headers: { 'content-type': 'application/json' } });
+
+  try {
+    await writeFile(sessionFile, `${JSON.stringify([{
+      name: 'remote-thread',
+      threadBridge: true,
+      bridgeMode: true,
+      bridgeClaimed: true,
+      bridgeUrl: 'https://bridge.example.test',
+      bridgeRunId: 'run-1',
+      bridgeToken: 'secret',
+      status: 'running',
+      runStatus: 'running',
+      taskPrompt: 'work',
+      images: [{ type: 'image', mimeType: 'image/png', data: 'cG5n' }],
+      createdAt: '2026-07-12T00:00:00.000Z',
+      updatedAt: '2026-07-12T00:00:00.000Z',
+    }])}\n`);
+    const bridge = createBridgeService({
+      config: { sessionFile, bridgeRunStaleMs: 60_000 },
+      provider: {
+        bridgeHeaders: () => ({}),
+        backupSession: async (session) => {
+          backups += 1;
+          return { cloudflareBackups: [{ key: 'workspace', backup: { id: `backup-${session.name}` } }], cloudflareBackupCreatedAt: '2026-07-12T00:01:00.000Z' };
+        },
+      },
+      auth: {},
+      runState: runStateStub(),
+    });
+
+    await bridge.followBridgeRun('remote-thread');
+    const stored = await getStoredSession(sessionFile, 'remote-thread');
+
+    assert.equal(backups, 1);
+    assert.equal(stored.status, 'failed');
+    assert.equal(stored.runStatus, 'failed');
+    assert.equal(stored.bridgeClaimed, false);
+    assert.equal(stored.taskPrompt, '');
+    assert.deepEqual(stored.images, []);
+    assert.equal(stored.cloudflareBackups[0].backup.id, 'backup-remote-thread');
+    assert.match(stored.warning, /disappeared/);
+    assert.ok(stored.staleAt);
   } finally {
     globalThis.fetch = previousFetch;
     await rm(root, { recursive: true, force: true });

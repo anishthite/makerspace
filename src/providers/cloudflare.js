@@ -21,7 +21,9 @@ function statusFromRemote(remote = {}) {
 }
 
 function sandboxName(sessionOrName) {
-  const raw = typeof sessionOrName === 'string' ? sessionOrName : sessionOrName?.name;
+  const raw = typeof sessionOrName === 'string'
+    ? sessionOrName
+    : sessionOrName?.workspaceSessionName || sessionOrName?.cloudflareSandboxName || sessionOrName?.sandboxId || sessionOrName?.cloudflareSandboxId || sessionOrName?.name;
   return String(raw || '').trim();
 }
 
@@ -199,6 +201,9 @@ export function createCloudflareProvider(config, options = {}) {
       const name = sandboxName(sessionOrName);
       await request(`/sessions/${encodeURIComponent(name)}`, { method: 'DELETE' });
       return { name, status: 'deleted', runStatus: 'deleted', cloudflareSandboxId: name };
+    },
+    async backupSession(session) {
+      return createBackup(session);
     },
     async suspendSession(session) {
       const backup = await createBackup(session);
