@@ -87,7 +87,7 @@ function threadUrl(name) {
 }
 
 function showAgentToast(title, detail = '', tone = 'success', threadName = '') {
-  const options = { duration: 8000, description: detail || undefined };
+  const options = { duration: tone === 'error' ? Infinity : 8000, description: detail || undefined };
   if (threadName) {
     options.action = {
       label: 'View',
