@@ -71,6 +71,7 @@ Treat this file as the user's standing opt-in to use the `workflow` tool when it
 ## Diagram artifacts
 
 - Default to creating a diagram artifact when explaining architecture, data flow, lifecycle, deployment topology, UI state machines, auth flows, storage flows, background workers, or tradeoff decisions. Skip only when the answer is trivial or the user asks for no artifacts.
+- Planning-only requests such as “don’t implement anything,” “just make a plan,” or “explain the approach” still allow diagram artifacts; treat those as no code/workspace implementation, not as “no diagrams.”
 - Treat prompts like “how does this work?”, “what happens when…?”, “compare these options”, “where does X fit?”, and “show me the flow” as diagram-worthy by default.
 - Prefer Excalidraw source files because Spanner can render them inline when the final answer mentions a real relative path.
 - When possible, render the diagram to PNG/SVG/WebP/JPEG/GIF and mention that real relative image path too; Spanner can show rendered diagram images inline.

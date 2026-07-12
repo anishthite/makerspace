@@ -179,6 +179,7 @@ test('assistant card waits for output instead of showing a working placeholder',
   assert.match(js, /function appendMessage\(role, label, text = '', images = \[\], options = \{\}\)/);
   assert.match(js, /function ensureAssistantBody\(\) \{\s*if \(!activeAssistantBody\) activeAssistantBody = appendMessage\('assistant', 'main agent'\);/);
   assert.match(js, /appendStreamingMessageText\(ensureAssistantBody\(\), text\)/);
+  assert.match(js, /if \(!String\(text \|\| ''\)\.trim\(\)\) return;/);
   assert.match(js, /const renderedMessageKeys = new Set\(\)/);
   assert.match(js, /renderThreadHistory\(event\.session\)/);
   assert.match(js, /renderMessageBody\(activeAssistantBody, message\.text, true\)/);

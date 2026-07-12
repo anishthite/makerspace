@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — stale bridge run recovery</title>
+<meta name="task" content="Mark wedged bridge runs stale and preserve recoverable sandbox/session state.">
+<meta name="date-started" content="2026-07-12">
+<meta name="date-updated" content="2026-07-12">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="spanner,bridge,sandbox,stale,stream,persistence">
+<meta name="related" content="2026-06-25-pi-session-traces.html,2026-06-25-stuck-working-message.html,2026-07-10-cloudflare-only-sandbox-replacement.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code { font-family: ui-monospace, Menlo, monospace; background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  ul, ol { margin: .3rem 0 .8rem 1.2rem; padding: 0; }
+  li { margin: .15rem 0; }
+  .blast-med { color: #b85c00; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>Stale bridge run recovery</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-12 · status <b>shipped</b> · blast <span class="blast-med">medium</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Stop remote threads from staying <code>running</code> after the bridge loses the run or only emits heartbeats.</div><b>Source</b><div>Bridge SSE events from <code>/runs/:id/stream</code>.</div><b>Surface</b><div><code>src/server/bridge.js</code>, Cloudflare backup provider, thread stop path.</div><b>Schema</b><div>Add optional stale markers and backup-error fields to session JSON.</div><b>Storage</b><div>Persist assistant text, terminal failure, and best-effort Cloudflare backups for reachable stale sandboxes.</div><b>Open Qs</b><div>0.</div></div>
+<h2>Algorithm</h2>
+<ol><li>Reset stream retry timers only from parsed JSON events, not SSE comment heartbeats.</li><li>Track <code>lastRealEventAtMs</code> per followed bridge run.</li><li>If stream reconnects return <code>404</code>, mark the thread failed/stale immediately.</li><li>If <code>now - lastRealEventAtMs &gt; PI_BRIDGE_RUN_STALE_MS</code>, mark failed/stale after best-effort backup.</li><li>Persist partial assistant output before the terminal stale update.</li></ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>src/config.js</code></td><td>touch</td><td>Add configurable bridge stale timeout.</td></tr><tr><td><code>src/server/bridge.js</code></td><td>touch</td><td>Ignore heartbeat chunks for liveness and terminalize stale or missing bridge runs.</td></tr><tr><td><code>src/server/threads.js</code></td><td>touch</td><td>Make remote stop <code>404</code> persist a failed stale state.</td></tr><tr><td><code>src/providers/cloudflare.js</code></td><td>touch</td><td>Expose backup-only sandbox snapshots for stale runs.</td></tr><tr><td><code>test/bridge-auth-sync.test.js</code></td><td>touch</td><td>Pin heartbeat handling and <code>404</code> stale persistence.</td></tr><tr><td><code>test/thread-lifecycle.test.js</code></td><td>touch</td><td>Pin stop <code>404</code> terminal state.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Mark stale runs as <code>failed</code> with <code>staleAt</code>. Existing UI already understands terminal failures.</td></tr><tr><td>D-002</td><td>Use best-effort Cloudflare backups before stale failures. Reachable sandboxes can preserve workspace and Pi traces.</td></tr><tr><td>D-003</td><td>Keep backup failures in <code>staleBackupError</code>. A missing sandbox should not block terminalizing the thread.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td><code>PI_BRIDGE_RUN_STALE_MS</code> over hard-coded short timeout. Long model calls and background workflows need headroom.</td></tr><tr><td>T-002</td><td>Session fields over a new stale-runs table. Existing thread payloads need the state directly.</td></tr></table>
+<h2>Validation</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>node --check src/config.js src/server/bridge.js src/server/threads.js src/providers/cloudflare.js</code></td><td>Passed.</td></tr><tr><td><code>node --test test/bridge-auth-sync.test.js test/thread-lifecycle.test.js</code></td><td>Passed 13/13.</td></tr><tr><td><code>npm test</code></td><td>Failed 2 existing <code>test/thread-trace-tray.test.js</code> assertions against unrelated dirty frontend scroll code.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Revert the bridge follower and provider backup changes; stale marker fields are additive.</p>
+<h2>Definition of done</h2>
+<ul><li>Heartbeat-only streams do not keep a run live forever.</li><li>Bridge <code>404</code> terminalizes the stored thread.</li><li>Reachable stale sandboxes get best-effort backups before terminalization.</li><li>Focused bridge and lifecycle tests pass.</li></ul>
+</body>
+</html>

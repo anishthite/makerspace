@@ -6,13 +6,14 @@ const pages = readFileSync(new URL('../frontend/src/pages.jsx', import.meta.url)
 const js = readFileSync(new URL('../frontend/src/runtime/thread.js', import.meta.url), 'utf8');
 
 test('thread view exposes top-right lifecycle controls in the header', () => {
-  assert.match(pages, /<div className="header-actions"><StatusPill id="thread-status">connecting<\/StatusPill>[\s\S]*<Button id="stop-thread"[^>]+className="thread-stop-btn"[^>]+>[\s\S]*stop<\/Button>[\s\S]*<Button id="suspend-thread"[^>]+className="thread-suspend-btn"[^>]+>suspend<\/Button>[\s\S]*<Button id="resume-thread"[^>]+className="thread-resume-btn"[^>]+>resume<\/Button>[\s\S]*<Button id="delete-thread"[^>]+className="thread-delete-btn"[^>]+>delete<\/Button>[\s\S]*<Button id="archive-thread"[^>]+className="thread-done-btn"[^>]+>[\s\S]*mark as done<\/Button><\/div>/);
-  for (const id of ['stop-thread', 'suspend-thread', 'resume-thread', 'delete-thread', 'archive-thread']) {
+  assert.match(pages, /<div className="header-actions"><StatusPill id="thread-status">connecting<\/StatusPill>[\s\S]*<Button id="stop-thread"[^>]+className="thread-stop-btn"[^>]+>[\s\S]*stop<\/Button>[\s\S]*<Button id="resume-thread"[^>]+className="thread-resume-btn"[^>]+>resume<\/Button>[\s\S]*<Button id="delete-thread"[^>]+className="thread-delete-btn"[^>]+>delete<\/Button>[\s\S]*<Button id="archive-thread"[^>]+className="thread-done-btn"[^>]+>[\s\S]*mark as done<\/Button><\/div>/);
+  assert.doesNotMatch(pages, /id="suspend-thread"/);
+  for (const id of ['stop-thread', 'resume-thread', 'delete-thread', 'archive-thread']) {
     assert.equal(pages.match(new RegExp(`id="${id}"`, 'g'))?.length, 1);
   }
   assert.ok(pages.indexOf('className="header-actions"') < pages.indexOf('id="stop-thread"'));
   assert.ok(pages.indexOf('StatusPill id="thread-status"') < pages.indexOf('id="stop-thread"'));
-  assert.ok(pages.indexOf('id="stop-thread"') < pages.indexOf('id="suspend-thread"'));
+  assert.ok(pages.indexOf('id="stop-thread"') < pages.indexOf('id="resume-thread"'));
   assert.ok(pages.indexOf('id="delete-thread"') < pages.indexOf('id="archive-thread"'));
   assert.ok(pages.indexOf('id="archive-thread"') < pages.indexOf('id="prompt-form"'));
 });
@@ -25,15 +26,14 @@ test('stop control uses the running-thread stop route', () => {
   assert.match(js, /fetchJson\(`\/api\/threads\/\$\{encodeURIComponent\(name\)\}\/stop`, \{ method: 'POST' \}\)/);
 });
 
-test('sandbox lifecycle controls use suspend, resume, and backup-delete routes', () => {
-  assert.match(js, /const suspendButton = document\.querySelector\('#suspend-thread'\);/);
+test('sandbox lifecycle controls use resume and backup-delete routes', () => {
+  assert.doesNotMatch(js, /suspendButton/);
+  assert.doesNotMatch(js, /function canSuspendThread\(thread\) \{/);
   assert.match(js, /const resumeButton = document\.querySelector\('#resume-thread'\);/);
   assert.match(js, /const deleteButton = document\.querySelector\('#delete-thread'\);/);
-  assert.match(js, /function canSuspendThread\(thread\) \{/);
   assert.match(js, /function canResumeThread\(thread\) \{/);
   assert.match(js, /function canDeleteThread\(thread\) \{/);
   assert.match(js, /fetchJson\(`\/api\/threads\/\$\{encodeURIComponent\(name\)\}\/\$\{route\}`, \{ method: 'POST' \}\)/);
-  assert.match(js, /postLifecycleAction\(suspendButton, 'suspend', 'suspending…', 'suspending'\)/);
   assert.match(js, /postLifecycleAction\(resumeButton, 'resume', 'resuming…', 'resuming'\)/);
   assert.match(js, /confirm\('Back up, then delete this sandbox\?'\)/);
   assert.match(js, /postLifecycleAction\(deleteButton, 'delete', 'backing up…', 'backing_up'\)/);

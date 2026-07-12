@@ -6,7 +6,7 @@ import path from 'node:path';
 
 import { createRunState } from '../src/server/run-state.js';
 import { createThreadService } from '../src/server/threads.js';
-import { getStoredSession } from '../src/store.js';
+import { getStoredSession, upsertSession } from '../src/store.js';
 
 function httpStub() {
   return {
@@ -159,6 +159,72 @@ test('thread lifecycle rejects active runs and keeps sandbox when backup fails',
     assert.equal(stored.deletedAt, undefined);
     assert.equal(stored.warning, 'backup API unavailable');
     assert.deepEqual(calls, [['delete']]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('thread stop marks missing bridge runs stale locally', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-stop-missing-'));
+  const sessionFile = path.join(root, 'sessions.json');
+  const settingsFile = path.join(root, 'settings.json');
+  const staleCalls = [];
+  const provider = { kind: 'cloudflare', info: () => ({ kind: 'cloudflare' }) };
+  const runState = createRunState({
+    config: { sessionFile, settingsFile },
+    provider,
+    loadPiSdk: async () => ({}),
+    loadPiAi: async () => ({}),
+    canAccessSession: () => true,
+  });
+  const service = createThreadService({
+    config: { sessionFile, settingsFile },
+    provider,
+    http: httpStub(),
+    auth: {
+      canAccessSession: () => true,
+      enrichGitHubRepoSession: async (session) => session,
+      loadPiDefaults: async () => ({}),
+      readBrowserSession: async () => null,
+    },
+    runState,
+    bridge: {
+      fetchBridgeJson: async () => {
+        const error = new Error('{"error":"Run not found."}');
+        error.status = 404;
+        throw error;
+      },
+      bridgeRunMissingError: (error) => Number(error?.status) === 404,
+      markBridgeRunStale: async (name, session, warning, options) => {
+        staleCalls.push([name, warning, options?.missing]);
+        return upsertSession(sessionFile, {
+          ...session,
+          status: 'failed',
+          runStatus: 'failed',
+          bridgeClaimed: false,
+          warning,
+          staleAt: '2026-07-12T00:00:00.000Z',
+        });
+      },
+    },
+  });
+
+  try {
+    await writeFile(sessionFile, `${JSON.stringify([baseSession({
+      bridgeToken: 'secret',
+      bridgeRunId: 'run-1',
+      bridgeClaimed: true,
+      status: 'running',
+      runStatus: 'running',
+    })])}\n`);
+    await writeFile(settingsFile, '{}\n');
+
+    const stopped = await service.stopThreadSession('cloudflare-thread');
+
+    assert.equal(stopped.runStatus, 'failed');
+    assert.equal(stopped.bridgeClaimed, false);
+    assert.match(stopped.warning, /disappeared/);
+    assert.deepEqual(staleCalls, [['cloudflare-thread', 'Bridge run disappeared before it could be stopped.', true]]);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

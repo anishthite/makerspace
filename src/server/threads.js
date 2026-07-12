@@ -38,7 +38,7 @@ export function createThreadService({ config, provider, http, auth, runState, br
     persistHostDispatchMetric,
     persistHostDispatchStatus,
   } = runState;
-  const { startThreadBridgeLaunch, refreshBridgeSessionIfNeeded, startBridgeRun, fetchBridgeJson, waitForBridge, syncBridgeAuth } = bridge;
+  const { startThreadBridgeLaunch, refreshBridgeSessionIfNeeded, startBridgeRun, fetchBridgeJson, waitForBridge, syncBridgeAuth, markBridgeRunStale, bridgeRunMissingError } = bridge;
   const MAX_EXCALIDRAW_BYTES = 8 * 1024 * 1024;
   const MAX_IMAGE_ARTIFACT_BYTES = 16 * 1024 * 1024;
   const IMAGE_ARTIFACT_TYPES = new Map([
@@ -552,6 +552,9 @@ export function createThreadService({ config, provider, http, auth, runState, br
       try {
         await fetchBridgeJson(existing, `/runs/${encodeURIComponent(existing.bridgeRunId)}/stop`, { method: 'POST' });
       } catch (error) {
+        if (bridgeRunMissingError?.(error) && markBridgeRunStale) {
+          return markBridgeRunStale(name, existing, 'Bridge run disappeared before it could be stopped.', { missing: true });
+        }
         if (status !== 'launching') throw error;
       }
     }
