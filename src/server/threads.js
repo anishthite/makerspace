@@ -88,7 +88,7 @@ export function createThreadService({ config, provider, http, auth, runState, br
     return checkedBuffer(buffer, artifactPath, MAX_EXCALIDRAW_BYTES).toString('utf8');
   }
 
-  async function readThreadArtifactBuffer(session, artifactPath, maxBytes) {
+  async function readThreadArtifactBuffer(session, artifactPath, maxBytes, remoteReadOptions) {
     if (session.repoPath) {
       const root = path.resolve(session.repoPath);
       const filePath = path.resolve(root, artifactPath);
@@ -98,7 +98,7 @@ export function createThreadService({ config, provider, http, auth, runState, br
 
     if (!provider.readRemoteFile) throw clientError('Artifact preview is unavailable for this provider.', 501);
     const remotePath = path.posix.join(session.remoteWorkspaceDir || config.remoteWorkspaceDir, artifactPath);
-    return checkedBuffer(await provider.readRemoteFile(session, remotePath), artifactPath, maxBytes);
+    return checkedBuffer(await provider.readRemoteFile(session, remotePath, remoteReadOptions), artifactPath, maxBytes);
   }
 
   async function readThreadArtifactFile(session, artifactPath) {
@@ -299,7 +299,7 @@ export function createThreadService({ config, provider, http, auth, runState, br
     return {
       path: safePath,
       contentType: IMAGE_ARTIFACT_TYPES.get(path.posix.extname(safePath).toLowerCase()),
-      data: await readThreadArtifactBuffer(session, safePath, MAX_IMAGE_ARTIFACT_BYTES),
+      data: await readThreadArtifactBuffer(session, safePath, MAX_IMAGE_ARTIFACT_BYTES, { encoding: 'base64' }),
     };
   }
 

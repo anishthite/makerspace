@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import os from 'node:os';
 import path from 'node:path';
+import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 
@@ -28,6 +29,16 @@ async function stopServer(child) {
   if (child.exitCode !== null || child.signalCode) return;
   child.kill('SIGTERM');
   await new Promise((resolve) => child.once('exit', resolve));
+}
+
+async function listen(server) {
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+  return `http://127.0.0.1:${port}`;
+}
+
+async function closeServer(server) {
+  await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
 }
 
 test('thread artifact route serves local Excalidraw drawings only', async () => {
@@ -111,6 +122,73 @@ test('thread artifact route serves local Excalidraw drawings only', async () => 
     assert.equal(imageTraversal.status, 400);
   } finally {
     if (server) await stopServer(server);
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
+
+test('thread artifact route preserves remote PNG bytes through base64 file reads', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'spanner-remote-artifact-'));
+  const sessionFile = path.join(tempDir, 'sessions.json');
+  const settingsFile = path.join(tempDir, 'settings.json');
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=', 'base64');
+  const brokerCalls = [];
+  const broker = createServer((request, response) => {
+    const url = new URL(request.url, 'http://broker.test');
+    brokerCalls.push(url);
+    if (request.method === 'GET' && url.pathname === '/sessions/viewer/files' && url.searchParams.get('encoding') === 'base64') {
+      response.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+      response.end(JSON.stringify({ content: png.toString('base64'), encoding: 'base64' }));
+      return;
+    }
+    response.writeHead(400, { 'content-type': 'application/json; charset=utf-8' });
+    response.end(JSON.stringify({ error: 'expected base64 file read' }));
+  });
+  let server;
+
+  try {
+    const brokerUrl = await listen(broker);
+    await writeFile(sessionFile, `${JSON.stringify([
+      {
+        name: 'viewer',
+        provider: 'cloudflare',
+        threadBridge: true,
+        bridgeMode: true,
+        cloudflareSandboxName: 'viewer',
+        remoteWorkspaceDir: '/workspace',
+        status: 'ready',
+        runStatus: 'ready',
+        createdAt: '2026-06-27T00:00:00.000Z',
+      },
+    ])}\n`);
+    await writeFile(settingsFile, '{}\n');
+
+    server = spawn(process.execPath, ['src/server.js'], {
+      cwd: path.resolve(import.meta.dirname, '..'),
+      env: {
+        ...process.env,
+        INFRA_PROVIDER: 'cloudflare',
+        CLOUDFLARE_SANDBOX_BROKER_URL: brokerUrl,
+        CLOUDFLARE_SANDBOX_BROKER_TOKEN: '',
+        HOST: '127.0.0.1',
+        PORT: '0',
+        SESSION_DATA_PATH: sessionFile,
+        SETTINGS_DATA_PATH: settingsFile,
+        WARM_BRIDGE_POOL_SIZE: '0',
+        IDLE_BRIDGE_TTL_MS: '0',
+        CONTROL_API_TOKEN: 'test-token',
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    const baseUrl = await waitForServer(server);
+    const image = await fetch(`${baseUrl}/api/threads/viewer/artifacts/file?path=diagram.png`, { headers: { authorization: 'Bearer test-token' } });
+    assert.equal(image.status, 200);
+    assert.equal(image.headers.get('content-type'), 'image/png');
+    assert.deepEqual(Buffer.from(await image.arrayBuffer()), png);
+    assert.equal(brokerCalls[0].searchParams.get('path'), '/workspace/diagram.png');
+  } finally {
+    if (server) await stopServer(server);
+    await closeServer(broker);
     await rm(tempDir, { recursive: true, force: true });
   }
 });

@@ -28,7 +28,11 @@ function fakeFetch() {
     if (String(url).endsWith('/sessions')) return Response.json({ id: body.name, name: body.name, state: 'ready' });
     if (String(url).includes('/ports/')) return Response.json({ bridgeUrl: 'https://bridge.example.test/', httpsUrl: 'https://bridge.example.test/' });
     if (String(url).includes('/backup')) return Response.json({ backup: { id: `${body.name || 'backup'}-id`, dir: body.dir } });
-    if (String(url).includes('/files') && (options.method || 'GET') === 'GET') return Response.json({ content: 'file text' });
+    if (String(url).includes('/files') && (options.method || 'GET') === 'GET') {
+      const search = new URL(String(url)).searchParams;
+      if (search.get('encoding') === 'base64') return Response.json({ content: Buffer.from([0, 255, 1, 2]).toString('base64'), encoding: 'base64' });
+      return Response.json({ content: 'file text' });
+    }
     if (String(url).includes('/exec')) return Response.json({ success: true, exitCode: 0, stdout: 'ok\n', stderr: '' });
     return Response.json({ ok: true });
   };
@@ -92,13 +96,16 @@ test('remote script and file helpers use broker endpoints', async () => {
   const result = await provider.runRemoteScript('thread-one', 'echo hi', { cwd: '/workspace', onData: (text) => { streamed += text; } });
   await provider.writeRemoteFile('thread-one', '/tmp/a.txt', 'hello');
   const content = await provider.readRemoteFile('thread-one', '/tmp/a.txt');
+  const binary = await provider.readRemoteFile('thread-one', '/tmp/a.png', { encoding: 'base64' });
 
   assert.equal(result.exitCode, 0);
   assert.equal(streamed, 'ok\n');
   assert.equal(content, 'file text');
+  assert.deepEqual([...binary], [0, 255, 1, 2]);
   assert.match(fetch.calls[0].body.command, /cd '\/workspace' && bash -lc 'echo hi'/);
   assert.equal(fetch.calls[1].method, 'PUT');
   assert.equal(fetch.calls[2].method, 'GET');
+  assert.equal(new URL(fetch.calls[3].url).searchParams.get('encoding'), 'base64');
 });
 
 test('suspend and delete create Cloudflare backups before destroying sandbox', async () => {

@@ -58,8 +58,11 @@ async function fileRoute(request, env, id, url) {
   const box = sandbox(env, id);
   if (request.method === 'GET') {
     const path = url.searchParams.get('path') || '';
+    const encoding = url.searchParams.get('encoding') || '';
     if (!path) return json({ error: 'path is required' }, 400);
-    return json(await box.readFile(path));
+    if (encoding && encoding !== 'base64') return json({ error: 'unsupported encoding' }, 400);
+    const file = await box.readFile(path, encoding ? { encoding } : undefined);
+    return json(encoding ? { ...file, encoding } : file);
   }
   if (request.method === 'PUT') {
     const body = await bodyJson(request);

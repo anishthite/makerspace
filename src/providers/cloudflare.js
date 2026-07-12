@@ -221,9 +221,12 @@ export function createCloudflareProvider(config, options = {}) {
     async runRemoteScript(sessionOrName, script, opts = {}) {
       return exec(sessionOrName, commandForScript(script, opts.cwd), opts);
     },
-    async readRemoteFile(sessionOrName, filePath) {
+    async readRemoteFile(sessionOrName, filePath, opts = {}) {
       const name = sandboxName(sessionOrName);
-      const result = await request(`/sessions/${encodeURIComponent(name)}/files?path=${encodeURIComponent(filePath)}`);
+      const params = new URLSearchParams({ path: filePath });
+      if (opts.encoding === 'base64') params.set('encoding', 'base64');
+      const result = await request(`/sessions/${encodeURIComponent(name)}/files?${params}`);
+      if (result.encoding === 'base64') return Buffer.from(String(result.content || ''), 'base64');
       return result.content || '';
     },
     async writeRemoteFile(sessionOrName, filePath, content) {
