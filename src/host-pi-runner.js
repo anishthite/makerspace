@@ -431,6 +431,15 @@ async function runCreatedPiSession({ createSession, session, emitOutput, emitMet
       };
     });
   };
+  const emitAssistantChunk = (chunk) => {
+    const text = String(chunk || '');
+    if (!text) return;
+    if (emitEvent) {
+      emitEvent({ type: 'chunk', chunk: text, runStatus: 'running' });
+      return;
+    }
+    emitOutput(text, 'running');
+  };
 
   try {
     const created = await createSession();
@@ -479,7 +488,7 @@ async function runCreatedPiSession({ createSession, session, emitOutput, emitMet
         const messageEvent = event.assistantMessageEvent;
         if (messageEvent.type === 'text_delta') {
           streamedAssistantText += messageEvent.delta;
-          emitOutput(messageEvent.delta, 'running');
+          emitAssistantChunk(messageEvent.delta);
           return;
         }
         if (messageEvent.type === 'thinking_delta' && messageEvent.delta) {
@@ -537,7 +546,7 @@ async function runCreatedPiSession({ createSession, session, emitOutput, emitMet
         const finalText = textFromContent(assistant?.content);
         if (finalText && !streamedAssistantText.trim()) {
           streamedAssistantText = finalText;
-          emitOutput(finalText, 'running');
+          emitAssistantChunk(finalText);
         }
         return;
       }
@@ -633,7 +642,7 @@ async function runCreatedPiSession({ createSession, session, emitOutput, emitMet
     if (stopped) throw new Error('Stopped by user.');
     const lastAssistantText = piSession.getLastAssistantText?.();
     if (lastAssistantText && !streamedAssistantText.trim()) {
-      emitOutput(lastAssistantText, 'running');
+      emitAssistantChunk(lastAssistantText);
     }
     if (!streamedAssistantText.trim() && !lastAssistantText) {
       throw new Error(lastProviderError || 'Main agent completed without assistant output. Check provider auth.');
