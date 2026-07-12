@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="420" viewBox="0 0 960 420" role="img" aria-labelledby="title desc">
+  <title id="title">Spanner startup latency trim</title>
+  <desc id="desc">Before: project and workspace pages waited on several startup API calls. After: a bootstrap route returns the initial auth, thread, defaults, recent project, and thread output payloads in one request.</desc>
+  <defs>
+    <style>
+      text{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;fill:#18202a} .muted{fill:#5f6b7a;font-size:14px}.label{font-size:16px;font-weight:700}.small{font-size:13px}.box{fill:#fff;stroke:#c9d2df;stroke-width:1.5;rx:12}.hot{fill:#fff3ed;stroke:#df7b45}.cool{fill:#effaf3;stroke:#4f9b6b}.line{stroke:#8391a5;stroke-width:2;fill:none;marker-end:url(#arrow)}.bad{stroke:#df7b45}.good{stroke:#4f9b6b}.lane{fill:#f7f9fc;stroke:#e1e7f0;rx:16}
+    </style>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#8391a5"/></marker>
+  </defs>
+  <rect width="960" height="420" fill="#fbfcfe"/>
+  <text x="40" y="42" font-size="24" font-weight="800">Startup path: one boot request</text>
+  <text x="40" y="68" class="muted">Project warm mean with 80ms RTT simulation: 175.8ms → 88.5ms.</text>
+
+  <rect x="40" y="96" width="400" height="260" class="lane"/>
+  <text x="64" y="128" class="label">Before</text>
+  <text x="64" y="151" class="muted">Browser coordinates several startup calls.</text>
+  <rect x="74" y="176" width="112" height="44" class="box hot"/><text x="91" y="203" class="small">recent</text>
+  <path d="M190 198 H225" class="line bad"/>
+  <rect x="230" y="176" width="112" height="44" class="box hot"/><text x="258" y="203" class="small">threads</text>
+  <rect x="74" y="242" width="112" height="44" class="box hot"/><text x="100" y="269" class="small">Codex</text>
+  <rect x="230" y="242" width="112" height="44" class="box hot"/><text x="252" y="269" class="small">GitHub</text>
+  <text x="64" y="326" class="muted">Thread pages also fetched session + output separately.</text>
+
+  <rect x="520" y="96" width="400" height="260" class="lane"/>
+  <text x="544" y="128" class="label">After</text>
+  <text x="544" y="151" class="muted">Initial render uses one route.</text>
+  <rect x="594" y="184" width="252" height="70" class="box cool"/><text x="631" y="213" class="label">GET /api/bootstrap</text><text x="626" y="236" class="small">provider · auth · defaults · threads</text>
+  <path d="M720 255 V288" class="line good"/>
+  <rect x="594" y="292" width="252" height="44" class="box cool"/><text x="638" y="319" class="small">GitHub repos load in background</text>
+  <text x="544" y="326" class="muted">Server still enforces the same auth/session checks.</text>
+
+  <rect x="318" y="363" width="324" height="34" rx="17" fill="#18202a"/>
+  <text x="355" y="385" fill="#fff" font-size="14" font-weight="700">Next only if needed: D1 KV batch reads</text>
+</svg>

@@ -1981,7 +1981,7 @@ async function loadThread() {
   if (!name) throw new Error('Missing main agent name.');
   const payload = await fetchJson(`/api/threads/${encodeURIComponent(name)}`);
   renderProject(payload.provider);
-  renderPiDefaults(payload.defaults);
+  renderPiDefaults(payload.defaults || {});
   loadRunControls(payload.thread);
   renderThread(payload.thread);
   renderThreadHistory(payload.thread);
@@ -1989,8 +1989,7 @@ async function loadThread() {
   return payload.thread;
 }
 
-async function loadOutput() {
-  const payload = await fetchJson(`/api/sessions/${encodeURIComponent(name)}/output`);
+function renderOutputPayload(payload = {}) {
   const appendTranscript = !historyHasAssistantForCurrentRun(payload.session || currentThread);
   if (Array.isArray(payload.events) && payload.events.length) {
     for (const event of payload.events) renderEvent(event, { appendTranscript });
@@ -2003,6 +2002,22 @@ async function loadOutput() {
   }
   scheduleDiffRefresh(0);
   return payload;
+}
+
+async function loadOutput() {
+  return renderOutputPayload(await fetchJson(`/api/sessions/${encodeURIComponent(name)}/output`));
+}
+
+async function loadThreadBootstrap() {
+  if (!name) throw new Error('Missing main agent name.');
+  const payload = await fetchJson(`/api/bootstrap?page=thread&name=${encodeURIComponent(name)}`);
+  renderProject(payload.provider);
+  renderPiDefaults(payload.defaults || {});
+  loadRunControls(payload.thread);
+  renderThread(payload.thread);
+  renderThreadHistory(payload.thread);
+  renderInitialPrompt(payload.thread);
+  return { thread: payload.thread, output: renderOutputPayload(payload.output || {}) };
 }
 
 function streamRun() {
@@ -2202,8 +2217,7 @@ promptForm.addEventListener('submit', async (event) => {
 });
 
 try {
-  const thread = await loadThread();
-  const output = await loadOutput();
+  const { thread, output } = await loadThreadBootstrap();
   restoreInitialThreadPosition();
   const status = output.runStatus || thread.runStatus;
   if (['launching', 'running', 'starting', 'queued'].includes(status)) streamRun();

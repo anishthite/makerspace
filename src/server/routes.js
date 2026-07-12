@@ -92,6 +92,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
       const viewerSessionId = browserSessionId(request);
       const trusted = hasTrustedControlToken(request, url);
       const publicApiRoute = pathname === '/api/me'
+        || pathname === '/api/bootstrap'
         || pathname === '/api/auth/github'
         || pathname === '/api/auth/github/login'
         || pathname === '/api/auth/github/callback'
@@ -100,13 +101,96 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
         || pathname === '/api/auth/logout';
       let user = await currentUser(request);
       if (pathname.startsWith('/api/') && !publicApiRoute) {
-        const context = await requireUser(request, response, url);
+        const context = await requireUser(request, response, url, user);
         if (!context) return;
         user = context.user;
       }
 
       if (request.method === 'GET' && pathname === '/api/me') {
         sendJson(response, 200, publicMe(user, trusted));
+        return;
+      }
+
+      if (request.method === 'GET' && pathname === '/api/bootstrap') {
+        const page = String(url.searchParams.get('page') || 'workspace').trim().toLowerCase();
+        const canReadProtected = trusted || Boolean(user) || !config.authRequired;
+
+        if (page === 'thread') {
+          if (!canReadProtected) {
+            sendJson(response, 401, {
+              error: isGitHubAuthConfigured() ? 'Sign in with GitHub to continue.' : 'Sign-in is required but GitHub OAuth is not configured.',
+              authRequired: true,
+              githubConfigured: isGitHubAuthConfigured(),
+            });
+            return;
+          }
+
+          const name = String(url.searchParams.get('name') || '').trim();
+          if (!name) {
+            sendJson(response, 400, { error: 'Missing main agent name.' });
+            return;
+          }
+
+          const thread = await getThreadSession(name);
+          if (!thread) {
+            sendJson(response, 404, { error: `No stored session named ${name}.` });
+            return;
+          }
+          if (requireSessionAccess(request, response, thread, url, user)) return;
+
+          const offset = Number(url.searchParams.get('offset'));
+          const [defaults, run] = await Promise.all([loadPiDefaults(user), syncRunOutput(thread)]);
+          const output = retainedOutputChunk(run, Number.isFinite(offset) && offset > 0 ? offset : 0);
+          const session = decorateLiveSession({
+            ...thread,
+            status: statusFromRunStatus(run.runStatus, thread.status),
+            runStatus: run.runStatus,
+          });
+
+          sendJson(response, 200, {
+            provider: provider.info(),
+            defaults,
+            thread: session,
+            output: {
+              session,
+              ...output,
+              runStatus: run.runStatus,
+              warning: run.warning,
+              events: run.events,
+            },
+          });
+          return;
+        }
+
+        const [codex, github] = await Promise.all([
+          codexAuthStatus(user),
+          publicGitHubAuth(user || readBrowserSession(viewerSessionId)),
+        ]);
+        const basePayload = {
+          provider: provider.info(),
+          me: publicMe(user, trusted),
+          codex,
+          github,
+          defaults: {},
+          threads: [],
+        };
+
+        if (!canReadProtected) {
+          sendJson(response, 200, page === 'project' ? { ...basePayload, recentProjects: [] } : basePayload);
+          return;
+        }
+
+        if (page === 'project') {
+          const [threadPayload, recentProjects] = await Promise.all([
+            listThreadsPayload(viewerSessionId, trusted, user),
+            listRecentProjects(config.recentProjectsFile, user?.id || ''),
+          ]);
+          sendJson(response, 200, { ...basePayload, ...threadPayload, recentProjects });
+          return;
+        }
+
+        const threadPayload = await listThreadsPayload(viewerSessionId, trusted, user);
+        sendJson(response, 200, { ...basePayload, ...threadPayload });
         return;
       }
 
@@ -172,7 +256,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
       }
 
       if (request.method === 'POST' && pathname === '/api/auth/github/app/install') {
-        const context = user ? { user } : await requireUser(request, response, url);
+        const context = user ? { user } : await requireUser(request, response, url, user);
         if (!context) return;
         const body = await readJsonBody(request);
         sendJson(response, 200, startGitHubAppInstall(request, context.user, body));

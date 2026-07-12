@@ -53,6 +53,18 @@ test('CONTROL_API_TOKEN is optional user auth bypass when multi-user auth is on'
   assert.equal(blocked, false);
 });
 
+test('requireUser reuses a caller-provided current user', async () => {
+  const auth = createAuthService({
+    config: { authRequired: true, githubClientSecret: 'secret' },
+    http: httpStub(),
+  });
+  const response = {};
+  const context = await auth.requireUser({ headers: {} }, response, new URL('http://localhost:8787/api/threads'), { id: 'github-1' });
+
+  assert.equal(response.status, undefined);
+  assert.equal(context.user.id, 'github-1');
+});
+
 test('GitHub login rejects users outside the hosted allowlist', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-allowed-users-'));
   const previousFetch = globalThis.fetch;

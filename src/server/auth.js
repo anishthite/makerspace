@@ -35,6 +35,7 @@ const CLAUDE_CODE_AUTH_PROVIDER = 'anthropic';
 const CLAUDE_CODE_USER_SECRET_KEY = 'claude-code-auth';
 const USER_PI_AUTH_PROVIDERS = [CODEX_AUTH_PROVIDER, CLAUDE_CODE_AUTH_PROVIDER];
 const GITHUB_APP_INSTALLATIONS_KEY = 'githubAppInstallations';
+const DEFAULTS_CACHE_TTL_MS = 30_000;
 const CLAUDE_CODE_CLIENT_ID = Buffer.from('OWQxYzI1MGEtZTYxYi00NGQ5LTg4ZWQtNTk0NGQxOTYyZjVl', 'base64').toString('utf8');
 const CLAUDE_CODE_AUTHORIZE_URL = 'https://claude.ai/oauth/authorize';
 const CLAUDE_CODE_TOKEN_URL = 'https://platform.claude.com/v1/oauth/token';
@@ -150,6 +151,7 @@ export function createAuthService({ config, http }) {
   const authLogins = new Map();
   const githubLogins = new Map();
   const githubAppInstalls = new Map();
+  const defaultsCache = new Map();
   const authStore = createAuthStore(config);
   let browserSessions = new Map();
   let sdkPromise = null;
@@ -440,9 +442,9 @@ export function createAuthService({ config, http }) {
     };
   }
 
-  async function requireUser(request, response, url) {
+  async function requireUser(request, response, url, knownUser = undefined) {
     const trusted = hasTrustedControlToken(request, url);
-    const user = await currentUser(request);
+    const user = knownUser === undefined ? await currentUser(request) : knownUser;
     if (trusted || user || !authRequired()) return { trusted, user, authRequired: authRequired() };
     sendJson(response, 401, {
       error: githubAuthConfigured(config) ? 'Sign in with GitHub to continue.' : 'Sign-in is required but GitHub OAuth is not configured.',
@@ -516,7 +518,7 @@ export function createAuthService({ config, http }) {
     }
   }
 
-  async function loadPiDefaults(user = null) {
+  async function computePiDefaults(user = null) {
     let model = 'Pi default model';
     let thinking = 'medium';
     const settings = await readPiSettingsFile();
@@ -534,6 +536,24 @@ export function createAuthService({ config, http }) {
       thinking,
       models: uniqueModelRefs([model, ...configuredModelRefs(settings, availableModels)]),
     };
+  }
+
+  async function loadPiDefaults(user = null) {
+    const key = `${authRequired() ? 'hosted' : 'local'}:${user?.id || 'anonymous'}`;
+    const cached = defaultsCache.get(key);
+    const now = Date.now();
+    if (cached && cached.expiresAt > now) return cached.value;
+
+    const value = computePiDefaults(user);
+    defaultsCache.set(key, { expiresAt: now + DEFAULTS_CACHE_TTL_MS, value });
+    try {
+      const resolved = await value;
+      defaultsCache.set(key, { expiresAt: Date.now() + DEFAULTS_CACHE_TTL_MS, value: resolved });
+      return resolved;
+    } catch (error) {
+      defaultsCache.delete(key);
+      throw error;
+    }
   }
 
   function providerSecretKey(provider) {

@@ -556,6 +556,33 @@ async function refreshProjectThreads() {
   renderRecentProjects(payload.threads || []);
 }
 
+async function loadProjectBootstrap() {
+  const payload = await fetchJson('/api/bootstrap?page=project');
+  cacheRecentProjects(payload.recentProjects || []);
+  renderProvider(payload.provider);
+  renderRecentProjects(payload.threads || []);
+
+  const codex = payload.codex || {};
+  const github = payload.github || {};
+  renderAuthPill(codexAuthPill, codexAuthLabel, Boolean(codex.configured), codex.configured ? `Codex: ${codex.source || 'signed in'}` : 'Codex: signed out', 'codex');
+  const connected = Boolean(github.connected);
+  githubConnected = connected;
+  renderWelcome(connected ? github.user : null);
+  renderAuthPill(githubAuthPill, githubAuthLabel, connected, connected ? `GitHub: ${github.user?.login || 'connected'}` : github.configured ? 'GitHub: signed out' : 'GitHub: not configured', 'github');
+  renderGitHubSignIn(github);
+  repoRefresh.disabled = providerKind === 'local' || !connected;
+  if (connected && providerKind !== 'local') {
+    repoHint.textContent = 'Loading GitHub repos…';
+    void loadGitHubRepos().catch((error) => {
+      repoHint.textContent = error.message;
+    });
+  } else if (providerKind !== 'local') {
+    githubRepos = [];
+    hideRepoSuggestions();
+    repoHint.textContent = github.configured ? 'Sign in to pick repos.' : 'Paste a repo or choose a local folder.';
+  }
+}
+
 async function loadStatus() {
   getBrowserSessionId();
   renderRecentProjects();
@@ -567,27 +594,7 @@ async function loadStatus() {
   }
 
   try {
-    await refreshProjectThreads();
-  } catch (error) {
-    statusLine.textContent = error.message;
-  }
-
-  try {
-    const codex = await fetchJson('/api/auth/openai-codex');
-    renderAuthPill(codexAuthPill, codexAuthLabel, Boolean(codex.configured), codex.configured ? `Codex: ${codex.source || 'signed in'}` : 'Codex: signed out', 'codex');
-    const github = await fetchJson('/api/auth/github');
-    const connected = Boolean(github.connected);
-    githubConnected = connected;
-    renderWelcome(connected ? github.user : null);
-    renderAuthPill(githubAuthPill, githubAuthLabel, connected, connected ? `GitHub: ${github.user?.login || 'connected'}` : github.configured ? 'GitHub: signed out' : 'GitHub: not configured', 'github');
-    renderGitHubSignIn(github);
-    repoRefresh.disabled = providerKind === 'local' || !connected;
-    if (connected && providerKind !== 'local') await loadGitHubRepos();
-    else if (providerKind !== 'local') {
-      githubRepos = [];
-      hideRepoSuggestions();
-      repoHint.textContent = github.configured ? 'Sign in to pick repos.' : 'Paste a repo or choose a local folder.';
-    }
+    await loadProjectBootstrap();
   } catch (error) {
     renderAuthError(error.message);
   }

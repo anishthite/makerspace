@@ -717,16 +717,27 @@ async function loadThreads() {
   const payload = await fetchJson('/api/threads');
   const threads = (payload.threads || []).filter(sameSelectedProject);
   renderProvider(payload.provider);
-  renderPiDefaults(payload.defaults);
+  renderPiDefaults(payload.defaults || {});
   notifyFinishedThreads(threads);
   renderThreads(threads);
   return payload;
 }
 
+async function loadWorkspaceBootstrap() {
+  const payload = await fetchJson('/api/bootstrap?page=workspace');
+  const threads = (payload.threads || []).filter(sameSelectedProject);
+  renderProvider(payload.provider);
+  renderPiDefaults(payload.defaults || {});
+  notifyFinishedThreads(threads);
+  renderThreads(threads);
+  renderCodexAuth(payload.codex || {});
+  renderGitHubAuth(payload.github || {});
+  return payload;
+}
+
 async function reloadControlData() {
   try {
-    await loadThreads();
-    await Promise.all([loadCodexAuth(), loadGitHubAuth()]);
+    await loadWorkspaceBootstrap();
   } catch (error) {
     renderAuthError(error.message);
     providerBanner.dataset.tone = 'error';

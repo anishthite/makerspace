@@ -30,7 +30,9 @@ test('project selector offers desktop local folders', () => {
   assert.match(project, /repoInput\.addEventListener\('keydown'/);
   assert.match(project, /cache: 'no-store'/);
   assert.match(project, /function refreshProjectThreads\(\)/);
-  assert.match(project, /await refreshProjectThreads\(\);[\s\S]+await loadGitHubRepos\(\);/);
+  assert.match(project, /function loadProjectBootstrap\(\)/);
+  assert.match(project, /\/api\/bootstrap\?page=project/);
+  assert.match(project, /void loadGitHubRepos\(\)\.catch/);
   assert.match(project, /function effectiveThreadStatus\(thread\)/);
   assert.match(project, /runningAgentCount/);
   assert.match(pages, /href="\/settings\.html#codex"/);
@@ -44,6 +46,8 @@ test('project selector offers desktop local folders', () => {
   assert.match(project, /renderGitHubSignIn\(github\)/);
   assert.match(project, /projectGrid\.hidden = showGate/);
   assert.match(app, /function startGitHubSignIn/);
+  assert.match(app, /function loadWorkspaceBootstrap\(\)/);
+  assert.match(app, /\/api\/bootstrap\?page=workspace/);
   assert.match(app, /renderGitHubSignIn\(status\)/);
   assert.match(app, /threadForm\.hidden = showGate/);
   assert.match(styles, /\.signin-gate \{[^}]*grid-template-columns: minmax\(0, 1\.05fr\) minmax\(280px, \.7fr\)/);
