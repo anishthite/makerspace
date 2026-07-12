@@ -89,10 +89,10 @@ test('recently finished success indicators can be dismissed locally', () => {
 
 test('workspace toasts when running agents finish', () => {
   assert.doesNotMatch(pages, /className="[^"]*agent-toast[^"]*"/);
-  assert.match(js, /function showAgentToast\(title, detail = '', tone = 'success'\)/);
+  assert.match(js, /function showAgentToast\(title, detail = '', tone = 'success', threadName = ''\)/);
   assert.match(js, /function notifyFinishedThreads\(threads\)/);
   assert.match(js, /const wasActive = isActiveThread\(\{ runStatus: knownThreadStatuses\.get\(name\) \}\);/);
-  assert.match(js, /showAgentToast\(title, detail, rawStatus === 'failed' \? 'error' : 'success'\);/);
+  assert.match(js, /showAgentToast\(title, detail, rawStatus === 'failed' \? 'error' : 'success', name\);/);
   assert.match(js, /setInterval\(\(\) => \{\s*if \(document\.visibilityState !== 'visible'\) return;\s*loadThreads\(\)\.catch\(\(\) => \{\}\);\s*\}, 10000\);/);
 });
 
@@ -102,7 +102,7 @@ test('global toasts load outside the workspace screen', () => {
   assert.match(agentToasts, /export function startAgentToastWatcher\(\) \{/);
   assert.match(agentToasts, /function notifyFinishedThreads\(threads\)/);
   assert.match(agentToasts, /const wasActive = isActiveThread\(\{ runStatus: knownThreadStatuses\.get\(name\) \}\);/);
-  assert.match(agentToasts, /showAgentToast\(title, detail, rawStatus === 'failed' \? 'error' : 'success'\);/);
+  assert.match(agentToasts, /showAgentToast\(title, detail, rawStatus === 'failed' \? 'error' : 'success', name\);/);
   assert.match(agentToasts, /setInterval\(\(\) => \{\s*if \(document\.visibilityState !== 'visible'\) return;\s*loadThreadsForToasts\(\)\.catch\(\(\) => \{\}\);\s*\}, 10000\);/);
 });
 

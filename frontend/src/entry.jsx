@@ -53,6 +53,8 @@ function App({ page }) {
       <Toaster
         theme="dark"
         position="bottom-right"
+        richColors
+        closeButton
         offset={{ right: '18px', bottom: 'var(--thread-composer-clearance,18px)' }}
       />
     </>

@@ -82,8 +82,16 @@ function escapeHtml(value) {
     .replaceAll("'", '&#39;');
 }
 
-function showAgentToast(title, detail = '', tone = 'success') {
+function showAgentToast(title, detail = '', tone = 'success', threadName = '') {
   const options = { duration: 8000, description: detail || undefined };
+  if (threadName) {
+    options.action = {
+      label: 'View',
+      onClick: () => {
+        location.href = threadUrl(threadName);
+      },
+    };
+  }
   if (tone === 'error') toast.error(title, options);
   else toast.success(title, options);
 }
@@ -549,7 +557,7 @@ function notifyFinishedThreads(threads) {
     notifiedFinishToasts.add(key);
     const title = rawStatus === 'failed' ? 'Agent failed' : 'Agent finished';
     const detail = [thread.title || thread.name, finishedOutcome(thread, rawStatus)].filter(Boolean).join(' · ');
-    showAgentToast(title, detail, rawStatus === 'failed' ? 'error' : 'success');
+    showAgentToast(title, detail, rawStatus === 'failed' ? 'error' : 'success', name);
   }
   knownThreadStatuses = nextStatuses;
   loadedThreadSnapshot = true;
