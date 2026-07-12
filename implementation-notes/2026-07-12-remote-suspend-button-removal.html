@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — remote suspend button removal</title>
+<meta name="task" content="Remove the visible suspend affordance from remote thread lifecycle controls while preserving resume/delete handling.">
+<meta name="date-started" content="2026-07-12">
+<meta name="date-updated" content="2026-07-12">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,ui,thread,remote,lifecycle,suspend">
+<meta name="related" content="2026-07-10-cloudflare-only-sandbox-replacement.html,2026-07-10-daytona-suspend-resume-worklog.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code { font-family: ui-monospace, Menlo, monospace; background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  .blast-low { color: #2a7a2a; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+</style>
+</head>
+<body>
+<h1>Remote suspend button removal</h1>
+<p class="meta"><code>main</code> · worktree <code>/workspace</code> · 2026-07-12 · status <b>shipped</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<table><tr><th>Goal</th><td>Remove the user-facing remote <code>suspend</code> button from the thread header.</td></tr><tr><th>Scope</th><td>UI markup, thread runtime wiring, and header/lifecycle control tests.</td></tr><tr><th>Kept</th><td>Resume and backup-delete controls remain; suspended existing threads still block prompts and show resume guidance.</td></tr></table>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Delta</th></tr><tr><td><code>frontend/src/pages.jsx</code></td><td>Removed the <code>#suspend-thread</code> header button.</td></tr><tr><td><code>frontend/src/runtime/thread.js</code></td><td>Removed suspend button lookup, visibility logic, and click handler.</td></tr><tr><td><code>test/thread-archive-control.test.js</code></td><td>Assert the suspend control is absent while resume/delete remain wired.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>Register this note.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Hide the affordance only; do not remove backend suspend support because existing suspended sessions and internal lifecycle paths may still need compatibility.</td></tr><tr><td>D-002</td><td>Keep suspended-state composer copy so old or backend-suspended threads remain understandable.</td></tr></table>
+<h2>Validation</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>node --test test/thread-archive-control.test.js</code></td><td>Passed 5/5.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Re-add the JSX button and the removed runtime handler if manual suspend returns.</p>
+</body>
+</html>

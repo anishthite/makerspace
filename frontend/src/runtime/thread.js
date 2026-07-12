@@ -42,7 +42,6 @@ const title = document.querySelector('#thread-title');
 const meta = document.querySelector('#thread-meta');
 const statusNode = document.querySelector('#thread-status');
 const stopButton = document.querySelector('#stop-thread');
-const suspendButton = document.querySelector('#suspend-thread');
 const resumeButton = document.querySelector('#resume-thread');
 const deleteButton = document.querySelector('#delete-thread');
 const archiveButton = document.querySelector('#archive-thread');
@@ -612,11 +611,6 @@ function isRemoteLifecycleThread(thread) {
   return Boolean(thread && !thread.localMode && String(thread.provider || '').toLowerCase() !== 'local');
 }
 
-function canSuspendThread(thread) {
-  const status = String(effectiveStatus(thread) || '').toLowerCase();
-  return isRemoteLifecycleThread(thread) && !isActiveStatus(status) && !['suspended', 'deleted', 'backing_up'].includes(status);
-}
-
 function canResumeThread(thread) {
   return isRemoteLifecycleThread(thread) && String(effectiveStatus(thread) || '').toLowerCase() === 'suspended';
 }
@@ -750,11 +744,6 @@ function renderStopButton(thread = currentThread) {
 }
 
 function renderLifecycleButtons(thread = currentThread) {
-  if (suspendButton) {
-    suspendButton.hidden = !canSuspendThread(thread);
-    suspendButton.disabled = false;
-    suspendButton.textContent = 'suspend';
-  }
   if (resumeButton) {
     resumeButton.hidden = !canResumeThread(thread);
     resumeButton.disabled = false;
@@ -2106,10 +2095,6 @@ async function postLifecycleAction(button, route, busyCopy, statusCopy) {
     setStatus(error.message, 'error');
   }
 }
-
-suspendButton?.addEventListener('click', () => {
-  void postLifecycleAction(suspendButton, 'suspend', 'suspending…', 'suspending');
-});
 
 resumeButton?.addEventListener('click', () => {
   void postLifecycleAction(resumeButton, 'resume', 'resuming…', 'resuming');
