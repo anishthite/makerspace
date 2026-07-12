@@ -354,7 +354,7 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
       runStatus,
       endedAt,
       runEndedAtMs: Number.isFinite(runEndedAtMs) ? runEndedAtMs : undefined,
-      warning: lostActiveRun ? session.warning || 'Run state is no longer active; start a new main agent.' : session.warning,
+      warning: lostActiveRun ? session.warning || 'Main agent connection is stale; reconnecting failed, so start a new main agent.' : session.warning,
       completedAt: runStatus === 'completed' ? session.completedAt || endedAt : undefined,
     };
   }

@@ -36,6 +36,7 @@ export function createBridgeService({ config, provider, auth, runState }) {
     persistThreadAssistantMessage,
     recordRunEvent,
     mergeTrackedChanges,
+    isActiveRunStatus,
   } = runState;
   const warmLaunches = new Set();
 
@@ -229,6 +230,48 @@ export function createBridgeService({ config, provider, auth, runState }) {
     appendRunOutput(sessionName, `[system] ${warning}\n`, 'failed');
     appendRunStatus(sessionName, 'failed', { warning, done: true, stale: true, missing: Boolean(options.missing) });
     return stale;
+  }
+
+  function reattachableBridgeRunStatus(session) {
+    const status = String(session?.runStatus || session?.status || '').toLowerCase();
+    return isActiveRunStatus(status) ? status : '';
+  }
+
+  function canReattachBridgeRun(session) {
+    return Boolean(
+      session?.bridgeMode &&
+        session.bridgeClaimed &&
+        session.bridgeUrl &&
+        session.bridgeRunId &&
+        session.bridgeToken &&
+        reattachableBridgeRunStatus(session),
+    );
+  }
+
+  async function reattachBridgeRun(session, options = {}) {
+    if (!canReattachBridgeRun(session)) return null;
+    const run = ensureRunState(session.name);
+    const runStatus = reattachableBridgeRunStatus(session);
+    if (!isActiveRunStatus(run.runStatus)) {
+      setRunState(session.name, { runStatus, warning: null });
+    }
+    if (options.log) await recordBridgeLaunchLog(session, options.log, { runStatus, bridgeRunId: session.bridgeRunId });
+    if (options.follow !== false) void followBridgeRun(session.name);
+    return activeRuns.get(session.name) || run;
+  }
+
+  async function reattachActiveBridgeRuns() {
+    let sessions = [];
+    try {
+      sessions = await listStoredSessions(config.sessionFile);
+    } catch (error) {
+      console.warn(`[spanner] failed to list sessions for bridge run reattach: ${error.message}`);
+      return 0;
+    }
+    const active = sessions.filter(canReattachBridgeRun);
+    await Promise.all(active.map((session) => reattachBridgeRun(session)));
+    if (active.length) console.info(`[spanner] reattached ${active.length} active bridge run(s).`);
+    return active.length;
   }
 
   function isIdleReusableBridge(session) {
@@ -1121,6 +1164,8 @@ export function createBridgeService({ config, provider, auth, runState }) {
     consumeSse,
     bridgeRunMissingError,
     markBridgeRunStale,
+    reattachBridgeRun,
+    reattachActiveBridgeRuns,
     isIdleReusableBridge,
     isExpiredIdleBridge,
     pruneExpiredIdleBridges,

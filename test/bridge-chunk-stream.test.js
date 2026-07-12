@@ -25,6 +25,47 @@ function makeRunState(config) {
   });
 }
 
+test('bridge reattach seeds live run state from stored active session', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-bridge-reattach-'));
+  const sessionFile = path.join(root, 'sessions.json');
+  const previousFetch = globalThis.fetch;
+
+  try {
+    await writeFile(sessionFile, `${JSON.stringify([{
+      name: 'bridge-thread',
+      provider: 'cloudflare',
+      threadBridge: true,
+      bridgeMode: true,
+      bridgeClaimed: true,
+      bridgeUrl: 'https://bridge.test',
+      bridgeRunId: 'run-1',
+      bridgeToken: 'secret',
+      taskPrompt: 'hello',
+      status: 'running',
+      runStatus: 'running',
+    }])}\n`);
+
+    globalThis.fetch = async () => { throw new Error('reattach should not fetch when follow is disabled'); };
+
+    const config = { sessionFile, bridgeStreamStallMs: 5000 };
+    const runState = makeRunState(config);
+    const bridge = createBridgeService({
+      config,
+      provider: { kind: 'cloudflare', info: () => ({ kind: 'cloudflare' }) },
+      auth: {},
+      runState,
+    });
+
+    const run = await bridge.reattachBridgeRun((await getStoredSession(sessionFile, 'bridge-thread')), { follow: false });
+
+    assert.equal(run.runStatus, 'running');
+    assert.equal(runState.activeRuns.get('bridge-thread').runStatus, 'running');
+  } finally {
+    globalThis.fetch = previousFetch;
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('bridge follower relays first-class chunk events without stdout reparsing', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-bridge-chunks-'));
   const sessionFile = path.join(root, 'sessions.json');

@@ -56,6 +56,7 @@ server.listen(config.port, config.host || undefined, () => {
   const port = typeof address === 'object' && address ? address.port : config.port;
   const host = config.host || 'localhost';
   console.log(`[spanner] listening on http://${host}:${port} (${provider.kind}; ${config.projectName})`);
+  void bridge.reattachActiveBridgeRuns();
   void bridge.pruneExpiredIdleBridges();
   void bridge.ensureWarmBridgePool();
   if (Number.isFinite(config.idleBridgeTtlMs) && config.idleBridgeTtlMs > 0) {

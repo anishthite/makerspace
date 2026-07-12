@@ -10,7 +10,7 @@ import { trimTrailingSlash } from './utils.js';
 
 export function createSessionService({ config, provider, auth, runState, bridge }) {
   const { readLocalPiAuth, enrichGitHubRepoSession = async (session) => session } = auth;
-  const { claimReusableBridgeSession, waitForBridge, pushBridgeAuth, startBridgeRun, followBridgeRun } = bridge;
+  const { claimReusableBridgeSession, waitForBridge, pushBridgeAuth, startBridgeRun, reattachBridgeRun } = bridge;
   const {
     activeRuns,
     ensureRunState,
@@ -277,8 +277,8 @@ export function createSessionService({ config, provider, auth, runState, bridge 
     let run = activeRuns.get(session.name);
 
     if (shouldFollowBridgeRun(session)) {
-      run = ensureRunState(session.name);
-      void followBridgeRun(session.name);
+      run = await reattachBridgeRun?.(session) || ensureRunState(session.name);
+      if (!isActiveRunStatus(run.runStatus)) setRunState(session.name, { runStatus: String(session.runStatus || session.status || 'running').toLowerCase(), warning: null });
       return run;
     }
 

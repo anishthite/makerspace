@@ -510,10 +510,16 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
         const name = decodeURIComponent(threadMatch[1]);
         const thread = await getThreadSession(name);
         if (requireSessionAccess(request, response, thread, url, user)) return;
+        const [defaults, run] = await Promise.all([loadPiDefaults(user), syncRunOutput(thread)]);
+        const liveThread = decorateLiveSession({
+          ...thread,
+          status: statusFromRunStatus(run.runStatus, thread.status),
+          runStatus: run.runStatus,
+        });
         sendJson(response, 200, {
           provider: provider.info(),
-          defaults: await loadPiDefaults(user),
-          thread: decorateLiveSession(thread),
+          defaults,
+          thread: liveThread,
         });
         return;
       }
@@ -612,7 +618,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
             type: 'status',
             runStatus: runStatus || 'failed',
             done: true,
-            warning: decorated.warning || (runStatus ? null : 'Run state is no longer active; reload to resync.'),
+            warning: decorated.warning || (runStatus ? null : 'Main agent connection is stale; reload to retry.'),
             session: decorated,
           });
           response.end();

@@ -38,7 +38,7 @@ export function createThreadService({ config, provider, http, auth, runState, br
     persistHostDispatchMetric,
     persistHostDispatchStatus,
   } = runState;
-  const { startThreadBridgeLaunch, refreshBridgeSessionIfNeeded, startBridgeRun, fetchBridgeJson, waitForBridge, syncBridgeAuth, markBridgeRunStale, bridgeRunMissingError } = bridge;
+  const { startThreadBridgeLaunch, refreshBridgeSessionIfNeeded, startBridgeRun, fetchBridgeJson, waitForBridge, syncBridgeAuth, markBridgeRunStale, bridgeRunMissingError, reattachBridgeRun } = bridge;
   const MAX_EXCALIDRAW_BYTES = 8 * 1024 * 1024;
   const MAX_IMAGE_ARTIFACT_BYTES = 16 * 1024 * 1024;
   const IMAGE_ARTIFACT_TYPES = new Map([
@@ -328,12 +328,16 @@ export function createThreadService({ config, provider, http, auth, runState, br
 
   async function listThreadsPayload(viewerSessionId = '', trusted = false, user = null) {
     const sessions = await listStoredSessions(config.sessionFile);
+    const visibleSessions = sessions
+      .filter((session) => session.threadBridge && !session.archivedAt && canAccessSession(session, viewerSessionId, trusted, user));
+    const threads = await Promise.all(visibleSessions.map(async (session) => {
+      await reattachBridgeRun?.(session);
+      return decorateLiveSession(session);
+    }));
     return {
       provider: provider.info(),
       defaults: await loadPiDefaults(user),
-      threads: sessions
-        .filter((session) => session.threadBridge && !session.archivedAt && canAccessSession(session, viewerSessionId, trusted, user))
-        .map((session) => decorateLiveSession(session)),
+      threads,
     };
   }
 

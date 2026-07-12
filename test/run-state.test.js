@@ -27,5 +27,5 @@ test('inactive remote launching sessions do not stay visibly stuck', () => {
 
   assert.equal(decorated.status, 'failed');
   assert.equal(decorated.runStatus, 'failed');
-  assert.match(decorated.warning, /no longer active/);
+  assert.match(decorated.warning, /connection is stale/);
 });
