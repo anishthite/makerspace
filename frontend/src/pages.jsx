@@ -98,6 +98,37 @@ function GitHubSignInCard({ compact = false }) {
   </Surface>;
 }
 
+function ProjectOnboardingDialog() {
+  const steps = [
+    ['github', 'Connect GitHub', 'Use your GitHub account for repos and private workspace access.'],
+    ['codex', 'Sign in to Codex', 'Add model access in Settings so Pi can run the agent.'],
+    ['project', 'Pick a repo', 'Choose a GitHub repo or local folder for the sandbox.'],
+    ['agent', 'Start an agent', 'Open the workspace, write one prompt, and let it run.'],
+  ];
+  return <dialog id="onboarding-dialog" className="onboarding-dialog" aria-labelledby="onboarding-title" aria-describedby="onboarding-copy">
+    <div className="onboarding-shell">
+      <Button id="onboarding-close" variant="ghost" size="icon" type="button" aria-label="close onboarding"><XIcon className="size-4" aria-hidden="true" /></Button>
+      <div className="onboarding-copy">
+        <p className={eyebrowClass}>quick start</p>
+        <h2 id="onboarding-title">Let’s get your first agent running.</h2>
+        <p id="onboarding-copy">Four steps. No new account form, no wizard state, no ceremony.</p>
+        <div className="onboarding-actions">
+          <GitHubSignInButton id="onboarding-github">Continue with GitHub</GitHubSignInButton>
+          <Button id="onboarding-pick-repo" variant="ghost" type="button"><FolderOpenIcon {...buttonIconProps} />Pick repo or folder</Button>
+          <Button as="a" id="onboarding-codex" variant="ghost" href="/settings.html#codex"><OpenAiLogoIcon {...buttonIconProps} />Codex settings</Button>
+        </div>
+      </div>
+      <ol className="onboarding-steps" aria-label="Onboarding checklist">
+        {steps.map(([id, title, body], index) => <li key={id} data-onboarding-step={id} data-state="todo">
+          <span className="onboarding-step-num">{index + 1}</span>
+          <span className="onboarding-step-body"><strong>{title}</strong><small>{body}</small></span>
+          <span className="onboarding-step-state">todo</span>
+        </li>)}
+      </ol>
+    </div>
+  </dialog>;
+}
+
 function Brand({ href = '/', label = 'Spanner home', children }) {
   return <a className="inline-flex min-w-0 items-center gap-2.5 font-extrabold leading-none tracking-[-.03em] text-[var(--ink)]" href={href} aria-label={label}>
     <img className="block size-8 shrink-0 -translate-y-0.5" src="/logo-mark.svg" alt="" aria-hidden="true" />
@@ -148,6 +179,7 @@ export function ProjectPage() {
     </nav>
 
     <GitHubSignInCard />
+    <ProjectOnboardingDialog />
 
     <section id="project-grid" className="mx-auto mt-[clamp(42px,8vh,92px)] grid max-w-[820px] grid-cols-1 gap-4">
       <Surface as="form" id="project-form" className={cn(surfaceClass, 'grid gap-5 overflow-hidden p-5 md:p-6')} aria-labelledby="project-welcome">

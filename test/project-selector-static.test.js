@@ -41,6 +41,14 @@ test('project selector offers desktop local folders', () => {
   assert.match(pages, /Continue with GitHub/);
   assert.match(pages, /data-github-signin/);
   assert.match(pages, /id="github-signin-card" className=\{cn\(surfaceClass/);
+  assert.match(pages, /id="onboarding-dialog"/);
+  assert.match(pages, /data-onboarding-step=\{id\}/);
+  assert.match(pages, /id="onboarding-pick-repo"/);
+  assert.match(project, /const ONBOARDING_DISMISSED_KEY = 'spannerOnboardingDismissed'/);
+  assert.match(project, /function renderOnboarding\(\)/);
+  assert.match(project, /const remoteProvider = providerKind === 'cloudflare'/);
+  assert.match(project, /onboardingPickRepo\?\.addEventListener\('click', focusProjectPicker\)/);
+  assert.match(styles, /\.onboarding-dialog/);
   assert.match(project, /function startGitHubSignIn/);
   assert.match(project, /\/api\/auth\/github\/login/);
   assert.match(project, /renderGitHubSignIn\(github\)/);

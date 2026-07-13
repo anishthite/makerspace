@@ -861,6 +861,57 @@ body[data-home-ui="ops"] .inbox-item { padding: 18px 14px; }
 .project-recent-panel { border-color: color-mix(in srgb, var(--rule) 72%, transparent); }
 .project-recent-panel h2 { font-size: 24px; }
 #project-recent-list { margin-top: 0; }
+.onboarding-dialog {
+  width: min(960px, calc(100% - 32px));
+  margin: auto;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--ink);
+}
+.onboarding-dialog::backdrop { background: rgba(3, 8, 14, .74); backdrop-filter: blur(10px); }
+.onboarding-shell {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, .92fr) minmax(320px, 1.08fr);
+  gap: clamp(18px, 3vw, 34px);
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--rule-2) 76%, transparent);
+  border-radius: 24px;
+  padding: clamp(24px, 4.5vw, 46px);
+  background:
+    radial-gradient(circle at 8% 0%, color-mix(in srgb, var(--blue-soft) 86%, transparent), transparent 26rem),
+    linear-gradient(135deg, color-mix(in srgb, var(--paper) 96%, var(--paper-2)), var(--paper));
+  box-shadow: 0 34px 120px rgba(0, 0, 0, .48), inset 0 1px 0 var(--inset-highlight);
+}
+#onboarding-close { position: absolute; top: 14px; right: 14px; z-index: 2; }
+.onboarding-copy { align-self: center; padding-right: clamp(0px, 2vw, 18px); }
+.onboarding-copy h2 { max-width: 560px; margin: 0 0 14px; font-size: clamp(42px, 6vw, 76px); line-height: .86; letter-spacing: -.075em; }
+.onboarding-copy p:not(.mb-2) { max-width: 520px; color: var(--ink-3); font-size: 17px; line-height: 1.45; }
+.onboarding-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+.onboarding-actions [aria-disabled="true"] { opacity: .46; pointer-events: none; }
+.onboarding-steps { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.onboarding-steps li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--rule) 74%, transparent);
+  border-radius: 14px;
+  padding: 14px;
+  background: color-mix(in srgb, var(--paper) 76%, transparent);
+  box-shadow: inset 0 1px 0 var(--inset-highlight);
+}
+.onboarding-step-num { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 999px; background: var(--paper-2); color: var(--blue); font: 900 13px/1 var(--mono); }
+.onboarding-step-body { display: grid; gap: 3px; min-width: 0; }
+.onboarding-step-body strong { font-size: 16px; line-height: 1.1; }
+.onboarding-step-body small { color: var(--ink-3); font-size: 13px; line-height: 1.3; }
+.onboarding-step-state { border-radius: 999px; padding: 5px 8px; background: var(--paper-2); color: var(--ink-3); font: 800 10px/1 var(--mono); text-transform: lowercase; }
+.onboarding-steps li[data-state="current"] { border-color: color-mix(in srgb, var(--blue) 54%, var(--rule)); background: color-mix(in srgb, var(--blue-soft) 55%, var(--paper)); }
+.onboarding-steps li[data-state="current"] .onboarding-step-state { background: var(--blue); color: var(--paper); }
+.onboarding-steps li[data-state="done"] { border-color: color-mix(in srgb, var(--green) 46%, var(--rule)); }
+.onboarding-steps li[data-state="done"] .onboarding-step-num,
+.onboarding-steps li[data-state="done"] .onboarding-step-state { background: color-mix(in srgb, var(--green) 18%, var(--paper)); color: var(--green); }
 .project-choice {
   border: 1px solid color-mix(in srgb, var(--rule) 78%, transparent);
   border-radius: 8px;
@@ -874,6 +925,14 @@ body[data-home-ui="ops"] .inbox-item { padding: 18px 14px; }
   margin: 0;
   border-color: color-mix(in srgb, var(--rule) 70%, transparent);
   background: color-mix(in srgb, var(--paper) 58%, transparent);
+}
+@media (max-width: 720px) {
+  .onboarding-dialog { width: min(100% - 18px, 560px); }
+  .onboarding-shell { grid-template-columns: 1fr; padding: 22px; }
+  .onboarding-copy h2 { font-size: clamp(38px, 12vw, 56px); }
+  .onboarding-actions > * { width: 100%; }
+  .onboarding-steps li { grid-template-columns: auto minmax(0, 1fr); }
+  .onboarding-step-state { grid-column: 2; justify-self: start; }
 }
 @media (max-width: 640px) {
   #project-welcome { font-size: clamp(36px, 13vw, 54px); }

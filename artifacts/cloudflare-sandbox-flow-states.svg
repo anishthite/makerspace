@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1040" viewBox="0 0 1500 1040" role="img" aria-labelledby="title desc">
+  <title id="title">Spanner Cloudflare sandbox flow and states</title>
+  <desc id="desc">Flow from browser thread creation through backend launch, Cloudflare sandbox allocation, bridge startup, main agent run, and completed idle keepalive state that consumes container slots.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8aa0bd"/></marker>
+    <marker id="warnArrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#f59e0b"/></marker>
+    <style><![CDATA[
+      .bg{fill:#0e1117}.panel{fill:#151a23;stroke:#2a3547;stroke-width:1.5}.node{fill:#1b2431;stroke:#3b4a60;stroke-width:1.5}.state{fill:#182336;stroke:#4d6ea8;stroke-width:1.5}.bad{fill:#2a1b1b;stroke:#b45309}.good{fill:#10271d;stroke:#22c55e}.future{fill:#161d28;stroke:#64748b;stroke-dasharray:7 6}.title{fill:#f8fafc;font:700 28px system-ui,-apple-system,Segoe UI,sans-serif}.h{fill:#e5e7eb;font:700 17px system-ui,-apple-system,Segoe UI,sans-serif}.t{fill:#cbd5e1;font:14px system-ui,-apple-system,Segoe UI,sans-serif}.s{fill:#94a3b8;font:12px ui-monospace,SFMono-Regular,Menlo,monospace}.small{fill:#94a3b8;font:12px system-ui,-apple-system,Segoe UI,sans-serif}.warn{fill:#fbbf24}.muted{fill:#7f8ea3}.line{stroke:#8aa0bd;stroke-width:2.2;fill:none;marker-end:url(#arrow)}.warnLine{stroke:#f59e0b;stroke-width:2.5;fill:none;marker-end:url(#warnArrow)}.dash{stroke-dasharray:7 6}.chip{fill:#243044;stroke:#40516d}.chipText{fill:#dbeafe;font:12px ui-monospace,SFMono-Regular,Menlo,monospace}.num{fill:#0e1117;font:700 12px system-ui}.numCircle{fill:#93c5fd}.dangerText{fill:#fed7aa;font:13px system-ui}.okText{fill:#bbf7d0;font:13px system-ui}
+    ]]></style>
+  </defs>
+  <rect class="bg" width="1500" height="1040"/>
+  <text x="56" y="58" class="title">Remote main-agent flow + container states</text>
+  <text x="56" y="84" class="small">Actual code path: <tspan class="s">src/server/threads.js</tspan> → <tspan class="s">src/server/bridge.js</tspan> → <tspan class="s">src/providers/cloudflare.js</tspan> → <tspan class="s">cloudflare-sandbox-worker/src/index.js</tspan> → sandbox <tspan class="s">pi-bridge.mjs</tspan></text>
+
+  <rect x="44" y="120" width="1412" height="400" rx="18" class="panel"/>
+  <text x="68" y="152" class="h">Launch path</text>
+
+  <rect x="70" y="185" width="190" height="92" rx="12" class="node"/>
+  <circle cx="92" cy="207" r="11" class="numCircle"/><text x="88" y="211" class="num">1</text>
+  <text x="112" y="212" class="h">Browser</text>
+  <text x="88" y="238" class="t">User starts thread</text>
+  <text x="88" y="258" class="s">POST /api/threads</text>
+
+  <rect x="315" y="185" width="224" height="92" rx="12" class="state"/>
+  <circle cx="337" cy="207" r="11" class="numCircle"/><text x="333" y="211" class="num">2</text>
+  <text x="357" y="212" class="h">Backend stores row</text>
+  <text x="333" y="238" class="t">D1 session is created</text>
+  <text x="333" y="258" class="s">status=launching</text>
+
+  <rect x="595" y="185" width="232" height="92" rx="12" class="state"/>
+  <circle cx="617" cy="207" r="11" class="numCircle"/><text x="613" y="211" class="num">3</text>
+  <text x="637" y="212" class="h">Bridge worker</text>
+  <text x="613" y="238" class="t">Async launch starts</text>
+  <text x="613" y="258" class="s">thread_launch:worker_start</text>
+
+  <rect x="884" y="185" width="230" height="92" rx="12" class="node"/>
+  <circle cx="906" cy="207" r="11" class="numCircle"/><text x="902" y="211" class="num">4</text>
+  <text x="926" y="212" class="h">Cloudflare broker</text>
+  <text x="902" y="238" class="t">Allocates sandbox</text>
+  <text x="902" y="258" class="s">POST /sessions/:name</text>
+
+  <rect x="1172" y="185" width="230" height="92" rx="12" class="node"/>
+  <circle cx="1194" cy="207" r="11" class="numCircle"/><text x="1190" y="211" class="num">5</text>
+  <text x="1214" y="212" class="h">Container runtime</text>
+  <text x="1190" y="238" class="t">Runs setup script</text>
+  <text x="1190" y="258" class="s">mkdir + pi-bridge service</text>
+
+  <path d="M260 231 H315" class="line"/><path d="M539 231 H595" class="line"/><path d="M827 231 H884" class="line"/><path d="M1114 231 H1172" class="line"/>
+
+  <rect x="180" y="340" width="236" height="96" rx="12" class="state"/>
+  <circle cx="202" cy="362" r="11" class="numCircle"/><text x="198" y="366" class="num">6</text>
+  <text x="222" y="367" class="h">Expose bridge URL</text>
+  <text x="198" y="392" class="t">Broker exposes port 4310</text>
+  <text x="198" y="412" class="s">bridgeUrl = https://4310-…</text>
+
+  <rect x="486" y="340" width="236" height="96" rx="12" class="state"/>
+  <circle cx="508" cy="362" r="11" class="numCircle"/><text x="504" y="366" class="num">7</text>
+  <text x="528" y="367" class="h">Backend waits</text>
+  <text x="504" y="392" class="t">Polls bridge health</text>
+  <text x="504" y="412" class="s">GET /healthz</text>
+
+  <rect x="792" y="340" width="236" height="96" rx="12" class="state"/>
+  <circle cx="814" cy="362" r="11" class="numCircle"/><text x="810" y="366" class="num">8</text>
+  <text x="834" y="367" class="h">Sync auth/profile</text>
+  <text x="810" y="392" class="t">Codex/GitHub/defaults</text>
+  <text x="810" y="412" class="s">POST /auth</text>
+
+  <rect x="1098" y="340" width="236" height="96" rx="12" class="state"/>
+  <circle cx="1120" cy="362" r="11" class="numCircle"/><text x="1116" y="366" class="num">9</text>
+  <text x="1140" y="367" class="h">Start main agent</text>
+  <text x="1116" y="392" class="t">Bridge creates Pi session</text>
+  <text x="1116" y="412" class="s">POST /runs</text>
+
+  <path d="M1287 277 C1287 310 298 305 298 340" class="line"/>
+  <path d="M416 388 H486" class="line"/><path d="M722 388 H792" class="line"/><path d="M1028 388 H1098" class="line"/>
+
+  <rect x="44" y="560" width="1412" height="250" rx="18" class="panel"/>
+  <text x="68" y="592" class="h">Run states</text>
+
+  <rect x="82" y="630" width="155" height="74" rx="12" class="chip"/><text x="111" y="657" class="chipText">launching</text><text x="103" y="681" class="small">sandbox/bridge</text>
+  <rect x="292" y="630" width="155" height="74" rx="12" class="chip"/><text x="333" y="657" class="chipText">starting</text><text x="321" y="681" class="small">Pi session boot</text>
+  <rect x="502" y="630" width="155" height="74" rx="12" class="chip"/><text x="549" y="657" class="chipText">running</text><text x="528" y="681" class="small">LLM/tools stream</text>
+  <rect x="712" y="630" width="155" height="74" rx="12" class="good"/><text x="751" y="657" class="chipText">completed</text><text x="744" y="681" class="okText">run done</text>
+  <rect x="922" y="630" width="155" height="74" rx="12" class="bad"/><text x="966" y="657" class="chipText">failed</text><text x="946" y="681" class="dangerText">error path</text>
+  <rect x="1132" y="630" width="180" height="74" rx="12" class="state"/><text x="1185" y="657" class="chipText">ready</text><text x="1155" y="681" class="small">current keepAlive idle</text>
+
+  <path d="M237 667 H292" class="line"/><path d="M447 667 H502" class="line"/><path d="M657 667 H712" class="line"/>
+  <path d="M657 690 C745 750 860 750 922 690" class="warnLine"/>
+  <path d="M867 667 H1132" class="line"/>
+  <path d="M1132 647 C1040 585 380 585 237 647" class="line dash"/>
+  <text x="846" y="744" class="small">any startup/auth/model/tool error</text>
+  <text x="550" y="610" class="small">current follow-up loop: completed → ready → launching</text>
+
+  <rect x="44" y="850" width="686" height="142" rx="18" class="bad"/>
+  <text x="68" y="884" class="h warn">Current leak</text>
+  <text x="68" y="914" class="dangerText">On completed runs, <tspan class="s">scheduleBridgeRelease()</tspan> clears prompt and marks the thread <tspan class="s">ready</tspan>.</text>
+  <text x="68" y="938" class="dangerText">Because broker uses <tspan class="s">keepAlive: true</tspan>, that ready thread still holds a live Cloudflare container slot.</text>
+  <text x="68" y="962" class="dangerText">With <tspan class="s">max_instances = 10</tspan>, the 11th thread waits/throws <tspan class="s">Container is starting…</tspan>.</text>
+
+  <rect x="770" y="850" width="686" height="142" rx="18" class="future"/>
+  <text x="794" y="884" class="h">Better lifecycle</text>
+  <text x="794" y="914" class="okText">Keep active runs alive; keep completed threads warm briefly for fast follow-up.</text>
+  <text x="794" y="938" class="okText">After TTL, backup+destroy or destroy idle thread sandboxes to free slots.</text>
+  <text x="794" y="962" class="okText">Raise <tspan class="s">max_instances</tspan> as a safety margin, not as cleanup.</text>
+
+  <path d="M1222 704 C1222 790 1030 790 1030 850" class="line dash"/>
+  <path d="M1222 704 C1222 808 386 808 386 850" class="warnLine dash"/>
+</svg>

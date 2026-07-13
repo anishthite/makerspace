@@ -3,6 +3,7 @@ import './appearance.js?v=palette-2';
 const BROWSER_SESSION_KEY = 'spannerBrowserSession';
 const PROJECT_KEY = 'spannerSelectedProject';
 const RECENT_PROJECTS_KEY = 'spannerRecentProjects';
+const ONBOARDING_DISMISSED_KEY = 'spannerOnboardingDismissed';
 const MAX_REPO_SUGGESTIONS = 8;
 const API_BASE = String(import.meta.env?.VITE_SPANNER_API_BASE || '').trim().replace(/\/+$/, '');
 
@@ -42,6 +43,10 @@ const repoHint = document.querySelector('#project-repo-hint');
 const statusLine = document.querySelector('#project-status');
 const recentList = document.querySelector('#project-recent-list');
 const projectWelcome = document.querySelector('#project-welcome');
+const onboardingDialog = document.querySelector('#onboarding-dialog');
+const onboardingClose = document.querySelector('#onboarding-close');
+const onboardingPickRepo = document.querySelector('#onboarding-pick-repo');
+const onboardingCodex = document.querySelector('#onboarding-codex');
 
 let providerKind = '';
 let githubRepos = [];
@@ -49,6 +54,8 @@ let selectedRepo = null;
 let repoMatches = [];
 let activeRepoMatchIndex = -1;
 let githubConnected = false;
+let codexConfigured = false;
+let projectThreadCount = 0;
 let recentProjects = [];
 
 function getBrowserSessionId() {
@@ -353,6 +360,7 @@ function runningAgentCount(project, threads = []) {
 }
 
 function renderRecentProjects(threads = []) {
+  projectThreadCount = Array.isArray(threads) ? threads.length : 0;
   const projects = readRecentProjects();
   if (!projects.length) {
     recentList.innerHTML = '<p class="empty-state">No recent projects yet.</p>';
@@ -384,6 +392,65 @@ function renderWelcome(user) {
   if (!projectWelcome) return;
   const name = String(user?.name || user?.login || '').trim().replace(/\s+/g, ' ');
   projectWelcome.textContent = name ? `Welcome back, ${name}.` : 'Welcome back.';
+}
+
+function onboardingDismissed() {
+  try { return localStorage.getItem(ONBOARDING_DISMISSED_KEY) === '1'; }
+  catch { return false; }
+}
+
+function dismissOnboarding() {
+  try { localStorage.setItem(ONBOARDING_DISMISSED_KEY, '1'); }
+  catch {}
+  onboardingDialog?.close?.();
+}
+
+function setOnboardingStep(key, state, label) {
+  const step = onboardingDialog?.querySelector(`[data-onboarding-step="${key}"]`);
+  if (!step) return;
+  step.dataset.state = state;
+  const stateNode = step.querySelector('.onboarding-step-state');
+  if (stateNode) stateNode.textContent = label;
+}
+
+function renderOnboarding() {
+  if (!onboardingDialog) return;
+  const remoteProvider = providerKind === 'cloudflare';
+  if (!remoteProvider || globalThis.spannerDesktop) {
+    onboardingDialog.close?.();
+    return;
+  }
+  const steps = [
+    ['github', githubConnected, 'needed'],
+    ['codex', codexConfigured, 'needed'],
+    ['project', Boolean(cleanProjectValue(repoInput.value)) || readRecentProjects().length > 0, 'pick'],
+    ['agent', projectThreadCount > 0, 'next'],
+  ];
+  const currentIndex = steps.findIndex(([, done]) => !done);
+  for (const [index, [key, done, todoLabel]] of steps.entries()) {
+    setOnboardingStep(key, done ? 'done' : index === currentIndex ? 'current' : 'todo', done ? 'done' : todoLabel);
+  }
+  if (onboardingPickRepo) onboardingPickRepo.disabled = !githubConnected;
+  if (onboardingCodex) {
+    const disabled = !steps[0][1];
+    onboardingCodex.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+    onboardingCodex.tabIndex = disabled ? -1 : 0;
+  }
+  const complete = currentIndex < 0;
+  if (complete) dismissOnboarding();
+  if (!complete && !onboardingDismissed() && !onboardingDialog.open) {
+    try { onboardingDialog.showModal ? onboardingDialog.showModal() : onboardingDialog.setAttribute('open', ''); }
+    catch {}
+  }
+}
+
+function focusProjectPicker() {
+  onboardingDialog?.close?.();
+  projectGrid.hidden = false;
+  projectHero.hidden = false;
+  repoInput.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  repoInput.focus();
+  renderRepoSuggestions();
 }
 
 function renderAuthError(message) {
@@ -421,6 +488,7 @@ function selectRepo(repo) {
   repoInput.value = repoFullName(repo);
   repoHint.textContent = repoSelectionLabel(repo);
   hideRepoSuggestions();
+  renderOnboarding();
 }
 
 function setActiveRepoMatch(index) {
@@ -565,7 +633,8 @@ async function loadProjectBootstrap() {
 
   const codex = payload.codex || {};
   const github = payload.github || {};
-  renderAuthPill(codexAuthPill, codexAuthLabel, Boolean(codex.configured), codex.configured ? `Codex: ${codex.source || 'signed in'}` : 'Codex: signed out', 'codex');
+  codexConfigured = Boolean(codex.configured);
+  renderAuthPill(codexAuthPill, codexAuthLabel, codexConfigured, codexConfigured ? `Codex: ${codex.source || 'signed in'}` : 'Codex: signed out', 'codex');
   const connected = Boolean(github.connected);
   githubConnected = connected;
   renderWelcome(connected ? github.user : null);
@@ -582,6 +651,7 @@ async function loadProjectBootstrap() {
     hideRepoSuggestions();
     repoHint.textContent = github.configured ? 'Sign in to pick repos.' : 'Paste a repo or choose a local folder.';
   }
+  renderOnboarding();
 }
 
 async function loadStatus() {
@@ -631,6 +701,7 @@ chooseFolder.addEventListener('click', async () => {
     repoInput.value = folder;
     resetRepoSelection('Local folder selected.');
     statusLine.textContent = 'Ready to open the workspace.';
+    renderOnboarding();
   } catch (error) {
     statusLine.textContent = error.message;
   }
@@ -645,6 +716,7 @@ repoInput.addEventListener('input', () => {
   }
   activeRepoMatchIndex = -1;
   renderRepoSuggestions();
+  renderOnboarding();
 });
 
 repoInput.addEventListener('keydown', (event) => {
@@ -699,5 +771,11 @@ recentList.addEventListener('click', async (event) => {
 });
 
 for (const button of githubSigninButtons) button.addEventListener('click', () => startGitHubSignIn());
+onboardingClose?.addEventListener('click', dismissOnboarding);
+onboardingDialog?.addEventListener('cancel', () => {
+  try { localStorage.setItem(ONBOARDING_DISMISSED_KEY, '1'); }
+  catch {}
+});
+onboardingPickRepo?.addEventListener('click', focusProjectPicker);
 
 loadStatus();

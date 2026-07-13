@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="620" viewBox="0 0 1180 620" role="img" aria-labelledby="title desc">
+  <title id="title">OpenUI action merge plan</title>
+  <desc id="desc">Plan to fold Spanner UI controls into the OpenUI rendering path while keeping composer action behavior.</desc>
+  <style>
+    .bg{fill:#0e1118}.card{fill:#151923;stroke:#394257;stroke-width:1.5}.soon{fill:#18243a;stroke:#89b4fa}.later{fill:#17131e;stroke:#a89484}.text{fill:#e6edf3;font:700 18px Inter,Arial,sans-serif}.small{fill:#aeb8ca;font:500 14px Inter,Arial,sans-serif}.code{fill:#94e2d5;font:600 13px ui-monospace,Menlo,monospace}.muted{fill:#8b95aa;font:500 13px Inter,Arial,sans-serif}.arrow{stroke:#89b4fa;stroke-width:2.2;fill:none;marker-end:url(#arrow)}.cut{stroke:#f38ba8;stroke-width:2;stroke-dasharray:6 5}.badge{fill:#243754;stroke:#89b4fa}.badgeText{fill:#89b4fa;font:800 12px Inter,Arial,sans-serif;letter-spacing:.08em}.n{fill:#89b4fa;font:900 14px Inter,Arial,sans-serif}.check{fill:#a6e3a1;font:900 16px Inter,Arial,sans-serif}
+  </style>
+  <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#89b4fa"/></marker></defs>
+  <rect class="bg" width="1180" height="620"/>
+  <text class="text" x="54" y="48">Merge interactive controls into OpenUI</text>
+  <text class="small" x="54" y="76">One fenced UI language; Spanner keeps only the composer action bridge.</text>
+
+  <rect class="card" x="54" y="118" width="250" height="118" rx="18"/>
+  <text class="text" x="78" y="153">Today</text>
+  <text class="code" x="78" y="184">```openui``` → Renderer</text>
+  <text class="code" x="78" y="209">```spanner-ui``` → custom DOM</text>
+
+  <rect class="soon" x="392" y="104" width="330" height="152" rx="18"/>
+  <text class="n" x="416" y="132">1</text>
+  <text class="text" x="442" y="132">Define OpenUI controls</text>
+  <text class="small" x="416" y="164">Add a tiny Spanner extension library:</text>
+  <text class="code" x="416" y="192">Checklist(), Slider(), Select(), TextInput()</text>
+  <text class="code" x="416" y="217">ActionButton(prompt=..., delivery=...)</text>
+
+  <rect class="soon" x="812" y="104" width="314" height="152" rx="18"/>
+  <text class="n" x="836" y="132">2</text>
+  <text class="text" x="862" y="132">Bridge actions</text>
+  <text class="small" x="836" y="164">Keep current composer behavior:</text>
+  <text class="code" x="836" y="192">onAction(event) → fillComposer()</text>
+  <text class="muted" x="836" y="218">No hidden execution; user reviews prompt.</text>
+
+  <rect class="card" x="392" y="322" width="330" height="142" rx="18"/>
+  <text class="n" x="416" y="350">3</text>
+  <text class="text" x="442" y="350">Compatibility shim</text>
+  <text class="small" x="416" y="382">Parse old blocks during migration:</text>
+  <text class="code" x="416" y="410">spanner-ui JSON → OpenUI source</text>
+  <text class="muted" x="416" y="436">Then delete once prompts stop using it.</text>
+
+  <rect class="later" x="812" y="322" width="314" height="142" rx="18"/>
+  <text class="n" x="836" y="350">4</text>
+  <text class="text" x="862" y="350">Remove second renderer</text>
+  <text class="small" x="836" y="382">Delete custom interactive DOM/CSS:</text>
+  <text class="code" x="836" y="410">interactive-artifacts.js</text>
+  <text class="muted" x="836" y="436">OpenUI owns rendering.</text>
+
+  <path class="arrow" d="M304 177 C340 177 350 177 392 177"/>
+  <path class="arrow" d="M722 177 C760 177 774 177 812 177"/>
+  <path class="arrow" d="M557 256 L557 322"/>
+  <path class="arrow" d="M722 393 C760 393 774 393 812 393"/>
+  <path class="cut" d="M84 264 L286 486"/>
+  <path class="cut" d="M286 264 L84 486"/>
+  <text class="muted" x="91" y="508">End state: no separate spanner-ui authoring path.</text>
+
+  <rect class="badge" x="54" y="548" width="184" height="34" rx="17"/>
+  <text class="badgeText" x="75" y="570">LOW-RISK FIRST</text>
+  <text class="check" x="270" y="570">✓</text><text class="small" x="294" y="570">Ship extension + tests before deleting legacy parser.</text>
+</svg>

@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="320" viewBox="0 0 980 320" role="img" aria-labelledby="title desc">
+  <title id="title">Unsigned hosted user auth flow</title>
+  <desc id="desc">Protected app routes check API auth, redirect unsigned users to homepage, GitHub OAuth returns them to the original route, then they can use the workspace.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#1f5e9c"/></marker>
+    <style>
+      text{font-family:Inter,ui-sans-serif,system-ui,sans-serif;fill:#241a12} .box{fill:#fffdf8;stroke:#d8cfc1;stroke-width:2;rx:14} .gate{fill:#ddebf6;stroke:#1f5e9c;stroke-width:2;rx:14} .small{font-size:13px;fill:#4b3a2d}.label{font-size:17px;font-weight:800}.arrow{stroke:#1f5e9c;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="980" height="320" fill="#faf8f3"/>
+  <rect class="box" x="32" y="78" width="170" height="92"/>
+  <text class="label" x="54" y="114">Protected route</text>
+  <text class="small" x="54" y="140">/ or /workspace.html</text>
+  <text class="small" x="54" y="158">entry.jsx boots</text>
+  <path class="arrow" d="M210 124h80"/>
+  <rect class="gate" x="304" y="62" width="178" height="124"/>
+  <text class="label" x="326" y="100">GET /api/me</text>
+  <text class="small" x="326" y="128">authRequired?</text>
+  <text class="small" x="326" y="148">authenticated?</text>
+  <text class="small" x="326" y="168">if no → redirect</text>
+  <path class="arrow" d="M490 124h72"/>
+  <rect class="box" x="576" y="62" width="172" height="124"/>
+  <text class="label" x="598" y="100">Landing page</text>
+  <text class="small" x="598" y="128">/homepage</text>
+  <text class="small" x="598" y="148">?returnTo=old route</text>
+  <text class="small" x="598" y="168">Sign in button</text>
+  <path class="arrow" d="M756 124h70"/>
+  <rect class="box" x="840" y="62" width="110" height="124"/>
+  <text class="label" x="862" y="100">GitHub</text>
+  <text class="small" x="862" y="128">OAuth</text>
+  <text class="small" x="862" y="148">callback</text>
+  <path class="arrow" d="M895 190v54H506"/>
+  <rect class="box" x="318" y="220" width="188" height="70"/>
+  <text class="label" x="340" y="250">Auth cookie set</text>
+  <text class="small" x="340" y="272">redirect to returnTo</text>
+  <path class="arrow" d="M318 255H118V174"/>
+  <path class="arrow" d="M393 62V28H824V62"/>
+  <text class="small" x="500" y="24">already signed in: no redirect, app loads</text>
+</svg>
