@@ -641,7 +641,7 @@ button.primary {
   box-shadow: none;
 }
 .launch-suggestions::before { content: 'Suggested starts'; padding: 0 0 10px; color: var(--ink-3); font: 700 14px/1.2 var(--sans); }
-#launch-suggestions.launch-suggestions { background: color-mix(in srgb, var(--paper-2) 62%, var(--bg)); }
+#launch-suggestions.launch-suggestions { background: color-mix(in srgb, var(--paper) 44%, transparent); }
 #suggested-next-steps.launch-suggestions { border-radius: 14px; background: color-mix(in srgb, var(--paper) 44%, transparent); overflow: hidden; }
 #suggested-next-steps.launch-suggestions::before { content: 'Suggested next steps'; }
 #launch-suggestions button:not(.primary-btn):not(.textbtn):not(.run-summary):not(.copy-button),
