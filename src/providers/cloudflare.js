@@ -39,6 +39,39 @@ function asJson(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function decodeHtmlEntities(value) {
+  return String(value || '')
+    .replace(/&bull;/gi, '·')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)));
+}
+
+function firstHtmlText(text, tag) {
+  const match = String(text || '').match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, 'i'));
+  if (!match) return '';
+  return decodeHtmlEntities(match[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim());
+}
+
+function htmlErrorMessage(text) {
+  if (!/^\s*(?:<!doctype\s+html|<html)\b/i.test(text)) return '';
+  const title = firstHtmlText(text, 'title').split('|')[0].trim();
+  const headline = firstHtmlText(text, 'h2');
+  const code = firstHtmlText(text, 'span').match(/^\d{3,4}$/)?.[0] || String(text).match(/cf-error-code[^>]*>\s*(\d{3,4})/i)?.[1] || '';
+  const rayId = String(text).match(/Ray ID:\s*<strong[^>]*>([^<]+)/i)?.[1] || String(text).match(/Ray ID:\s*([^<&\s]+)/i)?.[1] || '';
+  const summary = headline || title || 'HTML error page';
+  return [`Cloudflare broker returned ${summary}`, code ? `(${code})` : '', rayId ? `Ray ID ${decodeHtmlEntities(rayId)}` : '']
+    .filter(Boolean)
+    .join(' ');
+}
+
+function normalizeBrokerMessage(text) {
+  return htmlErrorMessage(text) || text;
+}
+
 function normalizeRemote(remote = {}, session = {}) {
   const name = remote.name || session.name || '';
   const bridgeUrl = remote.bridgeUrl || remote.httpsUrl || session.bridgeUrl || '';
@@ -87,7 +120,7 @@ async function parseBrokerResponse(response) {
   try {
     return JSON.parse(text);
   } catch {
-    return { message: text };
+    return { message: normalizeBrokerMessage(text) };
   }
 }
 

@@ -712,7 +712,7 @@ export function createThreadService({ config, provider, http, auth, runState, br
     return suspended;
   }
 
-  async function resumeThreadSession(name, viewerSessionId = '', trusted = false, user = null) {
+  async function resumeThreadSession(name, viewerSessionId = '', trusted = false, user = null, options = {}) {
     const existing = await getThreadSession(name);
     if (!canAccessSession(existing, viewerSessionId, trusted, user)) {
       throw clientError(`Main agent ${name} belongs to a different user.`, 403);
@@ -721,33 +721,59 @@ export function createThreadService({ config, provider, http, auth, runState, br
     const status = assertRemoteLifecycleAllowed(existing, 'resumed');
     if (status !== 'suspended') throw clientError('Only suspended main agents can be resumed.', 409);
 
+    const startedAt = new Date().toISOString();
     resetRunState(name, 'launching');
+    if (options.autoPrompt) appendRunOutput(name, '[system] Auto-resuming suspended sandbox before sending prompt.\n', 'launching');
     appendRunOutput(name, '[system] Restoring the Cloudflare sandbox.\n', 'launching');
-    const imageSettings = await readSavedSettings(config.settingsFile);
-    const remote = await provider.resumeSession(existing, imageSettings);
-    const bridgeUrl = trimTrailingSlash(remote.bridgeUrl || remote.httpsUrl || existing.bridgeUrl || '');
-    const launching = await upsertSession(config.sessionFile, {
+    const resuming = await upsertSession(config.sessionFile, {
       ...existing,
-      ...remote,
-      bridgeUrl,
       status: 'launching',
       runStatus: 'launching',
       warning: null,
-      updatedAt: new Date().toISOString(),
+      updatedAt: startedAt,
     });
 
-    await waitForBridge(launching);
-    await syncBridgeAuth(launching);
-    const ready = await upsertSession(config.sessionFile, {
-      ...launching,
-      status: 'ready',
-      runStatus: 'ready',
-      resumedAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
-    setRunState(name, { runStatus: 'ready', warning: null });
-    appendRunOutput(name, '[system] Sandbox resumed. Send a prompt to start a new run.\n', 'ready');
-    return ready;
+    try {
+      const imageSettings = await readSavedSettings(config.settingsFile);
+      const remote = await provider.resumeSession(resuming, imageSettings);
+      const bridgeUrl = trimTrailingSlash(remote.bridgeUrl || remote.httpsUrl || existing.bridgeUrl || '');
+      const launching = await upsertSession(config.sessionFile, {
+        ...resuming,
+        ...remote,
+        bridgeUrl,
+        status: 'launching',
+        runStatus: 'launching',
+        warning: null,
+        updatedAt: new Date().toISOString(),
+      });
+
+      await waitForBridge(launching);
+      await syncBridgeAuth(launching);
+      const ready = await upsertSession(config.sessionFile, {
+        ...launching,
+        status: 'ready',
+        runStatus: 'ready',
+        resumedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      setRunState(name, { runStatus: 'ready', warning: null });
+      appendRunOutput(name, options.autoPrompt ? '[system] Sandbox resumed. Starting your prompt.\n' : '[system] Sandbox resumed. Send a prompt to start a new run.\n', 'ready');
+      return ready;
+    } catch (error) {
+      const message = error?.message || String(error);
+      const failed = await upsertSession(config.sessionFile, {
+        ...existing,
+        status: 'suspended',
+        runStatus: 'suspended',
+        warning: message,
+        updatedAt: new Date().toISOString(),
+      });
+      setRunState(name, { runStatus: 'suspended', warning: message });
+      appendRunOutput(name, `[system] Sandbox resume failed: ${message}\n`, 'suspended');
+      const resumeError = error instanceof Error ? error : new Error(message);
+      resumeError.thread = failed;
+      throw resumeError;
+    }
   }
 
   async function deleteThreadSession(name, viewerSessionId = '', trusted = false, user = null) {
@@ -874,7 +900,7 @@ export function createThreadService({ config, provider, http, auth, runState, br
     const prompt = String(body.prompt || '').trim();
     if (!prompt) throw new Error('Prompt is required.');
 
-    const existing = await getThreadSession(name);
+    let existing = await getThreadSession(name);
     if (!canAccessSession(existing, viewerSessionId, trusted, user)) {
       throw clientError(`Main agent ${name} belongs to a different user.`, 403);
     }
@@ -882,7 +908,12 @@ export function createThreadService({ config, provider, http, auth, runState, br
     const modelOptions = normalizeModelOptions(body);
     const images = normalizeImageAttachments(body.images);
     const delivery = normalizeMessageDelivery(body.delivery);
-    const status = String(activeControlStatus(existing) || existing.runStatus || existing.status || '').toLowerCase();
+    let status = String(activeControlStatus(existing) || existing.runStatus || existing.status || '').toLowerCase();
+
+    if (!existing.localMode && status === 'suspended') {
+      existing = await resumeThreadSession(name, viewerSessionId, trusted, user, { autoPrompt: true });
+      status = String(activeControlStatus(existing) || existing.runStatus || existing.status || '').toLowerCase();
+    }
 
     if (existing.localMode && liveLocalRuns.has(name)) {
       return sendActiveLocalThreadMessage(existing, prompt, submittedAtMs, delivery, images);

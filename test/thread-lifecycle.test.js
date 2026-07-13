@@ -41,7 +41,7 @@ function createService(config, provider, bridgeCalls = []) {
     bridge: {
       fetchBridgeJson: async () => ({}),
       refreshBridgeSessionIfNeeded: async (session) => session,
-      startBridgeRun: async () => {},
+      startBridgeRun: async (session) => bridgeCalls.push(['startBridgeRun', session.bridgeUrl, session.taskPrompt]),
       waitForBridge: async (session) => bridgeCalls.push(['waitForBridge', session.bridgeUrl]),
       syncBridgeAuth: async (session) => bridgeCalls.push(['syncBridgeAuth', session.name]),
     },
@@ -111,6 +111,53 @@ test('thread lifecycle service suspends, resumes, and backup-deletes idle Cloudf
     assert.equal(thread.cloudflareSandboxId, null);
     assert.equal(thread.deletedSandboxId, 'sandbox-1');
     assert.deepEqual(calls.map((call) => call[0]), ['suspend', 'resume', 'delete']);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('message send auto-resumes a suspended Cloudflare thread before starting the run', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-auto-resume-'));
+  const sessionFile = path.join(root, 'sessions.json');
+  const settingsFile = path.join(root, 'settings.json');
+  const calls = [];
+  const bridgeCalls = [];
+  const provider = {
+    kind: 'cloudflare',
+    info: () => ({ kind: 'cloudflare' }),
+    resumeSession: async (session, settings) => {
+      calls.push(['resume', session.name, session.runStatus, settings.imageRef]);
+      return { bridgeUrl: 'https://resumed.example.test/', httpsUrl: 'https://resumed.example.test/' };
+    },
+  };
+
+  try {
+    await writeFile(sessionFile, `${JSON.stringify([baseSession({
+      status: 'suspended',
+      runStatus: 'suspended',
+      bridgeToken: 'bridge-secret',
+      bridgeClaimed: false,
+      taskPrompt: '',
+      cloudflareBackups: [{ key: 'workspace', backup: { id: 'backup-one' } }],
+    })])}\n`);
+    await writeFile(settingsFile, `${JSON.stringify({ imageRef: 'resume-image' })}\n`);
+    const service = createService({ sessionFile, settingsFile }, provider, bridgeCalls);
+
+    const prompted = await service.promptThreadSession('cloudflare-thread', { prompt: 'continue work', submittedAtMs: 2000 });
+    const stored = await getStoredSession(sessionFile, 'cloudflare-thread');
+
+    assert.equal(prompted.runStatus, 'running');
+    assert.equal(prompted.bridgeUrl, 'https://resumed.example.test');
+    assert.equal(stored.taskPrompt, 'continue work');
+    assert.equal(stored.threadMessages.length, 1);
+    assert.equal(stored.threadMessages[0].text, 'continue work');
+    assert.equal(stored.threadMessages[0].role, 'user');
+    assert.deepEqual(calls, [['resume', 'cloudflare-thread', 'launching', 'resume-image']]);
+    assert.deepEqual(bridgeCalls, [
+      ['waitForBridge', 'https://resumed.example.test'],
+      ['syncBridgeAuth', 'cloudflare-thread'],
+      ['startBridgeRun', 'https://resumed.example.test', 'continue work'],
+    ]);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

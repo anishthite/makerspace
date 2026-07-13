@@ -747,10 +747,10 @@ function renderComposerState(thread = currentThread) {
   const running = isRunningThread(thread);
   const starting = isStartingThread(thread);
   const status = String(effectiveStatus(thread) || '').toLowerCase();
-  const blocked = ['suspended', 'deleted', 'backing_up'].includes(status);
+  const blocked = ['deleted', 'backing_up'].includes(status);
   if (composerHint) {
     composerHint.textContent = status === 'suspended'
-      ? 'Sandbox is suspended · resume before sending a prompt'
+      ? 'Sandbox is suspended · send will resume it'
       : status === 'deleted'
         ? 'Sandbox was deleted after backup'
         : status === 'backing_up'
@@ -761,7 +761,7 @@ function renderComposerState(thread = currentThread) {
               ? 'Agent is starting · steering unlocks once it is live'
               : 'Enter sends · Shift+Enter adds a line';
   }
-  if (promptInput) promptInput.placeholder = blocked ? 'Lifecycle action required…' : running ? 'Steer the running agent…' : 'Next task…';
+  if (promptInput) promptInput.placeholder = status === 'suspended' ? 'Send to resume sandbox…' : blocked ? 'Lifecycle action required…' : running ? 'Steer the running agent…' : 'Next task…';
   if (sendButton) {
     sendButton.disabled = submitInFlight || starting || blocked;
     sendButton.textContent = running ? 'steer' : 'send';

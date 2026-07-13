@@ -37,7 +37,9 @@ test('sandbox lifecycle controls use resume and backup-delete routes', () => {
   assert.match(js, /postLifecycleAction\(resumeButton, 'resume', 'resuming…', 'resuming'\)/);
   assert.match(js, /confirm\('Back up, then delete this sandbox\?'\)/);
   assert.match(js, /postLifecycleAction\(deleteButton, 'delete', 'backing up…', 'backing_up'\)/);
-  assert.match(js, /Sandbox is suspended · resume before sending a prompt/);
+  assert.match(js, /Sandbox is suspended · send will resume it/);
+  assert.match(js, /const blocked = \['deleted', 'backing_up'\]\.includes\(status\);/);
+  assert.match(js, /status === 'suspended' \? 'Send to resume sandbox…'/);
 });
 
 test('archive control uses the existing finished-thread archive route', () => {

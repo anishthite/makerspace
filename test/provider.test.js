@@ -148,6 +148,21 @@ test('suspend and delete create Cloudflare backups before destroying sandbox', a
   assert.equal(fetch.calls.filter((call) => call.method === 'DELETE').length, 2);
 });
 
+test('broker HTML error pages are reported as concise Cloudflare errors', async () => {
+  const fetch = async () => new Response(`<!DOCTYPE html><html><head><title>Worker threw exception | sandbox.spanner.sh | Cloudflare</title></head><body><h2>Worker threw exception</h2><span class="cf-error-code">1101</span><small>Ray ID: abc123 &bull; 2026-07-13</small></body></html>`, {
+    status: 500,
+    headers: { 'content-type': 'text/html' },
+  });
+  const provider = createProvider(config, { fetch });
+
+  await assert.rejects(() => provider.runRemoteScript('thread-one', 'true'), (error) => {
+    assert.match(error.message, /Cloudflare broker returned Worker threw exception \(1101\)/);
+    assert.match(error.message, /Ray ID abc123/);
+    assert.doesNotMatch(error.message, /<!DOCTYPE html>/i);
+    return true;
+  });
+});
+
 test('transient sandbox error detection stays provider-neutral', () => {
   assert.equal(isTransientSandboxError(new Error('503 timeout from broker')), true);
   assert.equal(isTransientSandboxError(new Error('Container is starting. Please retry in a moment.')), true);

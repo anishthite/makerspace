@@ -26,6 +26,20 @@ function idFrom(pathname) {
   return match ? decodeURIComponent(match[1]) : '';
 }
 
+function bridgeHostPattern(env = {}) {
+  const configured = String(env.CLOUDFLARE_SANDBOX_PORT_HOSTNAME || 'spanner.sh').trim().toLowerCase().replace(/^\.+|\.+$/g, '');
+  return configured ? `-bridge.${configured}` : '-bridge.spanner.sh';
+}
+
+function shouldProxyToSandbox(url, env) {
+  const hostname = url.hostname.toLowerCase();
+  return hostname.endsWith(bridgeHostPattern(env)) || /(^|[.-])[^.]*-bridge[.-]/.test(hostname);
+}
+
+function errorMessage(error) {
+  return error?.message || String(error);
+}
+
 function sandbox(env, id, sleepAfter = '15m', keepAlive = true) {
   return getSandbox(env.Sandbox, id, {
     // ponytail: keepAlive avoids silent filesystem loss; manual suspend backs up then destroys.
@@ -116,14 +130,20 @@ async function restoreRoute(request, env, id) {
 
 export default {
   async fetch(request, env) {
-    const proxied = await proxyToSandbox(request, env);
-    if (proxied) return proxied;
+    const url = new URL(request.url);
+    const { pathname } = url;
+
+    if (shouldProxyToSandbox(url, env)) {
+      try {
+        const proxied = await proxyToSandbox(request, env);
+        if (proxied) return proxied;
+      } catch (error) {
+        return json({ error: errorMessage(error), context: { phase: 'proxy' } }, 502);
+      }
+    }
 
     const auth = requireAuth(request, env);
     if (auth) return auth;
-
-    const url = new URL(request.url);
-    const { pathname } = url;
 
     try {
       if (request.method === 'GET' && pathname === '/healthz') return json({ ok: true });
@@ -148,7 +168,7 @@ export default {
       if (request.method === 'POST' && /\/ports\/\d+$/.test(pathname)) return portRoute(request, env, id, url);
       return json({ error: 'not found' }, 404);
     } catch (error) {
-      return json({ error: error?.message || String(error) }, 500);
+      return json({ error: errorMessage(error) }, 500);
     }
   },
 };
