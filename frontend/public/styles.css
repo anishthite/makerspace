@@ -1145,7 +1145,7 @@ html[data-desktop="true"] .flow-topbar,
 .note-files code { width: fit-content; max-width: 100%; overflow-wrap: anywhere; }
 .message-item.user { display: flex; justify-content: flex-end; }
 .message-item.user .timeline-dot { background: var(--ink-3); }
-.message-item.user .message-card { max-width: min(620px, 92%); border-color: var(--thread-rule-strong); background: color-mix(in srgb, var(--blue-soft) 54%, var(--paper)); }
+.message-item.user .message-card { max-width: min(620px, 92%); border: 0; background: color-mix(in srgb, var(--blue-soft) 54%, var(--paper)); }
 .message-item.assistant .timeline-dot { background: var(--blue); }
 .message-item.assistant[data-turn-color="green"] .timeline-dot { background: var(--green); }
 .message-item.assistant[data-turn-color="amber"] .timeline-dot { background: var(--yellow); }
@@ -1349,8 +1349,7 @@ html[data-desktop="true"] .flow-topbar,
 .thread-page .interactive-artifact-card,
 .thread-page .excalidraw-card { border-color: var(--thread-rule); }
 .thread-page .flow-topbar,
-.thread-page .flow-composer,
-.thread-page .message-item.user .message-card { border-color: var(--thread-rule-strong); }
+.thread-page .flow-composer { border-color: var(--thread-rule-strong); }
 .fact-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 6px; }
 .fact { display: grid; gap: 3px; border: 1px solid var(--rule); border-radius: 6px; padding: 8px; background: var(--paper-2); }
 .fact span { color: var(--ink-3); font-size: 10px; text-transform: lowercase; }
