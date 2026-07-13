@@ -6,7 +6,7 @@ import path from 'node:path';
 
 import { createBridgeService } from '../src/server/bridge.js';
 import { createSessionService } from '../src/server/sessions.js';
-import { getStoredSession } from '../src/store.js';
+import { getStoredSession, listStoredSessions } from '../src/store.js';
 
 async function waitForValue(fn) {
   for (let attempt = 0; attempt < 80; attempt += 1) {
@@ -109,6 +109,91 @@ test('ready bridge reuse syncs current Codex auth before running', async () => {
     });
   } finally {
     globalThis.fetch = previousFetch;
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('idle cleanup destroys reusable bridges and auto-suspends thread bridges', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-idle-thread-cleanup-'));
+  const sessionFile = path.join(root, 'sessions.json');
+  const destroyed = [];
+  const suspended = [];
+  const freshNow = new Date().toISOString();
+  const expiredAt = new Date(Date.now() - 120_000).toISOString();
+
+  try {
+    await writeFile(sessionFile, `${JSON.stringify([
+      {
+        name: 'idle-reusable',
+        bridgeMode: true,
+        bridgeClaimed: false,
+        status: 'ready',
+        runStatus: 'ready',
+        bridgeUrl: 'https://idle.example.test',
+        bridgeToken: 'secret',
+        updatedAt: expiredAt,
+      },
+      {
+        name: 'idle-thread',
+        threadBridge: true,
+        bridgeMode: true,
+        bridgeClaimed: false,
+        status: 'ready',
+        runStatus: 'ready',
+        bridgeUrl: 'https://thread.example.test',
+        bridgeToken: 'secret',
+        updatedAt: expiredAt,
+      },
+      {
+        name: 'fresh-thread',
+        threadBridge: true,
+        bridgeMode: true,
+        bridgeClaimed: false,
+        status: 'ready',
+        runStatus: 'ready',
+        bridgeUrl: 'https://fresh.example.test',
+        bridgeToken: 'secret',
+        updatedAt: freshNow,
+      },
+      {
+        name: 'active-thread',
+        threadBridge: true,
+        bridgeMode: true,
+        bridgeClaimed: true,
+        status: 'running',
+        runStatus: 'running',
+        bridgeUrl: 'https://active.example.test',
+        bridgeToken: 'secret',
+        updatedAt: expiredAt,
+      },
+    ])}\n`);
+
+    const bridge = createBridgeService({
+      config: { sessionFile, idleBridgeTtlMs: 60_000, threadBridgeIdleTtlMs: 60_000 },
+      provider: {
+        destroySession: async (name) => { destroyed.push(name); },
+        suspendSession: async (session) => {
+          suspended.push(session.name);
+          return { cloudflareBackups: [{ key: 'workspace', backup: { id: `${session.name}-backup` } }] };
+        },
+      },
+      auth: {},
+      runState: runStateStub(),
+    });
+
+    await bridge.pruneExpiredIdleBridges();
+
+    assert.equal(await getStoredSession(sessionFile, 'idle-reusable'), null);
+    const idleThread = await getStoredSession(sessionFile, 'idle-thread');
+    assert.equal(idleThread.runStatus, 'suspended');
+    assert.equal(idleThread.autoSuspendedAt, idleThread.suspendedAt);
+    assert.equal(idleThread.cloudflareBackups[0].backup.id, 'idle-thread-backup');
+    assert.equal((await getStoredSession(sessionFile, 'fresh-thread')).runStatus, 'ready');
+    assert.equal((await getStoredSession(sessionFile, 'active-thread')).runStatus, 'running');
+    assert.deepEqual(destroyed, ['idle-reusable']);
+    assert.deepEqual(suspended, ['idle-thread']);
+    assert.equal((await listStoredSessions(sessionFile)).length, 3);
+  } finally {
     await rm(root, { recursive: true, force: true });
   }
 });

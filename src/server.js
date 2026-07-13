@@ -59,7 +59,11 @@ server.listen(config.port, config.host || undefined, () => {
   void bridge.reattachActiveBridgeRuns();
   void bridge.pruneExpiredIdleBridges();
   void bridge.ensureWarmBridgePool();
-  if (Number.isFinite(config.idleBridgeTtlMs) && config.idleBridgeTtlMs > 0) {
-    setInterval(() => void bridge.pruneExpiredIdleBridges(), config.idleBridgeTtlMs).unref();
+  const cleanupEveryMs = [config.idleBridgeTtlMs, config.threadBridgeIdleTtlMs]
+    .map(Number)
+    .filter((value) => Number.isFinite(value) && value > 0)
+    .sort((left, right) => left - right)[0];
+  if (cleanupEveryMs) {
+    setInterval(() => void bridge.pruneExpiredIdleBridges(), cleanupEveryMs).unref();
   }
 });

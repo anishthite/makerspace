@@ -141,6 +141,7 @@ export function getConfig() {
     bridgeStaleBackupTimeoutMs: Number(process.env.PI_BRIDGE_STALE_BACKUP_TIMEOUT_MS || 30000),
     warmBridgePoolSize: Number(process.env.WARM_BRIDGE_POOL_SIZE || 0),
     idleBridgeTtlMs: Number(process.env.IDLE_BRIDGE_TTL_MS || 60 * 60 * 1000),
+    threadBridgeIdleTtlMs: Number(process.env.THREAD_BRIDGE_IDLE_TTL_MS || 15 * 60 * 1000),
     hostDispatchEnabled: provider !== 'local' && ['1', 'true', 'yes'].includes(String(process.env.PI_HOST_DISPATCH || process.env.PI_LOCAL_DISPATCH || '').toLowerCase()),
     piSdkPackageDir: process.env.PI_SDK_PACKAGE_DIR || '',
     piAgentDir: process.env.PI_CODING_AGENT_DIR || path.join(homedir(), '.pi', 'agent'),

@@ -297,22 +297,57 @@ export function createBridgeService({ config, provider, auth, runState }) {
     return active.length;
   }
 
+  function finitePositive(value) {
+    const number = Number(value);
+    return Number.isFinite(number) && number > 0 ? number : 0;
+  }
+
+  function idleAgeMs(session) {
+    const updatedAtMs = Date.parse(session.updatedAt || session.createdAt || '');
+    return Number.isFinite(updatedAtMs) ? Date.now() - updatedAtMs : 0;
+  }
+
   function isIdleReusableBridge(session) {
     if (session?.threadBridge) return false;
     if (!session?.bridgeMode || session.bridgeClaimed || session.status !== 'ready' || !session.bridgeUrl || !session.bridgeToken) return false;
-    const ttlMs = Number(config.idleBridgeTtlMs);
-    if (!Number.isFinite(ttlMs) || ttlMs <= 0) return false;
-    const updatedAtMs = Date.parse(session.updatedAt || session.createdAt || '');
-    return Number.isFinite(updatedAtMs) && Date.now() - updatedAtMs <= ttlMs;
+    const ttlMs = finitePositive(config.idleBridgeTtlMs);
+    return ttlMs > 0 && idleAgeMs(session) <= ttlMs;
   }
 
   function isExpiredIdleBridge(session) {
     if (session?.threadBridge) return false;
     if (!session?.bridgeMode || session.bridgeClaimed || session.status !== 'ready') return false;
-    const ttlMs = Number(config.idleBridgeTtlMs);
-    if (!Number.isFinite(ttlMs) || ttlMs <= 0) return false;
-    const updatedAtMs = Date.parse(session.updatedAt || session.createdAt || '');
-    return Number.isFinite(updatedAtMs) && Date.now() - updatedAtMs > ttlMs;
+    const ttlMs = finitePositive(config.idleBridgeTtlMs);
+    return ttlMs > 0 && idleAgeMs(session) > ttlMs;
+  }
+
+  function isExpiredThreadBridge(session) {
+    if (!session?.threadBridge || session.localMode) return false;
+    if (!session.bridgeMode || session.bridgeClaimed || !session.bridgeUrl || !session.bridgeToken) return false;
+    const status = String(session.runStatus || session.status || '').toLowerCase();
+    if (status !== 'ready') return false;
+    const ttlMs = finitePositive(config.threadBridgeIdleTtlMs);
+    return ttlMs > 0 && idleAgeMs(session) > ttlMs;
+  }
+
+  async function autoSuspendExpiredThreadBridge(session) {
+    if (!provider.suspendSession) return;
+    appendRunOutput(session.name, '[system] Auto-suspending idle sandbox to free Cloudflare capacity.\n', 'suspended');
+    const remote = await provider.suspendSession(session);
+    const now = new Date().toISOString();
+    const suspended = await upsertSession(config.sessionFile, {
+      ...session,
+      ...remote,
+      status: 'suspended',
+      runStatus: 'suspended',
+      warning: null,
+      suspendedAt: now,
+      autoSuspendedAt: now,
+      updatedAt: now,
+    });
+    setRunState(session.name, { runStatus: 'suspended', warning: null });
+    appendRunStatus(session.name, 'suspended', { done: true, autoSuspended: true });
+    return suspended;
   }
 
   async function pruneExpiredIdleBridges() {
@@ -331,6 +366,19 @@ export function createBridgeService({ config, provider, auth, runState }) {
         activeRuns.delete(session.name);
       } catch (error) {
         console.warn(`[spanner] failed to destroy expired idle sandbox ${session.name}: ${error.message}`);
+      }
+    }
+
+    for (const session of sessions.filter(isExpiredThreadBridge)) {
+      try {
+        await autoSuspendExpiredThreadBridge(session);
+      } catch (error) {
+        console.warn(`[spanner] failed to auto-suspend idle thread sandbox ${session.name}: ${error.message}`);
+        await upsertSession(config.sessionFile, {
+          ...session,
+          warning: error.message,
+          updatedAt: new Date().toISOString(),
+        });
       }
     }
   }
