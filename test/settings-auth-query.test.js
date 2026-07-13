@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
+const desktopMain = readFileSync(new URL('../desktop/main.js', import.meta.url), 'utf8');
+const desktopPreload = readFileSync(new URL('../desktop/preload.cjs', import.meta.url), 'utf8');
 const settingsPage = readFileSync(new URL('../frontend/src/pages.jsx', import.meta.url), 'utf8');
 const settingsJs = readFileSync(new URL('../frontend/src/runtime/settings.js', import.meta.url), 'utf8');
 
@@ -31,4 +33,10 @@ test('settings page hides unavailable GitHub auth actions', () => {
   assert.match(settingsJs, /githubLogin\.hidden = connected && !needsReconnect;/);
   assert.match(settingsJs, /githubLogout\.hidden = !connected;/);
   assert.match(settingsJs, /githubLogout\.hidden = true;/);
+});
+
+test('desktop Claude auth opens in the system browser', () => {
+  assert.match(desktopPreload, /openExternal: \(url\) => ipcRenderer\.invoke\('spanner:open-external', url\)/);
+  assert.match(desktopMain, /shell\.openExternal\(target\.href\)/);
+  assert.match(settingsJs, /spannerDesktop\?\.openExternal/);
 });

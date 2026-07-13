@@ -1,3 +1,5 @@
+import { toast } from 'sonner';
+
 import './appearance.js?v=palette-2';
 import { bindImageDropZone, clearImageInput, filesToImageAttachments, imageInputFiles, updateImageStatus } from './image-attachments.js';
 import { submitOnEnter } from './submit-on-enter.js';
@@ -10,6 +12,7 @@ const SEEN_FINISHED_THREADS_KEY = 'spannerSeenFinishedThreads';
 const THINKING_LEVELS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh'];
 const ARCHIVEABLE_THREAD_STATUSES = ['completed', 'ready', 'failed'];
 const API_BASE = String(import.meta.env?.VITE_SPANNER_API_BASE || '').trim().replace(/\/+$/, '');
+const MAIN_PAGE_PATH = '/workspace.html';
 
 function migrateStorageKey(legacyKey, nextKey) {
   try {
@@ -58,7 +61,6 @@ const threadStatus = document.querySelector('#thread-status');
 const launchSuggestions = document.querySelector('#launch-suggestions');
 const launchSuggestionsInitialHtml = launchSuggestions?.innerHTML || '';
 const threadsList = document.querySelector('#threads-list');
-const refreshThreads = document.querySelector('#refresh-threads');
 
 let githubRepos = [];
 let selectedRepo = null;
@@ -70,7 +72,10 @@ let finishedThreadNames = [];
 let seenFinishedThreads = readSeenFinishedThreads();
 let knownThreadStatuses = new Map();
 let loadedThreadSnapshot = false;
+let workspaceSuggestionSignature = '';
+let workspaceSuggestionRequestId = 0;
 const notifiedFinishToasts = new Set();
+
 function escapeHtml(value) {
   return String(value ?? '')
     .replaceAll('&', '&amp;')
@@ -80,32 +85,18 @@ function escapeHtml(value) {
     .replaceAll("'", '&#39;');
 }
 
-function toastHost() {
-  let host = document.querySelector('#agent-toast-stack');
-  if (host) return host;
-  host = document.createElement('div');
-  host.id = 'agent-toast-stack';
-  host.setAttribute('aria-live', 'polite');
-  host.style.cssText = 'position:fixed;right:18px;bottom:var(--thread-composer-clearance,18px);z-index:1000;display:grid;gap:8px;max-width:min(360px,calc(100vw - 32px));pointer-events:none';
-  document.body.append(host);
-  return host;
+function openMainPage() {
+  location.assign(MAIN_PAGE_PATH);
 }
 
 function showAgentToast(title, detail = '', tone = 'success') {
-  const node = document.createElement('button');
-  node.type = 'button';
-  node.className = `agent-toast${tone === 'error' ? ' error' : ''}`;
-  const label = document.createElement('strong');
-  label.textContent = title;
-  node.append(label);
-  if (detail) {
-    const copy = document.createElement('small');
-    copy.textContent = detail;
-    node.append(copy);
-  }
-  node.addEventListener('click', () => node.remove());
-  toastHost().append(node);
-  setTimeout(() => node.remove(), 8000);
+  const notify = tone === 'error' ? toast.error : toast.success;
+  notify(title, {
+    description: detail || undefined,
+    duration: 8000,
+    className: 'agent-main-link-toast',
+    action: { label: 'Open main', onClick: openMainPage },
+  });
 }
 
 function readSeenFinishedThreads() {
@@ -440,12 +431,13 @@ function setSignInStatus(message) {
 
 function renderGitHubSignIn(status) {
   const connected = Boolean(status.connected);
-  const showGate = !localProvider && !connected && status.configured;
+  const desktop = Boolean(globalThis.spannerDesktop);
+  const showGate = !desktop && !localProvider && !connected && status.configured;
   if (githubSigninCard) githubSigninCard.hidden = !showGate;
   threadForm.hidden = showGate;
   if (agentsSection) agentsSection.hidden = showGate;
   for (const button of githubSigninButtons) {
-    button.hidden = localProvider || connected || !status.configured;
+    button.hidden = desktop || localProvider || connected || !status.configured;
     button.disabled = !status.configured;
   }
   if (githubSigninCopy && status.configured) githubSigninCopy.textContent = 'Sign in once to launch agents against private repos.';
@@ -609,10 +601,11 @@ function renderThreadCard(thread) {
       <a class="inbox-main" href="${escapeHtml(threadUrl(thread.name))}"${indicatorKey ? ` data-finished-thread="${escapeHtml(indicatorKey)}"` : ''}>
         <strong>${escapeHtml(displayTitle)}</strong>
         ${detail ? `<small>${escapeHtml(detail)}</small>` : ''}
+        ${inactiveMeta}
       </a>
       <span class="inbox-side">
         ${archiveButton}
-        ${inactiveMeta || activeRuntime}
+        ${activeRuntime}
       </span>
       ${outcome ? `<small class="answer-preview">${escapeHtml(outcome)}</small>` : ''}
     </div>
@@ -656,22 +649,51 @@ function clipSuggestionText(value, max = 140) {
   return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
 }
 
-function launchSuggestionsFromThreads(threads) {
-  const suggestions = [];
-  const seen = new Set();
-  const recent = [...threads].filter((thread) => !isActiveThread(thread)).sort((left, right) => finishedAtMs(right) - finishedAtMs(left));
-  for (const thread of recent) {
-    for (const step of Array.isArray(thread?.suggestedNextSteps) ? thread.suggestedNextSteps : []) {
-      const label = clipSuggestionText(step?.label, 40);
-      const prompt = String(step?.prompt || '').replace(/\s+/g, ' ').trim();
-      const key = prompt.toLowerCase();
-      if (!label || !prompt || seen.has(key)) continue;
-      seen.add(key);
-      suggestions.push({ label, prompt, displayPrompt: clipSuggestionText(prompt, 220) });
-      if (suggestions.length === 3) return suggestions;
-    }
+function workspaceSuggestionThreads(threads) {
+  return [...threads]
+    .filter((thread) => !isActiveThread(thread))
+    .sort((left, right) => finishedAtMs(right) - finishedAtMs(left))
+    .slice(0, 6);
+}
+
+function workspaceSuggestionThreadContext(thread) {
+  return {
+    title: clipSuggestionText(thread?.title || thread?.name, 120),
+    taskPrompt: clipSuggestionText(thread?.taskPrompt, 700),
+    initialPrompt: clipSuggestionText(thread?.initialPrompt, 700),
+    finalAnswerSummary: finalAnswerSummary(thread, 700),
+    finalTurnStatus: clipSuggestionText(thread?.finalTurnStatus, 80),
+    finalTurnReason: clipSuggestionText(thread?.finalTurnReason, 220),
+    status: clipSuggestionText(thread?.status, 80),
+    runStatus: clipSuggestionText(thread?.runStatus, 80),
+    warning: clipSuggestionText(thread?.warning, 220),
+    finishedAt: finishedAt(thread),
+  };
+}
+
+async function loadWorkspaceLaunchSuggestions(threads) {
+  const source = workspaceSuggestionThreads(threads).map(workspaceSuggestionThreadContext);
+  if (!source.length) {
+    workspaceSuggestionSignature = '';
+    renderLaunchSuggestions([]);
+    return;
   }
-  return suggestions;
+
+  const signature = JSON.stringify(source);
+  if (signature === workspaceSuggestionSignature) return;
+  workspaceSuggestionSignature = signature;
+  const requestId = ++workspaceSuggestionRequestId;
+
+  try {
+    const payload = await fetchJson('/api/workspace-suggestions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ threads: source }),
+    });
+    if (requestId === workspaceSuggestionRequestId) renderLaunchSuggestions(payload.suggestions || []);
+  } catch {
+    if (requestId === workspaceSuggestionRequestId) renderLaunchSuggestions([]);
+  }
 }
 
 function renderLaunchSuggestions(suggestions) {
@@ -681,7 +703,7 @@ function renderLaunchSuggestions(suggestions) {
     return;
   }
   launchSuggestions.innerHTML = suggestions.map((suggestion) => `
-    <button type="button" data-suggested-prompt="${escapeHtml(suggestion.prompt)}"><strong>${escapeHtml(suggestion.label)}</strong><span>${escapeHtml(suggestion.displayPrompt || suggestion.prompt)}</span></button>
+    <button type="button" data-suggested-prompt="${escapeHtml(suggestion.prompt)}"><strong>${escapeHtml(suggestion.label)}</strong><span>${escapeHtml(clipSuggestionText(suggestion.displayPrompt || suggestion.prompt, 220))}</span></button>
   `).join('');
 }
 
@@ -695,21 +717,26 @@ function renderThreads(threads) {
   grouped.done.sort((left, right) => finishedAtMs(right) - finishedAtMs(left));
 
   finishedThreadNames = grouped.done.filter(canArchiveThread).map((thread) => thread.name);
-  renderLaunchSuggestions(launchSuggestionsFromThreads(threads));
-  threadsList.innerHTML = lanes.map((lane) => `
+  loadWorkspaceLaunchSuggestions(threads).catch(() => {});
+  const visibleLanes = grouped.running.length ? lanes : lanes.filter((lane) => lane.key !== 'running');
+  threadsList.innerHTML = visibleLanes.map((lane) => {
+    const historyLink = lane.key === 'done' ? '<a class="textbtn lane-history" href="/history.html">history</a>' : '';
+    const clearButton = lane.key === 'done' && finishedThreadNames.length ? '<button id="clear-finished-threads" class="textbtn lane-clear" type="button">clear</button>' : '';
+    return `
     <section class="action-lane" aria-label="${escapeHtml(lane.title)} agents">
       <div class="action-lane-head">
         <h3>${escapeHtml(lane.title)}</h3>
         <span class="action-lane-tools">
           <span class="action-count">${grouped[lane.key].length}</span>
-          ${lane.key === 'done' && finishedThreadNames.length ? '<button id="clear-finished-threads" class="textbtn lane-clear" type="button">clear all</button>' : ''}
+          ${historyLink}${clearButton}
         </span>
       </div>
       <div class="action-list">
         ${grouped[lane.key].length ? grouped[lane.key].map(renderThreadCard).join('') : `<p class="empty-state">${escapeHtml(lane.empty)}</p>`}
       </div>
     </section>
-  `).join('');
+  `;
+  }).join('');
   syncRuntimeTick();
 }
 
@@ -846,15 +873,6 @@ launchSuggestions?.addEventListener('click', (event) => {
   threadStatus.textContent = 'tweak the suggestion, then start agent';
 });
 
-refreshThreads.addEventListener('click', async () => {
-  refreshThreads.disabled = true;
-  try {
-    await loadThreads();
-  } finally {
-    refreshThreads.disabled = false;
-  }
-});
-
 for (const button of githubSigninButtons) button.addEventListener('click', () => startGitHubSignIn());
 
 threadsList.addEventListener('click', async (event) => {
@@ -881,7 +899,7 @@ threadsList.addEventListener('click', async (event) => {
       await loadThreads();
     } catch (error) {
       clearButton.disabled = false;
-      clearButton.textContent = 'clear all';
+      clearButton.textContent = 'clear';
       threadStatus.textContent = error.message;
     }
     return;

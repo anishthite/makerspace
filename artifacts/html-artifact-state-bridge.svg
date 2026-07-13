@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="560" viewBox="0 0 1180 560" role="img" aria-labelledby="title desc">
+  <title id="title">HTML artifact state bridge</title>
+  <desc id="desc">Sandboxed HTML artifact saves editable state by postMessage to the parent thread page, which persists it through the thread artifact state API.</desc>
+  <style>
+    .bg{fill:#faf8f3}.box{fill:#fffdf8;stroke:#1f5e9c;stroke-opacity:.26;stroke-width:2}.soft{fill:#ddebf6}.green{fill:#ddede6}.text{font:16px ui-monospace,SFMono-Regular,Menlo,monospace;fill:#241a12}.small{font:13px ui-monospace,SFMono-Regular,Menlo,monospace;fill:#4b3a2d}.title{font:26px ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:700;fill:#241a12}.arrow{stroke:#1f5e9c;stroke-width:3;fill:none;marker-end:url(#arrow)}
+  </style>
+  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#1f5e9c"/></marker></defs>
+  <rect class="bg" width="1180" height="560"/>
+  <text class="title" x="44" y="58">HTML artifact state bridge</text>
+  <rect class="box" x="44" y="110" width="280" height="300" rx="18"/>
+  <text class="text" x="70" y="150">HTML artifact iframe</text>
+  <text class="small" x="70" y="184">sandbox="allow-scripts"</text>
+  <text class="small" x="70" y="218">opaque origin</text>
+  <text class="small" x="70" y="252">editable rubric/form</text>
+  <rect class="green" x="70" y="292" width="228" height="64" rx="12"/>
+  <text class="small" x="88" y="318">postMessage</text>
+  <text class="small" x="88" y="342">spanner:artifact-state:save</text>
+  <rect class="box" x="450" y="110" width="300" height="300" rx="18"/>
+  <text class="text" x="476" y="150">Parent thread page</text>
+  <text class="small" x="476" y="184">matches event.source</text>
+  <text class="small" x="476" y="218">uses iframe data-artifact-path</text>
+  <text class="small" x="476" y="252">adds browserSession/auth headers</text>
+  <rect class="soft" x="476" y="292" width="248" height="64" rx="12"/>
+  <text class="small" x="494" y="318">fetch POST/GET</text>
+  <text class="small" x="494" y="342">/api/threads/:name/artifacts/state</text>
+  <rect class="box" x="876" y="110" width="260" height="300" rx="18"/>
+  <text class="text" x="902" y="150">Thread session store</text>
+  <text class="small" x="902" y="184">htmlArtifactState</text>
+  <text class="small" x="902" y="218">path → key → data</text>
+  <text class="small" x="902" y="252">file or D1-backed session</text>
+  <rect class="green" x="902" y="292" width="208" height="64" rx="12"/>
+  <text class="small" x="920" y="318">assistant can read</text>
+  <text class="small" x="920" y="342">saved state later</text>
+  <path class="arrow" d="M324 260 C370 260 400 260 448 260"/>
+  <path class="arrow" d="M750 260 C798 260 828 260 874 260"/>
+  <path class="arrow" d="M876 352 C760 486 360 486 324 352"/>
+  <text class="small" x="506" y="494">load/saved/error ack returns by postMessage</text>
+</svg>

@@ -239,7 +239,10 @@ test('thread output sync starts the active bridge follower', async () => {
       waitForBridge: async () => {},
       pushBridgeAuth: async () => {},
       startBridgeRun: async () => {},
-      followBridgeRun: (name) => { followed = name; },
+      reattachBridgeRun: async (session) => {
+        followed = session.name;
+        return runState.ensureRunState(session.name);
+      },
     },
   });
 

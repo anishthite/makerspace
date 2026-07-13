@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Remote Pi landing scoring loop</title>
+<meta name="task" content="Score remote Pi landing concepts through five iteration rounds and ship a final prototype artifact.">
+<meta name="date-started" content="2026-07-12">
+<meta name="date-updated" content="2026-07-12">
+<meta name="status" content="ready-for-review">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,landing,pi,remote-agents,rubric,scoring,design">
+<meta name="related" content="2026-07-12-remote-pi-landing-variants.html,2026-07-09-landing-design-system.html,2026-07-09-homepage-landing-gate.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code { font-family: ui-monospace, Menlo, monospace; background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+  .blast-low { color: #2a7a2a; }
+</style>
+</head>
+<body>
+<h1>Remote Pi landing scoring loop</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-12 · status <b>ready-for-review</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Create a rubric, score the existing variants, generate five rounds of ten new concepts, and ship a final prototype page.</div>
+  <b>Source</b><div>Existing eight remote-Pi landing worktrees plus user focus on browser Pi, recurring runs, env setup, local Pi portability, cloud loops, and evidence.</div>
+  <b>Surface</b><div><code>frontend/public/remote-pi-landing-loop.html</code>, <code>frontend/public/remote-pi-final-landing.html</code>, and <code>data/remote-pi-landing-loop.json</code>.</div>
+  <b>Schema</b><div>None.</div>
+  <b>Mobile</b><div>Standalone pages use responsive static layouts.</div>
+  <b>Open Qs</b><div>0; assume this is concept evaluation, not production merge.</div>
+</div>
+<h2>Algorithm</h2>
+<ol>
+  <li>Score each candidate with weighted criteria: <code>total = sum(score_i * weight_i)</code>.</li>
+  <li>For each round, keep the top genes and mutate under-scored criteria into ten new candidates.</li>
+  <li>Stop after five ten-candidate rounds and implement the highest-scoring final concept.</li>
+</ol>
+<h2>UI layout</h2>
+<ol>
+  <li><b>Loop report</b>: show rubric, round winners, every candidate score, and transition notes.</li>
+  <li><b>Final page</b>: lead with portable local Pi on remote agents and support it with recurring, env, cloud-loop, and evidence proof.</li>
+</ol>
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>scripts/generate-remote-pi-landing-loop.mjs</code></td><td>new</td><td>Generate the scoring data, report page, and final landing page from one source of truth.</td></tr>
+  <tr><td><code>data/remote-pi-landing-loop.json</code></td><td>new</td><td>Store rubric weights, scored candidates, and round transition logic.</td></tr>
+  <tr><td><code>frontend/public/remote-pi-landing-loop.html</code></td><td>new</td><td>Render the five-round scoring report.</td></tr>
+  <tr><td><code>frontend/public/remote-pi-final-landing.html</code></td><td>new</td><td>Render the final standalone landing page prototype.</td></tr>
+  <tr><td><code>output/playwright/remote-pi-loop/</code></td><td>new</td><td>Store desktop report, desktop landing, and mobile landing screenshots.</td></tr>
+  <tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note without touching unrelated rows.</td></tr>
+</table>
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Use a weighted rubric over gut ranking. The user asked for visible scoring and step-by-step iteration.</td></tr>
+  <tr><td>D-002</td><td>Make <code>portable local Pi</code> the highest-weight criterion. It is the stated feature nobody else has.</td></tr>
+  <tr><td>D-003</td><td>Ship standalone artifacts instead of editing <code>frontend/desktop.html</code>. The main checkout has unrelated dirty landing and app work.</td></tr>
+</table>
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td>Structured static report over ten new worktrees per round. Fifty worktrees would slow comparison without improving the decision.</td></tr>
+  <tr><td>T-002</td><td>One final polished page over five visual pages. The user asked for a loop ending in a good landing page.</td></tr>
+</table>
+<h2>Assumptions</h2>
+<ul>
+  <li>A-001 · Scores are product-judgment estimates. If wrong: user feedback should adjust criterion weights before merging copy.</li>
+  <li>A-002 · Final copy can describe planned capabilities when phrased as product direction. If wrong: reduce claims to current implementation only.</li>
+</ul>
+<h2>Verification</h2>
+<table>
+  <tr><th>Check</th><th>Result</th></tr>
+  <tr><td><code>node --check scripts/generate-remote-pi-landing-loop.mjs</code></td><td>Passed.</td></tr>
+  <tr><td><code>node scripts/generate-remote-pi-landing-loop.mjs</code></td><td>Generated scoring JSON and both public pages.</td></tr>
+  <tr><td><code>playwright screenshot</code></td><td>Captured desktop report, desktop landing, and mobile landing PNGs.</td></tr>
+</table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Delete the three additive artifacts and this note; no production routes or stored data change.</p>
+<h2>Followups</h2>
+<ul>
+  <li>L-001 · Turn the final prototype into the production <code>frontend/desktop.html</code> after copy approval.</li>
+  <li>L-002 · Split future-facing claims into shipped, beta, and planned badges before public launch.</li>
+</ul>
+<h2>Definition of done</h2>
+<ul>
+  <li>Rubric has explicit weights.</li>
+  <li>Existing eight variants have scores.</li>
+  <li>Five rounds of ten generated candidates have scores and transition notes.</li>
+  <li>Final prototype page exists and can be opened standalone.</li>
+  <li>Static HTML validates enough for local browser preview.</li>
+</ul>
+</body>
+</html>

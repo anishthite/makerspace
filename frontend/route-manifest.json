@@ -66,6 +66,11 @@
       "mode": "copy"
     },
     {
+      "route": "/makerspace-lookback.html",
+      "file": "makerspace-lookback.html",
+      "mode": "copy"
+    },
+    {
       "route": "/monospace-font-sampler.html",
       "file": "monospace-font-sampler.html",
       "mode": "copy"
@@ -73,6 +78,16 @@
     {
       "route": "/pixel-bench-logo-options.html",
       "file": "pixel-bench-logo-options.html",
+      "mode": "copy"
+    },
+    {
+      "route": "/remote-pi-final-landing.html",
+      "file": "remote-pi-final-landing.html",
+      "mode": "copy"
+    },
+    {
+      "route": "/remote-pi-landing-loop.html",
+      "file": "remote-pi-landing-loop.html",
       "mode": "copy"
     },
     {

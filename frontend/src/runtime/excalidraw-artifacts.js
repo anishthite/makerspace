@@ -1,5 +1,6 @@
 const EXCALIDRAW_TOKEN_RE = /(?:^|[\s([`'"])([^\s`'"<>]+\.excalidraw)\b/gi;
 const DIAGRAM_IMAGE_TOKEN_RE = /(?:^|[\s([`'"])([^\s`'"<>]+\.(?:gif|jpe?g|png|svg|webp))\b/gi;
+const HTML_ARTIFACT_TOKEN_RE = /(?:^|[\s([`'"])([^\s`'"<>]+\.html)\b/gi;
 const EXCALIDRAW_IGNORE_CONTEXT_RE = /\b(?:could not load|does not exist|failed to load|fake|missing|placeholder|sample|unreferenced|unrelated|unstaged|untracked|left\s+unstaged|left\s+unpushed|do\s+not\s+(?:open|push|render|view)|don't\s+(?:open|push|render|view)|example\s+paths?|not\s+automatically)\b/i;
 const DIAGRAM_IMAGE_CONTEXT_RE = /\b(?:architecture|artifact|chart|diagram|excalidraw|figure|flow|inline|mockup|preview|rendered?|saved|screenshot|tour|wireframe)\b|<img\b/i;
 const GENERATED_MEDIA_PATH_RE = /^(?:artifacts\/|output\/playwright\/|test-results\/)/i;
@@ -22,6 +23,10 @@ export function normalizeExcalidrawArtifactPath(value) {
 
 export function normalizeDiagramImageArtifactPath(value) {
   return normalizeRelativeArtifactPath(value, IMAGE_EXT_RE);
+}
+
+export function normalizeHtmlArtifactPath(value) {
+  return normalizeRelativeArtifactPath(value, /\.html$/i);
 }
 
 function artifactContext(value, start, end, size = 180) {
@@ -81,6 +86,21 @@ export function htmlImageArtifactPaths(value) {
     const srcMatch = String(tag[0] || '').match(SRC_ATTR_RE);
     const path = normalizeDiagramImageArtifactPath(srcMatch?.[1] ?? srcMatch?.[2] ?? srcMatch?.[3] ?? '');
     if (!path || seen.has(path)) continue;
+    seen.add(path);
+    paths.push(path);
+  }
+  return paths;
+}
+
+export function htmlArtifactPaths(value) {
+  const text = String(value || '');
+  const seen = new Set();
+  const paths = [];
+  for (const match of text.matchAll(HTML_ARTIFACT_TOKEN_RE)) {
+    const rawPath = match[1];
+    const start = match.index + match[0].length - rawPath.length;
+    const path = normalizeHtmlArtifactPath(rawPath);
+    if (!path || seen.has(path) || ignoredArtifactContext(text, start, start + rawPath.length) || !generatedMediaPath(path)) continue;
     seen.add(path);
     paths.push(path);
   }

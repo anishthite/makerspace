@@ -27,6 +27,21 @@ export function Surface({ as, className, children, ...props }) {
   return <Comp className={className} {...props}>{children}</Comp>;
 }
 
+const buttonClass = {
+  primary: 'border-[var(--blue)] bg-[var(--blue)] text-[var(--bg)] shadow-[var(--shadow)] hover:bg-[color-mix(in_srgb,var(--blue)_92%,var(--bg))]',
+  secondary: 'border-[var(--rule)] bg-[var(--paper)] text-[var(--ink-2)] hover:border-[var(--blue)] hover:bg-[var(--blue-soft)] hover:text-[var(--blue)]',
+  tertiary: 'border-[var(--rule)] bg-transparent text-[var(--ink-2)] hover:border-[var(--blue)] hover:text-[var(--blue)]',
+  ghost: 'border-[var(--rule)] bg-[var(--paper)] text-[var(--ink-2)] hover:border-[var(--blue)] hover:bg-[var(--blue-soft)] hover:text-[var(--blue)]',
+  link: 'border-transparent bg-transparent px-0 text-[var(--blue)] underline-offset-4 hover:underline',
+};
+
+const buttonSizeClass = {
+  md: 'h-9 px-3 py-2 text-[11px]',
+  sm: 'h-8 px-2.5 py-1.5 text-[10px]',
+  lg: 'h-10 px-4 py-2 text-xs',
+  icon: 'size-9 p-0',
+};
+
 export function Button({ as, href, variant = 'secondary', size = 'md', loading = false, className, children, ...props }) {
   const Comp = as || (href ? 'a' : 'button');
   const legacyClass = variant === 'primary' ? 'primary-btn' : 'textbtn';
@@ -34,7 +49,7 @@ export function Button({ as, href, variant = 'secondary', size = 'md', loading =
   const shared = {
     variant: buttonVariant[variant] || variant,
     size: buttonSize[size] || size,
-    className: cn(legacyClass, loading && 'opacity-70 pointer-events-none', className),
+    className: cn(legacyClass, 'rounded-md border font-[var(--mono)] font-bold tracking-[.04em] lowercase transition-colors active:scale-[.98] disabled:cursor-wait disabled:opacity-55', buttonClass[variant], buttonSizeClass[size], loading && 'pointer-events-none opacity-70', className),
     'data-app-variant': variant,
     'data-app-size': size,
     'aria-busy': loading || undefined,
@@ -51,21 +66,21 @@ export function Button({ as, href, variant = 'secondary', size = 'md', loading =
 
 export function Badge({ tone = 'neutral', dot = false, className, children, ...props }) {
   const variant = tone === 'error' ? 'destructive' : tone === 'neutral' ? 'secondary' : 'outline';
-  return <ShadBadge className={cn('badge', dot && 'has-dot', tone, className)} variant={variant} data-tone={tone} {...props}>
+  return <ShadBadge className={cn('inline-flex max-w-full items-center gap-1.5 overflow-hidden text-ellipsis whitespace-nowrap rounded-md border border-[var(--rule)] bg-[var(--paper-2)] px-2 py-1 font-[var(--mono)] text-[11px] lowercase text-[var(--ink-3)] data-[tone=error]:text-[var(--red)] data-[tone=success]:text-[var(--teal)] data-[tone=warning]:text-[var(--yellow)]', dot && 'has-dot', tone, className)} variant={variant} data-tone={tone} {...props}>
     {dot && <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />}
     {children}
   </ShadBadge>;
 }
 
 export function StatusPill({ active = false, tone, className, children, ...props }) {
-  return <span className={cn('status-pill', active && 'is-active', className)} data-active={active ? 'true' : undefined} data-tone={tone} {...props}>
+  return <span className={cn('inline-flex max-w-full items-center gap-1.5 overflow-hidden text-ellipsis whitespace-nowrap rounded-md border border-[var(--rule)] bg-[var(--paper-2)] px-2 py-1 font-[var(--mono)] text-[11px] lowercase text-[var(--ink-3)] data-[active=true]:border-[color-mix(in_srgb,var(--yellow)_45%,var(--rule))] data-[active=true]:text-[var(--yellow)] data-[tone=error]:text-[var(--red)] data-[tone=success]:text-[var(--teal)] data-[tone=warning]:text-[var(--yellow)]', className)} data-active={active ? 'true' : undefined} data-tone={tone} {...props}>
     {children}
   </span>;
 }
 
 export function InputGroup({ as, label, className, children, ...props }) {
   const Comp = as || 'label';
-  return <Comp className={cn('target-input', className)} {...props}>
+  return <Comp className={cn('target-input grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-2 rounded-md border border-[var(--rule)] bg-[var(--paper)] px-3 text-[var(--ink)] [&>span:first-child]:whitespace-nowrap [&>span:first-child]:font-[var(--mono)] [&>span:first-child]:text-[11px] [&>span:first-child]:font-bold [&>span:first-child]:lowercase [&>span:first-child]:text-[var(--blue)] [&_input]:border-0 [&_input]:bg-transparent [&_input]:py-2 [&_input]:shadow-none [&_select]:border-0 [&_select]:bg-transparent [&_select]:py-2 [&_select]:shadow-none', className)} {...props}>
     {label && <span>{label}</span>}
     {children}
   </Comp>;
@@ -129,8 +144,8 @@ export function Switch({ id, label, help, className, defaultChecked = false, ...
     inputRef.current.dispatchEvent(new Event('change', { bubbles: true }));
   };
 
-  return <label className={cn('toggle-card', className)}>
-    <span>{label}{help && <small>{help}</small>}</span>
+  return <label className={cn('grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-md border border-[var(--rule)] bg-[var(--paper)] p-3 text-[var(--ink)] shadow-[var(--shadow)] [&_small]:mt-1 [&_small]:block [&_small]:text-[12px] [&_small]:text-[var(--ink-3)]', className)}>
+    <span className="grid gap-1">{label}{help && <small>{help}</small>}</span>
     <input ref={inputRef} id={id} className="sr-only" type="checkbox" defaultChecked={defaultChecked} tabIndex="-1" aria-hidden="true" {...props} />
     <ShadSwitch checked={checked} onCheckedChange={setInputChecked} aria-label={label} />
   </label>;
@@ -167,10 +182,10 @@ export function Dialog({ id, title, children, className, ...props }) {
 }
 
 export function ThinkingStatus({ titleId, detailId, title = 'Loading', detail = '', className }) {
-  return <section className={cn('now-card', className)}>
+  return <section className={cn('rounded-md border border-[var(--rule)] bg-[var(--paper)] p-4 shadow-[var(--shadow)]', className)}>
     <div>
       <h1 id={titleId}>{title}</h1>
-      <p id={detailId} className="muted">{detail}</p>
+      <p id={detailId} className="text-[var(--ink-3)]">{detail}</p>
     </div>
   </section>;
 }
@@ -189,7 +204,7 @@ export function ThinkingSteps({ steps = [], title = 'Thinking', className }) {
 
 export function AskUserQuestions({ question, options = [], className }) {
   return <div className={className}>
-    <p className="eyebrow">question</p>
+    <p className="mb-2 font-[var(--mono)] text-[11px] font-bold lowercase tracking-[.12em] text-[var(--blue)]">question</p>
     <h3>{question}</h3>
     <div>
       {options.map((option, index) => <button key={option.id || option.title || index} type="button">

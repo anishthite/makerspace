@@ -6,7 +6,7 @@ import { extractOpenUIArtifacts, stripOpenUIArtifactBlocks } from './openui-arti
 import { submitOnEnter } from './submit-on-enter.js';
 import { bindImageDropZone, clearImageInput, filesToImageAttachments, imageAttachmentSrc, imageAttachmentText, imageInputFiles, updateImageStatus } from './image-attachments.js';
 import { implementationNoteFromToolEvent, implementationNotesFromToolEvent } from './implementation-notes.js';
-import { diagramImageArtifactPaths, excalidrawArtifactPaths, htmlImageArtifactPaths, normalizeDiagramImageArtifactPath } from './excalidraw-artifacts.js';
+import { diagramImageArtifactPaths, excalidrawArtifactPaths, htmlArtifactPaths, htmlImageArtifactPaths, normalizeDiagramImageArtifactPath, normalizeHtmlArtifactPath } from './excalidraw-artifacts.js';
 
 const BROWSER_SESSION_KEY = 'spannerBrowserSession';
 const MODEL_REF_KEY = 'spannerModelRef';
@@ -17,6 +17,7 @@ const COPY_FEEDBACK_MS = 1200;
 const PHOSPHOR_COPY_ICON = '<svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M216,34H88a6,6,0,0,0-6,6V82H40a6,6,0,0,0-6,6V216a6,6,0,0,0,6,6H168a6,6,0,0,0,6-6V174h42a6,6,0,0,0,6-6V40A6,6,0,0,0,216,34ZM162,210H46V94H162Zm48-48H174V88a6,6,0,0,0-6-6H94V46H210Z" /></svg><span class="sr-only">copy</span>';
 const MAX_INLINE_EXCALIDRAW_ARTIFACTS = 3;
 const MAX_INLINE_DIAGRAM_IMAGE_ARTIFACTS = 4;
+const MAX_INLINE_HTML_ARTIFACTS = 2;
 
 const API_BASE = String(import.meta.env?.VITE_SPANNER_API_BASE || '').trim().replace(/\/+$/, '');
 
@@ -365,13 +366,28 @@ function diagramImageArtifactUrl(artifactPath) {
   return url.toString();
 }
 
+function htmlArtifactUrl(artifactPath) {
+  const url = new URL(apiUrl(`/api/threads/${encodeURIComponent(name)}/artifacts/html`), location.origin);
+  url.searchParams.set('path', artifactPath);
+  url.searchParams.set('browserSession', getBrowserSessionId());
+  return url.toString();
+}
+
+function htmlArtifactStateUrl(artifactPath, stateKey = 'default') {
+  const url = new URL(`/api/threads/${encodeURIComponent(name)}/artifacts/state`, location.origin);
+  url.searchParams.set('path', artifactPath);
+  url.searchParams.set('key', stateKey || 'default');
+  url.searchParams.set('browserSession', getBrowserSessionId());
+  return `${url.pathname}${url.search}`;
+}
+
 function resolveHtmlPreviewImageSrc(src) {
   const artifactPath = normalizeDiagramImageArtifactPath(src);
   return name && artifactPath ? diagramImageArtifactUrl(artifactPath) : '';
 }
 
 function artifactStem(artifactPath) {
-  return String(artifactPath || '').replace(/\.(?:excalidraw|gif|jpe?g|png|svg|webp)$/i, '');
+  return String(artifactPath || '').replace(/\.(?:excalidraw|gif|jpe?g|png|svg|webp|html)$/i, '');
 }
 
 function encodedPublicUrl(pathname) {
@@ -528,6 +544,89 @@ function appendDiagramImageArtifactCard(section, artifact) {
   card.append(head, image);
   section.append(card);
 }
+
+function appendHtmlArtifactCard(section, artifactPath) {
+  const card = document.createElement('article');
+  card.className = 'excalidraw-card html-artifact-card';
+  card.title = artifactPath;
+
+  const head = document.createElement('div');
+  head.className = 'excalidraw-card-head';
+  const title = document.createElement('strong');
+  title.textContent = artifactPath.split('/').at(-1) || artifactPath;
+  title.title = artifactPath;
+  const link = document.createElement('a');
+  link.href = htmlArtifactUrl(artifactPath);
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  link.textContent = 'open';
+  head.append(title, link);
+
+  const frame = document.createElement('iframe');
+  frame.className = 'html-artifact-frame';
+  frame.title = `HTML artifact preview: ${artifactPath}`;
+  frame.loading = 'lazy';
+  frame.referrerPolicy = 'no-referrer';
+  frame.dataset.artifactPath = artifactPath;
+  frame.setAttribute('sandbox', 'allow-scripts');
+  frame.src = htmlArtifactUrl(artifactPath);
+
+  card.append(head, frame);
+  section.append(card);
+}
+
+function renderHtmlArtifacts(node, text) {
+  node.querySelector('.html-artifacts')?.remove();
+  if (!name || !node.closest('.message-item.assistant')) return;
+  const paths = htmlArtifactPaths(text).slice(0, MAX_INLINE_HTML_ARTIFACTS);
+  if (!paths.length) return;
+
+  const section = document.createElement('section');
+  section.className = 'excalidraw-artifacts html-artifacts';
+  section.setAttribute('aria-label', 'HTML artifacts');
+  paths.forEach((artifactPath) => appendHtmlArtifactCard(section, artifactPath));
+  node.append(section);
+}
+
+function htmlArtifactFrameForSource(source) {
+  return [...document.querySelectorAll('.html-artifact-frame')].find((frame) => frame.contentWindow === source) || null;
+}
+
+function postHtmlArtifactStateMessage(frame, payload) {
+  try {
+    frame.contentWindow?.postMessage(payload, '*');
+  } catch {}
+}
+
+async function handleHtmlArtifactStateMessage(event) {
+  const message = event.data;
+  if (!message || typeof message !== 'object' || !String(message.type || '').startsWith('spanner:artifact-state:')) return;
+  const frame = htmlArtifactFrameForSource(event.source);
+  if (!frame || !name) return;
+
+  const artifactPath = frame.dataset.artifactPath || '';
+  const key = String(message.key || message.stateKey || 'default');
+  const requestId = message.requestId || '';
+  try {
+    if (message.type === 'spanner:artifact-state:load') {
+      const payload = await fetchJson(htmlArtifactStateUrl(artifactPath, key));
+      postHtmlArtifactStateMessage(frame, { type: 'spanner:artifact-state:loaded', requestId, path: artifactPath, key, ...payload });
+      return;
+    }
+    if (message.type === 'spanner:artifact-state:save') {
+      const payload = await fetchJson(htmlArtifactStateUrl(artifactPath, key), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ key, data: message.data ?? null }),
+      });
+      postHtmlArtifactStateMessage(frame, { type: 'spanner:artifact-state:saved', requestId, path: artifactPath, key, ...payload });
+    }
+  } catch (error) {
+    postHtmlArtifactStateMessage(frame, { type: 'spanner:artifact-state:error', requestId, path: artifactPath, key, error: error.message || 'Artifact state failed.' });
+  }
+}
+
+window.addEventListener('message', handleHtmlArtifactStateMessage);
 
 function renderExcalidrawArtifacts(node, text, options = {}) {
   const renderToken = {};
@@ -1457,6 +1556,7 @@ function renderMessageBody(node, text, allowHtml = false, images = []) {
     node.textContent = displayText;
     renderMessageAttachments(node, images);
     renderExcalidrawArtifacts(node, raw);
+    renderHtmlArtifacts(node, raw);
     if (allowHtml) {
       renderInteractiveArtifacts(node, raw, fillComposerFromInteractiveAction);
       renderOpenUIArtifactsLazy(node, raw, fillComposerFromInteractiveAction);
@@ -1485,6 +1585,7 @@ function renderMessageBody(node, text, allowHtml = false, images = []) {
   iframe.srcdoc = preview;
   renderMessageAttachments(node, images);
   renderExcalidrawArtifacts(node, raw, { skipImagePaths: htmlImageArtifactPaths(displayText) });
+  renderHtmlArtifacts(node, raw);
   renderInteractiveArtifacts(node, raw, fillComposerFromInteractiveAction);
   renderOpenUIArtifactsLazy(node, raw, fillComposerFromInteractiveAction);
 }

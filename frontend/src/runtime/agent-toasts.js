@@ -1,3 +1,5 @@
+import { toast } from 'sonner';
+
 const BROWSER_SESSION_KEY = 'spannerBrowserSession';
 const PROJECT_KEY = 'spannerSelectedProject';
 
@@ -17,6 +19,7 @@ migrateStorageKey('workbenchSelectedProject', PROJECT_KEY);
 const ACTIVE_THREAD_STATUSES = ['launching', 'starting', 'queued', 'running'];
 const FINISHED_THREAD_STATUSES = ['completed', 'ready', 'failed'];
 const API_BASE = String(import.meta.env?.VITE_SPANNER_API_BASE || '').trim().replace(/\/+$/, '');
+const MAIN_PAGE_PATH = '/workspace.html';
 
 let loadedThreadSnapshot = false;
 let knownThreadStatuses = new Map();
@@ -80,32 +83,18 @@ function sameSelectedProject(thread) {
   return canonicalRepo(thread?.repoUrl) === canonicalRepo(project.value);
 }
 
-function toastHost() {
-  let host = document.querySelector('#agent-toast-stack');
-  if (host) return host;
-  host = document.createElement('div');
-  host.id = 'agent-toast-stack';
-  host.setAttribute('aria-live', 'polite');
-  host.style.cssText = 'position:fixed;right:18px;bottom:var(--thread-composer-clearance,18px);z-index:1000;display:grid;gap:8px;max-width:min(360px,calc(100vw - 32px));pointer-events:none';
-  document.body.append(host);
-  return host;
+function openMainPage() {
+  location.assign(MAIN_PAGE_PATH);
 }
 
 function showAgentToast(title, detail = '', tone = 'success') {
-  const node = document.createElement('button');
-  node.type = 'button';
-  node.className = `agent-toast${tone === 'error' ? ' error' : ''}`;
-  const label = document.createElement('strong');
-  label.textContent = title;
-  node.append(label);
-  if (detail) {
-    const copy = document.createElement('small');
-    copy.textContent = detail;
-    node.append(copy);
-  }
-  node.addEventListener('click', () => node.remove());
-  toastHost().append(node);
-  setTimeout(() => node.remove(), 8000);
+  const notify = tone === 'error' ? toast.error : toast.success;
+  notify(title, {
+    description: detail || undefined,
+    duration: 8000,
+    className: 'agent-main-link-toast',
+    action: { label: 'Open main', onClick: openMainPage },
+  });
 }
 
 function effectiveThreadStatus(thread) {

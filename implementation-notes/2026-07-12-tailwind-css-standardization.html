@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Tailwind CSS standardization</title>
+<meta name="task" content="Move live app styling into the Tailwind/Vite pipeline and remove the parallel public stylesheet link.">
+<meta name="date-started" content="2026-07-12">
+<meta name="date-updated" content="2026-07-12">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,ui,tailwind,css,standardization,vite">
+<meta name="related" content="2026-06-30-fluid-functionalism-shadcn-plan.html,2026-07-01-remove-appearance-settings.html,2026-07-12-workspace-agents-sidebar.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code, pre { font-family: ui-monospace, Menlo, monospace; }
+  code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  ul, ol { margin: .3rem 0 .8rem 1.2rem; padding: 0; }
+  li { margin: .15rem 0; }
+  .q { border-left: 3px solid #b85c00; background: #fff8ee; padding: .4rem .7rem; margin: .4rem 0; }
+  .q .id { color: #b85c00; font-weight: 700; }
+  .blast-low { color: #2a7a2a; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>Tailwind CSS standardization</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-12 · status <b>shipped</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Route live React app styling through <code>frontend/src/entry.jsx</code> and Vite/Tailwind assets.</div>
+  <b>Source</b><div>Existing <code>frontend/public/styles.css</code> plus existing shadcn/Tailwind setup.</div>
+  <b>Surface</b><div><code>/</code>, <code>/workspace.html</code>, <code>/thread.html</code>, <code>/settings.html</code>, <code>/history.html</code>, <code>/telemetry.html</code>, <code>/local-telemetry.html</code>.</div>
+  <b>Schema</b><div>None.</div>
+  <b>Mobile</b><div>Preserve current responsive rules.</div>
+  <b>Open Qs</b><div>1 (<code>Q-001</code>).</div>
+</div>
+<h2>UI layout</h2>
+<ol>
+  <li><b>Live app</b>: load one Vite-emitted CSS bundle from <code>entry.jsx</code>; no separate <code>/styles.css</code> link.</li>
+  <li><b>Design artifacts</b>: keep static prototype CSS in <code>frontend/public/**</code> unless the user asks to archive or migrate prototypes.</li>
+</ol>
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>frontend/src/styles/app.css</code></td><td>new</td><td>Own former live app stylesheet inside the Tailwind/Vite source tree.</td></tr>
+  <tr><td><code>frontend/public/styles.css</code></td><td>delete</td><td>Remove public live app CSS after source import replaces it.</td></tr>
+  <tr><td><code>frontend/src/entry.jsx</code></td><td>touch</td><td>Import <code>app.css</code> before the Tailwind entry to preserve cascade order.</td></tr>
+  <tr><td><code>frontend/src/styles/fluid-ui.css</code></td><td>touch</td><td>Keep the existing Tailwind/shadcn/font entry separate from migrated app CSS.</td></tr>
+  <tr><td><code>frontend/{index,workspace,thread,settings,history,telemetry,local-telemetry}.html</code></td><td>touch</td><td>Delete duplicate Google Font and public stylesheet links.</td></tr>
+  <tr><td><code>frontend/route-manifest.json</code></td><td>touch</td><td>Register <code>makerspace-lookback.html</code> discovered by the manifest check.</td></tr>
+  <tr><td><code>test/*.test.js</code></td><td>touch</td><td>Point CSS assertions at <code>frontend/src/styles/app.css</code> and align stale non-CSS expectations with current code.</td></tr>
+  <tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr>
+</table>
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Move live CSS into <code>frontend/src/styles/app.css</code>. Vite/Tailwind becomes the only live app styling pipeline.</td></tr>
+  <tr><td>D-002</td><td>Preserve selectors before utility rewrites. Dynamic runtime DOM uses many class names that are cheaper to keep than rewire blind.</td></tr>
+</table>
+<h2>Deviations</h2>
+<table>
+  <tr><th>ID</th><th>From spec · Did · Reason</th></tr>
+  <tr><td>X-001</td><td>CSS-only scope; updated stale bridge/sidebar tests. Full <code>npm test</code> already hit those assertions.</td></tr>
+  <tr><td>X-002</td><td>CSS-only scope; registered <code>makerspace-lookback.html</code> in the route manifest. The static public-page check requires copied HTML routes to be listed.</td></tr>
+</table>
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td>Pipeline consolidation over full selector-to-utility rewrite. A literal 1,600-line rewrite risks visual regressions without changing behavior.</td></tr>
+</table>
+<h2>Verification</h2>
+<table>
+  <tr><th>Check</th><th>Result</th></tr>
+  <tr><td><code>node --test test/appearance.test.js test/frontend-route-manifest.test.js test/project-selector-static.test.js test/thread-trace-tray.test.js test/desktop-auth-token.test.js</code></td><td>Passed 43/43.</td></tr>
+  <tr><td><code>npm run build</code></td><td>Passed.</td></tr>
+  <tr><td><code>node --test test/bridge-auth-sync.test.js test/home-runtime-summary.test.js</code></td><td>Passed 22/22 after stale assertions were aligned.</td></tr>
+  <tr><td><code>npm test</code></td><td>Passed 271/271.</td></tr>
+</table>
+<h2>Open questions</h2>
+<div class="q"><span class="id">Q-001</span> · Static design prototypes. <b>Assumed: leave archived public prototype CSS alone.</b> Alternatives: migrate prototypes, delete prototypes.</div>
+<h2>Assumptions</h2>
+<ul>
+  <li>A-001 · Existing user edits in dirty files are intentional; preserve them and make targeted edits only.</li>
+</ul>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Restore <code>frontend/public/styles.css</code>, restore the HTML stylesheet links, and remove the <code>app.css</code> import.</p>
+<h2>Followups</h2>
+<ul>
+  <li>L-001 · Convert high-churn runtime-created widgets to shared React/Tailwind components when those widgets are next touched.</li>
+</ul>
+<h2>Definition of done</h2>
+<ul>
+  <li>Live React app pages no longer link <code>/styles.css</code> or Google Fonts.</li>
+  <li><code>frontend/src/entry.jsx</code> imports <code>app.css</code> before <code>fluid-ui.css</code>.</li>
+  <li>Focused CSS/static tests and <code>npm run build</code> pass.</li>
+</ul>
+</body>
+</html>

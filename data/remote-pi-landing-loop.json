@@ -1,0 +1,1280 @@
+{
+  "generatedAt": "2026-07-12",
+  "rubric": [
+    {
+      "key": "wedge",
+      "label": "Wedge",
+      "weight": 14,
+      "question": "Is the promise sharp enough to own a market sentence?"
+    },
+    {
+      "key": "portablePi",
+      "label": "Portable Pi",
+      "weight": 18,
+      "question": "Does it foreground local Pi skills, prompts, AGENTS.md, model defaults, and habits on a remote agent?"
+    },
+    {
+      "key": "browserRemote",
+      "label": "Browser Remote",
+      "weight": 12,
+      "question": "Can someone understand Pi running from the browser against cloud sandboxes?"
+    },
+    {
+      "key": "recurrence",
+      "label": "Recurring",
+      "weight": 10,
+      "question": "Does it make repeat/standing agents feel natural?"
+    },
+    {
+      "key": "envFit",
+      "label": "Env Fit",
+      "weight": 10,
+      "question": "Does it explain custom setup, env keys, install commands, and repo conventions?"
+    },
+    {
+      "key": "cloudLoop",
+      "label": "Cloud Loop",
+      "weight": 10,
+      "question": "Does it promise better remote iteration with guardrails, tests, reviewers, and stop conditions?"
+    },
+    {
+      "key": "proof",
+      "label": "Proof",
+      "weight": 10,
+      "question": "Does it end in reviewable evidence: diffs, logs, screenshots, reports, or PRs?"
+    },
+    {
+      "key": "truth",
+      "label": "Shipping Truth",
+      "weight": 8,
+      "question": "Can we say it without sounding fake or overclaiming current implementation?"
+    },
+    {
+      "key": "clarity",
+      "label": "Landing Clarity",
+      "weight": 8,
+      "question": "Does the H1, hero visual, and CTA scan in under five seconds?"
+    }
+  ],
+  "rounds": [
+    {
+      "id": "round-0",
+      "title": "Round 0 - existing worktrees",
+      "prompt": "Score the eight concepts already built as worktrees.",
+      "transition": "The best concepts all make the remote agent feel personal. Browser-only is clear but not defensible; evidence is useful but not a wedge.",
+      "nextMove": "Mutate toward portable Pi profile, browser launch, and reusable setup.",
+      "candidates": [
+        {
+          "id": "R0-A",
+          "name": "browser-pi",
+          "h1": "Run Pi in the browser.",
+          "thesis": "Broad browser-first pitch; strong clarity, weaker uniqueness.",
+          "basedOn": "existing variant",
+          "scores": {
+            "wedge": 7,
+            "portablePi": 5,
+            "browserRemote": 10,
+            "recurrence": 5,
+            "envFit": 5,
+            "cloudLoop": 6,
+            "proof": 7,
+            "truth": 8,
+            "clarity": 9
+          },
+          "total": 67.4
+        },
+        {
+          "id": "R0-B",
+          "name": "bring-your-pi",
+          "h1": "Your local Pi setup. On a remote agent.",
+          "thesis": "Best uniqueness; directly addresses local Pi skills and habits on remote agents.",
+          "basedOn": "existing variant",
+          "scores": {
+            "wedge": 9,
+            "portablePi": 10,
+            "browserRemote": 6,
+            "recurrence": 5,
+            "envFit": 8,
+            "cloudLoop": 6,
+            "proof": 6,
+            "truth": 7,
+            "clarity": 8
+          },
+          "total": 74.8
+        },
+        {
+          "id": "R0-C",
+          "name": "recurring-agents",
+          "h1": "Make Pi come back tomorrow.",
+          "thesis": "Strong retention idea; not enough Pi-specific differentiation.",
+          "basedOn": "existing variant",
+          "scores": {
+            "wedge": 7,
+            "portablePi": 5,
+            "browserRemote": 5,
+            "recurrence": 10,
+            "envFit": 5,
+            "cloudLoop": 7,
+            "proof": 6,
+            "truth": 7,
+            "clarity": 8
+          },
+          "total": 64.8
+        },
+        {
+          "id": "R0-D",
+          "name": "env-capsules",
+          "h1": "Remote agents that know your setup.",
+          "thesis": "Excellent env/setup story; less emotional than local Pi portability.",
+          "basedOn": "existing variant",
+          "scores": {
+            "wedge": 7,
+            "portablePi": 7,
+            "browserRemote": 6,
+            "recurrence": 7,
+            "envFit": 10,
+            "cloudLoop": 7,
+            "proof": 6,
+            "truth": 8,
+            "clarity": 8
+          },
+          "total": 72.4
+        },
+        {
+          "id": "R0-E",
+          "name": "cloud-loops",
+          "h1": "Better loops for cloud agents.",
+          "thesis": "Strong operating model; less singular as a landing headline.",
+          "basedOn": "existing variant",
+          "scores": {
+            "wedge": 7,
+            "portablePi": 5,
+            "browserRemote": 6,
+            "recurrence": 7,
+            "envFit": 6,
+            "cloudLoop": 10,
+            "proof": 8,
+            "truth": 6,
+            "clarity": 8
+          },
+          "total": 68.2
+        },
+        {
+          "id": "R0-F",
+          "name": "setup-blueprint",
+          "h1": "Teach the cloud your dev setup once.",
+          "thesis": "Good onboarding promise; reads like a feature more than the product.",
+          "basedOn": "existing variant",
+          "scores": {
+            "wedge": 6,
+            "portablePi": 8,
+            "browserRemote": 5,
+            "recurrence": 8,
+            "envFit": 10,
+            "cloudLoop": 6,
+            "proof": 6,
+            "truth": 9,
+            "clarity": 7
+          },
+          "total": 71.6
+        },
+        {
+          "id": "R0-G",
+          "name": "html-evidence",
+          "h1": "Not HTML artifacts. Evidence.",
+          "thesis": "Important proof layer; too narrow as the main page.",
+          "basedOn": "existing variant",
+          "scores": {
+            "wedge": 6,
+            "portablePi": 4,
+            "browserRemote": 5,
+            "recurrence": 4,
+            "envFit": 4,
+            "cloudLoop": 7,
+            "proof": 10,
+            "truth": 8,
+            "clarity": 7
+          },
+          "total": 58.6
+        },
+        {
+          "id": "R0-H",
+          "name": "remote-roster",
+          "h1": "A bench of remote Pi agents.",
+          "thesis": "Good product shape; needs setup portability to feel novel.",
+          "basedOn": "existing variant",
+          "scores": {
+            "wedge": 7,
+            "portablePi": 6,
+            "browserRemote": 6,
+            "recurrence": 9,
+            "envFit": 7,
+            "cloudLoop": 7,
+            "proof": 7,
+            "truth": 7,
+            "clarity": 8
+          },
+          "total": 69.8
+        }
+      ]
+    },
+    {
+      "id": "round-1",
+      "title": "Round 1 - portable setup mutations",
+      "prompt": "Generate ten concepts from the top Round 0 genes: bring-your-pi, env-capsules, and setup-blueprint.",
+      "transition": "Passport language wins because it carries identity, permissions, and portability. The weak spot remains recurring usefulness.",
+      "nextMove": "Keep profile portability and add standing agents plus evidence output.",
+      "candidates": [
+        {
+          "id": "R1-A",
+          "name": "Pi Passport",
+          "h1": "Give remote agents your Pi passport.",
+          "thesis": "A profile bundle travels with each sandbox: skills, prompts, provider defaults, repo rules, and env recipe.",
+          "basedOn": "R0-B + R0-D + R0-F",
+          "scores": {
+            "wedge": 8,
+            "portablePi": 10,
+            "browserRemote": 7,
+            "recurrence": 6,
+            "envFit": 9,
+            "cloudLoop": 7,
+            "proof": 7,
+            "truth": 7,
+            "clarity": 8
+          },
+          "total": 78.6
+        },
+        {
+          "id": "R1-B",
+          "name": "Cloud Clone",
+          "h1": "Clone your Pi into the cloud.",
+          "thesis": "High drama copy for syncing the local Pi experience into remote runners.",
+          "basedOn": "R0-B",
+          "scores": {
+            "wedge": 8,
+            "portablePi": 10,
+            "browserRemote": 7,
+            "recurrence": 5,
+            "envFit": 8,
+            "cloudLoop": 7,
+            "proof": 6,
+            "truth": 6,
+            "clarity": 8
+          },
+          "total": 74.8
+        },
+        {
+          "id": "R1-C",
+          "name": "Setup Backpack",
+          "h1": "Pack your setup once. Send it with every agent.",
+          "thesis": "Setup is a portable backpack attached to each cloud run.",
+          "basedOn": "R0-D + R0-F",
+          "scores": {
+            "wedge": 7,
+            "portablePi": 9,
+            "browserRemote": 6,
+            "recurrence": 7,
+            "envFit": 10,
+            "cloudLoop": 6,
+            "proof": 6,
+            "truth": 8,
+            "clarity": 7
+          },
+          "total": 74.2
+        },
+        {
+          "id": "R1-D",
+          "name": "Browser Pi Plus Profile",
+          "h1": "Run Pi in the browser, with your profile attached.",
+          "thesis": "Combines broad browser comprehension with local Pi profile sync.",
+          "basedOn": "R0-A + R0-B",
+          "scores": {
+            "wedge": 8,
+            "portablePi": 8,
+            "browserRemote": 10,
+            "recurrence": 5,
+            "envFit": 7,
+            "cloudLoop": 6,
+            "proof": 7,
+            "truth": 8,
+            "clarity": 9
+          },
+          "total": 76.2
+        },
+        {
+          "id": "R1-E",
+          "name": "Skill Sync Sandbox",
+          "h1": "Your skills in every remote sandbox.",
+          "thesis": "Makes skills the hero rather than the broader Pi profile.",
+          "basedOn": "R0-B",
+          "scores": {
+            "wedge": 8,
+            "portablePi": 10,
+            "browserRemote": 6,
+            "recurrence": 5,
+            "envFit": 8,
+            "cloudLoop": 6,
+            "proof": 7,
+            "truth": 7,
+            "clarity": 8
+          },
+          "total": 74.4
+        },
+        {
+          "id": "R1-F",
+          "name": "Standing Profile",
+          "h1": "One profile for agents that come back.",
+          "thesis": "Turns local Pi setup into the base layer for scheduled agents.",
+          "basedOn": "R0-B + R0-C",
+          "scores": {
+            "wedge": 7,
+            "portablePi": 9,
+            "browserRemote": 6,
+            "recurrence": 9,
+            "envFit": 8,
+            "cloudLoop": 8,
+            "proof": 6,
+            "truth": 7,
+            "clarity": 7
+          },
+          "total": 75.4
+        },
+        {
+          "id": "R1-G",
+          "name": "Personal Remote Runner",
+          "h1": "Remote agents that run like your Pi.",
+          "thesis": "Plain-spoken personal remote runner promise.",
+          "basedOn": "R0-B + R0-H",
+          "scores": {
+            "wedge": 8,
+            "portablePi": 8,
+            "browserRemote": 8,
+            "recurrence": 7,
+            "envFit": 8,
+            "cloudLoop": 7,
+            "proof": 7,
+            "truth": 8,
+            "clarity": 8
+          },
+          "total": 77
+        },
+        {
+          "id": "R1-H",
+          "name": "Dotfiles in the Cloud",
+          "h1": "Your dotfiles, skills, and Pi in the cloud.",
+          "thesis": "Too much dotfile overclaim, but names the local setup desire.",
+          "basedOn": "R0-D",
+          "scores": {
+            "wedge": 7,
+            "portablePi": 8,
+            "browserRemote": 7,
+            "recurrence": 5,
+            "envFit": 9,
+            "cloudLoop": 6,
+            "proof": 6,
+            "truth": 5,
+            "clarity": 7
+          },
+          "total": 68.2
+        },
+        {
+          "id": "R1-I",
+          "name": "Cloud Workbench for Pi",
+          "h1": "A cloud workbench for Pi agents.",
+          "thesis": "Accurate but sounds category-generic.",
+          "basedOn": "R0-A + R0-E",
+          "scores": {
+            "wedge": 6,
+            "portablePi": 7,
+            "browserRemote": 8,
+            "recurrence": 6,
+            "envFit": 7,
+            "cloudLoop": 7,
+            "proof": 7,
+            "truth": 9,
+            "clarity": 7
+          },
+          "total": 70.4
+        },
+        {
+          "id": "R1-J",
+          "name": "Run Forever",
+          "h1": "Turn any Pi prompt into a recurring cloud run.",
+          "thesis": "Great recurrence angle; local Pi profile is secondary.",
+          "basedOn": "R0-C + R0-E",
+          "scores": {
+            "wedge": 7,
+            "portablePi": 7,
+            "browserRemote": 6,
+            "recurrence": 10,
+            "envFit": 8,
+            "cloudLoop": 8,
+            "proof": 7,
+            "truth": 6,
+            "clarity": 8
+          },
+          "total": 73.8
+        }
+      ]
+    },
+    {
+      "id": "round-2",
+      "title": "Round 2 - recurrence and proof graft",
+      "prompt": "Generate ten concepts from Pi Passport, Personal Remote Runner, and Standing Profile.",
+      "transition": "Personal Pi Cloud wins by making the product bigger than sync while preserving the local profile advantage.",
+      "nextMove": "Sharpen the metaphor and add cloud-loop language without making the page abstract.",
+      "candidates": [
+        {
+          "id": "R2-A",
+          "name": "Personal Pi Cloud",
+          "h1": "A personal cloud for your Pi agents.",
+          "thesis": "A named cloud space where remote agents inherit your Pi profile, run on schedule, and return evidence.",
+          "basedOn": "R1-A + R1-F + R1-G",
+          "scores": {
+            "wedge": 9,
+            "portablePi": 10,
+            "browserRemote": 8,
+            "recurrence": 8,
+            "envFit": 9,
+            "cloudLoop": 8,
+            "proof": 8,
+            "truth": 7,
+            "clarity": 9
+          },
+          "total": 86
+        },
+        {
+          "id": "R2-B",
+          "name": "Your Pi, On Schedule",
+          "h1": "Put your Pi setup on a schedule.",
+          "thesis": "Best for recurring jobs, but the browser/cloud story is quieter.",
+          "basedOn": "R1-F + R1-J",
+          "scores": {
+            "wedge": 8,
+            "portablePi": 9,
+            "browserRemote": 7,
+            "recurrence": 10,
+            "envFit": 8,
+            "cloudLoop": 8,
+            "proof": 7,
+            "truth": 7,
+            "clarity": 8
+          },
+          "total": 80.8
+        },
+        {
+          "id": "R2-C",
+          "name": "Cloud Agents With Your Pi DNA",
+          "h1": "Cloud agents with your Pi DNA.",
+          "thesis": "Memorable identity phrase; slightly gimmicky.",
+          "basedOn": "R1-A",
+          "scores": {
+            "wedge": 8,
+            "portablePi": 10,
+            "browserRemote": 7,
+            "recurrence": 7,
+            "envFit": 8,
+            "cloudLoop": 7,
+            "proof": 8,
+            "truth": 6,
+            "clarity": 8
+          },
+          "total": 78.8
+        },
+        {
+          "id": "R2-D",
+          "name": "Pi Profile, Remote Runs",
+          "h1": "Your Pi profile. Real remote runs.",
+          "thesis": "Clear, shippable, and direct.",
+          "basedOn": "R1-A + R1-D",
+          "scores": {
+            "wedge": 9,
+            "portablePi": 10,
+            "browserRemote": 8,
+            "recurrence": 6,
+            "envFit": 9,
+            "cloudLoop": 7,
+            "proof": 7,
+            "truth": 8,
+            "clarity": 9
+          },
+          "total": 82.8
+        },
+        {
+          "id": "R2-E",
+          "name": "Remote Agent Memory",
+          "h1": "Remote agents that remember your setup.",
+          "thesis": "Good retention metaphor, weaker Pi specificity.",
+          "basedOn": "R1-G",
+          "scores": {
+            "wedge": 7,
+            "portablePi": 8,
+            "browserRemote": 7,
+            "recurrence": 8,
+            "envFit": 8,
+            "cloudLoop": 8,
+            "proof": 8,
+            "truth": 7,
+            "clarity": 7
+          },
+          "total": 75.8
+        },
+        {
+          "id": "R2-F",
+          "name": "Clone Setup, Keep Control",
+          "h1": "Clone the setup. Keep the review.",
+          "thesis": "Balanced between setup and human-approved evidence.",
+          "basedOn": "R1-B + R0-G",
+          "scores": {
+            "wedge": 8,
+            "portablePi": 9,
+            "browserRemote": 7,
+            "recurrence": 7,
+            "envFit": 10,
+            "cloudLoop": 7,
+            "proof": 8,
+            "truth": 8,
+            "clarity": 8
+          },
+          "total": 80.6
+        },
+        {
+          "id": "R2-G",
+          "name": "Browser Runs, Local Taste",
+          "h1": "Browser runs with local Pi taste.",
+          "thesis": "High browser clarity, but the phrasing is too cute.",
+          "basedOn": "R1-D",
+          "scores": {
+            "wedge": 8,
+            "portablePi": 9,
+            "browserRemote": 10,
+            "recurrence": 6,
+            "envFit": 8,
+            "cloudLoop": 7,
+            "proof": 7,
+            "truth": 8,
+            "clarity": 9
+          },
+          "total": 81
+        },
+        {
+          "id": "R2-H",
+          "name": "Approved Autopilot",
+          "h1": "An autopilot that asks before it lands.",
+          "thesis": "Strong cloud-loop guardrails; local setup underweighted.",
+          "basedOn": "R1-J + R0-E",
+          "scores": {
+            "wedge": 7,
+            "portablePi": 8,
+            "browserRemote": 7,
+            "recurrence": 10,
+            "envFit": 8,
+            "cloudLoop": 9,
+            "proof": 8,
+            "truth": 6,
+            "clarity": 8
+          },
+          "total": 78.8
+        },
+        {
+          "id": "R2-I",
+          "name": "Evidence First Pi Cloud",
+          "h1": "Every remote Pi run leaves receipts.",
+          "thesis": "Excellent proof layer, not the primary wedge.",
+          "basedOn": "R0-G + R1-A",
+          "scores": {
+            "wedge": 7,
+            "portablePi": 8,
+            "browserRemote": 8,
+            "recurrence": 7,
+            "envFit": 8,
+            "cloudLoop": 8,
+            "proof": 10,
+            "truth": 8,
+            "clarity": 8
+          },
+          "total": 79.6
+        },
+        {
+          "id": "R2-J",
+          "name": "One Profile, Many Agents",
+          "h1": "One Pi profile. Many remote agents.",
+          "thesis": "Simple product model, slightly less emotional.",
+          "basedOn": "R1-A + R0-H",
+          "scores": {
+            "wedge": 8,
+            "portablePi": 10,
+            "browserRemote": 7,
+            "recurrence": 8,
+            "envFit": 8,
+            "cloudLoop": 7,
+            "proof": 7,
+            "truth": 7,
+            "clarity": 8
+          },
+          "total": 79.6
+        }
+      ]
+    },
+    {
+      "id": "round-3",
+      "title": "Round 3 - metaphor and operating loop",
+      "prompt": "Generate ten concepts from Personal Pi Cloud plus the best clear/truthful alternatives.",
+      "transition": "Brain/hands language wins: it explains local cognition plus remote execution in one line.",
+      "nextMove": "Translate the metaphor into landing copy that does not sound like sci-fi.",
+      "candidates": [
+        {
+          "id": "R3-A",
+          "name": "Your Pi Brain, Cloud Hands",
+          "h1": "Your Pi brain. Cloud hands.",
+          "thesis": "Your local Pi profile decides how work happens; remote sandboxes do the heavy lifting.",
+          "basedOn": "R2-A + R2-D",
+          "scores": {
+            "wedge": 10,
+            "portablePi": 10,
+            "browserRemote": 8,
+            "recurrence": 8,
+            "envFit": 9,
+            "cloudLoop": 9,
+            "proof": 8,
+            "truth": 8,
+            "clarity": 9
+          },
+          "total": 89.2
+        },
+        {
+          "id": "R3-B",
+          "name": "Pi That Leaves Your Laptop",
+          "h1": "Pi that can leave your laptop.",
+          "thesis": "Strong mental image for browser/remote access.",
+          "basedOn": "R2-G",
+          "scores": {
+            "wedge": 9,
+            "portablePi": 9,
+            "browserRemote": 9,
+            "recurrence": 7,
+            "envFit": 8,
+            "cloudLoop": 8,
+            "proof": 8,
+            "truth": 8,
+            "clarity": 9
+          },
+          "total": 84.2
+        },
+        {
+          "id": "R3-C",
+          "name": "The Remote Agent That Knows You",
+          "h1": "The remote agent that knows your Pi setup.",
+          "thesis": "Clear promise, but softer than brain/hands.",
+          "basedOn": "R2-A + R2-E",
+          "scores": {
+            "wedge": 9,
+            "portablePi": 10,
+            "browserRemote": 7,
+            "recurrence": 8,
+            "envFit": 9,
+            "cloudLoop": 8,
+            "proof": 8,
+            "truth": 8,
+            "clarity": 9
+          },
+          "total": 85.6
+        },
+        {
+          "id": "R3-D",
+          "name": "Cloud Loops, Local Rules",
+          "h1": "Cloud loops. Local Pi rules.",
+          "thesis": "Excellent operating model for tests, reviewers, stop conditions, and setup.",
+          "basedOn": "R2-F + R2-H",
+          "scores": {
+            "wedge": 8,
+            "portablePi": 9,
+            "browserRemote": 8,
+            "recurrence": 9,
+            "envFit": 10,
+            "cloudLoop": 10,
+            "proof": 8,
+            "truth": 8,
+            "clarity": 8
+          },
+          "total": 86.8
+        },
+        {
+          "id": "R3-E",
+          "name": "Bring the Whole Pi Rig",
+          "h1": "Bring the whole Pi rig.",
+          "thesis": "Good for power users, less clear to new visitors.",
+          "basedOn": "R2-C",
+          "scores": {
+            "wedge": 8,
+            "portablePi": 10,
+            "browserRemote": 6,
+            "recurrence": 7,
+            "envFit": 10,
+            "cloudLoop": 7,
+            "proof": 7,
+            "truth": 7,
+            "clarity": 7
+          },
+          "total": 78.6
+        },
+        {
+          "id": "R3-F",
+          "name": "Schedule Your Pi Clone",
+          "h1": "Schedule your Pi clone.",
+          "thesis": "High recurrence, but clone language overpromises.",
+          "basedOn": "R2-B",
+          "scores": {
+            "wedge": 8,
+            "portablePi": 9,
+            "browserRemote": 7,
+            "recurrence": 10,
+            "envFit": 8,
+            "cloudLoop": 8,
+            "proof": 7,
+            "truth": 7,
+            "clarity": 8
+          },
+          "total": 80.8
+        },
+        {
+          "id": "R3-G",
+          "name": "One Click Remote Pi",
+          "h1": "One click to a remote Pi run.",
+          "thesis": "Great conversion clarity, not enough defensibility.",
+          "basedOn": "R2-G",
+          "scores": {
+            "wedge": 8,
+            "portablePi": 8,
+            "browserRemote": 10,
+            "recurrence": 6,
+            "envFit": 7,
+            "cloudLoop": 7,
+            "proof": 7,
+            "truth": 9,
+            "clarity": 9
+          },
+          "total": 79
+        },
+        {
+          "id": "R3-H",
+          "name": "Pi Cloud With Receipts",
+          "h1": "A Pi cloud with receipts.",
+          "thesis": "Makes evidence memorable and useful.",
+          "basedOn": "R2-I",
+          "scores": {
+            "wedge": 8,
+            "portablePi": 9,
+            "browserRemote": 8,
+            "recurrence": 8,
+            "envFit": 8,
+            "cloudLoop": 8,
+            "proof": 10,
+            "truth": 8,
+            "clarity": 8
+          },
+          "total": 83.8
+        },
+        {
+          "id": "R3-I",
+          "name": "Private Pi Profile Cloud",
+          "h1": "A private cloud for your Pi profile.",
+          "thesis": "Good trust posture, less action-oriented.",
+          "basedOn": "R2-A",
+          "scores": {
+            "wedge": 8,
+            "portablePi": 10,
+            "browserRemote": 7,
+            "recurrence": 7,
+            "envFit": 9,
+            "cloudLoop": 7,
+            "proof": 7,
+            "truth": 9,
+            "clarity": 8
+          },
+          "total": 81.2
+        },
+        {
+          "id": "R3-J",
+          "name": "Remote Workers For Your Pi",
+          "h1": "Remote workers for your Pi.",
+          "thesis": "Plain but risks sounding like generic worker infrastructure.",
+          "basedOn": "R2-J",
+          "scores": {
+            "wedge": 7,
+            "portablePi": 8,
+            "browserRemote": 8,
+            "recurrence": 8,
+            "envFit": 8,
+            "cloudLoop": 8,
+            "proof": 8,
+            "truth": 8,
+            "clarity": 7
+          },
+          "total": 77.8
+        }
+      ]
+    },
+    {
+      "id": "round-4",
+      "title": "Round 4 - landing headline stress test",
+      "prompt": "Generate ten landing-ready headlines from the best Round 3 concepts.",
+      "transition": "Follows-you language beats brain/hands because it is warmer, clearer, and still implies portability.",
+      "nextMove": "Finalize around the follows-you headline and verify it can carry the proof sections.",
+      "candidates": [
+        {
+          "id": "R4-A",
+          "name": "Your Pi follows you to the cloud",
+          "h1": "Your Pi follows you to the cloud.",
+          "thesis": "The local Pi setup becomes a portable profile for browser-launched remote agents.",
+          "basedOn": "R3-A + R3-C",
+          "scores": {
+            "wedge": 10,
+            "portablePi": 10,
+            "browserRemote": 9,
+            "recurrence": 8,
+            "envFit": 9,
+            "cloudLoop": 9,
+            "proof": 9,
+            "truth": 8,
+            "clarity": 10
+          },
+          "total": 92.2
+        },
+        {
+          "id": "R4-B",
+          "name": "Run your Pi from any browser",
+          "h1": "Run your Pi from any browser.",
+          "thesis": "The broadest top-of-funnel sentence, with profile sync as support.",
+          "basedOn": "R3-B + R3-G",
+          "scores": {
+            "wedge": 9,
+            "portablePi": 9,
+            "browserRemote": 10,
+            "recurrence": 7,
+            "envFit": 8,
+            "cloudLoop": 8,
+            "proof": 9,
+            "truth": 9,
+            "clarity": 10
+          },
+          "total": 88
+        },
+        {
+          "id": "R4-C",
+          "name": "Cloud agents, your local brain",
+          "h1": "Cloud agents. Your local Pi brain.",
+          "thesis": "Keeps the strong metaphor but sounds more technical.",
+          "basedOn": "R3-A",
+          "scores": {
+            "wedge": 10,
+            "portablePi": 10,
+            "browserRemote": 8,
+            "recurrence": 8,
+            "envFit": 9,
+            "cloudLoop": 9,
+            "proof": 8,
+            "truth": 8,
+            "clarity": 9
+          },
+          "total": 89.2
+        },
+        {
+          "id": "R4-D",
+          "name": "Standing cloud agents with your Pi profile",
+          "h1": "Standing cloud agents with your Pi profile.",
+          "thesis": "Best for recurring jobs, too long for the main H1.",
+          "basedOn": "R3-D + R3-F",
+          "scores": {
+            "wedge": 9,
+            "portablePi": 10,
+            "browserRemote": 8,
+            "recurrence": 10,
+            "envFit": 9,
+            "cloudLoop": 9,
+            "proof": 8,
+            "truth": 7,
+            "clarity": 9
+          },
+          "total": 89
+        },
+        {
+          "id": "R4-E",
+          "name": "Browser control plane for personal Pi",
+          "h1": "The browser control plane for personal Pi agents.",
+          "thesis": "Accurate product category, less emotional.",
+          "basedOn": "R3-G + R3-I",
+          "scores": {
+            "wedge": 8,
+            "portablePi": 9,
+            "browserRemote": 10,
+            "recurrence": 8,
+            "envFit": 9,
+            "cloudLoop": 8,
+            "proof": 8,
+            "truth": 9,
+            "clarity": 8
+          },
+          "total": 86
+        },
+        {
+          "id": "R4-F",
+          "name": "Teach the cloud your Pi once",
+          "h1": "Teach the cloud your Pi setup once.",
+          "thesis": "Excellent setup promise; narrower than the final product.",
+          "basedOn": "R3-D + R3-E",
+          "scores": {
+            "wedge": 9,
+            "portablePi": 10,
+            "browserRemote": 7,
+            "recurrence": 8,
+            "envFit": 10,
+            "cloudLoop": 8,
+            "proof": 7,
+            "truth": 9,
+            "clarity": 9
+          },
+          "total": 86.4
+        },
+        {
+          "id": "R4-G",
+          "name": "Your Pi setup, rented remote hands",
+          "h1": "Your Pi setup. Remote hands.",
+          "thesis": "Memorable but \"rented\" cheapens the trust signal.",
+          "basedOn": "R3-A",
+          "scores": {
+            "wedge": 8,
+            "portablePi": 10,
+            "browserRemote": 8,
+            "recurrence": 7,
+            "envFit": 9,
+            "cloudLoop": 9,
+            "proof": 8,
+            "truth": 7,
+            "clarity": 8
+          },
+          "total": 83.8
+        },
+        {
+          "id": "R4-H",
+          "name": "Pi cloud runs with a paper trail",
+          "h1": "Pi cloud runs with a paper trail.",
+          "thesis": "Great proof framing, weaker main wedge.",
+          "basedOn": "R3-H",
+          "scores": {
+            "wedge": 8,
+            "portablePi": 9,
+            "browserRemote": 8,
+            "recurrence": 8,
+            "envFit": 8,
+            "cloudLoop": 9,
+            "proof": 10,
+            "truth": 9,
+            "clarity": 8
+          },
+          "total": 85.6
+        },
+        {
+          "id": "R4-I",
+          "name": "Recurring fixes from a cloud Pi",
+          "h1": "Ship recurring fixes from a cloud Pi.",
+          "thesis": "Strong use case, but sounds too autonomous.",
+          "basedOn": "R3-F + R3-H",
+          "scores": {
+            "wedge": 8,
+            "portablePi": 8,
+            "browserRemote": 8,
+            "recurrence": 10,
+            "envFit": 8,
+            "cloudLoop": 9,
+            "proof": 9,
+            "truth": 7,
+            "clarity": 8
+          },
+          "total": 83.2
+        },
+        {
+          "id": "R4-J",
+          "name": "No generic remote agents",
+          "h1": "Stop using generic remote agents.",
+          "thesis": "Good contrast copy, but negative as the first impression.",
+          "basedOn": "R3-C",
+          "scores": {
+            "wedge": 9,
+            "portablePi": 10,
+            "browserRemote": 7,
+            "recurrence": 7,
+            "envFit": 8,
+            "cloudLoop": 8,
+            "proof": 8,
+            "truth": 8,
+            "clarity": 9
+          },
+          "total": 83.6
+        }
+      ]
+    },
+    {
+      "id": "round-5",
+      "title": "Round 5 - final ten",
+      "prompt": "Generate ten final candidates from the winning headline and stress them against truth, proof, and conversion clarity.",
+      "transition": "The final winner keeps the warm follows-you H1, then lets browser, recurring agents, env capsules, cloud loops, and evidence act as proof.",
+      "nextMove": "Implement a landing page around the winner.",
+      "candidates": [
+        {
+          "id": "R5-A",
+          "name": "Your Pi follows you to the cloud.",
+          "h1": "Your Pi follows you to the cloud.",
+          "thesis": "Remote coding agents launched from the browser, carrying your local Pi profile, recurring schedules, env setup, cloud loops, and evidence packs.",
+          "basedOn": "R4-A",
+          "scores": {
+            "wedge": 10,
+            "portablePi": 10,
+            "browserRemote": 9,
+            "recurrence": 9,
+            "envFit": 9,
+            "cloudLoop": 9,
+            "proof": 9,
+            "truth": 9,
+            "clarity": 10
+          },
+          "total": 94
+        },
+        {
+          "id": "R5-B",
+          "name": "Run your own Pi from the browser.",
+          "h1": "Run your own Pi from the browser.",
+          "thesis": "Stronger browser conversion, but slightly less unique than follows-you profile portability.",
+          "basedOn": "R4-B",
+          "scores": {
+            "wedge": 9,
+            "portablePi": 10,
+            "browserRemote": 10,
+            "recurrence": 8,
+            "envFit": 9,
+            "cloudLoop": 8,
+            "proof": 9,
+            "truth": 8,
+            "clarity": 10
+          },
+          "total": 91
+        },
+        {
+          "id": "R5-C",
+          "name": "Remote agents with your local Pi setup.",
+          "h1": "Remote agents with your local Pi setup.",
+          "thesis": "Plainest truthful version of the wedge.",
+          "basedOn": "R4-A + R4-F",
+          "scores": {
+            "wedge": 10,
+            "portablePi": 10,
+            "browserRemote": 8,
+            "recurrence": 8,
+            "envFit": 10,
+            "cloudLoop": 9,
+            "proof": 9,
+            "truth": 9,
+            "clarity": 9
+          },
+          "total": 92
+        },
+        {
+          "id": "R5-D",
+          "name": "A personal cloud for Pi agents.",
+          "h1": "A personal cloud for Pi agents.",
+          "thesis": "Good product category, but less immediate than follows-you.",
+          "basedOn": "R2-A + R4-A",
+          "scores": {
+            "wedge": 9,
+            "portablePi": 10,
+            "browserRemote": 9,
+            "recurrence": 9,
+            "envFit": 9,
+            "cloudLoop": 9,
+            "proof": 8,
+            "truth": 8,
+            "clarity": 9
+          },
+          "total": 90
+        },
+        {
+          "id": "R5-E",
+          "name": "Make Pi recurring, remote, and yours.",
+          "h1": "Make Pi recurring, remote, and yours.",
+          "thesis": "Balanced feature list, less visual as a hero line.",
+          "basedOn": "R4-D",
+          "scores": {
+            "wedge": 9,
+            "portablePi": 9,
+            "browserRemote": 8,
+            "recurrence": 10,
+            "envFit": 9,
+            "cloudLoop": 9,
+            "proof": 8,
+            "truth": 8,
+            "clarity": 9
+          },
+          "total": 88
+        },
+        {
+          "id": "R5-F",
+          "name": "Your Pi brain, always on.",
+          "h1": "Your Pi brain, always on.",
+          "thesis": "Sticky but risks overpromising autonomy.",
+          "basedOn": "R3-A + R4-D",
+          "scores": {
+            "wedge": 9,
+            "portablePi": 10,
+            "browserRemote": 7,
+            "recurrence": 10,
+            "envFit": 8,
+            "cloudLoop": 9,
+            "proof": 8,
+            "truth": 7,
+            "clarity": 9
+          },
+          "total": 86.8
+        },
+        {
+          "id": "R5-G",
+          "name": "The agent cloud that remembers your setup.",
+          "h1": "The agent cloud that remembers your setup.",
+          "thesis": "Trustworthy setup memory, weaker Pi specificity.",
+          "basedOn": "R2-E + R4-F",
+          "scores": {
+            "wedge": 8,
+            "portablePi": 9,
+            "browserRemote": 8,
+            "recurrence": 9,
+            "envFit": 10,
+            "cloudLoop": 8,
+            "proof": 8,
+            "truth": 9,
+            "clarity": 8
+          },
+          "total": 85.6
+        },
+        {
+          "id": "R5-H",
+          "name": "Cloud worktrees, local Pi rules.",
+          "h1": "Cloud worktrees. Local Pi rules.",
+          "thesis": "Developer-specific and accurate, but too implementation-facing.",
+          "basedOn": "R3-D",
+          "scores": {
+            "wedge": 8,
+            "portablePi": 9,
+            "browserRemote": 8,
+            "recurrence": 8,
+            "envFit": 10,
+            "cloudLoop": 9,
+            "proof": 9,
+            "truth": 9,
+            "clarity": 8
+          },
+          "total": 86.6
+        },
+        {
+          "id": "R5-I",
+          "name": "Pi in the browser, powered by your profile.",
+          "h1": "Pi in the browser, powered by your profile.",
+          "thesis": "Very clear, but longer and less distinctive.",
+          "basedOn": "R4-B + R4-A",
+          "scores": {
+            "wedge": 9,
+            "portablePi": 10,
+            "browserRemote": 10,
+            "recurrence": 8,
+            "envFit": 9,
+            "cloudLoop": 8,
+            "proof": 8,
+            "truth": 8,
+            "clarity": 9
+          },
+          "total": 89.2
+        },
+        {
+          "id": "R5-J",
+          "name": "Stop rebuilding agent setup.",
+          "h1": "Stop rebuilding agent setup.",
+          "thesis": "Best pain-point line for a section, not the whole landing page.",
+          "basedOn": "R4-F",
+          "scores": {
+            "wedge": 8,
+            "portablePi": 9,
+            "browserRemote": 7,
+            "recurrence": 8,
+            "envFit": 10,
+            "cloudLoop": 8,
+            "proof": 8,
+            "truth": 10,
+            "clarity": 8
+          },
+          "total": 84.2
+        }
+      ]
+    }
+  ],
+  "topCandidates": [
+    {
+      "round": "Round 0 - existing worktrees",
+      "winner": "bring-your-pi",
+      "h1": "Your local Pi setup. On a remote agent.",
+      "total": 74.8,
+      "nextMove": "Mutate toward portable Pi profile, browser launch, and reusable setup."
+    },
+    {
+      "round": "Round 1 - portable setup mutations",
+      "winner": "Pi Passport",
+      "h1": "Give remote agents your Pi passport.",
+      "total": 78.6,
+      "nextMove": "Keep profile portability and add standing agents plus evidence output."
+    },
+    {
+      "round": "Round 2 - recurrence and proof graft",
+      "winner": "Personal Pi Cloud",
+      "h1": "A personal cloud for your Pi agents.",
+      "total": 86,
+      "nextMove": "Sharpen the metaphor and add cloud-loop language without making the page abstract."
+    },
+    {
+      "round": "Round 3 - metaphor and operating loop",
+      "winner": "Your Pi Brain, Cloud Hands",
+      "h1": "Your Pi brain. Cloud hands.",
+      "total": 89.2,
+      "nextMove": "Translate the metaphor into landing copy that does not sound like sci-fi."
+    },
+    {
+      "round": "Round 4 - landing headline stress test",
+      "winner": "Your Pi follows you to the cloud",
+      "h1": "Your Pi follows you to the cloud.",
+      "total": 92.2,
+      "nextMove": "Finalize around the follows-you headline and verify it can carry the proof sections."
+    },
+    {
+      "round": "Round 5 - final ten",
+      "winner": "Your Pi follows you to the cloud.",
+      "h1": "Your Pi follows you to the cloud.",
+      "total": 94,
+      "nextMove": "Implement a landing page around the winner."
+    }
+  ],
+  "finalWinner": {
+    "id": "R5-A",
+    "name": "Your Pi follows you to the cloud.",
+    "h1": "Your Pi follows you to the cloud.",
+    "thesis": "Remote coding agents launched from the browser, carrying your local Pi profile, recurring schedules, env setup, cloud loops, and evidence packs.",
+    "basedOn": "R4-A",
+    "scores": {
+      "wedge": 10,
+      "portablePi": 10,
+      "browserRemote": 9,
+      "recurrence": 9,
+      "envFit": 9,
+      "cloudLoop": 9,
+      "proof": 9,
+      "truth": 9,
+      "clarity": 10
+    },
+    "total": 94
+  }
+}

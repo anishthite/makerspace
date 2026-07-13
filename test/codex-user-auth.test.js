@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -122,6 +122,50 @@ test('hosted Claude Code login uses copy-paste code flow without binding fixed c
     const authText = await auth.readPiAuthForSession({ ownerUserId: user.id });
     assert.equal(JSON.parse(authText).anthropic.access, 'claude-access');
   } finally {
+    globalThis.fetch = previousFetch;
+    await new Promise((resolve) => blocker?.close(resolve) || resolve());
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('local Claude Code login uses copy-paste code flow without binding fixed callback port', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-claude-local-auth-'));
+  const blocker = await occupyClaudeCallbackPort();
+  const previousFetch = globalThis.fetch;
+  const previousAgentDir = process.env.PI_CODING_AGENT_DIR;
+  const agentDir = path.join(root, 'pi-agent');
+  try {
+    process.env.PI_CODING_AGENT_DIR = agentDir;
+    const localConfig = { ...config(root), authRequired: false };
+    const auth = createAuthService({ config: localConfig, http: testHttp() });
+    globalThis.fetch = async (url, options = {}) => {
+      assert.equal(String(url), 'https://platform.claude.com/v1/oauth/token');
+      const body = JSON.parse(String(options.body || '{}'));
+      assert.equal(body.grant_type, 'authorization_code');
+      assert.equal(body.redirect_uri, 'https://platform.claude.com/oauth/code/callback');
+      assert.equal(body.state, body.code_verifier);
+      assert.equal(body.code, 'local-claude-code');
+      return new Response(JSON.stringify({ access_token: 'local-claude-access', refresh_token: 'local-claude-refresh', expires_in: 3600 }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    };
+
+    const login = await auth.startClaudeCodeLogin();
+    assert.equal(login.status, 'waiting');
+    assert.equal(login.manual, true);
+    assert.match(login.auth.url, /redirect_uri=https%3A%2F%2Fplatform\.claude\.com%2Foauth%2Fcode%2Fcallback/);
+
+    const job = auth.getAuthLogin(login.id);
+    auth.submitClaudeCodeLoginCode(login.id, null, { authorizationCode: `local-claude-code#${job.verifier}` });
+    await job.exchangePromise;
+
+    const authText = await readFile(path.join(agentDir, 'auth.json'), 'utf8');
+    assert.equal(JSON.parse(authText).anthropic.access, 'local-claude-access');
+    assert.equal((await auth.claudeCodeAuthStatus()).configured, true);
+  } finally {
+    if (previousAgentDir === undefined) delete process.env.PI_CODING_AGENT_DIR;
+    else process.env.PI_CODING_AGENT_DIR = previousAgentDir;
     globalThis.fetch = previousFetch;
     await new Promise((resolve) => blocker?.close(resolve) || resolve());
     await rm(root, { recursive: true, force: true });

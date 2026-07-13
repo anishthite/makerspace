@@ -19,7 +19,7 @@ function httpStub() {
 }
 
 function createService(config, bridgeCalls) {
-  const provider = { kind: 'daytona', info: () => ({ kind: 'daytona' }) };
+  const provider = { kind: 'cloudflare', info: () => ({ kind: 'cloudflare' }) };
   const runState = createRunState({
     config,
     provider,
@@ -56,7 +56,7 @@ test('bridge steering is held until the remote Pi session is running', async () 
   const sessionFile = path.join(root, 'sessions.json');
   const baseSession = {
     name: 'bridge-thread',
-    provider: 'daytona',
+    provider: 'cloudflare',
     threadBridge: true,
     bridgeMode: true,
     bridgeClaimed: true,
@@ -112,7 +112,7 @@ test('completed claimed bridge starts the next follow-up instead of reporting st
   const sessionFile = path.join(root, 'sessions.json');
   const baseSession = {
     name: 'bridge-thread',
-    provider: 'daytona',
+    provider: 'cloudflare',
     threadBridge: true,
     bridgeMode: true,
     bridgeClaimed: true,

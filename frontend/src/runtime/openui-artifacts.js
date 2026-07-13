@@ -13,8 +13,16 @@ function normalizeTripleQuotedStrings(value) {
   return value.replace(/"""([\s\S]*?)"""/g, (_, text) => JSON.stringify(text));
 }
 
+function normalizeMissingColumnData(value) {
+  // ponytail: OpenUI Col() needs data; empty columns beat a renderer error.
+  return value.replace(
+    /\bCol\s*\(\s*((?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*))\s*\)/g,
+    'Col($1, [])',
+  );
+}
+
 export function normalizeOpenUISource(value) {
-  const source = normalizeTripleQuotedStrings(shortText(value));
+  const source = normalizeMissingColumnData(normalizeTripleQuotedStrings(shortText(value)));
   if (!source || /^root\s*=/m.test(source)) return source;
   return /^[A-Z][A-Za-z0-9_]*\s*\(/.test(source) ? `root = ${source}` : source;
 }

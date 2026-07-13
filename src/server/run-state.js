@@ -3,7 +3,7 @@ import { applyPerformanceEvent } from '../performance.js';
 import { appendRetainedOutput, retainedOutputChunk } from '../resource-utils.js';
 import { appendThreadMessages, decorateSession, threadMessage } from '../session.js';
 import { getStoredSession, listStoredSessions, upsertSession } from '../store.js';
-import { fallbackThreadTitle, generateFinalAnswerSummary, generateFinalTurnStatus, generateSuggestedNextSteps, generateThreadTitle } from '../thread-title.js';
+import { fallbackThreadTitle, generateFinalAnswerSummary, generateFinalTurnStatus, generateSuggestedNextSteps, generateThreadTitle, generateWorkspaceLaunchSuggestions } from '../thread-title.js';
 import { sleep } from './utils.js';
 
 export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAccessSession, authStorageForSession = null }) {
@@ -12,11 +12,13 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
   const finalAnswerSummaryRuns = new Set();
   const finalTurnStatusRuns = new Set();
   const suggestedNextStepRuns = new Set();
+  const workspaceLaunchSuggestionCache = new Map();
   const runSubscribers = new Map();
   const polishQueue = [];
   let polishQueueRunning = false;
   const MAX_CHANGE_BYTES = 180_000;
   const MAX_CHANGE_FILES = 200;
+  const WORKSPACE_SUGGESTION_CACHE_MS = 5 * 60 * 1000;
 
   function ensureRunState(name) {
     if (!activeRuns.has(name)) {
@@ -516,6 +518,11 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
     return Number.isFinite(value) && value > 0 ? value : 15000;
   }
 
+  function workspaceLaunchSuggestionsTimeoutMs() {
+    const value = Number(config.workspaceLaunchSuggestionsTimeoutMs || config.threadNextStepsTimeoutMs || config.threadSummaryTimeoutMs);
+    return Number.isFinite(value) && value > 0 ? value : 15000;
+  }
+
   function enqueuePolishJob(job) {
     polishQueue.push(job);
     if (polishQueueRunning) return;
@@ -677,6 +684,51 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
         suggestedNextStepRuns.delete(key);
       }
     });
+  }
+
+  function cleanWorkspaceSuggestionValue(value, max = 500) {
+    return String(value || '').replace(/\s+/g, ' ').trim().slice(0, max);
+  }
+
+  function workspaceSuggestionThread(thread = {}) {
+    return {
+      title: cleanWorkspaceSuggestionValue(thread.title || thread.name, 120),
+      taskPrompt: cleanWorkspaceSuggestionValue(thread.taskPrompt, 700),
+      initialPrompt: cleanWorkspaceSuggestionValue(thread.initialPrompt, 700),
+      finalAnswerSummary: cleanWorkspaceSuggestionValue(thread.finalAnswerSummary, 700),
+      finalTurnStatus: cleanWorkspaceSuggestionValue(thread.finalTurnStatus, 80),
+      finalTurnReason: cleanWorkspaceSuggestionValue(thread.finalTurnReason, 220),
+      status: cleanWorkspaceSuggestionValue(thread.status, 80),
+      runStatus: cleanWorkspaceSuggestionValue(thread.runStatus, 80),
+      warning: cleanWorkspaceSuggestionValue(thread.warning, 220),
+      finishedAt: cleanWorkspaceSuggestionValue(thread.finishedAt || thread.endedAt || thread.updatedAt, 80),
+    };
+  }
+
+  async function generateWorkspaceLaunchSuggestionsForThreads(threads = [], user = null) {
+    const modelRef = String(config.workspaceLaunchSuggestionsModel || config.threadNextStepsModel || config.threadSummaryModel || config.threadTitleModel || '').trim();
+    const source = (Array.isArray(threads) ? threads : []).slice(0, 6).map(workspaceSuggestionThread).filter((thread) => thread.title || thread.taskPrompt || thread.initialPrompt || thread.finalAnswerSummary);
+    if (!source.length || !modelRef || modelRef.toLowerCase() === 'off') return [];
+
+    const cacheKey = JSON.stringify([user?.id || '', modelRef, source]);
+    const cached = workspaceLaunchSuggestionCache.get(cacheKey);
+    if (cached && Date.now() - cached.updatedAt < WORKSPACE_SUGGESTION_CACHE_MS) return cached.steps;
+
+    try {
+      const steps = await generateWorkspaceLaunchSuggestions(source, {
+        loadPiSdk,
+        loadPiAi,
+        modelRef,
+        authStorage: authStorageForSession ? await authStorageForSession({ ownerUserId: user?.id || '' }) : null,
+        signal: AbortSignal.timeout(workspaceLaunchSuggestionsTimeoutMs()),
+      });
+      workspaceLaunchSuggestionCache.set(cacheKey, { updatedAt: Date.now(), steps });
+      if (workspaceLaunchSuggestionCache.size > 50) workspaceLaunchSuggestionCache.delete(workspaceLaunchSuggestionCache.keys().next().value);
+      return steps;
+    } catch (error) {
+      console.warn(`[spanner] skipped workspace launch suggestions: ${error.message}`);
+      return [];
+    }
   }
 
   async function persistThreadAssistantMessage(sessionName) {
@@ -904,6 +956,7 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
     persistThreadAssistantMessage,
     withFallbackThreadTitle,
     scheduleThreadTitleGeneration,
+    generateWorkspaceLaunchSuggestionsForThreads,
     persistHostDispatchMetric,
     persistHostDispatchStatus,
     isActiveRunStatus,

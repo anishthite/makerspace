@@ -48,6 +48,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
     enqueueRunSubscriber,
     retainedOutputChunk,
     statusFromRunStatus,
+    generateWorkspaceLaunchSuggestionsForThreads,
   } = runState;
   const {
     listThreadPerformancePayload,
@@ -64,6 +65,9 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
     threadWorkflowPayload,
     threadArtifactPayload,
     threadImageArtifactPayload,
+    threadHtmlArtifactPayload,
+    threadHtmlArtifactStatePayload,
+    saveThreadHtmlArtifactStatePayload,
     saveThreadArtifactPayload,
     getThreadSession,
     promptThreadSession,
@@ -398,6 +402,12 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
         return;
       }
 
+      if (request.method === 'POST' && pathname === '/api/workspace-suggestions') {
+        const body = await readJsonBody(request);
+        sendJson(response, 200, { suggestions: await generateWorkspaceLaunchSuggestionsForThreads(body.threads, user) });
+        return;
+      }
+
       if (request.method === 'POST' && pathname === '/api/threads') {
         const body = await readJsonBody(request);
         const sessionId = viewerSessionId;
@@ -518,6 +528,31 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
           'content-security-policy': "default-src 'none'; img-src data: blob:; style-src 'unsafe-inline'; sandbox",
           'x-content-type-options': 'nosniff',
         });
+        return;
+      }
+
+      const threadArtifactHtmlMatch = pathname.match(/^\/api\/threads\/([^/]+)\/artifacts\/html$/);
+      if (request.method === 'GET' && threadArtifactHtmlMatch) {
+        const name = decodeURIComponent(threadArtifactHtmlMatch[1]);
+        const artifact = await threadHtmlArtifactPayload(name, url.searchParams.get('path'), viewerSessionId, trusted, user);
+        sendText(response, 200, artifact.data, artifact.contentType, {
+          'cache-control': 'no-store',
+          'content-security-policy': "default-src 'none'; img-src data: blob:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; sandbox allow-scripts",
+          'x-content-type-options': 'nosniff',
+        });
+        return;
+      }
+
+      const threadArtifactStateMatch = pathname.match(/^\/api\/threads\/([^/]+)\/artifacts\/state$/);
+      if (request.method === 'GET' && threadArtifactStateMatch) {
+        const name = decodeURIComponent(threadArtifactStateMatch[1]);
+        sendJson(response, 200, await threadHtmlArtifactStatePayload(name, url.searchParams.get('path'), url.searchParams.get('key') || 'default', viewerSessionId, trusted, user));
+        return;
+      }
+      if (request.method === 'POST' && threadArtifactStateMatch) {
+        const name = decodeURIComponent(threadArtifactStateMatch[1]);
+        const body = await readJsonBody(request);
+        sendJson(response, 200, await saveThreadHtmlArtifactStatePayload(name, url.searchParams.get('path'), body, viewerSessionId, trusted, user));
         return;
       }
 

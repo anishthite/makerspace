@@ -6,7 +6,7 @@ import net from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { app, autoUpdater, BrowserWindow, dialog, ipcMain } from 'electron';
+import { app, autoUpdater, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 
 import { cleanFolder, readLastFolder, writeLastFolder } from './last-folder.js';
 
@@ -135,6 +135,10 @@ function createWindow(port, token) {
     { urls: [`http://127.0.0.1:${port}/api/*`] },
     (details, callback) => callback({ requestHeaders: { ...details.requestHeaders, 'x-api-token': token } }),
   );
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    openExternalUrl(url).catch(() => {});
+    return { action: 'deny' };
+  });
   mainWindow.loadURL(`http://127.0.0.1:${port}/`);
 }
 
@@ -176,6 +180,14 @@ ipcMain.handle('spanner:choose-folder', async (_event, folder) => {
   return selected;
 });
 
+async function openExternalUrl(url) {
+  const target = new URL(String(url || ''));
+  if (!['http:', 'https:'].includes(target.protocol)) throw new Error('Only http(s) URLs can be opened.');
+  await shell.openExternal(target.href);
+}
+
+ipcMain.handle('spanner:open-external', (_event, url) => openExternalUrl(url));
+
 ipcMain.handle('spanner:check-for-updates', () => {
   if (!app.isPackaged) return { ok: false, message: 'Update checks work in the packaged app.' };
   if (!['darwin', 'win32'].includes(process.platform)) return { ok: false, message: 'Electron updates are macOS/Windows only.' };
@@ -198,7 +210,7 @@ if (app.isPackaged) {
   updateElectronApp({
     updateSource: {
       type: UpdateSourceType.ElectronPublicUpdateService,
-      repo: 'anishthite/spanner-downloads',
+      repo: 'anishthite/makerspace-downloads',
     },
     notifyUser: false,
   });

@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Makerspace Lookback</title>
+  <link rel="icon" href="/favicon.svg">
+  <style>
+    :root { color-scheme: dark; --bg:#0c0d0f; --panel:#14161a; --soft:#1b1e24; --line:#2a2f38; --ink:#f5f7fb; --muted:#9aa3b2; --accent:#8bd3ff; --bad:#ff9b9b; --good:#8ff0bd; --warn:#ffd58a; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: radial-gradient(circle at top left, #182032 0, var(--bg) 360px); color: var(--ink); font: 14px/1.45 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    button, input, select { color: inherit; font: inherit; }
+    button, input, select { border: 1px solid var(--line); border-radius: 10px; background: var(--soft); }
+    button { cursor: pointer; padding: 9px 12px; }
+    button:hover, .session-row:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
+    input, select { padding: 10px 12px; min-width: 0; }
+    .shell { width: min(1440px, calc(100% - 28px)); margin: 0 auto; padding: 22px 0 32px; }
+    .top { display: grid; gap: 14px; grid-template-columns: 1fr auto; align-items: end; margin-bottom: 16px; }
+    h1 { margin: 0; font-size: clamp(30px, 6vw, 68px); letter-spacing: -.07em; line-height: .9; }
+    .lede { margin: 10px 0 0; color: var(--muted); max-width: 720px; }
+    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+    .filters { display: grid; grid-template-columns: minmax(180px, 1fr) 160px 150px; gap: 8px; margin: 12px 0; }
+    .stats { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin: 12px 0 14px; }
+    .stat, .panel { border: 1px solid var(--line); border-radius: 16px; background: color-mix(in srgb, var(--panel) 92%, transparent); box-shadow: 0 24px 70px rgba(0,0,0,.24); }
+    .stat { padding: 12px; }
+    .stat span, .eyebrow, .muted { color: var(--muted); }
+    .stat strong { display: block; margin-top: 4px; color: var(--accent); font-size: 25px; line-height: 1; }
+    .app { display: grid; grid-template-columns: minmax(300px, .72fr) minmax(0, 1.28fr); gap: 12px; align-items: start; }
+    .panel { min-height: 180px; overflow: hidden; }
+    .list { display: grid; gap: 8px; max-height: calc(100vh - 255px); overflow: auto; padding: 10px; }
+    .session-row { width: 100%; display: grid; gap: 5px; text-align: left; border: 1px solid var(--line); background: rgba(255,255,255,.025); padding: 11px; }
+    .session-row[aria-selected="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 11%, transparent); }
+    .session-title { display: flex; gap: 8px; justify-content: space-between; align-items: start; }
+    .session-title strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .repo { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .prompt-line { color: #d7dce6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .meta-line { color: var(--muted); font-size: 12px; }
+    .badge { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 999px; padding: 3px 7px; color: var(--muted); font-size: 12px; white-space: nowrap; }
+    .badge.running, .badge.starting, .badge.launching, .badge.queued, .badge.reconnecting { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, var(--line)); }
+    .badge.completed, .badge.ready { color: var(--good); border-color: color-mix(in srgb, var(--good) 40%, var(--line)); }
+    .badge.failed, .badge.error { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 45%, var(--line)); }
+    .detail { padding: 16px; display: grid; gap: 14px; }
+    .detail-head { display: flex; gap: 12px; justify-content: space-between; align-items: start; }
+    .detail h2 { margin: 0; font-size: 26px; letter-spacing: -.04em; }
+    .detail-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+    .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .kv { padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.025); min-width: 0; }
+    .kv span { display: block; color: var(--muted); font-size: 12px; }
+    .kv strong { display: block; overflow-wrap: anywhere; }
+    pre, .message { border: 1px solid var(--line); border-radius: 12px; background: #090b0f; padding: 12px; overflow: auto; }
+    pre { margin: 0; white-space: pre-wrap; max-height: 42vh; }
+    .message { display: grid; gap: 6px; }
+    .message .role { color: var(--accent); font: 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; }
+    .message p { margin: 0; white-space: pre-wrap; }
+    .events { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .events th, .events td { border-bottom: 1px solid var(--line); padding: 8px 6px; text-align: left; vertical-align: top; }
+    .empty { padding: 28px; color: var(--muted); }
+    .section-title { margin: 4px 0 0; color: var(--muted); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+    @media (max-width: 900px) { .top, .app { grid-template-columns: 1fr; } .toolbar { justify-content: flex-start; } .filters { grid-template-columns: 1fr; } .stats, .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .list { max-height: none; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="top">
+      <div>
+        <p class="eyebrow">side app · not linked from Spanner</p>
+        <h1>Makerspace Lookback</h1>
+        <p id="status" class="lede">Loading saved sessions…</p>
+      </div>
+      <div class="toolbar">
+        <button id="refresh" type="button">refresh</button>
+        <button id="copy" type="button" disabled>copy visible</button>
+      </div>
+    </header>
+
+    <section id="stats" class="stats" aria-label="Session stats"></section>
+    <section class="filters" aria-label="Filters">
+      <input id="search" type="search" placeholder="search prompt, repo, name…" autocomplete="off">
+      <select id="status-filter" aria-label="status filter"><option value="">all statuses</option></select>
+      <select id="kind-filter" aria-label="kind filter"><option value="">all kinds</option><option value="thread">threads</option><option value="session">sessions</option><option value="archived">archived</option></select>
+    </section>
+
+    <section class="app">
+      <aside class="panel" aria-label="Saved sessions"><div id="sessions" class="list"></div></aside>
+      <section id="detail" class="panel detail" aria-live="polite"><p class="empty">Pick a session.</p></section>
+    </section>
+  </main>
+  <script src="/makerspace-lookback.js"></script>
+</body>
+</html>

@@ -8,7 +8,7 @@ const frontendEntry = readFileSync(new URL('../frontend/src/entry.jsx', import.m
 const frontendPages = readFileSync(new URL('../frontend/src/pages.jsx', import.meta.url), 'utf8');
 const frontendRouteManifest = readFileSync(new URL('../frontend/route-manifest.json', import.meta.url), 'utf8');
 const frontendSettings = readFileSync(new URL('../frontend/src/runtime/settings.js', import.meta.url), 'utf8');
-const frontendStyles = readFileSync(new URL('../frontend/public/styles.css', import.meta.url), 'utf8');
+const frontendStyles = readFileSync(new URL('../frontend/src/styles/app.css', import.meta.url), 'utf8');
 const serverJs = readFileSync(new URL('../src/server.js', import.meta.url), 'utf8');
 const packageScript = readFileSync(new URL('../scripts/package-desktop.sh', import.meta.url), 'utf8');
 
@@ -29,7 +29,7 @@ test('packaged desktop app checks public GitHub releases for updates', () => {
   assert.match(desktopMain, /if \(app\.isPackaged\)/);
   assert.match(desktopMain, /updateElectronApp/);
   assert.match(desktopMain, /UpdateSourceType\.ElectronPublicUpdateService/);
-  assert.match(desktopMain, /repo: 'anishthite\/spanner-downloads'/);
+  assert.match(desktopMain, /repo: 'anishthite\/makerspace-downloads'/);
 });
 
 test('downloaded desktop updates apply silently on next launch', () => {

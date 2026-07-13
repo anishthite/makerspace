@@ -42,7 +42,8 @@ test('static public pages stay in frontend/public for Vite copy', () => {
   assert.deepEqual(copiedManifestFiles, publicHtml);
   assert.ok(publicHtml.includes('better-designs.html'));
   assert.ok(publicHtml.includes('thread-message-variations/index.html'));
-  assert.ok(existsSync(new URL('frontend/public/styles.css', root)));
+  assert.ok(existsSync(new URL('frontend/src/styles/app.css', root)));
+  assert.equal(existsSync(new URL('frontend/public/styles.css', root)), false);
 });
 
 test('active storage keys and deploy aliases are listed', () => {

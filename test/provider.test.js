@@ -20,12 +20,19 @@ const config = {
   defaultTaskPrompt: 'Do the thing.',
 };
 
-function fakeFetch() {
+function fakeFetch({ sessionStartupFailures = 0 } = {}) {
   const calls = [];
+  let failedSessionStarts = 0;
   const fetch = async (url, options = {}) => {
     const body = options.body ? JSON.parse(options.body) : null;
     calls.push({ url: String(url), method: options.method || 'GET', headers: options.headers || {}, body });
-    if (String(url).endsWith('/sessions')) return Response.json({ id: body.name, name: body.name, state: 'ready' });
+    if (String(url).endsWith('/sessions')) {
+      if (failedSessionStarts < sessionStartupFailures) {
+        failedSessionStarts += 1;
+        return Response.json({ error: 'Container is starting. Please retry in a moment.' }, { status: 500, headers: { 'retry-after': '0' } });
+      }
+      return Response.json({ id: body.name, name: body.name, state: 'ready' });
+    }
     if (String(url).includes('/ports/')) return Response.json({ bridgeUrl: 'https://bridge.example.test/', httpsUrl: 'https://bridge.example.test/' });
     if (String(url).includes('/backup')) return Response.json({ backup: { id: `${body.name || 'backup'}-id`, dir: body.dir } });
     if (String(url).includes('/files') && (options.method || 'GET') === 'GET') {
@@ -88,6 +95,22 @@ test('createSession provisions through the broker and runs root setup', async ()
   assert.equal(fetch.calls.at(-1).url, 'https://broker.example.test/sessions/thread-one/ports/4310');
 });
 
+test('createSession retries transient Cloudflare startup responses', async () => {
+  const fetch = fakeFetch({ sessionStartupFailures: 1 });
+  const provider = createProvider({ ...config, cloudflareBrokerRetryAttempts: 2 }, { fetch });
+
+  const remote = await provider.createSession({
+    name: 'thread-retry',
+    bridgeMode: true,
+    sharePort: 4310,
+    taskPrompt: 'Test prompt',
+    bridgeToken: 'bridge-token',
+  }, {});
+
+  assert.equal(remote.cloudflareSandboxId, 'thread-retry');
+  assert.equal(fetch.calls.filter((call) => call.url === 'https://broker.example.test/sessions').length, 2);
+});
+
 test('remote script and file helpers use broker endpoints', async () => {
   const fetch = fakeFetch();
   const provider = createProvider(config, { fetch });
@@ -127,5 +150,6 @@ test('suspend and delete create Cloudflare backups before destroying sandbox', a
 
 test('transient sandbox error detection stays provider-neutral', () => {
   assert.equal(isTransientSandboxError(new Error('503 timeout from broker')), true);
+  assert.equal(isTransientSandboxError(new Error('Container is starting. Please retry in a moment.')), true);
   assert.equal(isTransientSandboxError(new Error('validation failed')), false);
 });

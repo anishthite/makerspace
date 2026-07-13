@@ -7,7 +7,10 @@ const pages = readFileSync(new URL('../frontend/src/pages.jsx', import.meta.url)
 const components = readFileSync(new URL('../frontend/src/components/ui.jsx', import.meta.url), 'utf8');
 const threadHtml = readFileSync(new URL('../frontend/thread.html', import.meta.url), 'utf8');
 const js = readFileSync(new URL('../frontend/src/runtime/thread.js', import.meta.url), 'utf8');
-const css = readFileSync(new URL('../frontend/public/styles.css', import.meta.url), 'utf8');
+const artifactUtils = readFileSync(new URL('../frontend/src/runtime/excalidraw-artifacts.js', import.meta.url), 'utf8');
+const routes = readFileSync(new URL('../src/server/routes.js', import.meta.url), 'utf8');
+const threadService = readFileSync(new URL('../src/server/threads.js', import.meta.url), 'utf8');
+const css = readFileSync(new URL('../frontend/src/styles/app.css', import.meta.url), 'utf8');
 
 test('thread tool trace is wired to the inline trace timeline', () => {
   assert.match(pages, /id="timeline"/);
@@ -210,17 +213,14 @@ test('running thread composer labels steer and follow-up delivery', () => {
   assert.match(js, /event\.type === 'queue'\) updateQueueState\(event\)/);
 });
 
-test('thread timeline and toasts clear the sticky composer', () => {
-  const agentToasts = readFileSync(new URL('../frontend/src/runtime/agent-toasts.js', import.meta.url), 'utf8');
-  const appJs = readFileSync(new URL('../frontend/src/runtime/app.js', import.meta.url), 'utf8');
+test('thread timeline clears the sticky composer', () => {
   assert.match(js, /function syncComposerClearance\(\)/);
   assert.match(js, /--thread-composer-clearance/);
   assert.match(js, /getBoundingClientRect\(\)\.height \+ bottom \+ 18/);
   assert.match(js, /ResizeObserver/);
   assert.match(css, /\.conversation-main \.timeline-flow \{ padding-bottom: max\(126px, var\(--thread-composer-clearance, 220px\)\); \}/);
-  assert.match(agentToasts, /bottom:var\(--thread-composer-clearance,18px\)/);
-  assert.match(appJs, /bottom:var\(--thread-composer-clearance,18px\)/);
-  assert.match(threadHtml, /styles\.css\?v=thread-overlap-1/);
+  assert.doesNotMatch(threadHtml, /styles\.css\?v=/);
+  assert.match(threadHtml, /src="\/src\/entry\.jsx"/);
 });
 
 test('thread messages render stored image attachments', () => {
@@ -236,6 +236,33 @@ test('html assistant messages still render mentioned image artifacts', () => {
   assert.match(js, /htmlImageArtifactPaths/);
   assert.match(js, /renderExcalidrawArtifacts\(node, raw, \{ skipImagePaths: htmlImageArtifactPaths\(displayText\) \}\)/);
   assert.doesNotMatch(js, /renderExcalidrawArtifacts\(node, raw, \{ includeImages: false \}\)/);
+});
+
+test('generated html artifacts render in sandboxed iframes', () => {
+  const block = js.slice(js.indexOf('function appendHtmlArtifactCard'), js.indexOf('function renderHtmlArtifacts'));
+  assert.notEqual(block, '');
+  assert.match(artifactUtils, /HTML_ARTIFACT_TOKEN_RE/);
+  assert.match(artifactUtils, /export function htmlArtifactPaths/);
+  assert.match(js, /htmlArtifactPaths/);
+  assert.match(js, /function htmlArtifactUrl\(artifactPath\)/);
+  assert.match(js, /function htmlArtifactStateUrl\(artifactPath, stateKey = 'default'\)/);
+  assert.match(block, /frame\.dataset\.artifactPath = artifactPath/);
+  assert.match(block, /frame\.setAttribute\('sandbox', 'allow-scripts'\)/);
+  assert.doesNotMatch(block, /allow-same-origin/);
+  assert.match(js, /window\.addEventListener\('message', handleHtmlArtifactStateMessage\)/);
+  assert.match(js, /spanner:artifact-state:save/);
+  assert.match(js, /spanner:artifact-state:load/);
+  assert.match(js, /spanner:artifact-state:saved/);
+  assert.match(js, /renderHtmlArtifacts\(node, raw\)/);
+  assert.match(css, /\.html-artifact-frame/);
+  assert.match(routes, /artifacts\\\/html/);
+  assert.match(routes, /artifacts\\\/state/);
+  assert.match(routes, /saveThreadHtmlArtifactStatePayload/);
+  assert.match(routes, /sandbox allow-scripts/);
+  assert.match(threadService, /function safeHtmlArtifactPath/);
+  assert.match(threadService, /function safeArtifactStateKey/);
+  assert.match(threadService, /threadHtmlArtifactPayload/);
+  assert.match(threadService, /threadHtmlArtifactStatePayload/);
 });
 
 test('openui assistant messages still scan raw text for media artifacts', () => {
@@ -264,7 +291,7 @@ test('opening a populated thread scrolls back to the latest user turn', () => {
   assert.match(js, /timeline\.querySelectorAll\('\.message-item\.user'\)/);
   assert.match(js, /timeline\.querySelector\('\.message-item\.assistant'\)/);
   assert.match(js, /target\.getBoundingClientRect\(\)\.top \+ window\.scrollY - offset/);
-  assert.match(js, /const output = await loadOutput\(\);\n\s*restoreInitialThreadPosition\(\);/);
+  assert.match(js, /const \{ thread, output \} = await loadThreadBootstrap\(\);\n\s*restoreInitialThreadPosition\(\);/);
 });
 
 test('final turn status colors the matching assistant message', () => {
@@ -280,6 +307,7 @@ test('final turn status colors the matching assistant message', () => {
 test('suggested next steps render as bottom composer prompts', () => {
   assert.match(pages, /id="suggested-next-steps"/);
   assert.match(pages, /id="suggested-next-steps-list"/);
+  assert.match(pages, /className="next-steps-main launch-suggestions"/);
   assert.match(js, /function renderSuggestedNextSteps\(thread = currentThread\)/);
   assert.match(js, /data-next-step-prompt="\$\{escapeHtml\(step\.prompt\)\}"/);
   assert.match(js, /fillComposerFromInteractiveAction\(\{ prompt: button\.dataset\.nextStepPrompt \|\| '' \}\)/);

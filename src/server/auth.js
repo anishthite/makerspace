@@ -90,7 +90,7 @@ function parseClaudeCodeAuthorizationInput(input) {
   return { code: value };
 }
 
-function buildHostedClaudeCodeAuth() {
+function buildClaudeCodeAuth() {
   const verifier = randomBytes(32).toString('base64url');
   const challenge = createHash('sha256').update(verifier).digest('base64url');
   const params = new URLSearchParams({
@@ -106,7 +106,7 @@ function buildHostedClaudeCodeAuth() {
   return { verifier, url: `${CLAUDE_CODE_AUTHORIZE_URL}?${params.toString()}` };
 }
 
-async function exchangeHostedClaudeCode(code, state, verifier) {
+async function exchangeClaudeCode(code, state, verifier) {
   const response = await fetch(CLAUDE_CODE_TOKEN_URL, {
     method: 'POST',
     headers: { 'content-type': 'application/json', accept: 'application/json' },
@@ -731,86 +731,17 @@ export function createAuthService({ config, http }) {
 
   async function startClaudeCodeLogin(user = null) {
     if (authRequired() && !user?.id) throw clientError('Sign in with GitHub before Claude Code.', 401);
-    if (authRequired()) return startHostedClaudeCodeLogin(user);
-
-    const { AuthStorage } = await loadPiSdk();
-    const authStorage = AuthStorage.create();
-    const id = randomUUID();
-    const job = {
-      id,
-      provider: CLAUDE_CODE_AUTH_PROVIDER,
-      ownerUserId: '',
-      status: 'starting',
-      auth: null,
-      device: null,
-      manual: false,
-      error: null,
-    };
-    authLogins.set(id, job);
-
-    const authReady = new Promise((resolve, reject) => {
-      job.resolveAuthReady = resolve;
-      job.rejectAuthReady = reject;
-    });
-    const maybeReady = () => {
-      if (job.auth && job.resolveManual && job.resolveAuthReady) {
-        job.resolveAuthReady();
-        job.resolveAuthReady = null;
-      }
-    };
-
-    authStorage.login(CLAUDE_CODE_AUTH_PROVIDER, {
-      onAuth: (info) => {
-        job.status = 'waiting';
-        job.auth = info;
-        maybeReady();
-      },
-      onPrompt: async (prompt) => {
-        if (prompt.allowEmpty) return '';
-        throw new Error(prompt.message || 'Login needs input.');
-      },
-      onManualCodeInput: async () => {
-        job.manual = true;
-        return new Promise((resolve, reject) => {
-          job.resolveManual = (input) => {
-            job.status = 'exchanging';
-            resolve(input);
-          };
-          job.rejectManual = reject;
-          maybeReady();
-        });
-      },
-      onProgress: (message) => {
-        job.progress = message;
-      },
-    }).then(async () => {
-      job.resolveManual = null;
-      job.status = 'complete';
-      job.completedAt = new Date().toISOString();
-    }).catch((error) => {
-      job.status = 'failed';
-      job.error = error.message;
-      job.rejectAuthReady?.(error);
-      job.rejectManual?.(error);
-    });
-
-    await authReady;
-    return publicAuthLogin(job);
-  }
-
-  function startHostedClaudeCodeLogin(user) {
-    const { verifier, url } = buildHostedClaudeCodeAuth();
+    const { verifier, url } = buildClaudeCodeAuth();
     const job = {
       id: randomUUID(),
       provider: CLAUDE_CODE_AUTH_PROVIDER,
-      ownerUserId: user.id,
+      ownerUserId: user?.id || '',
       status: 'waiting',
       auth: {
         url,
         instructions: 'Approve Claude Code access, then paste the code Claude shows.',
       },
       manual: true,
-      hostedManual: true,
       verifier,
       error: null,
     };
@@ -818,7 +749,20 @@ export function createAuthService({ config, http }) {
     return publicAuthLogin(job);
   }
 
-  function submitHostedClaudeCodeLoginCode(job, body = {}) {
+  async function persistClaudeCodeCredential(job, credential) {
+    if (authRequired()) {
+      await authStore.writeUserSecret(job.ownerUserId, CLAUDE_CODE_USER_SECRET_KEY, JSON.stringify(credential));
+      return;
+    }
+
+    const { AuthStorage } = await loadPiSdk();
+    const authStorage = AuthStorage.create();
+    authStorage.set(CLAUDE_CODE_AUTH_PROVIDER, credential);
+    const [error] = authStorage.drainErrors?.() || [];
+    if (error) throw error;
+  }
+
+  function submitManualClaudeCodeLoginCode(job, body = {}) {
     const input = String(body.code || body.authorizationCode || body.redirectUrl || '').trim();
     if (!input) throw clientError('Paste the Claude Code code or callback URL.');
     if (job.exchangePromise) return publicAuthLogin(job);
@@ -826,12 +770,13 @@ export function createAuthService({ config, http }) {
     const parsed = parseClaudeCodeAuthorizationInput(input);
     if (!parsed.code) throw clientError('Paste the Claude Code code or a callback URL with a code parameter.');
     if (parsed.state && parsed.state !== job.verifier) throw clientError('Claude Code OAuth state mismatch. Start sign-in again.', 400);
+    const state = parsed.state || job.verifier;
 
     job.status = 'exchanging';
     job.progress = 'Exchanging authorization code for tokens...';
-    job.exchangePromise = exchangeHostedClaudeCode(parsed.code, parsed.state || job.verifier, job.verifier)
+    job.exchangePromise = exchangeClaudeCode(parsed.code, state, job.verifier)
       .then(async (credential) => {
-        await authStore.writeUserSecret(job.ownerUserId, CLAUDE_CODE_USER_SECRET_KEY, JSON.stringify(credential));
+        await persistClaudeCodeCredential(job, credential);
         job.status = 'complete';
         job.progress = null;
         job.completedAt = new Date().toISOString();
@@ -847,18 +792,8 @@ export function createAuthService({ config, http }) {
     const job = getAuthLogin(id, user);
     if (!job || job.provider !== CLAUDE_CODE_AUTH_PROVIDER) throw clientError('Login not found', 404);
     if (job.status === 'complete' || job.status === 'failed') return publicAuthLogin(job);
-    if (job.hostedManual) return submitHostedClaudeCodeLoginCode(job, body);
-
-    const code = String(body.code || body.authorizationCode || body.redirectUrl || '').trim();
-    if (!code) throw clientError('Paste the Claude Code redirect URL or authorization code.');
-    if (!job.resolveManual) throw clientError('Claude Code login is not ready for a pasted code yet.', 409);
-
-    const resolveManual = job.resolveManual;
-    job.resolveManual = null;
-    job.status = 'exchanging';
-    job.progress = 'Exchanging authorization code for tokens...';
-    resolveManual(code);
-    return publicAuthLogin(job);
+    if (!job.verifier) throw clientError('Claude Code login is not ready for a pasted code yet.', 409);
+    return submitManualClaudeCodeLoginCode(job, body);
   }
 
   function publicAuthLogin(job) {

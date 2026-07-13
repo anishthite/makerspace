@@ -6,6 +6,8 @@ const MAX_NEXT_STEPS = 3;
 const MAX_NEXT_STEP_LABEL_LENGTH = 56;
 const MAX_NEXT_STEP_PROMPT_LENGTH = 700;
 const SUMMARY_OUTPUT_CHARS = 8_000;
+const WORKSPACE_SUGGESTION_THREADS = 6;
+const WORKSPACE_SUGGESTION_CHARS = 4_000;
 const TURN_STATUS_USER_CHARS = 4_000;
 const TURN_STATUS_ASSISTANT_CHARS = 8_000;
 const TURN_STATUS_COLORS = {
@@ -178,6 +180,33 @@ export function buildSuggestedNextStepsPrompt(session, finalOutput) {
   ].join('\n');
 }
 
+function workspaceSuggestionThreadContext(thread, index) {
+  return [
+    `Thread ${index + 1}: ${cleanNextStepText(thread?.title || thread?.name || 'Untitled', 80)}`,
+    `Status: ${cleanNextStepText(thread?.finalTurnStatus || thread?.runStatus || thread?.status || 'unknown', 60)}`,
+    `Task: ${cleanNextStepText(thread?.taskPrompt || thread?.initialPrompt || '', 500)}`,
+    `Outcome: ${cleanNextStepText(thread?.finalAnswerSummary || '', 500)}`,
+    `Blocker: ${cleanNextStepText(thread?.finalTurnReason || thread?.warning || '', 220)}`,
+  ].filter((line) => !line.endsWith(': ')).join('\n');
+}
+
+export function buildWorkspaceLaunchSuggestionsPrompt(threads = []) {
+  const context = (Array.isArray(threads) ? threads : [])
+    .slice(0, WORKSPACE_SUGGESTION_THREADS)
+    .map(workspaceSuggestionThreadContext)
+    .join('\n\n')
+    .slice(0, WORKSPACE_SUGGESTION_CHARS);
+
+  return [
+    'Suggest useful prompts for starting new coding agents from a workspace dashboard.',
+    'Return only JSON shaped exactly like: {"steps":[{"label":"short button label","prompt":"exact prompt to send"}]}.',
+    'Rules: 2-3 steps, label is 2-5 words, prompt is one imperative sentence, no Markdown, no HTML, no quotes around the JSON.',
+    'These are workspace launch prompts, not in-thread follow-up buttons. Do not rely on or copy existing thread suggestions.',
+    'Prefer project-level verification, review, cleanup, handoff, or the highest-leverage next task across the recent work.',
+    `Recent workspace threads:\n${context || 'No recent finished threads.'}`,
+  ].join('\n');
+}
+
 function capPromptText(value, max) {
   const text = String(value || '').trim();
   return text.length > max ? text.slice(-max) : text;
@@ -316,6 +345,17 @@ export function generateSuggestedNextSteps(session, finalOutput, options = {}) {
     emptyNoun: 'suggestions',
     systemPrompt: 'Return only the JSON object.',
     prompt: buildSuggestedNextStepsPrompt(session, finalOutput),
+    maxTokens: 512,
+    clean: cleanSuggestedNextSteps,
+  });
+}
+
+export function generateWorkspaceLaunchSuggestions(threads, options = {}) {
+  return generateShortText(options, {
+    label: 'Workspace launch suggestions',
+    emptyNoun: 'suggestions',
+    systemPrompt: 'Return only the JSON object.',
+    prompt: buildWorkspaceLaunchSuggestionsPrompt(threads),
     maxTokens: 512,
     clean: cleanSuggestedNextSteps,
   });

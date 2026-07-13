@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 commit_message="${*:-}"
-release_repo="${RELEASE_REPO:-anishthite/spanner-downloads}"
+release_repo="${RELEASE_REPO:-anishthite/makerspace-downloads}"
 
 current_tag() {
   node -p '"v" + require("./package.json").version'

@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="760" viewBox="0 0 1240 760">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#334155"/>
+    </marker>
+    <style>
+      text{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;fill:#0f172a}
+      .title{font-size:28px;font-weight:700}.subtitle{font-size:15px;fill:#475569}.lane{font-size:18px;font-weight:700}.box{fill:#fff;stroke:#94a3b8;stroke-width:1.5;rx:16}.good{fill:#ecfdf5;stroke:#10b981}.warn{fill:#fff7ed;stroke:#f97316}.blue{fill:#eff6ff;stroke:#3b82f6}.gray{fill:#f8fafc;stroke:#cbd5e1}.label{font-size:14px;font-weight:650}.small{font-size:12.5px;fill:#475569}.arrow{stroke:#334155;stroke-width:1.8;fill:none;marker-end:url(#arrow)}.dashed{stroke-dasharray:7 6}.pill{font-size:12px;font-weight:700;fill:#0369a1}
+    </style>
+  </defs>
+  <rect width="1240" height="760" fill="#f8fafc"/>
+  <text x="48" y="56" class="title">Claude Code auth: current Spanner flow + lazy default</text>
+  <text x="48" y="84" class="subtitle">Current Settings UI stores Pi provider credentials under provider “anthropic”; official Claude Code auth is separate.</text>
+
+  <text x="52" y="140" class="lane">Hosted / multi-user today</text>
+  <rect x="48" y="164" width="180" height="76" class="box blue"/>
+  <text x="70" y="194" class="label">Settings UI</text>
+  <text x="70" y="216" class="small">click “Claude Code”</text>
+
+  <path d="M228 202 H282" class="arrow"/>
+  <rect x="282" y="164" width="206" height="76" class="box"/>
+  <text x="304" y="192" class="label">POST /api/auth/</text>
+  <text x="304" y="212" class="label">claude-code/login</text>
+  <text x="304" y="232" class="small">requires GitHub user</text>
+
+  <path d="M488 202 H542" class="arrow"/>
+  <rect x="542" y="150" width="244" height="104" class="box warn"/>
+  <text x="564" y="180" class="label">Hand-built OAuth PKCE</text>
+  <text x="564" y="202" class="small">claude.ai/oauth/authorize</text>
+  <text x="564" y="222" class="small">redirect: platform code callback</text>
+  <text x="564" y="242" class="small">user copies code back</text>
+
+  <path d="M786 202 H840" class="arrow"/>
+  <rect x="840" y="150" width="162" height="104" class="box"/>
+  <text x="862" y="180" class="label">Token exchange</text>
+  <text x="862" y="202" class="small">platform.claude.com</text>
+  <text x="862" y="222" class="small">/v1/oauth/token</text>
+  <text x="862" y="242" class="small">access + refresh</text>
+
+  <path d="M1002 202 H1056" class="arrow"/>
+  <rect x="1056" y="150" width="136" height="104" class="box good"/>
+  <text x="1076" y="180" class="label">User secret</text>
+  <text x="1076" y="202" class="small">claude-code-auth</text>
+  <text x="1076" y="222" class="small">{type: oauth}</text>
+  <text x="1076" y="242" class="small">per user</text>
+
+  <text x="52" y="324" class="lane">Local desktop today</text>
+  <rect x="48" y="348" width="180" height="76" class="box blue"/>
+  <text x="70" y="378" class="label">Settings UI</text>
+  <text x="70" y="400" class="small">same button</text>
+
+  <path d="M228 386 H282" class="arrow"/>
+  <rect x="282" y="334" width="238" height="104" class="box"/>
+  <text x="304" y="364" class="label">Pi SDK AuthStorage.login</text>
+  <text x="304" y="386" class="small">provider: anthropic</text>
+  <text x="304" y="406" class="small">localhost:53692/callback</text>
+  <text x="304" y="426" class="small">paste fallback</text>
+
+  <path d="M520 386 H574" class="arrow"/>
+  <rect x="574" y="348" width="220" height="76" class="box good"/>
+  <text x="596" y="378" class="label">~/.pi/agent/auth.json</text>
+  <text x="596" y="400" class="small">{ anthropic: oauth }</text>
+
+  <path d="M684 424 C684 500 870 500 920 438" class="arrow dashed"/>
+  <rect x="858" y="334" width="250" height="104" class="box gray"/>
+  <text x="880" y="364" class="label">Remote run sync</text>
+  <text x="880" y="386" class="small">readFreshUserPiCredentials()</text>
+  <text x="880" y="406" class="small">POST bridge /auth</text>
+  <text x="880" y="426" class="small">writes remote ~/.pi/agent/auth.json</text>
+
+  <text x="52" y="540" class="lane">Recommended boring default for actual Claude Code CLI</text>
+  <rect x="48" y="564" width="276" height="104" class="box good"/>
+  <text x="70" y="594" class="label">Use official Claude Code auth</text>
+  <text x="70" y="616" class="small">local: run claude / /login</text>
+  <text x="70" y="636" class="small">headless: claude setup-token</text>
+  <text x="70" y="656" class="small">or ANTHROPIC_API_KEY/apiKeyHelper</text>
+
+  <path d="M324 616 H388" class="arrow"/>
+  <rect x="388" y="564" width="250" height="104" class="box"/>
+  <text x="410" y="594" class="label">Store one user secret</text>
+  <text x="410" y="616" class="small">CLAUDE_CODE_OAUTH_TOKEN</text>
+  <text x="410" y="636" class="small">or ANTHROPIC_API_KEY</text>
+  <text x="410" y="656" class="small">no custom OAuth code</text>
+
+  <path d="M638 616 H702" class="arrow"/>
+  <rect x="702" y="564" width="250" height="104" class="box"/>
+  <text x="724" y="594" class="label">Inject into sandbox env</text>
+  <text x="724" y="616" class="small">Claude Code reads env first</text>
+  <text x="724" y="636" class="small">works in SSH/containers/CI</text>
+  <text x="724" y="656" class="small">official precedence</text>
+
+  <path d="M952 616 H1016" class="arrow"/>
+  <rect x="1016" y="564" width="176" height="104" class="box blue"/>
+  <text x="1038" y="594" class="label">Run Claude Code</text>
+  <text x="1038" y="616" class="small">no callback server</text>
+  <text x="1038" y="636" class="small">no pasted code UX</text>
+  <text x="1038" y="656" class="small">less to maintain</text>
+
+  <text x="48" y="724" class="subtitle">Ceiling: subscription OAuth-in-app is nicer UX, but only worth it if users refuse to bring a token/key.</text>
+</svg>

@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { setTimeout as sleep } from 'node:timers/promises';
 
 import { collectForwardedEnv } from '../config.js';
 import { buildSetupScript } from '../setup-script.js';
@@ -67,29 +68,57 @@ function backupDirs(config) {
   return dirs.filter((item, index, all) => item.dir && all.findIndex((other) => other.dir === item.dir) === index);
 }
 
+function isStartupRetry(status, data) {
+  if (![500, 502, 503, 504].includes(Number(status))) return false;
+  const message = String(data?.error || data?.message || '').toLowerCase();
+  const phase = String(data?.context?.phase || '').toLowerCase();
+  return ['startup', 'provisioning'].includes(phase) || /container is (starting|currently provisioning|booting)|retry in a moment/.test(message);
+}
+
+function retryDelayMs(response, attempt) {
+  const retryAfter = Number(response.headers?.get?.('retry-after'));
+  if (Number.isFinite(retryAfter) && retryAfter >= 0) return Math.min(retryAfter * 1000, 30_000);
+  return Math.min(500 * (2 ** attempt), 5_000);
+}
+
+async function parseBrokerResponse(response) {
+  const text = await response.text();
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { message: text };
+  }
+}
+
 async function brokerRequest(fetchImpl, config, route, options = {}) {
   const baseUrl = parseBrokerUrl(config);
-  const response = await fetchImpl(`${baseUrl}${route}`, {
-    ...options,
-    headers: {
-      ...(options.body ? { 'content-type': 'application/json' } : {}),
-      ...(config.cloudflareBrokerToken ? { authorization: `Bearer ${config.cloudflareBrokerToken}` } : {}),
-      ...(options.headers || {}),
-    },
-  });
-  const text = await response.text();
-  let data = null;
-  if (text) {
-    try {
-      data = JSON.parse(text);
-    } catch {
-      data = { message: text };
+  const startedAt = Date.now();
+  const timeoutMs = Number(config.cloudflareBrokerRetryTimeoutMs || config.bridgeReadyTimeoutMs || 240_000);
+  const maxRetries = Number(config.cloudflareBrokerRetryAttempts || 80);
+
+  for (let attempt = 0; ; attempt += 1) {
+    const response = await fetchImpl(`${baseUrl}${route}`, {
+      ...options,
+      headers: {
+        ...(options.body ? { 'content-type': 'application/json' } : {}),
+        ...(config.cloudflareBrokerToken ? { authorization: `Bearer ${config.cloudflareBrokerToken}` } : {}),
+        ...(options.headers || {}),
+      },
+    });
+    const data = await parseBrokerResponse(response);
+    if (response.ok) return data || {};
+
+    if (attempt < maxRetries && Date.now() - startedAt < timeoutMs && isStartupRetry(response.status, data)) {
+      // ponytail: only retry startup handshakes; broad command retries can duplicate side effects.
+      const remainingMs = Math.max(0, timeoutMs - (Date.now() - startedAt));
+      const delayMs = Math.min(retryDelayMs(response, attempt), remainingMs);
+      if (delayMs > 0) await sleep(delayMs);
+      continue;
     }
-  }
-  if (!response.ok) {
+
     throw new Error(data?.error || data?.message || `Cloudflare broker request failed: ${response.status}`);
   }
-  return data || {};
 }
 
 function commandForScript(script, cwd) {

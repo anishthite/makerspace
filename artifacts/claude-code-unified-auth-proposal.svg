@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="620" viewBox="0 0 1180 620">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 10 5 0 10z" fill="#334155"/></marker>
+    <style>
+      text{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;fill:#0f172a}.title{font-size:27px;font-weight:750}.sub{font-size:14px;fill:#475569}.lane{font-size:17px;font-weight:750}.box{fill:#fff;stroke:#94a3b8;stroke-width:1.5;rx:16}.good{fill:#ecfdf5;stroke:#10b981}.blue{fill:#eff6ff;stroke:#3b82f6}.warn{fill:#fff7ed;stroke:#f97316}.label{font-size:14px;font-weight:700}.small{font-size:12.5px;fill:#475569}.arrow{stroke:#334155;stroke-width:1.8;fill:none;marker-end:url(#arrow)}.dashed{stroke-dasharray:7 6}.muted{fill:#64748b;font-size:12px}
+    </style>
+  </defs>
+  <rect width="1180" height="620" fill="#f8fafc"/>
+  <text x="44" y="54" class="title">Nice auth: Better owns the OAuth, sessions consume it</text>
+  <text x="44" y="80" class="sub">No user-installed Claude Code required. Same credential source feeds local and remote runs.</text>
+
+  <text x="48" y="130" class="lane">One-time user connection</text>
+  <rect x="44" y="152" width="176" height="82" class="box blue"/><text x="66" y="184" class="label">Connect Claude</text><text x="66" y="206" class="small">Better settings</text>
+  <path d="M220 193 H274" class="arrow"/>
+  <rect x="274" y="142" width="226" height="102" class="box"/><text x="296" y="174" class="label">Better backend starts PKCE</text><text x="296" y="196" class="small">state tied to user/session</text><text x="296" y="216" class="small">no CLI involved</text>
+  <path d="M500 193 H554" class="arrow"/>
+  <rect x="554" y="142" width="218" height="102" class="box warn"/><text x="576" y="174" class="label">Claude web approval</text><text x="576" y="196" class="small">claude.ai/oauth/authorize</text><text x="576" y="216" class="small">callback or copy-code fallback</text>
+  <path d="M772 193 H826" class="arrow"/>
+  <rect x="826" y="142" width="150" height="102" class="box"/><text x="848" y="174" class="label">Token exchange</text><text x="848" y="196" class="small">access + refresh</text><text x="848" y="216" class="small">refresh before runs</text>
+  <path d="M976 193 H1030" class="arrow"/>
+  <rect x="1030" y="142" width="116" height="102" class="box good"/><text x="1050" y="174" class="label">Vault</text><text x="1050" y="196" class="small">encrypted</text><text x="1050" y="216" class="small">per user</text>
+
+  <text x="48" y="310" class="lane">Every run</text>
+  <rect x="44" y="332" width="186" height="86" class="box good"/><text x="66" y="364" class="label">Read fresh Claude token</text><text x="66" y="386" class="small">central refresh + lock</text>
+  <path d="M230 375 H288" class="arrow"/>
+  <rect x="288" y="304" width="232" height="142" class="box"/><text x="310" y="336" class="label">Normalize once</text><text x="310" y="358" class="small">Pi: { anthropic: oauth }</text><text x="310" y="378" class="small">Claude CLI: env/helper if needed</text><text x="310" y="398" class="small">API-key fallback supported</text><text x="310" y="418" class="muted">ponytail: one credential, adapters at edge</text>
+  <path d="M520 375 H578" class="arrow"/>
+  <rect x="578" y="284" width="232" height="116" class="box blue"/><text x="600" y="318" class="label">Local Better run</text><text x="600" y="340" class="small">in-memory AuthStorage</text><text x="600" y="360" class="small">or app-owned temp auth.json</text><text x="600" y="380" class="small">do not require ~/.claude</text>
+  <path d="M520 375 C560 472 618 492 672 492" class="arrow"/>
+  <rect x="578" y="450" width="232" height="116" class="box blue"/><text x="600" y="484" class="label">Remote Better run</text><text x="600" y="506" class="small">POST bridge /auth</text><text x="600" y="526" class="small">write remote agent auth/env</text><text x="600" y="546" class="small">sandbox image owns installs</text>
+  <path d="M810 342 H882" class="arrow"/>
+  <path d="M810 508 H882" class="arrow"/>
+  <rect x="882" y="370" width="248" height="110" class="box good"/><text x="904" y="404" class="label">Agent starts authenticated</text><text x="904" y="426" class="small">same UX locally/remotely</text><text x="904" y="446" class="small">no callback port inside sandbox</text><text x="904" y="466" class="small">no user CLI install</text>
+
+  <text x="44" y="590" class="sub">Keep paste-code fallback for localhost/Electron and blocked redirect cases. Add real callback when Better has a stable public origin.</text>
+</svg>

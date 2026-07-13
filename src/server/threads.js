@@ -41,6 +41,8 @@ export function createThreadService({ config, provider, http, auth, runState, br
   const { startThreadBridgeLaunch, refreshBridgeSessionIfNeeded, startBridgeRun, fetchBridgeJson, waitForBridge, syncBridgeAuth, markBridgeRunStale, bridgeRunMissingError, reattachBridgeRun } = bridge;
   const MAX_EXCALIDRAW_BYTES = 8 * 1024 * 1024;
   const MAX_IMAGE_ARTIFACT_BYTES = 16 * 1024 * 1024;
+  const MAX_HTML_ARTIFACT_BYTES = 4 * 1024 * 1024;
+  const MAX_HTML_ARTIFACT_STATE_BYTES = 256 * 1024;
   const IMAGE_ARTIFACT_TYPES = new Map([
     ['.gif', 'image/gif'],
     ['.jpg', 'image/jpeg'],
@@ -77,10 +79,26 @@ export function createThreadService({ config, provider, http, auth, runState, br
     return safeRelativeArtifactPath(value, new Set(IMAGE_ARTIFACT_TYPES.keys()), 'Only relative image artifacts can be viewed.');
   }
 
+  function safeHtmlArtifactPath(value) {
+    return safeRelativeArtifactPath(value, new Set(['.html']), 'Only relative HTML artifacts can be viewed.');
+  }
+
   function safeWorkflowRunId(value) {
     const runId = String(value || '').trim();
     if (!/^[a-z0-9][a-z0-9-]{2,100}$/i.test(runId)) throw clientError('Invalid workflow run id.');
     return runId;
+  }
+
+  function safeArtifactStateKey(value) {
+    const key = String(value || 'default').trim() || 'default';
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,79}$/.test(key)) throw clientError('Invalid artifact state key.');
+    return key;
+  }
+
+  function checkedArtifactStateData(value) {
+    const text = JSON.stringify(value ?? null);
+    checkedBuffer(Buffer.from(text), 'artifact state', MAX_HTML_ARTIFACT_STATE_BYTES);
+    return JSON.parse(text);
   }
 
   function checkedBuffer(buffer, artifactPath, maxBytes) {
@@ -346,6 +364,20 @@ export function createThreadService({ config, provider, http, auth, runState, br
     };
   }
 
+  async function threadHtmlArtifactPayload(name, artifactPath, viewerSessionId = '', trusted = false, user = null) {
+    const session = await getThreadSession(name);
+    if (!canAccessSession(session, viewerSessionId, trusted, user)) {
+      throw clientError(`Main agent ${name} belongs to a different user.`, 403);
+    }
+
+    const safePath = safeHtmlArtifactPath(artifactPath);
+    return {
+      path: safePath,
+      contentType: 'text/html; charset=utf-8',
+      data: await readThreadArtifactBuffer(session, safePath, MAX_HTML_ARTIFACT_BYTES),
+    };
+  }
+
   async function saveThreadArtifactPayload(name, artifactPath, body = {}, viewerSessionId = '', trusted = false, user = null) {
     const session = await getThreadSession(name);
     if (!canAccessSession(session, viewerSessionId, trusted, user)) {
@@ -367,6 +399,41 @@ export function createThreadService({ config, provider, http, auth, runState, br
     checkedBuffer(Buffer.from(text), safePath, MAX_EXCALIDRAW_BYTES);
     await writeThreadArtifactFile(session, safePath, text);
     return { path: safePath, saved: true, byteLength: Buffer.byteLength(text) };
+  }
+
+  async function threadHtmlArtifactStatePayload(name, artifactPath, stateKey = 'default', viewerSessionId = '', trusted = false, user = null) {
+    const session = await getThreadSession(name);
+    if (!canAccessSession(session, viewerSessionId, trusted, user)) {
+      throw clientError(`Main agent ${name} belongs to a different user.`, 403);
+    }
+
+    const safePath = safeHtmlArtifactPath(artifactPath);
+    const key = safeArtifactStateKey(stateKey);
+    const entry = session.htmlArtifactState?.[safePath]?.[key] || null;
+    return { path: safePath, key, data: entry?.data ?? null, updatedAt: entry?.updatedAt || '', found: Boolean(entry) };
+  }
+
+  async function saveThreadHtmlArtifactStatePayload(name, artifactPath, body = {}, viewerSessionId = '', trusted = false, user = null) {
+    const session = await getThreadSession(name);
+    if (!canAccessSession(session, viewerSessionId, trusted, user)) {
+      throw clientError(`Main agent ${name} belongs to a different user.`, 403);
+    }
+
+    const safePath = safeHtmlArtifactPath(artifactPath);
+    const input = body && typeof body === 'object' ? body : {};
+    const key = safeArtifactStateKey(input.key || input.stateKey || 'default');
+    const data = checkedArtifactStateData(Object.hasOwn(input, 'data') ? input.data : input.value);
+    const updatedAt = new Date().toISOString();
+    const currentState = session.htmlArtifactState && typeof session.htmlArtifactState === 'object' ? session.htmlArtifactState : {};
+    const nextState = {
+      ...currentState,
+      [safePath]: {
+        ...(currentState[safePath] && typeof currentState[safePath] === 'object' ? currentState[safePath] : {}),
+        [key]: { data, updatedAt },
+      },
+    };
+    await upsertSession(config.sessionFile, { name: session.name, htmlArtifactState: nextState, updatedAt });
+    return { path: safePath, key, data, updatedAt, saved: true };
   }
 
   async function listThreadsPayload(viewerSessionId = '', trusted = false, user = null, options = {}) {
@@ -965,6 +1032,9 @@ export function createThreadService({ config, provider, http, auth, runState, br
     threadWorkflowPayload,
     threadArtifactPayload,
     threadImageArtifactPayload,
+    threadHtmlArtifactPayload,
+    threadHtmlArtifactStatePayload,
+    saveThreadHtmlArtifactStatePayload,
     saveThreadArtifactPayload,
     getThreadSession,
     archiveThreadSession,

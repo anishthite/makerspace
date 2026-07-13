@@ -81,8 +81,7 @@ test('thread workflow payload uses mirrored agent data before remote reads', asy
       workflowName: 'cached workflow',
       status: 'running',
       agents: [{ id: 1, label: 'cached agent', phase: 'Review', status: 'running' }],
-    })}
-`);
+    })}\n`);
     await writeFile(sessionFile, `${JSON.stringify([{
       name: 'remote-thread',
       provider: 'cloudflare',
@@ -91,8 +90,7 @@ test('thread workflow payload uses mirrored agent data before remote reads', asy
       status: 'running',
       runStatus: 'running',
       createdAt: '2026-07-12T00:00:00.000Z',
-    }])}
-`);
+    }])}\n`);
 
     const service = createWorkflowService(
       { sessionFile, workflowRunsDir, localDataDir: tempDir, remoteHomeDir: '/home/root' },

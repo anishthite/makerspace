@@ -70,5 +70,5 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
         run: |
-          : "${GH_TOKEN:?Set RELEASE_GITHUB_TOKEN with contents:write access to anishthite/spanner-downloads}"
+          : "${GH_TOKEN:?Set RELEASE_GITHUB_TOKEN with contents:write access to anishthite/makerspace-downloads}"
           npm run release:push

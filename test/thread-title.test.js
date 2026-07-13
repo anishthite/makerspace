@@ -5,6 +5,7 @@ import {
   buildFinalAnswerSummaryPrompt,
   buildFinalTurnStatusPrompt,
   buildSuggestedNextStepsPrompt,
+  buildWorkspaceLaunchSuggestionsPrompt,
   cleanFinalAnswerSummary,
   cleanFinalTurnStatus,
   cleanSuggestedNextSteps,
@@ -14,6 +15,7 @@ import {
   generateFinalTurnStatus,
   generateSuggestedNextSteps,
   generateThreadTitle,
+  generateWorkspaceLaunchSuggestions,
   parseThreadTitleModelRef,
   resolveThreadTitleModel,
 } from '../src/thread-title.js';
@@ -59,6 +61,22 @@ test('buildSuggestedNextStepsPrompt asks for button labels and exact prompts', (
   assert.match(prompt, /"label":"short button label"/);
   assert.match(prompt, /"prompt":"exact prompt to send"/);
   assert.match(prompt, /Latest answer:\nDone\. Tests pass\./);
+});
+
+const workspaceThreads = [{
+  title: 'Sidebar cleanup',
+  taskPrompt: 'Polish the workspace sidebar.',
+  finalAnswerSummary: 'Moved clear controls into the finished lane.',
+  finalTurnStatus: 'done',
+}];
+
+test('buildWorkspaceLaunchSuggestionsPrompt uses thread outcomes, not thread suggestions', () => {
+  const prompt = buildWorkspaceLaunchSuggestionsPrompt(workspaceThreads);
+  assert.match(prompt, /workspace dashboard/);
+  assert.match(prompt, /Sidebar cleanup/);
+  assert.match(prompt, /Moved clear controls/);
+  assert.match(prompt, /Do not rely on or copy existing thread suggestions/);
+  assert.doesNotMatch(prompt, /suggestedNextSteps/);
 });
 
 const turnStatusCases = [
@@ -194,6 +212,38 @@ test('generateSuggestedNextSteps uses a JSON completion and cleans prompts', asy
   );
 
   assert.deepEqual(steps, [{ label: 'Run tests', prompt: 'Run the focused tests' }]);
+});
+
+test('generateWorkspaceLaunchSuggestions uses a JSON completion and cleans prompts', async () => {
+  const model = { provider: 'openai-codex', id: 'gpt-5.4-mini' };
+  const steps = await generateWorkspaceLaunchSuggestions(
+    workspaceThreads,
+    {
+      modelRef: 'openai-codex/gpt-5.4-mini',
+      loadPiSdk: async () => ({
+        AuthStorage: {
+          create: () => ({
+            getApiKey: async () => 'fake-token',
+            getProviderEnv: () => ({ FOO: 'bar' }),
+          }),
+        },
+        ModelRegistry: { create: () => ({ find: () => model }) },
+      }),
+      loadPiAi: async () => ({
+        completeSimple: async (receivedModel, context, options) => {
+          assert.equal(receivedModel, model);
+          assert.equal(context.systemPrompt, 'Return only the JSON object.');
+          assert.match(context.messages[0].content, /workspace dashboard/);
+          assert.equal(options.apiKey, 'fake-token');
+          assert.equal(options.reasoning, 'minimal');
+          assert.equal(options.maxTokens, 512);
+          return { stopReason: 'stop', content: [{ type: 'text', text: '{"steps":[{"label":"Review sidebar","prompt":"Review the sidebar cleanup and run one broader UI check."}]}' }] };
+        },
+      }),
+    },
+  );
+
+  assert.deepEqual(steps, [{ label: 'Review sidebar', prompt: 'Review the sidebar cleanup and run one broader UI check' }]);
 });
 
 test('generateThreadTitle uses a minimal no-tool completion and cleans the response', async () => {

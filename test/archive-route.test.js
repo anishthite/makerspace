@@ -46,7 +46,7 @@ test('thread list does not count stale local runs as live after restart', async 
       { name: 'stale-local', provider: 'local', threadBridge: true, localMode: true, status: 'running', runStatus: 'running', createdAt, updatedAt },
       { name: 'stale-completed', provider: 'local', threadBridge: true, localMode: true, status: 'running', runStatus: 'running', createdAt, updatedAt, completedAt: updatedAt },
       { name: 'unknown-completed', provider: 'local', threadBridge: true, localMode: true, status: 'completed', runStatus: 'unknown', createdAt, updatedAt, completedAt: updatedAt },
-      { name: 'remote-active', provider: 'daytona', threadBridge: true, bridgeMode: true, status: 'running', runStatus: 'running', createdAt, updatedAt },
+      { name: 'remote-active', provider: 'cloudflare', threadBridge: true, bridgeMode: true, status: 'running', runStatus: 'running', createdAt, updatedAt },
     ])}\n`);
     await writeFile(settingsFile, '{}\n');
 
@@ -145,7 +145,7 @@ test('stop route marks a launching bridge thread failed', async () => {
 
   try {
     await writeFile(sessionFile, `${JSON.stringify([
-      { name: 'launching', provider: 'daytona', threadBridge: true, bridgeMode: true, bridgeClaimed: true, taskPrompt: 'keep going', status: 'launching', runStatus: 'launching', createdAt },
+      { name: 'launching', provider: 'cloudflare', threadBridge: true, bridgeMode: true, bridgeClaimed: true, taskPrompt: 'keep going', status: 'launching', runStatus: 'launching', createdAt },
     ])}\n`);
     await writeFile(settingsFile, '{}\n');
 

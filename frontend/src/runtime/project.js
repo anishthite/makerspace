@@ -490,7 +490,7 @@ function renderProvider(provider) {
   chooseFolder.hidden = !canChooseFolder;
   if (local) {
     hideRepoSuggestions();
-    resetRepoSelection(canChooseFolder ? '' : 'Paste a local folder path.');
+    resetRepoSelection('');
     void loadLastFolder();
   }
 }
@@ -521,12 +521,13 @@ function setSignInStatus(message) {
 
 function renderGitHubSignIn(status) {
   const connected = Boolean(status.connected);
-  const showGate = providerKind !== 'local' && !connected && status.configured;
+  const desktop = Boolean(globalThis.spannerDesktop);
+  const showGate = !desktop && providerKind !== 'local' && !connected && status.configured;
   if (githubSigninCard) githubSigninCard.hidden = !showGate;
   if (projectHero) projectHero.hidden = showGate;
   if (projectGrid) projectGrid.hidden = showGate;
   for (const button of githubSigninButtons) {
-    button.hidden = providerKind === 'local' || connected || !status.configured;
+    button.hidden = desktop || providerKind === 'local' || connected || !status.configured;
     button.disabled = !status.configured;
   }
   if (githubSigninCopy && status.configured) githubSigninCopy.textContent = 'Connect GitHub to launch agents on your repos without sharing credentials with anyone else.';

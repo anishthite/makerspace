@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createParser } from '@openuidev/react-lang';
+import { openuiChatLibrary } from '@openuidev/react-ui/genui-lib';
 
 import {
   extractOpenUIArtifacts,
@@ -7,6 +9,8 @@ import {
   openUIActionPrompt,
   stripOpenUIArtifactBlocks,
 } from '../frontend/src/runtime/openui-artifacts.js';
+
+const openUIParser = createParser(openuiChatLibrary.toJSONSchema(), 'root');
 
 test('openui artifact blocks extract and strip safely', () => {
   const text = `Before
@@ -40,6 +44,12 @@ test('openui source normalizes triple-quoted string literals', () => {
     normalizeOpenUISource('TextContent("""Hi\nthere""")'),
     'root = TextContent("Hi\\nthere")',
   );
+});
+
+test('openui source fills missing table column data arrays', () => {
+  const source = normalizeOpenUISource('Table([Col("Check"), Col("Result", results)])\nresults = ["passed"]');
+  assert.equal(source, 'root = Table([Col("Check", []), Col("Result", results)])\nresults = ["passed"]');
+  assert.deepEqual(openUIParser.parse(source).meta.errors, []);
 });
 
 test('markdown tables synthesize an OpenUI table artifact', () => {

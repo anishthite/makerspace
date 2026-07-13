@@ -35,13 +35,13 @@ test('applies the fixed app appearance', (t) => {
 });
 
 test('pins app typography to Inter', () => {
-  const styles = readFileSync(new URL('../frontend/public/styles.css', import.meta.url), 'utf8');
+  const styles = readFileSync(new URL('../frontend/src/styles/app.css', import.meta.url), 'utf8');
   const fluidUi = readFileSync(new URL('../frontend/src/styles/fluid-ui.css', import.meta.url), 'utf8');
   const appPages = ['index', 'workspace', 'thread', 'history', 'telemetry', 'local-telemetry', 'settings']
     .map((name) => readFileSync(new URL(`../frontend/${name}.html`, import.meta.url), 'utf8'))
     .join('\n');
 
-  assert.match(styles, /--mono: 'Inter'/);
+  assert.match(styles, /--mono: 'Inter Variable'/);
   assert.match(styles, /--sans: var\(--mono\)/);
   assert.doesNotMatch(styles, /hack-font|JetBrains Mono/);
   assert.match(fluidUi, /--font-mono: var\(--font-sans\);/);

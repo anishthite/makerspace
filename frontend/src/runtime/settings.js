@@ -19,11 +19,18 @@ const codexDeviceDialog = document.querySelector('#codex-device-dialog');
 const codexDeviceClose = document.querySelector('#codex-device-close');
 const codexDeviceCode = document.querySelector('#codex-device-code');
 const codexDeviceCopy = document.querySelector('#codex-device-copy');
+const codexDeviceCopyLabel = document.querySelector('#codex-device-copy-label');
 const codexDeviceOpen = document.querySelector('#codex-device-open');
+const codexDeviceOpenLabel = document.querySelector('#codex-device-open-label');
 const codexDeviceDialogStatus = document.querySelector('#codex-device-dialog-status');
 const claudeCodeLogin = document.querySelector('#claude-code-login');
 const claudeCodeStatus = document.querySelector('#claude-code-status');
+const claudeCodeDialog = document.querySelector('#claude-code-dialog');
+const claudeCodeClose = document.querySelector('#claude-code-close');
 const claudeCodeAuth = document.querySelector('#claude-code-auth');
+const claudeCodeOpen = document.querySelector('#claude-code-open');
+const claudeCodeCopyLink = document.querySelector('#claude-code-copy-link');
+const claudeCodeDialogStatus = document.querySelector('#claude-code-dialog-status');
 const claudeCodeCodeForm = document.querySelector('#claude-code-code-form');
 const claudeCodeCodeInput = document.querySelector('#claude-code-code');
 const claudeCodePaste = document.querySelector('#claude-code-paste');
@@ -177,47 +184,94 @@ async function loadClaudeCodeAuth() {
   return status;
 }
 
-function writeAuthTab(authTab, title, body) {
-  try {
-    authTab.document.open();
-    authTab.document.write(`<!doctype html><title>${escapeHtml(title)}</title><body style="font:16px system-ui;padding:24px">${body}</body>`);
-    authTab.document.close();
-  } catch {}
+function setAuthDialogStatus(target, message = '') {
+  if (target) target.textContent = message;
 }
 
-function setCodexDialogStatus(message = '') {
-  if (codexDeviceDialogStatus) codexDeviceDialogStatus.textContent = message;
-}
-
-function openCodexDeviceDialog(message = 'Starting…') {
-  setCodexDialogStatus(message);
-  if (!codexDeviceDialog || codexDeviceDialog.open) return;
+function openAuthDialog(dialog, statusTarget, message = 'Starting…') {
+  setAuthDialogStatus(statusTarget, message);
+  if (!dialog || dialog.open) return;
   try {
-    if (codexDeviceDialog.showModal) codexDeviceDialog.showModal();
-    else codexDeviceDialog.setAttribute('open', '');
+    if (dialog.showModal) dialog.showModal();
+    else dialog.setAttribute('open', '');
   } catch {
-    codexDeviceDialog.setAttribute('open', '');
+    dialog.setAttribute('open', '');
   }
 }
 
+function closeAuthDialog(dialog) {
+  if (!dialog) return;
+  if (dialog.open) dialog.close?.();
+  dialog.removeAttribute('open');
+}
+
+function setAuthLink(link, url = '') {
+  if (!link) return;
+  if (url) {
+    link.setAttribute('href', url);
+    link.removeAttribute('aria-disabled');
+    return;
+  }
+  link.removeAttribute('href');
+  link.setAttribute('aria-disabled', 'true');
+}
+
+function setCodexDialogStatus(message = '') {
+  setAuthDialogStatus(codexDeviceDialogStatus, message);
+}
+
+function openCodexDeviceDialog(message = 'Starting…') {
+  openAuthDialog(codexDeviceDialog, codexDeviceDialogStatus, message);
+}
+
 function closeCodexDeviceDialog() {
-  if (!codexDeviceDialog) return;
-  if (codexDeviceDialog.open) codexDeviceDialog.close?.();
-  codexDeviceDialog.removeAttribute('open');
+  closeAuthDialog(codexDeviceDialog);
+}
+
+function setClaudeCodeDialogStatus(message = '') {
+  setAuthDialogStatus(claudeCodeDialogStatus, message);
+}
+
+function setClaudeCodeStatus(message = '') {
+  claudeCodeStatus.textContent = message;
+  setClaudeCodeDialogStatus(message);
+}
+
+function openClaudeCodeDialog(message = 'Starting…') {
+  openAuthDialog(claudeCodeDialog, claudeCodeDialogStatus, message);
+}
+
+function closeClaudeCodeDialog() {
+  closeAuthDialog(claudeCodeDialog);
 }
 
 function resetCodexDeviceDialog() {
   if (codexDeviceCode) codexDeviceCode.textContent = 'Loading…';
   if (codexDeviceCopy) {
     codexDeviceCopy.disabled = true;
-    codexDeviceCopy.textContent = 'Copy code';
+    if (codexDeviceCopyLabel) codexDeviceCopyLabel.textContent = 'copy';
+    else codexDeviceCopy.textContent = 'copy';
     delete codexDeviceCopy.dataset.code;
   }
-  if (codexDeviceOpen) {
-    codexDeviceOpen.removeAttribute('href');
-    codexDeviceOpen.setAttribute('aria-disabled', 'true');
-  }
+  if (codexDeviceOpenLabel) codexDeviceOpenLabel.textContent = 'Loading link…';
+  setAuthLink(codexDeviceOpen);
   openCodexDeviceDialog('Starting Codex sign-in…');
+}
+
+function resetClaudeCodeDialog() {
+  if (claudeCodeAuth) {
+    claudeCodeAuth.classList.add('hidden');
+    claudeCodeAuth.textContent = '';
+  }
+  setAuthLink(claudeCodeOpen);
+  if (claudeCodeCopyLink) {
+    claudeCodeCopyLink.disabled = true;
+    claudeCodeCopyLink.textContent = 'Copy link';
+    delete claudeCodeCopyLink.dataset.url;
+  }
+  if (claudeCodeCodeForm) claudeCodeCodeForm.classList.add('hidden');
+  if (claudeCodeCodeInput) claudeCodeCodeInput.value = '';
+  openClaudeCodeDialog('Starting Claude sign-in…');
 }
 
 async function copyToClipboard(value) {
@@ -241,33 +295,6 @@ async function copyToClipboard(value) {
   return ok;
 }
 
-function openWebClaudeCodeTab() {
-  if (globalThis.spannerDesktop) return null;
-  const claudeTab = globalThis.open?.('about:blank', '_blank') || null;
-  if (claudeTab) writeAuthTab(claudeTab, 'Claude Code sign-in', 'Opening Claude Code sign-in…');
-  return claudeTab;
-}
-
-function navigateAuthTab(authTab, title, label, url) {
-  if (!authTab || !url) return;
-  const safeUrl = escapeHtml(url);
-  const scriptUrl = JSON.stringify(url).replaceAll('</', '<\\/');
-  writeAuthTab(authTab, title, `Opening ${escapeHtml(label)} sign-in… <a href="${safeUrl}">Open manually</a><script>window.opener=null;location.replace(${scriptUrl});</script>`);
-}
-
-function navigateClaudeCodeTab(claudeTab, url) {
-  if (!claudeTab || !url) return;
-  const safeUrl = escapeHtml(url);
-  const scriptUrl = JSON.stringify(url).replaceAll('</', '<\\/');
-  writeAuthTab(claudeTab, 'Claude Code sign-in', `
-    <h1 style="margin:0 0 12px">Claude sign-in</h1>
-    <p>After approval, Claude shows a code.</p>
-    <p><b>Copy that code, return to Spanner, and paste it.</b></p>
-    <p><a href="${safeUrl}">Continue to Claude</a></p>
-    <script>setTimeout(function(){ location.replace(${scriptUrl}); }, 1200);</script>
-  `);
-}
-
 function renderCodexDevice(login) {
   const device = login.device;
   if (!device) {
@@ -280,37 +307,35 @@ function renderCodexDevice(login) {
   if (codexDeviceCode) codexDeviceCode.textContent = userCode || 'Code unavailable';
   if (codexDeviceCopy) {
     codexDeviceCopy.disabled = !userCode;
-    codexDeviceCopy.textContent = 'Copy code';
+    if (codexDeviceCopyLabel) codexDeviceCopyLabel.textContent = 'copy';
+    else codexDeviceCopy.textContent = 'copy';
     codexDeviceCopy.dataset.code = userCode;
   }
-  if (codexDeviceOpen) {
-    codexDeviceOpen.textContent = 'Open sign-in';
-    if (verificationUri) {
-      codexDeviceOpen.setAttribute('href', verificationUri);
-      codexDeviceOpen.removeAttribute('aria-disabled');
-    } else {
-      codexDeviceOpen.removeAttribute('href');
-      codexDeviceOpen.setAttribute('aria-disabled', 'true');
-    }
-  }
+  if (codexDeviceOpenLabel) codexDeviceOpenLabel.textContent = verificationUri || 'sign in with codex';
+  else if (codexDeviceOpen) codexDeviceOpen.textContent = 'sign in with codex';
+  setAuthLink(codexDeviceOpen, verificationUri);
   const safeUri = escapeHtml(verificationUri);
   const safeCode = escapeHtml(userCode);
   codexDevice.classList.remove('hidden');
   codexDevice.innerHTML = `Copy <code>${safeCode}</code>, then open <a href="${safeUri}" target="_blank" rel="noreferrer">${safeUri}</a>.`;
 }
 
-function renderClaudeCodeAuth(login, claudeTab = null) {
+function renderClaudeCodeAuth(login) {
   const auth = login.auth;
   if (!auth?.url) {
-    claudeTab?.close?.();
+    closeClaudeCodeDialog();
     return;
   }
-  navigateClaudeCodeTab(claudeTab, auth.url);
-  claudeCodeAuth.classList.remove('hidden');
+  openClaudeCodeDialog('Open Claude, approve access, then paste the copied code here.');
+  setAuthLink(claudeCodeOpen, auth.url);
+  if (claudeCodeCopyLink) {
+    claudeCodeCopyLink.disabled = false;
+    claudeCodeCopyLink.dataset.url = auth.url;
+    claudeCodeCopyLink.textContent = 'Copy link';
+  }
   claudeCodeCodeForm.classList.remove('hidden');
   claudeCodeCodeInput.value = '';
-  claudeCodeCodeInput.focus();
-  claudeCodeAuth.innerHTML = `Step 1: approve access in <a href="${escapeHtml(auth.url)}" target="_blank" rel="noreferrer">Claude</a>. Step 2: copy the code Claude shows. Step 3: paste it here; Spanner finishes the rest.`;
+  claudeCodeOpen?.focus?.();
 }
 
 async function pollCodexLogin(id) {
@@ -335,12 +360,13 @@ async function pollClaudeCodeLogin(id) {
       claudeCodeStatus.textContent = 'Signed in';
       claudeCodeAuth.classList.add('hidden');
       claudeCodeCodeForm.classList.add('hidden');
+      closeClaudeCodeDialog();
       activeClaudeCodeLoginId = '';
       await loadClaudeCodeAuth();
       return;
     }
     if (login.status === 'failed') throw new Error(login.error || 'Claude Code failed');
-    if (login.progress) claudeCodeStatus.textContent = login.progress;
+    if (login.progress) setClaudeCodeStatus(login.progress);
     await new Promise((resolve) => setTimeout(resolve, 2000));
   }
 }
@@ -467,10 +493,12 @@ function initDesktopUpdates() {
 getBrowserSessionId();
 initDesktopUpdates();
 codexDeviceClose?.addEventListener('click', closeCodexDeviceDialog);
+claudeCodeClose?.addEventListener('click', closeClaudeCodeDialog);
 
 codexDeviceCopy?.addEventListener('click', async () => {
   const ok = await copyToClipboard(codexDeviceCopy.dataset.code || codexDeviceCode?.textContent || '');
-  codexDeviceCopy.textContent = ok ? 'Copied' : 'Select code';
+  if (codexDeviceCopyLabel) codexDeviceCopyLabel.textContent = ok ? 'copied' : 'select code';
+  else codexDeviceCopy.textContent = ok ? 'copied' : 'select code';
   setCodexDialogStatus(ok ? 'Copied. Now open sign-in.' : 'Copy failed. Select the code, then open sign-in.');
 });
 
@@ -502,21 +530,18 @@ codexLogin.addEventListener('click', async () => {
 });
 
 claudeCodeLogin.addEventListener('click', async () => {
-  const claudeTab = openWebClaudeCodeTab();
+  resetClaudeCodeDialog();
   await persistConnectionInputs();
   claudeCodeLogin.disabled = true;
-  claudeCodeStatus.textContent = 'Starting…';
-  claudeCodeAuth.classList.add('hidden');
-  claudeCodeCodeForm.classList.add('hidden');
+  setClaudeCodeStatus('Starting…');
   try {
     const login = await fetchJson('/api/auth/claude-code/login', { method: 'POST' });
     activeClaudeCodeLoginId = login.id;
-    renderClaudeCodeAuth(login, claudeTab);
-    claudeCodeStatus.textContent = 'Waiting for Claude…';
+    renderClaudeCodeAuth(login);
+    setClaudeCodeStatus('Waiting for Claude…');
     await pollClaudeCodeLogin(login.id);
   } catch (error) {
-    claudeTab?.close?.();
-    claudeCodeStatus.textContent = error.message;
+    setClaudeCodeStatus(error.message);
   } finally {
     claudeCodeLogin.disabled = false;
   }
@@ -524,18 +549,18 @@ claudeCodeLogin.addEventListener('click', async () => {
 
 async function submitClaudeCodeInput() {
   if (!activeClaudeCodeLoginId) {
-    claudeCodeStatus.textContent = 'Start Claude Code sign-in first.';
+    setClaudeCodeStatus('Start Claude Code sign-in first.');
     return;
   }
   if (!claudeCodeCodeInput.value.trim()) {
-    claudeCodeStatus.textContent = 'Paste the code Claude showed.';
+    setClaudeCodeStatus('Paste the code Claude showed.');
     claudeCodeCodeInput.focus();
     return;
   }
   if (claudeCodeCodeSubmit.disabled) return;
   claudeCodeCodeSubmit.disabled = true;
   if (claudeCodePaste) claudeCodePaste.disabled = true;
-  claudeCodeStatus.textContent = 'Exchanging…';
+  setClaudeCodeStatus('Exchanging…');
   try {
     await fetchJson(`/api/auth/claude-code/login/${encodeURIComponent(activeClaudeCodeLoginId)}/code`, {
       method: 'POST',
@@ -543,7 +568,7 @@ async function submitClaudeCodeInput() {
       body: JSON.stringify({ code: claudeCodeCodeInput.value }),
     });
   } catch (error) {
-    claudeCodeStatus.textContent = error.message;
+    setClaudeCodeStatus(error.message);
   } finally {
     claudeCodeCodeSubmit.disabled = false;
     if (claudeCodePaste) claudeCodePaste.disabled = false;
@@ -561,12 +586,33 @@ claudeCodeCodeInput.addEventListener('paste', () => {
   }, 0);
 });
 
+claudeCodeOpen?.addEventListener('click', (event) => {
+  if (!claudeCodeOpen.hasAttribute('href')) {
+    event.preventDefault();
+    return;
+  }
+  setClaudeCodeDialogStatus('Claude is open. Copy the code it shows, then paste it here.');
+  const desktopOpen = globalThis.spannerDesktop?.openExternal;
+  if (desktopOpen) {
+    event.preventDefault();
+    desktopOpen(claudeCodeOpen.getAttribute('href')).catch(() => {
+      setClaudeCodeDialogStatus('Could not open Claude automatically. Copy the link, then open it in your browser.');
+    });
+  }
+});
+
+claudeCodeCopyLink?.addEventListener('click', async () => {
+  const ok = await copyToClipboard(claudeCodeCopyLink.dataset.url || claudeCodeOpen?.getAttribute('href') || '');
+  claudeCodeCopyLink.textContent = ok ? 'Copied' : 'Select link';
+  setClaudeCodeDialogStatus(ok ? 'Copied. Open it in your browser, then paste the code Claude shows.' : 'Copy failed. Use the Open Claude button or copy the link manually.');
+});
+
 claudeCodePaste?.addEventListener('click', async () => {
   try {
     claudeCodeCodeInput.value = await navigator.clipboard.readText();
     await submitClaudeCodeInput();
   } catch {
-    claudeCodeStatus.textContent = 'Click the code box and press paste.';
+    setClaudeCodeStatus('Click the code box and press paste.');
     claudeCodeCodeInput.focus();
   }
 });

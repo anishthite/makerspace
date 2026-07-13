@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="900" viewBox="0 0 1400 900" role="img" aria-labelledby="title desc">
+  <title id="title">Spanner thread render pipeline</title>
+  <desc id="desc">How assistant message text moves through streaming, final rendering, HTML preview, OpenUI, interactive controls, and media artifact paths.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#8cbdfd"/>
+    </marker>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity="0.25"/>
+    </filter>
+    <style>
+      .bg{fill:#0e1118}.lane{fill:#151923;stroke:#2b3a52;stroke-width:1.5}.box{fill:#1d2530;stroke:#466187;stroke-width:1.5;rx:14;filter:url(#shadow)}
+      .decision{fill:#231f31;stroke:#b4b8ff;stroke-width:1.5}.artifact{fill:#17251f;stroke:#8edbd2;stroke-width:1.5}.warn{fill:#2b2117;stroke:#e2bc78;stroke-width:1.5}
+      .title{font:800 24px Inter,ui-sans-serif,system-ui,sans-serif;fill:#f1f5fa}.label{font:700 15px Inter,ui-sans-serif,system-ui,sans-serif;fill:#f1f5fa}.small{font:500 12px Inter,ui-sans-serif,system-ui,sans-serif;fill:#c8d0e0}.code{font:600 12px ui-monospace,SFMono-Regular,Menlo,monospace;fill:#89b4fa}.muted{fill:#8b95aa}
+      .arrow{fill:none;stroke:#8cbdfd;stroke-width:2.2;marker-end:url(#arrow)}.dash{stroke-dasharray:6 6}.tiny{font:500 11px Inter,ui-sans-serif,system-ui,sans-serif;fill:#9ba8ba}
+    </style>
+  </defs>
+  <rect class="bg" width="1400" height="900"/>
+  <text class="title" x="48" y="52">Thread message render pipeline</text>
+  <text class="small" x="48" y="78">Core files: frontend/src/runtime/thread.js, html-preview.js, openui-artifacts.js, openui-renderer.jsx, excalidraw-artifacts.js</text>
+
+  <rect class="lane" x="40" y="110" width="260" height="710" rx="20"/>
+  <text class="label" x="62" y="145">Inputs</text>
+  <rect class="box" x="64" y="175" width="210" height="96"/>
+  <text class="label" x="84" y="205">Stored history</text>
+  <text class="code" x="84" y="230">thread.threadMessages[]</text>
+  <text class="small" x="84" y="250">renderThreadHistory()</text>
+  <rect class="box" x="64" y="305" width="210" height="104"/>
+  <text class="label" x="84" y="335">Live stream</text>
+  <text class="code" x="84" y="360">/api/sessions/:name/stream</text>
+  <text class="small" x="84" y="382">appendTranscript=true</text>
+  <rect class="box" x="64" y="443" width="210" height="104"/>
+  <text class="label" x="84" y="473">Output replay</text>
+  <text class="code" x="84" y="498">/api/sessions/:name/output</text>
+  <text class="small" x="84" y="520">fills missed chunks</text>
+  <rect class="box" x="64" y="581" width="210" height="96"/>
+  <text class="label" x="84" y="611">User attachments</text>
+  <text class="code" x="84" y="636">message.images[]</text>
+  <text class="small" x="84" y="656">base64 data images</text>
+
+  <rect class="lane" x="340" y="110" width="300" height="710" rx="20"/>
+  <text class="label" x="362" y="145">Message DOM + streaming</text>
+  <rect class="box" x="370" y="190" width="240" height="110"/>
+  <text class="label" x="392" y="220">appendMessage()</text>
+  <text class="code" x="392" y="245">&lt;article.message-item&gt;</text>
+  <text class="code" x="392" y="266">&lt;div.message-body&gt;</text>
+  <rect class="warn" x="370" y="345" width="240" height="120"/>
+  <text class="label" x="392" y="375">Streaming path</text>
+  <text class="code" x="392" y="400">queueAssistantChunk()</text>
+  <text class="small" x="392" y="422">appends text nodes only</text>
+  <text class="small" x="392" y="442">no HTML/OpenUI until final</text>
+  <rect class="box" x="370" y="515" width="240" height="110"/>
+  <text class="label" x="392" y="545">finalizeAssistantBody()</text>
+  <text class="code" x="392" y="570">renderMessageBody(..., true)</text>
+  <text class="small" x="392" y="592">turns raw text into rich UI</text>
+
+  <rect class="lane" x="680" y="110" width="330" height="710" rx="20"/>
+  <text class="label" x="702" y="145">renderMessageBody()</text>
+  <rect class="box" x="710" y="180" width="270" height="110"/>
+  <text class="label" x="732" y="210">Strip sidecar blocks</text>
+  <text class="code" x="732" y="235">stripInteractiveArtifactBlocks()</text>
+  <text class="code" x="732" y="256">stripOpenUIArtifactBlocks()</text>
+  <rect class="decision" x="742" y="340" width="205" height="90" rx="16"/>
+  <text class="label" x="770" y="376">HTML candidate?</text>
+  <text class="small" x="768" y="400">htmlPreviewDocument()</text>
+  <rect class="box" x="710" y="490" width="270" height="108"/>
+  <text class="label" x="732" y="520">Plain text branch</text>
+  <text class="code" x="732" y="545">node.textContent = displayText</text>
+  <text class="small" x="732" y="567">safe escaped browser text</text>
+  <rect class="box" x="710" y="650" width="270" height="108"/>
+  <text class="label" x="732" y="680">HTML branch</text>
+  <text class="code" x="732" y="705">iframe.html-preview.srcdoc</text>
+  <text class="small" x="732" y="727">sandbox allow-same-origin</text>
+
+  <rect class="lane" x="1050" y="110" width="310" height="710" rx="20"/>
+  <text class="label" x="1072" y="145">Post-render appenders</text>
+  <rect class="artifact" x="1080" y="180" width="250" height="104"/>
+  <text class="label" x="1102" y="210">Image attachments</text>
+  <text class="code" x="1102" y="235">renderMessageAttachments()</text>
+  <text class="small" x="1102" y="257">data: png/jpeg/gif/webp</text>
+  <rect class="artifact" x="1080" y="318" width="250" height="126"/>
+  <text class="label" x="1102" y="348">Media artifacts</text>
+  <text class="code" x="1102" y="373">renderExcalidrawArtifacts()</text>
+  <text class="small" x="1102" y="395">.png .svg .webp .gif .jpg</text>
+  <text class="small" x="1102" y="415">.excalidraw iframe viewer</text>
+  <rect class="artifact" x="1080" y="478" width="250" height="126"/>
+  <text class="label" x="1102" y="508">OpenUI</text>
+  <text class="code" x="1102" y="533">renderOpenUIArtifactsLazy()</text>
+  <text class="small" x="1102" y="555">dynamic import React renderer</text>
+  <text class="small" x="1102" y="575">actions fill composer</text>
+  <rect class="artifact" x="1080" y="638" width="250" height="104"/>
+  <text class="label" x="1102" y="668">spanner-ui controls</text>
+  <text class="code" x="1102" y="693">renderInteractiveArtifacts()</text>
+  <text class="small" x="1102" y="715">buttons generate prompts</text>
+
+  <path class="arrow" d="M274 223 H370"/>
+  <path class="arrow" d="M274 357 H370"/>
+  <path class="arrow" d="M274 495 H370"/>
+  <path class="arrow" d="M610 245 H710"/>
+  <path class="arrow" d="M490 465 V515"/>
+  <path class="arrow" d="M610 570 H690 C710 570 710 385 742 385"/>
+  <path class="arrow" d="M845 430 V490"/>
+  <path class="arrow" d="M947 385 C1018 385 1018 704 980 704"/>
+  <path class="arrow" d="M980 544 H1080"/>
+  <path class="arrow" d="M980 704 H1030 C1045 704 1045 232 1080 232"/>
+  <path class="arrow" d="M980 704 H1030 C1045 704 1045 381 1080 381"/>
+  <path class="arrow" d="M980 704 H1030 C1045 704 1045 541 1080 541"/>
+  <path class="arrow" d="M980 704 H1080"/>
+  <path class="arrow dash" d="M980 544 H1030 C1045 544 1045 381 1080 381"/>
+  <path class="arrow dash" d="M980 544 H1030 C1045 544 1045 541 1080 541"/>
+
+  <text class="tiny" x="790" y="462">no preview</text>
+  <text class="tiny" x="958" y="374">yes</text>
+  <text class="tiny" x="1000" y="360">HTML iframe also gets media/OpenUI sidecars</text>
+
+  <rect class="warn" x="372" y="705" width="235" height="76"/>
+  <text class="label" x="394" y="733">Artifact route</text>
+  <text class="code" x="394" y="756">/api/threads/:name/artifacts/file</text>
+  <text class="small" x="394" y="774">safe relative path + auth</text>
+  <path class="arrow dash" d="M1080 381 C940 840 600 840 492 781"/>
+</svg>

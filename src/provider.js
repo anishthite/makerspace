@@ -8,7 +8,7 @@ const PROVIDERS = {
 
 export function isTransientSandboxError(error) {
   const message = String(error?.message || error || '').toLowerCase();
-  return /timeout|temporar|rate limit|503|502|network|econnreset|etimedout/.test(message);
+  return /container is starting|retry in a moment|timeout|temporar|rate limit|503|502|network|econnreset|etimedout/.test(message);
 }
 
 function projectInfo(config = {}) {

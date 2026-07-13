@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Workspace sidebar layout variations</title>
+<meta name="task" content="Add selectable workspace sidebar organization variations for review.">
+<meta name="date-started" content="2026-07-12">
+<meta name="date-updated" content="2026-07-12">
+<meta name="status" content="ready-for-review">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,ui,workspace,agents,sidebar,layout">
+<meta name="related" content="2026-07-12-workspace-agents-sidebar.html,2026-07-12-workspace-agents-list-polish.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Workspace sidebar layout variations</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-12 · status <b class="status-in-progress">ready-for-review</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Ship several selectable organizations for the workspace agents sidebar header.</div><b>Source</b><div>User screenshot of cluttered <code>#agents-section</code> header.</div><b>Surface</b><div><code>/workspace.html</code> header markup, CSS, and local layout picker behavior.</div><b>Schema</b><div>Browser-only <code>localStorage</code> key <code>spannerWorkspaceSidebarLayout</code>.</div><b>Mobile</b><div>Use the same variants within the sidebar sheet width.</div><b>Open Qs</b><div>0; assume temporary picker stays until the user chooses.</div></div>
+<h2>UI layout</h2>
+<ol><li><b>Stack</b>: keep brand, workspace, and agent actions in quiet stacked blocks.</li><li><b>Bar</b>: put brand and workspace on one compact top row.</li><li><b>Cards</b>: make each control a full-width touch target.</li><li><b>Dock</b>: use a narrow sidebar with icon-forward utilities.</li><li><b>Mini</b>: remove heavy boxes and keep text-link utilities.</li></ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>frontend/src/pages.jsx</code></td><td>touch</td><td>Add the review-only sidebar layout picker and stable option attributes.</td></tr><tr><td><code>frontend/src/runtime/app.js</code></td><td>touch</td><td>Read, persist, and apply <code>data-workspace-sidebar-layout</code>.</td></tr><tr><td><code>frontend/src/styles/app.css</code></td><td>touch</td><td>Add five sidebar-header layout variants.</td></tr><tr><td><code>test/home-runtime-summary.test.js</code></td><td>touch</td><td>Pin static wiring for picker and persistence.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Use one markup shape plus CSS variants. The user wants comparisons, not five divergent components.</td></tr><tr><td>D-002</td><td>Persist the selected variant in <code>localStorage</code>. Reloads keep the review target stable.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>Temporary picker over separate routes. One live workspace makes screenshots and user choice cheaper.</td></tr></table>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>node --check frontend/src/runtime/app.js &amp;&amp; node --test test/home-runtime-summary.test.js</code></td><td>Passed 13/13.</td></tr><tr><td><code>npm run build</code></td><td>Passed.</td></tr><tr><td><code>output/playwright/sidebar-variants/contact-sheet.png</code></td><td>Captured five review variants.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Delete the picker, data attribute runtime, and variant CSS; keep the chosen block if selected.</p>
+<h2>Definition of done</h2>
+<ul><li>Five sidebar organization variants are selectable in the workspace.</li><li>The chosen variant persists through reload.</li><li>Focused static test and build pass.</li><li>Review screenshots exist for each variant.</li></ul>
+</body>
+</html>
