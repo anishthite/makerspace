@@ -102,7 +102,7 @@ function ProjectOnboardingDialog() {
   const steps = [
     ['github', 'Connect GitHub', 'Use your GitHub account for repos and private workspace access.'],
     ['codex', 'Sign in to Codex', 'Add model access in Settings so Pi can run the agent.'],
-    ['project', 'Pick a repo', 'Choose a GitHub repo or local folder for the sandbox.'],
+    ['project', 'Pick a repo', 'Choose a GitHub repo for the sandbox.'],
     ['agent', 'Start an agent', 'Open the workspace, write one prompt, and let it run.'],
   ];
   return <dialog id="onboarding-dialog" className="onboarding-dialog" aria-labelledby="onboarding-title" aria-describedby="onboarding-copy">
@@ -114,7 +114,7 @@ function ProjectOnboardingDialog() {
         <p id="onboarding-copy">Four steps. No new account form, no wizard state, no ceremony.</p>
         <div className="onboarding-actions">
           <GitHubSignInButton id="onboarding-github">Continue with GitHub</GitHubSignInButton>
-          <Button id="onboarding-pick-repo" variant="ghost" type="button"><FolderOpenIcon {...buttonIconProps} />Pick repo or folder</Button>
+          <Button id="onboarding-pick-repo" variant="ghost" type="button"><FolderOpenIcon {...buttonIconProps} />Pick repo</Button>
           <Button as="a" id="onboarding-codex" variant="ghost" href="/settings.html#codex"><OpenAiLogoIcon {...buttonIconProps} />Codex settings</Button>
         </div>
       </div>
@@ -172,7 +172,7 @@ function WorkspaceNav({ active = 'workspace', showBrand = true, showWorkspaceMan
 }
 
 export function ProjectPage() {
-  return <main className="mx-auto w-[min(980px,calc(100%_-_clamp(32px,10vw,240px)))] px-0 py-6 pb-18 max-sm:w-[min(900px,calc(100%_-_24px))]">
+  return <main className="mx-auto w-[min(760px,calc(100%_-_clamp(24px,8vw,160px)))] px-0 py-5 pb-14 max-sm:w-[min(900px,calc(100%_-_24px))]">
     <nav className={topbarClass} aria-label="Spanner navigation">
       <Brand href="/" label="Spanner projects" />
       <div className={headerActionsClass}><AuthPills /><GitHubSignInButton id="github-signin-nav" className="signin-nav-button">Sign in</GitHubSignInButton><Button as="a" variant="ghost" href="/settings.html"><GearSixIcon {...buttonIconProps} />settings</Button></div>
@@ -181,21 +181,21 @@ export function ProjectPage() {
     <GitHubSignInCard />
     <ProjectOnboardingDialog />
 
-    <section id="project-grid" className="mx-auto mt-[clamp(42px,8vh,92px)] grid max-w-[820px] grid-cols-1 gap-4">
-      <Surface as="form" id="project-form" className={cn(surfaceClass, 'grid gap-5 overflow-hidden p-5 md:p-6')} aria-labelledby="project-welcome">
+    <section id="project-grid" className="mx-auto mt-[clamp(24px,6vh,54px)] grid max-w-[640px] grid-cols-1 gap-4">
+      <Surface as="form" id="project-form" className={cn(surfaceClass, 'grid gap-4 overflow-hidden p-4 md:p-5')} aria-labelledby="project-welcome">
         <input id="project-repo-source" name="repoSource" type="hidden" value="" readOnly />
         <input id="project-branch" name="branch" type="hidden" value="" readOnly />
 
-        <div id="project-hero" className="grid gap-2 text-left">
-          <h1 id="project-welcome" className="mb-0 text-[clamp(30px,3.4vw,42px)] leading-none tracking-[-.05em]">Welcome back.</h1>
-          <p className={cn(ledeClass, 'mb-0 max-w-[560px] text-base')}>Choose a recent project or paste a folder path.</p>
+        <div id="project-hero" className="grid gap-1.5 text-left">
+          <h1 id="project-welcome" className="mb-0 text-[clamp(28px,3vw,38px)] leading-none tracking-[-.05em]">Welcome back.</h1>
+          <p id="project-subtitle" className={cn(ledeClass, 'mb-0 max-w-[520px] text-sm')}>Choose a project to open.</p>
         </div>
 
-        <div className="project-picker-panel grid gap-3 rounded-md border border-[var(--rule)] bg-[var(--paper-2)] p-3">
+        <div className="project-picker-panel grid gap-2.5 rounded-md border border-[var(--rule)] bg-[var(--paper-2)] p-2.5">
           <label className="sr-only" htmlFor="project-repo-url">folder or repo</label>
-          <InputGroup as="div" className="relative grid-cols-[minmax(0,1fr)_auto] p-0 [&_input]:px-3 [&_input]:py-3">
-            <input id="project-repo-url" name="repoUrl" placeholder="/Users/you/project" aria-label="folder or repo" autoComplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="project-repo-options" required />
-            <Button id="project-choose-folder" variant="ghost" size="sm" className="m-1" type="button" hidden aria-label="choose local folder" title="choose local folder"><FolderOpenIcon {...buttonIconProps} />choose folder</Button>
+          <InputGroup as="div" className="relative grid-cols-[minmax(0,1fr)_auto] p-0 [&_input]:px-3 [&_input]:py-2.5">
+            <input id="project-repo-url" name="repoUrl" placeholder="owner/repo or URL" aria-label="folder or repo" autoComplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="project-repo-options" required />
+            <Button id="project-choose-folder" variant="ghost" size="icon" className="project-folder-button" type="button" hidden aria-label="choose local folder" title="choose local folder"><FolderOpenIcon {...buttonIconProps} /></Button>
             <div id="project-repo-options" className="repo-suggestions absolute left-0 right-0 top-[calc(100%+6px)] z-20 max-h-64 overflow-auto rounded-md border border-[var(--rule-2)] bg-[var(--paper)] p-1 shadow-[var(--shadow-md)]" role="listbox" hidden></div>
           </InputGroup>
           <div id="project-repo-tray" className="flex flex-wrap items-center gap-2">
@@ -206,8 +206,8 @@ export function ProjectPage() {
           <p id="project-status" className={statusLineClass} aria-live="polite"></p>
         </div>
 
-        <div className="project-recent-panel border-t border-[var(--rule)] pt-4" aria-label="Recent projects">
-          <div className="mb-3 flex items-end justify-between gap-3"><div><h2 className="mb-1">Recent projects</h2><p className={mutedClass}>One click back into a workspace.</p></div></div>
+        <div className="project-recent-panel border-t border-[var(--rule)] pt-3" aria-label="Recent projects">
+          <div className="mb-2 flex items-end justify-between gap-3"><div><h2 className="mb-0.5">Recent projects</h2><p className={mutedClass}>One click back into a workspace.</p></div></div>
           <div id="project-recent-list" className="project-list grid gap-2"></div>
         </div>
       </Surface>

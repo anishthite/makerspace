@@ -45,6 +45,7 @@ const repoHint = document.querySelector('#project-repo-hint');
 const statusLine = document.querySelector('#project-status');
 const recentList = document.querySelector('#project-recent-list');
 const projectWelcome = document.querySelector('#project-welcome');
+const projectSubtitle = document.querySelector('#project-subtitle');
 const onboardingDialog = document.querySelector('#onboarding-dialog');
 const onboardingClose = document.querySelector('#onboarding-close');
 const onboardingPickRepo = document.querySelector('#onboarding-pick-repo');
@@ -257,11 +258,17 @@ function looksLikeBareRepoName(value) {
   return /^[\w.-]+$/i.test(String(value || '').trim());
 }
 
+function acceptsLocalFolders() {
+  return providerKind === 'local' || Boolean(globalThis.spannerDesktop?.chooseFolder);
+}
+
 function projectFromInput() {
   const rawValue = cleanProjectValue(repoInput.value);
   if (!rawValue) return null;
 
-  const local = providerKind === 'local' || looksLikeLocalPath(rawValue);
+  if (looksLikeLocalPath(rawValue) && !acceptsLocalFolders()) return null;
+
+  const local = acceptsLocalFolders() && (providerKind === 'local' || looksLikeLocalPath(rawValue));
   if (local) {
     return {
       kind: 'local',
@@ -366,12 +373,14 @@ function runningAgentCount(project, threads = []) {
 
 function renderRecentProjects(threads = []) {
   projectThreadCount = Array.isArray(threads) ? threads.length : 0;
-  const projects = readRecentProjects();
+  const projects = readRecentProjects()
+    .map((project, index) => ({ project, index }))
+    .filter(({ project }) => acceptsLocalFolders() || project.kind !== 'local');
   if (!projects.length) {
     recentList.innerHTML = '<p class="empty-state">No recent projects yet.</p>';
     return;
   }
-  recentList.innerHTML = projects.map((project, index) => {
+  recentList.innerHTML = projects.map(({ project, index }) => {
     const running = runningAgentCount(project, threads);
     const runningLabel = `${running} agent${running === 1 ? '' : 's'} running`;
     return `
@@ -553,11 +562,20 @@ async function loadLastFolder() {
   } catch {}
 }
 
+function renderProjectModeCopy() {
+  const local = acceptsLocalFolders();
+  form.dataset.projectMode = local ? 'local' : 'remote';
+  if (projectSubtitle) projectSubtitle.textContent = local
+    ? 'Choose a local folder or paste its path.'
+    : 'Choose a GitHub repo or paste a repo URL.';
+  repoInput.placeholder = local ? '/Users/you/project' : 'owner/repo or URL';
+}
+
 function renderProvider(provider) {
   providerKind = provider?.kind || '';
   const local = providerKind === 'local';
   const canChooseFolder = Boolean(globalThis.spannerDesktop?.chooseFolder);
-  repoInput.placeholder = local ? '/Users/you/project' : 'type repo name, paste URL, or /Users/you/project';
+  renderProjectModeCopy();
   repoTray.hidden = local && canChooseFolder;
   repoRefresh.hidden = local;
   chooseFolder.hidden = !canChooseFolder;
@@ -647,7 +665,7 @@ function renderProjectAuth(codex = {}, github = {}) {
   } else if (providerKind !== 'local') {
     githubRepos = [];
     hideRepoSuggestions();
-    repoHint.textContent = github.configured ? 'Sign in to pick repos.' : 'Paste a repo or choose a local folder.';
+    repoHint.textContent = github.configured ? 'Sign in to pick repos.' : 'Paste a GitHub repo URL.';
   }
   renderOnboarding();
 }
@@ -678,10 +696,11 @@ async function loadProjectBootstrap() {
 async function loadStatus() {
   getBrowserSessionId();
   renderRecentProjects();
+  renderProjectModeCopy();
   if (globalThis.spannerDesktop?.chooseFolder) {
     chooseFolder.hidden = false;
     repoTray.hidden = true;
-    repoHint.textContent = 'Choose a local folder or paste a repo.';
+    repoHint.textContent = 'Choose a local folder or paste its path.';
     void loadLastFolder();
   }
 
@@ -776,7 +795,9 @@ form.addEventListener('submit', async (event) => {
   event.preventDefault();
   const project = projectFromInput();
   if (!project) {
-    statusLine.textContent = 'Pick a matching GitHub repo, paste owner/repo, or choose a local folder.';
+    statusLine.textContent = acceptsLocalFolders()
+      ? 'Choose a local folder or paste its path.'
+      : 'Pick a GitHub repo or paste a repo URL.';
     renderRepoSuggestions();
     return;
   }
