@@ -1,5 +1,7 @@
 import './appearance.js?v=palette-2';
 
+import { redirectIfAuthRequired } from './auth-redirect.js';
+
 const BROWSER_SESSION_KEY = 'spannerBrowserSession';
 const PROJECT_KEY = 'spannerSelectedProject';
 const ACTIVE_STATUSES = new Set(['launching', 'queued', 'starting', 'running', 'reconnecting']);
@@ -117,7 +119,10 @@ function apiUrl(path) {
 async function fetchJson(path, options = {}) {
   const response = await fetch(apiUrl(path), { credentials: 'include', ...options, headers: { ...authHeaders(), ...(options.headers || {}) } });
   const payload = await response.json();
-  if (!response.ok) throw new Error(payload.error || `Request failed: ${response.status}`);
+  if (!response.ok) {
+    if (redirectIfAuthRequired(payload, response)) return new Promise(() => {});
+    throw new Error(payload.error || `Request failed: ${response.status}`);
+  }
   return payload;
 }
 

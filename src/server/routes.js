@@ -146,18 +146,19 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
 
       if (request.method === 'GET' && pathname === '/api/bootstrap') {
         const page = String(url.searchParams.get('page') || 'workspace').trim().toLowerCase();
+        const fast = ['1', 'true', 'yes'].includes(String(url.searchParams.get('fast') || '').trim().toLowerCase());
         const canReadProtected = trusted || Boolean(user) || !config.authRequired;
 
-        if (page === 'thread') {
-          if (!canReadProtected) {
-            sendJson(response, 401, {
-              error: isGitHubAuthConfigured() ? 'Sign in with GitHub to continue.' : 'Sign-in is required but GitHub OAuth is not configured.',
-              authRequired: true,
-              githubConfigured: isGitHubAuthConfigured(),
-            });
-            return;
-          }
+        if (!canReadProtected) {
+          sendJson(response, 401, {
+            error: isGitHubAuthConfigured() ? 'Sign in with GitHub to continue.' : 'Sign-in is required but GitHub OAuth is not configured.',
+            authRequired: true,
+            githubConfigured: isGitHubAuthConfigured(),
+          });
+          return;
+        }
 
+        if (page === 'thread') {
           const name = String(url.searchParams.get('name') || '').trim();
           if (!name) {
             sendJson(response, 400, { error: 'Missing main agent name.' });
@@ -171,11 +172,20 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
           }
           if (requireSessionAccess(request, response, thread, url, user)) return;
 
+          const defaults = await trace.step('defaults.load', () => loadPiDefaults(user, { staleOk: true }));
+          if (fast) {
+            const session = decorateLiveSession(thread);
+            sendJson(response, 200, trace.wrap({
+              provider: provider.info(),
+              defaults,
+              thread: session,
+              output: { deferred: true, session, runStatus: session.runStatus || session.status || 'unknown' },
+            }));
+            return;
+          }
+
           const offset = Number(url.searchParams.get('offset'));
-          const [defaults, run] = await Promise.all([
-            trace.step('defaults.load', () => loadPiDefaults(user, { staleOk: true })),
-            trace.step('thread.syncOutput', () => syncRunOutput(thread)),
-          ]);
+          const run = await trace.step('thread.syncOutput', () => syncRunOutput(thread));
           const output = retainedOutputChunk(run, Number.isFinite(offset) && offset > 0 ? offset : 0);
           const session = decorateLiveSession({
             ...thread,
@@ -198,35 +208,29 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
           return;
         }
 
-        const githubSession = user || readBrowserSession(viewerSessionId);
-        const codexPromise = trace.step('auth.codex', () => codexAuthStatus(user));
-        const githubPromise = trace.step('auth.github', () => publicGitHubAuth(githubSession));
-
-        if (!canReadProtected) {
-          const [codex, github] = await Promise.all([codexPromise, githubPromise]);
-          const basePayload = { provider: provider.info(), me: publicMe(user, trusted), codex, github, defaults: {}, threads: [] };
-          sendJson(response, 200, trace.wrap(page === 'project' ? { ...basePayload, recentProjects: [] } : basePayload));
-          return;
-        }
+        const authStatusPromise = fast
+          ? Promise.resolve({ codex: { deferred: true }, github: { deferred: true, configured: isGitHubAuthConfigured() } })
+          : Promise.all([
+              trace.step('auth.codex', () => codexAuthStatus(user)),
+              trace.step('auth.github', () => publicGitHubAuth(user || readBrowserSession(viewerSessionId))),
+            ]).then(([codex, github]) => ({ codex, github }));
 
         if (page === 'project') {
-          const [codex, github, threadPayload, recentProjects] = await Promise.all([
-            codexPromise,
-            githubPromise,
+          const [authStatus, threadPayload, recentProjects] = await Promise.all([
+            authStatusPromise,
             trace.step('threads.payload', () => listThreadsPayload(viewerSessionId, trusted, user, { traceStep: trace.step })),
             trace.step('projects.recent', () => listRecentProjects(config.recentProjectsFile, user?.id || '')),
           ]);
-          const basePayload = { provider: provider.info(), me: publicMe(user, trusted), codex, github, defaults: {}, threads: [] };
+          const basePayload = { provider: provider.info(), me: publicMe(user, trusted), ...authStatus, defaults: {}, threads: [] };
           sendJson(response, 200, trace.wrap({ ...basePayload, ...threadPayload, recentProjects }));
           return;
         }
 
-        const [codex, github, threadPayload] = await Promise.all([
-          codexPromise,
-          githubPromise,
+        const [authStatus, threadPayload] = await Promise.all([
+          authStatusPromise,
           trace.step('threads.payload', () => listThreadsPayload(viewerSessionId, trusted, user, { traceStep: trace.step })),
         ]);
-        const basePayload = { provider: provider.info(), me: publicMe(user, trusted), codex, github, defaults: {}, threads: [] };
+        const basePayload = { provider: provider.info(), me: publicMe(user, trusted), ...authStatus, defaults: {}, threads: [] };
         sendJson(response, 200, trace.wrap({ ...basePayload, ...threadPayload }));
         return;
       }

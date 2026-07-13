@@ -8,9 +8,7 @@ import { startAgentToastWatcher } from './runtime/agent-toasts.js';
 import './styles/app.css';
 import './styles/fluid-ui.css';
 
-const HOMEPAGE_PATH = '/homepage';
 const MAIN_PAGE_PATH = '/workspace.html';
-const API_BASE = String(import.meta.env?.VITE_SPANNER_API_BASE || '').trim().replace(/\/+$/, '');
 
 const runtimeLoaders = {
   project: () => import('./runtime/project.js'),
@@ -21,19 +19,6 @@ const runtimeLoaders = {
   performance: () => import('./runtime/performance.js'),
   desktop: () => import('./runtime/desktop.js'),
 };
-
-function homepageRedirectUrl() {
-  const returnTo = location.href;
-  return `${HOMEPAGE_PATH}?${new URLSearchParams({ returnTo })}`;
-}
-
-async function redirectUnsignedHostedUsers() {
-  try {
-    const response = await fetch(`${API_BASE}/api/me`, { credentials: 'include', cache: 'no-store' });
-    const me = await response.json();
-    if (me.authRequired && !me.authenticated) location.replace(homepageRedirectUrl());
-  } catch {}
-}
 
 function App({ page }) {
   const Page = pages[page] || pages.project;
@@ -85,8 +70,6 @@ function openMainPageFromToastKey(event) {
 applyAppearance();
 const root = document.querySelector('#root');
 const page = document.body?.dataset?.reactPage || 'project';
-const publicPages = new Set(['desktop', 'traceComponents']);
-if (!publicPages.has(page)) void redirectUnsignedHostedUsers();
 document.addEventListener('click', openMainPageFromToast);
 document.addEventListener('keydown', openMainPageFromToastKey);
 if (page !== 'workspace') startAgentToastWatcher();

@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 
 const pages = readFileSync(new URL('../frontend/src/pages.jsx', import.meta.url), 'utf8');
 const entry = readFileSync(new URL('../frontend/src/entry.jsx', import.meta.url), 'utf8');
+const authRedirect = readFileSync(new URL('../frontend/src/runtime/auth-redirect.js', import.meta.url), 'utf8');
 const js = readFileSync(new URL('../frontend/src/runtime/app.js', import.meta.url), 'utf8');
 const agentToasts = readFileSync(new URL('../frontend/src/runtime/agent-toasts.js', import.meta.url), 'utf8');
 const appCss = readFileSync(new URL('../frontend/src/styles/app.css', import.meta.url), 'utf8');
@@ -11,12 +12,12 @@ const runState = readFileSync(new URL('../src/server/run-state.js', import.meta.
 const routes = readFileSync(new URL('../src/server/routes.js', import.meta.url), 'utf8');
 const threads = readFileSync(new URL('../src/server/threads.js', import.meta.url), 'utf8');
 
-test('unsigned hosted users go to the homepage landing route', () => {
-  assert.match(entry, /const HOMEPAGE_PATH = '\/homepage';/);
-  assert.match(entry, /fetch\(`\$\{API_BASE\}\/api\/me`/);
-  assert.match(entry, /me\.authRequired && !me\.authenticated\)/);
-  assert.doesNotMatch(entry, /!me\.authenticated && me\.githubConfigured/);
-  assert.match(entry, /location\.replace\(homepageRedirectUrl\(\)\)/);
+test('unsigned hosted users go to the homepage landing route from API auth failures', () => {
+  assert.doesNotMatch(entry, /\/api\/me/);
+  assert.match(authRedirect, /const HOMEPAGE_PATH = '\/homepage';/);
+  assert.match(authRedirect, /payload\?\.authRequired/);
+  assert.match(authRedirect, /Number\(response\?\.status\) !== 401/);
+  assert.match(authRedirect, /location\.replace\(homepageRedirectUrl\(\)\)/);
 });
 
 test('workspace and thread suggestions use separate LLM generators', () => {
@@ -149,7 +150,6 @@ test('workspace toasts when running agents finish', () => {
 
 test('global toasts load outside the workspace screen', () => {
   assert.match(entry, /import \{ startAgentToastWatcher \} from '\.\/runtime\/agent-toasts\.js';/);
-  assert.match(entry, /const publicPages = new Set\(\['desktop', 'traceComponents'\]\);/);
   assert.match(entry, /if \(page !== 'workspace'\) startAgentToastWatcher\(\);/);
   assert.match(agentToasts, /import \{ toast \} from 'sonner';/);
   assert.match(agentToasts, /export function startAgentToastWatcher\(\) \{/);

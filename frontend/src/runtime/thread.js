@@ -1,4 +1,5 @@
 import 'diff2html/bundles/css/diff2html.min.css';
+import { redirectIfAuthRequired } from './auth-redirect.js';
 import './appearance.js?v=palette-2';
 import { htmlPreviewDocument } from './html-preview.js';
 import { renderInteractiveArtifacts, stripInteractiveArtifactBlocks } from './interactive-artifacts.js';
@@ -671,7 +672,10 @@ async function fetchJson(path, options = {}) {
     headers: { ...authHeaders(), ...(options.headers || {}) },
   });
   const payload = await response.json();
-  if (!response.ok) throw new Error(payload.error || `Request failed: ${response.status}`);
+  if (!response.ok) {
+    if (redirectIfAuthRequired(payload, response)) return new Promise(() => {});
+    throw new Error(payload.error || `Request failed: ${response.status}`);
+  }
   return payload;
 }
 
@@ -2122,14 +2126,17 @@ async function loadOutput() {
 
 async function loadThreadBootstrap() {
   if (!name) throw new Error('Missing main agent name.');
-  const payload = await fetchJson(`/api/bootstrap?page=thread&name=${encodeURIComponent(name)}`);
+  const payload = await fetchJson(`/api/bootstrap?page=thread&fast=1&name=${encodeURIComponent(name)}`);
   renderProject(payload.provider);
   renderPiDefaults(payload.defaults || {});
   loadRunControls(payload.thread);
   renderThread(payload.thread);
   renderThreadHistory(payload.thread);
   renderInitialPrompt(payload.thread);
-  return { thread: payload.thread, output: renderOutputPayload(payload.output || {}) };
+  return {
+    thread: payload.thread,
+    output: payload.output?.deferred ? payload.output : renderOutputPayload(payload.output || {}),
+  };
 }
 
 function streamRun() {
@@ -2334,6 +2341,7 @@ try {
   const status = output.runStatus || thread.runStatus;
   timelineEntriesCanAnimate = true;
   if (['launching', 'running', 'starting', 'queued'].includes(status)) streamRun();
+  if (output.deferred) void loadOutput().catch((error) => setStatus(error.message, 'error'));
 } catch (error) {
   renderEvent({ type: 'status', runStatus: 'failed', warning: error.message, timestamp: new Date().toISOString() });
   setStatus(error.message, 'error');

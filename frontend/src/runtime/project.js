@@ -1,5 +1,7 @@
 import './appearance.js?v=palette-2';
 
+import { redirectIfAuthRequired } from './auth-redirect.js';
+
 const BROWSER_SESSION_KEY = 'spannerBrowserSession';
 const PROJECT_KEY = 'spannerSelectedProject';
 const RECENT_PROJECTS_KEY = 'spannerRecentProjects';
@@ -100,7 +102,10 @@ async function fetchJson(path, options = {}) {
   } catch {
     throw new Error('Backend unavailable. Check Settings.');
   }
-  if (!response.ok) throw new Error(payload.error || `Request failed: ${response.status}`);
+  if (!response.ok) {
+    if (redirectIfAuthRequired(payload, response)) return new Promise(() => {});
+    throw new Error(payload.error || `Request failed: ${response.status}`);
+  }
   return payload;
 }
 
@@ -625,14 +630,7 @@ async function refreshProjectThreads() {
   renderRecentProjects(payload.threads || []);
 }
 
-async function loadProjectBootstrap() {
-  const payload = await fetchJson('/api/bootstrap?page=project');
-  cacheRecentProjects(payload.recentProjects || []);
-  renderProvider(payload.provider);
-  renderRecentProjects(payload.threads || []);
-
-  const codex = payload.codex || {};
-  const github = payload.github || {};
+function renderProjectAuth(codex = {}, github = {}) {
   codexConfigured = Boolean(codex.configured);
   renderAuthPill(codexAuthPill, codexAuthLabel, codexConfigured, codexConfigured ? `Codex: ${codex.source || 'signed in'}` : 'Codex: signed out', 'codex');
   const connected = Boolean(github.connected);
@@ -652,6 +650,29 @@ async function loadProjectBootstrap() {
     repoHint.textContent = github.configured ? 'Sign in to pick repos.' : 'Paste a repo or choose a local folder.';
   }
   renderOnboarding();
+}
+
+async function loadProjectAuth() {
+  const [codex, github] = await Promise.all([
+    fetchJson('/api/auth/openai-codex'),
+    fetchJson('/api/auth/github'),
+  ]);
+  renderProjectAuth(codex, github);
+}
+
+async function loadProjectBootstrap() {
+  const payload = await fetchJson('/api/bootstrap?page=project&fast=1');
+  cacheRecentProjects(payload.recentProjects || []);
+  renderProvider(payload.provider);
+  renderRecentProjects(payload.threads || []);
+
+  if (payload.codex?.deferred || payload.github?.deferred) {
+    void loadProjectAuth().catch((error) => {
+      repoHint.textContent = error.message;
+    });
+  } else {
+    renderProjectAuth(payload.codex || {}, payload.github || {});
+  }
 }
 
 async function loadStatus() {

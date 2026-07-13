@@ -75,6 +75,15 @@ test('startup bootstrap returns project data in one request', async () => {
     assert.ok(payload.trace.totalMs >= 0);
     assert.ok(payload.trace.steps.some((step) => step.label === 'threads.listSessions'));
     assert.ok(payload.trace.steps.some((step) => step.label === 'defaults.load'));
+
+    const fastResponse = await fetch(`${baseUrl}/api/bootstrap?page=project&fast=1&trace=1`, { headers: { authorization: 'Bearer test-token', 'x-spanner-session': 'browser-session-1234567890' } });
+    const fastPayload = await fastResponse.json();
+    assert.equal(fastResponse.status, 200);
+    assert.equal(fastPayload.codex.deferred, true);
+    assert.equal(fastPayload.github.deferred, true);
+    assert.equal(fastPayload.threads[0].name, 'agent-one');
+    assert.equal(fastPayload.trace.steps.some((step) => step.label === 'auth.codex'), false);
+    assert.equal(fastPayload.trace.steps.some((step) => step.label === 'auth.github'), false);
   } finally {
     if (server) await stopServer(server);
     await rm(tempDir, { recursive: true, force: true });

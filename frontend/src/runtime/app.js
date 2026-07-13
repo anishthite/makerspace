@@ -1,5 +1,6 @@
 import { toast } from 'sonner';
 
+import { redirectIfAuthRequired } from './auth-redirect.js';
 import './appearance.js?v=palette-2';
 import { bindImageDropZone, clearImageInput, filesToImageAttachments, imageInputFiles, updateImageStatus } from './image-attachments.js';
 import { submitOnEnter } from './submit-on-enter.js';
@@ -9,6 +10,7 @@ const MODEL_REF_KEY = 'spannerModelRef';
 const THINKING_LEVEL_KEY = 'spannerThinkingLevel';
 const PROJECT_KEY = 'spannerSelectedProject';
 const SEEN_FINISHED_THREADS_KEY = 'spannerSeenFinishedThreads';
+const WORKSPACE_THREADS_CACHE_KEY = 'spannerWorkspaceThreadsCache';
 const THINKING_LEVELS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh'];
 const ARCHIVEABLE_THREAD_STATUSES = ['completed', 'ready', 'failed'];
 const API_BASE = String(import.meta.env?.VITE_SPANNER_API_BASE || '').trim().replace(/\/+$/, '');
@@ -195,7 +197,10 @@ async function fetchJson(path, options = {}) {
   } catch {
     throw new Error('Backend unavailable. Check Settings.');
   }
-  if (!response.ok) throw new Error(payload.error || `Request failed: ${response.status}`);
+  if (!response.ok) {
+    if (redirectIfAuthRequired(payload, response)) return new Promise(() => {});
+    throw new Error(payload.error || `Request failed: ${response.status}`);
+  }
   return payload;
 }
 
@@ -206,6 +211,53 @@ function readSelectedProject() {
   } catch {
     return null;
   }
+}
+
+function workspaceThreadsCacheKey() {
+  const key = selectedProject?.value ? `${selectedProject.kind || ''}:${selectedProject.value}` : 'all';
+  return `${WORKSPACE_THREADS_CACHE_KEY}:${key}`;
+}
+
+function cachedWorkspaceThreads() {
+  try {
+    const payload = JSON.parse(localStorage.getItem(workspaceThreadsCacheKey()) || 'null');
+    return Array.isArray(payload?.threads) ? payload.threads : [];
+  } catch {
+    return [];
+  }
+}
+
+function cacheableWorkspaceThread(thread = {}) {
+  return {
+    name: thread.name,
+    title: thread.title,
+    status: thread.status,
+    runStatus: thread.runStatus,
+    warning: thread.warning,
+    latestActivity: thread.latestActivity,
+    finalAnswerSummary: thread.finalAnswerSummary,
+    repoPath: thread.repoPath,
+    repoUrl: thread.repoUrl,
+    provider: thread.provider,
+    localMode: thread.localMode,
+    createdAt: thread.createdAt,
+    updatedAt: thread.updatedAt,
+    endedAt: thread.endedAt,
+    completedAt: thread.completedAt,
+    runEndedAtMs: thread.runEndedAtMs,
+  };
+}
+
+function cacheWorkspaceThreads(threads) {
+  try {
+    const safeThreads = Array.isArray(threads) ? threads.map(cacheableWorkspaceThread) : [];
+    localStorage.setItem(workspaceThreadsCacheKey(), JSON.stringify({ savedAt: Date.now(), threads: safeThreads }));
+  } catch {}
+}
+
+function renderCachedWorkspaceThreads() {
+  const threads = cachedWorkspaceThreads().filter(sameSelectedProject);
+  if (threads.length) renderThreads(threads, { suggestions: false });
 }
 
 function cleanProjectValue(value) {
@@ -701,7 +753,7 @@ function renderLaunchSuggestions(suggestions) {
   `).join('');
 }
 
-function renderThreads(threads) {
+function renderThreads(threads, options = {}) {
   const lanes = [
     { key: 'running', title: 'Running', empty: 'No agents running.' },
     { key: 'done', title: 'Recently finished', empty: 'Nothing finished recently.' },
@@ -711,7 +763,7 @@ function renderThreads(threads) {
   grouped.done.sort((left, right) => finishedAtMs(right) - finishedAtMs(left));
 
   finishedThreadNames = grouped.done.filter(canArchiveThread).map((thread) => thread.name);
-  loadWorkspaceLaunchSuggestions(threads).catch(() => {});
+  if (options.suggestions !== false) loadWorkspaceLaunchSuggestions(threads).catch(() => {});
   const visibleLanes = grouped.running.length ? lanes : lanes.filter((lane) => lane.key !== 'running');
   threadsList.innerHTML = visibleLanes.map((lane) => {
     const historyLink = lane.key === 'done' ? '<a class="textbtn lane-history" href="/history.html">history</a>' : '';
@@ -739,20 +791,36 @@ async function loadThreads() {
   const threads = (payload.threads || []).filter(sameSelectedProject);
   renderProvider(payload.provider);
   renderPiDefaults(payload.defaults || {});
+  cacheWorkspaceThreads(threads);
   notifyFinishedThreads(threads);
   renderThreads(threads);
   return payload;
 }
 
+async function loadWorkspaceAuth() {
+  const [codex, github] = await Promise.all([
+    loadCodexAuth(),
+    loadGitHubAuth(),
+  ]);
+  return { codex, github };
+}
+
 async function loadWorkspaceBootstrap() {
-  const payload = await fetchJson('/api/bootstrap?page=workspace');
+  const payload = await fetchJson('/api/bootstrap?page=workspace&fast=1');
   const threads = (payload.threads || []).filter(sameSelectedProject);
   renderProvider(payload.provider);
   renderPiDefaults(payload.defaults || {});
+  cacheWorkspaceThreads(threads);
   notifyFinishedThreads(threads);
   renderThreads(threads);
-  renderCodexAuth(payload.codex || {});
-  renderGitHubAuth(payload.github || {});
+  if (payload.codex?.deferred || payload.github?.deferred) {
+    void loadWorkspaceAuth().catch((error) => {
+      threadStatus.textContent = error.message;
+    });
+  } else {
+    renderCodexAuth(payload.codex || {});
+    renderGitHubAuth(payload.github || {});
+  }
   return payload;
 }
 
@@ -770,6 +838,7 @@ async function reloadControlData() {
 
 getBrowserSessionId();
 applySelectedProject();
+renderCachedWorkspaceThreads();
 loadRunControls();
 modelRefInput.addEventListener('change', saveRunControls);
 thinkingLevelInput.addEventListener('input', () => {

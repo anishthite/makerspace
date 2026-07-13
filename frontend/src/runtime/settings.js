@@ -1,3 +1,5 @@
+import { redirectIfAuthRequired } from './auth-redirect.js';
+
 const BROWSER_SESSION_KEY = 'spannerBrowserSession';
 const API_BASE = String(import.meta.env?.VITE_SPANNER_API_BASE || '').trim().replace(/\/+$/, '');
 
@@ -122,7 +124,10 @@ async function fetchJson(path, options = {}) {
   } catch {
     throw new Error('Backend unavailable. Set VITE_SPANNER_API_BASE to the backend URL and redeploy.');
   }
-  if (!response.ok) throw new Error(payload.error || `Request failed: ${response.status}`);
+  if (!response.ok) {
+    if (redirectIfAuthRequired(payload, response)) return new Promise(() => {});
+    throw new Error(payload.error || `Request failed: ${response.status}`);
+  }
   return payload;
 }
 

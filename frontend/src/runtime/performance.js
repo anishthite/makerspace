@@ -1,5 +1,7 @@
 import './appearance.js?v=palette-2';
 
+import { redirectIfAuthRequired } from './auth-redirect.js';
+
 const BROWSER_SESSION_KEY = 'spannerBrowserSession';
 const API_BASE = String(import.meta.env?.VITE_SPANNER_API_BASE || '').trim().replace(/\/+$/, '');
 
@@ -72,7 +74,10 @@ async function fetchJson(path) {
     const detail = text.trim() || `Request failed: ${response.status}`;
     throw new Error(detail === 'Not found' ? 'Backend unavailable. Check Settings.' : detail);
   }
-  if (!response.ok) throw new Error(payload.error || `Request failed: ${response.status}`);
+  if (!response.ok) {
+    if (redirectIfAuthRequired(payload, response)) return new Promise(() => {});
+    throw new Error(payload.error || `Request failed: ${response.status}`);
+  }
   return payload;
 }
 
