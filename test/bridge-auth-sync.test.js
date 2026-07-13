@@ -6,7 +6,7 @@ import path from 'node:path';
 
 import { createBridgeService } from '../src/server/bridge.js';
 import { createSessionService } from '../src/server/sessions.js';
-import { getStoredSession, listStoredSessions } from '../src/store.js';
+import { getStoredSession, listStoredSessions, upsertSession } from '../src/store.js';
 
 async function waitForValue(fn) {
   for (let attempt = 0; attempt < 80; attempt += 1) {
@@ -513,6 +513,59 @@ test('bridge follower records structured remote events', async () => {
   }
 });
 
+test('bridge follower retries transient missing remote runs before failing stale', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-bridge-missing-retry-'));
+  const sessionFile = path.join(root, 'sessions.json');
+  const previousFetch = globalThis.fetch;
+  const encoder = new TextEncoder();
+  let fetches = 0;
+  let backups = 0;
+
+  globalThis.fetch = async () => {
+    fetches += 1;
+    if (fetches === 1) return new Response('{"error":"Run not found."}', { status: 404, headers: { 'content-type': 'application/json' } });
+    return new Response(new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ index: 1, type: 'status', runStatus: 'completed', done: true })}\n\n`));
+        controller.close();
+      },
+    }), { status: 200, headers: { 'content-type': 'text/event-stream' } });
+  };
+
+  try {
+    await writeFile(sessionFile, `${JSON.stringify([{
+      name: 'remote-thread',
+      bridgeUrl: 'https://bridge.example.test',
+      bridgeRunId: 'run-1',
+      bridgeToken: 'secret',
+      status: 'running',
+      runStatus: 'running',
+    }])}\n`);
+    const runState = runStateStub();
+    runState.persistRunStatus = (session, runStatus) => upsertSession(sessionFile, { ...session, status: runStatus, runStatus });
+    const bridge = createBridgeService({
+      config: { sessionFile, bridgeRunMissingGraceMs: 30_000 },
+      provider: {
+        bridgeHeaders: () => ({}),
+        backupSession: async () => { backups += 1; return {}; },
+      },
+      auth: {},
+      runState,
+    });
+
+    await bridge.followBridgeRun('remote-thread');
+    const stored = await getStoredSession(sessionFile, 'remote-thread');
+
+    assert.equal(fetches, 2);
+    assert.equal(backups, 0);
+    assert.equal(stored.status, 'completed');
+    assert.equal(stored.runStatus, 'completed');
+  } finally {
+    globalThis.fetch = previousFetch;
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('bridge follower marks missing remote runs stale and snapshots when possible', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-bridge-stale-'));
   const sessionFile = path.join(root, 'sessions.json');
@@ -538,7 +591,7 @@ test('bridge follower marks missing remote runs stale and snapshots when possibl
       updatedAt: '2026-07-12T00:00:00.000Z',
     }])}\n`);
     const bridge = createBridgeService({
-      config: { sessionFile, bridgeRunStaleMs: 60_000 },
+      config: { sessionFile, bridgeRunStaleMs: 60_000, bridgeRunMissingGraceMs: 0 },
       provider: {
         bridgeHeaders: () => ({}),
         backupSession: async (session) => {

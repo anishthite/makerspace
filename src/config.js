@@ -138,6 +138,7 @@ export function getConfig() {
     bridgeReadyPollMs: Number(process.env.PI_BRIDGE_READY_POLL_MS || 1000),
     bridgeStreamStallMs: Number(process.env.PI_BRIDGE_STREAM_STALL_MS || 60000),
     bridgeRunStaleMs: Number(process.env.PI_BRIDGE_RUN_STALE_MS || 45 * 60 * 1000),
+    bridgeRunMissingGraceMs: Number(process.env.PI_BRIDGE_RUN_MISSING_GRACE_MS || 30000),
     bridgeStaleBackupTimeoutMs: Number(process.env.PI_BRIDGE_STALE_BACKUP_TIMEOUT_MS || 30000),
     warmBridgePoolSize: Number(process.env.WARM_BRIDGE_POOL_SIZE || 0),
     idleBridgeTtlMs: Number(process.env.IDLE_BRIDGE_TTL_MS || 60 * 60 * 1000),

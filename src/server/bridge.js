@@ -208,6 +208,12 @@ export function createBridgeService({ config, provider, auth, runState }) {
     return Number(error?.status) === 404 || /(?:^|\b)(?:404|not found|run not found)(?:\b|$)/i.test(String(error?.message || ''));
   }
 
+  function bridgeRunMissingGraceMs() {
+    // ponytail: grace over a run ledger; add durable bridge-run storage if CF routing keeps flaking.
+    const value = Number(config.bridgeRunMissingGraceMs);
+    return Number.isFinite(value) && value >= 0 ? value : 30_000;
+  }
+
   async function staleRunBackupPatch(session) {
     if (!provider.backupSession) return {};
     const timeoutMs = bridgeStaleBackupTimeoutMs();
@@ -488,6 +494,7 @@ export function createBridgeService({ config, provider, auth, runState }) {
     let after = 0;
     let done = false;
     let lastRealEventAtMs = Date.now();
+    let firstMissingAtMs = 0;
 
     try {
       while (!done) {
@@ -520,6 +527,7 @@ export function createBridgeService({ config, provider, auth, runState }) {
             error.status = response.status;
             throw error;
           }
+          firstMissingAtMs = 0;
 
           await consumeSse(response, async (event) => {
             after = Math.max(after, Number(event.index) || after);
@@ -607,14 +615,22 @@ export function createBridgeService({ config, provider, auth, runState }) {
             await sleep(500);
           }
         } catch (error) {
+          const nowMs = Date.now();
           const staleMs = bridgeRunStaleMs();
-          const stale = bridgeRunMissingError(error)
-            ? await markBridgeRunStale(sessionName, session, 'Bridge run disappeared before it reported completion.', { missing: true })
-            : Date.now() - lastRealEventAtMs >= staleMs
+          const missing = bridgeRunMissingError(error);
+          if (missing && !firstMissingAtMs) firstMissingAtMs = nowMs;
+          if (!missing) firstMissingAtMs = 0;
+          const stale = missing
+            ? nowMs - firstMissingAtMs >= bridgeRunMissingGraceMs()
+              ? await markBridgeRunStale(sessionName, session, 'Bridge run disappeared before it reported completion.', { missing: true })
+              : null
+            : nowMs - lastRealEventAtMs >= staleMs
               ? await markBridgeRunStale(sessionName, session, `Bridge run stopped sending real events for ${Math.round(staleMs / 60000)} minutes.`)
               : null;
           if (stale) {
             done = true;
+          } else if (missing) {
+            setRunState(sessionName, { warning: 'Bridge run is not visible yet; retrying.' });
           } else if (!stallController.signal.aborted) {
             setRunState(sessionName, { warning: error.message });
           }
