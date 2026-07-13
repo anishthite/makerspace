@@ -36,6 +36,7 @@ const CLAUDE_CODE_USER_SECRET_KEY = 'claude-code-auth';
 const USER_PI_AUTH_PROVIDERS = [CODEX_AUTH_PROVIDER, CLAUDE_CODE_AUTH_PROVIDER];
 const GITHUB_APP_INSTALLATIONS_KEY = 'githubAppInstallations';
 const DEFAULTS_CACHE_TTL_MS = 30_000;
+const AUTH_USER_CACHE_TTL_MS = 5_000;
 const CLAUDE_CODE_CLIENT_ID = Buffer.from('OWQxYzI1MGEtZTYxYi00NGQ5LTg4ZWQtNTk0NGQxOTYyZjVl', 'base64').toString('utf8');
 const CLAUDE_CODE_AUTHORIZE_URL = 'https://claude.ai/oauth/authorize';
 const CLAUDE_CODE_TOKEN_URL = 'https://platform.claude.com/v1/oauth/token';
@@ -152,6 +153,7 @@ export function createAuthService({ config, http }) {
   const githubLogins = new Map();
   const githubAppInstalls = new Map();
   const defaultsCache = new Map();
+  const currentUserCache = new Map();
   const authStore = createAuthStore(config);
   let browserSessions = new Map();
   let sdkPromise = null;
@@ -413,13 +415,51 @@ export function createAuthService({ config, http }) {
     return values.some((value) => allowed.includes(value));
   }
 
+  function currentUserCacheTtlMs() {
+    const value = Number(config.authUserCacheTtlMs || process.env.SPANNER_AUTH_USER_CACHE_TTL_MS || AUTH_USER_CACHE_TTL_MS);
+    return Number.isFinite(value) && value > 0 ? value : 0;
+  }
+
+  function cacheCurrentUser(idHash, user, session = {}) {
+    const ttlMs = currentUserCacheTtlMs();
+    if (!ttlMs || !idHash) return;
+    const sessionExpiresAt = Date.parse(session.expiresAt || '');
+    const expiresAt = Number.isFinite(sessionExpiresAt)
+      ? Math.min(Date.now() + ttlMs, sessionExpiresAt)
+      : Date.now() + ttlMs;
+    currentUserCache.set(idHash, { expiresAt, user });
+  }
+
   async function currentUser(request) {
     const token = authCookieToken(request);
     if (!token) return null;
-    const session = await authStore.getAuthSession(hashAuthSessionId(token));
-    if (!session?.userId) return null;
-    const user = await authStore.getUser(session.userId);
-    return user && userAllowed(user) ? { ...user, authSessionHash: session.idHash } : null;
+
+    const idHash = hashAuthSessionId(token);
+    const cached = currentUserCache.get(idHash);
+    if (cached && cached.expiresAt > Date.now()) return cached.promise ? cached.promise : cached.user;
+    currentUserCache.delete(idHash);
+
+    const promise = (async () => {
+      const session = await authStore.getAuthSession(idHash);
+      if (!session?.userId) {
+        cacheCurrentUser(idHash, null);
+        return null;
+      }
+      const user = await authStore.getUser(session.userId);
+      const publicSessionUser = user && userAllowed(user) ? { ...user, authSessionHash: session.idHash } : null;
+      cacheCurrentUser(idHash, publicSessionUser, session);
+      return publicSessionUser;
+    })();
+
+    const ttlMs = currentUserCacheTtlMs();
+    if (ttlMs) currentUserCache.set(idHash, { expiresAt: Date.now() + ttlMs, promise });
+
+    try {
+      return await promise;
+    } catch (error) {
+      currentUserCache.delete(idHash);
+      throw error;
+    }
   }
 
   function publicUser(user) {
@@ -1155,8 +1195,10 @@ export function createAuthService({ config, http }) {
       if (!authRequired()) writeBrowserSession(login.sessionId, { githubToken: token, githubUser, githubRepos: [] });
 
       const sessionToken = randomBytes(32).toString('base64url');
+      const sessionHash = hashAuthSessionId(sessionToken);
       const expiresAt = new Date(Date.now() + Math.max(1, Number(config.authSessionDays || 30)) * 24 * 60 * 60 * 1000).toISOString();
-      await authStore.createAuthSession({ idHash: hashAuthSessionId(sessionToken), userId: user.id, expiresAt });
+      await authStore.createAuthSession({ idHash: sessionHash, userId: user.id, expiresAt });
+      cacheCurrentUser(sessionHash, { ...user, authSessionHash: sessionHash }, { expiresAt });
 
       const redirectTo = new URL(login.returnTo);
       redirectTo.searchParams.set('github', 'connected');
@@ -1171,7 +1213,11 @@ export function createAuthService({ config, http }) {
 
   async function logout(request, sessionId = '') {
     const token = authCookieToken(request);
-    if (token) await authStore.deleteAuthSession(hashAuthSessionId(token));
+    if (token) {
+      const idHash = hashAuthSessionId(token);
+      currentUserCache.delete(idHash);
+      await authStore.deleteAuthSession(idHash);
+    }
     if (sessionId) clearBrowserSession(sessionId);
     return { body: publicMe(null, false), headers: { 'set-cookie': clearAuthCookieHeader(request) } };
   }

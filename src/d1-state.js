@@ -3,6 +3,7 @@ const KV_TABLE = 'spanner_kv';
 const LEGACY_SESSION_TABLE = 'workbench_sessions';
 const LEGACY_KV_TABLE = 'workbench_kv';
 const SESSION_CACHE_TTL_MS = 2000;
+const KV_CACHE_TTL_MS = 5000;
 
 function clean(value) {
   return String(value || '').trim();
@@ -65,10 +66,11 @@ function normalizeSession(row) {
   }
 }
 
-export function createD1StateClient({ env = process.env, fetchImpl = globalThis.fetch, sessionCacheTtlMs = SESSION_CACHE_TTL_MS } = {}) {
+export function createD1StateClient({ env = process.env, fetchImpl = globalThis.fetch, sessionCacheTtlMs = SESSION_CACHE_TTL_MS, kvCacheTtlMs = KV_CACHE_TTL_MS } = {}) {
   let schemaReady = null;
   let migrationReady = null;
   let sessionsCache = null;
+  const kvCache = new Map();
 
   function cachedSessions() {
     if (!sessionsCache || sessionsCache.expiresAt <= Date.now()) return null;
@@ -83,6 +85,25 @@ export function createD1StateClient({ env = process.env, fetchImpl = globalThis.
     const sessions = cachedSessions();
     if (!sessions) return { hit: false, session: null };
     return { hit: true, session: sessions.find((session) => session.name === name) || null };
+  }
+
+  function cachedKv(key) {
+    const entry = kvCache.get(key);
+    if (!entry || entry.expiresAt <= Date.now()) {
+      kvCache.delete(key);
+      return { hit: false };
+    }
+    return entry.missing ? { hit: true, missing: true } : { hit: true, value: entry.value };
+  }
+
+  function cacheKvValue(key, value) {
+    if (kvCacheTtlMs <= 0) return;
+    kvCache.set(key, { expiresAt: Date.now() + kvCacheTtlMs, value });
+  }
+
+  function cacheKvMissing(key) {
+    if (kvCacheTtlMs <= 0) return;
+    kvCache.set(key, { expiresAt: Date.now() + kvCacheTtlMs, missing: true });
   }
 
   function sortSessions(sessions) {
@@ -197,20 +218,32 @@ export function createD1StateClient({ env = process.env, fetchImpl = globalThis.
     },
 
     async readKv(key, fallback = null) {
-      const rows = await query(`SELECT value FROM ${KV_TABLE} WHERE key = ? LIMIT 1`, [key]);
-      if (!rows[0]) return fallback;
+      const cacheKey = clean(key);
+      const cached = cachedKv(cacheKey);
+      if (cached.hit) return cached.missing ? fallback : cached.value;
+
+      const rows = await query(`SELECT value FROM ${KV_TABLE} WHERE key = ? LIMIT 1`, [cacheKey]);
+      if (!rows[0]) {
+        cacheKvMissing(cacheKey);
+        return fallback;
+      }
       try {
-        return JSON.parse(rows[0].value);
+        const value = JSON.parse(rows[0].value);
+        cacheKvValue(cacheKey, value);
+        return value;
       } catch {
+        cacheKvMissing(cacheKey);
         return fallback;
       }
     },
 
     async writeKv(key, value) {
+      const cacheKey = clean(key);
       await query(
         `INSERT INTO ${KV_TABLE} (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
-        [key, JSON.stringify(value), new Date().toISOString()],
+        [cacheKey, JSON.stringify(value), new Date().toISOString()],
       );
+      cacheKvValue(cacheKey, value);
       return value;
     },
   };

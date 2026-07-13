@@ -148,6 +148,34 @@ test('D1 client reuses recent session list reads', async () => {
   assert.equal(await client.getSession('cached'), null);
 });
 
+test('D1 client reuses recent KV reads without freezing fallbacks', async () => {
+  const { fetchImpl, calls } = makeFakeFetch({
+    legacyKv: [{ key: 'auth:user:github-1', value: JSON.stringify({ login: 'octo' }), updated_at: '2026-07-12T00:00:00.000Z' }],
+  });
+  const client = createD1StateClient({
+    fetchImpl,
+    kvCacheTtlMs: 60_000,
+    env: {
+      CLOUDFLARE_ACCOUNT_ID: 'acct',
+      CLOUDFLARE_D1_DATABASE_ID: 'db',
+      CLOUDFLARE_API_TOKEN: 'token',
+    },
+  });
+
+  assert.deepEqual(await client.readKv('auth:user:github-1'), { login: 'octo' });
+  assert.equal(await client.readKv('missing', 'first fallback'), 'first fallback');
+  calls.length = 0;
+
+  assert.deepEqual(await client.readKv('auth:user:github-1'), { login: 'octo' });
+  assert.equal(await client.readKv('missing', 'second fallback'), 'second fallback');
+  assert.equal(calls.filter((call) => /SELECT value FROM spanner_kv/i.test(call.sql)).length, 0);
+
+  await client.writeKv('auth:user:github-1', { login: 'mona' });
+  calls.length = 0;
+  assert.deepEqual(await client.readKv('auth:user:github-1'), { login: 'mona' });
+  assert.equal(calls.filter((call) => /SELECT value FROM spanner_kv/i.test(call.sql)).length, 0);
+});
+
 test('D1 client copies legacy Workbench rows into Spanner tables', async () => {
   const { fetchImpl, calls } = makeFakeFetch({
     legacySessions: [{ name: 'old-thread', data: JSON.stringify({ name: 'old-thread', provider: 'cloudflare' }), created_at: '2026-07-01T00:00:00.000Z', updated_at: '2026-07-01T00:00:00.000Z' }],

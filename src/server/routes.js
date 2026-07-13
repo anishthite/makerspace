@@ -118,8 +118,9 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
       if (request.method === 'POST' && pathname.startsWith('/api/auth/') && requireAuthMutationOrigin(request, response, url)) return;
       if (pathname.startsWith('/api/') && !['/api/auth/github/callback', '/api/auth/github/app/callback'].includes(pathname) && requireTrustedBrowserRequest(request, response)) return;
 
-      const viewerSessionId = browserSessionId(request);
-      const trusted = hasTrustedControlToken(request, url);
+      const isApiRoute = pathname.startsWith('/api/');
+      const viewerSessionId = isApiRoute ? browserSessionId(request) : '';
+      const trusted = isApiRoute ? hasTrustedControlToken(request, url) : false;
       const publicApiRoute = pathname === '/api/me'
         || pathname === '/api/bootstrap'
         || pathname === '/api/auth/github'
@@ -128,11 +129,14 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
         || pathname === '/api/auth/github/app/callback'
         || pathname === '/api/auth/github/logout'
         || pathname === '/api/auth/logout';
-      let user = await trace.step('auth.currentUser', () => currentUser(request));
-      if (pathname.startsWith('/api/') && !publicApiRoute) {
-        const context = await trace.step('auth.requireUser', () => requireUser(request, response, url, user));
-        if (!context) return;
-        user = context.user;
+      let user = null;
+      if (isApiRoute) {
+        user = await trace.step('auth.currentUser', () => currentUser(request));
+        if (!publicApiRoute) {
+          const context = await trace.step('auth.requireUser', () => requireUser(request, response, url, user));
+          if (!context) return;
+          user = context.user;
+        }
       }
 
       if (request.method === 'GET' && pathname === '/api/me') {
