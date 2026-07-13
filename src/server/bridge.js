@@ -3,6 +3,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { createDraftPullRequestForThread } from '../git-delivery.js';
 import { buildThreadResumeEntries } from '../host-pi-runner.js';
 import { buildPiProfileSyncPayload } from '../pi-profile.js';
+import { isTransientSandboxError } from '../provider.js';
 import { readSavedSettings } from '../settings.js';
 import { normalizeChatRequest } from '../session.js';
 import { getStoredSession, listStoredSessions, removeStoredSession, upsertSession } from '../store.js';
@@ -98,20 +99,42 @@ export function createBridgeService({ config, provider, auth, runState }) {
     };
   }
 
-  async function fetchBridgeJson(session, pathname, options = {}) {
-    const response = await fetch(`${getBridgeBaseUrl(session)}${pathname}`, {
-      ...options,
-      headers: bridgeHeaders(session, options.headers || {}),
-    });
+  function bridgeRetryDelayMs(response, attempt) {
+    const retryAfter = Number(response.headers?.get?.('retry-after'));
+    if (Number.isFinite(retryAfter) && retryAfter >= 0) return Math.min(retryAfter * 1000, 30_000);
+    return Math.min(500 * (2 ** attempt), 5_000);
+  }
 
-    if (!response.ok) {
+  function isBridgeStartupResponse(status, message) {
+    return [500, 502, 503, 504].includes(Number(status)) && isTransientSandboxError(message);
+  }
+
+  async function fetchBridgeJson(session, pathname, options = {}) {
+    const startedAt = Date.now();
+    const timeoutMs = Number(config.bridgeReadyTimeoutMs || 240_000);
+
+    for (let attempt = 0; ; attempt += 1) {
+      const response = await fetch(`${getBridgeBaseUrl(session)}${pathname}`, {
+        ...options,
+        headers: bridgeHeaders(session, options.headers || {}),
+      });
+
+      if (response.ok) return response.json();
+
       const text = await response.text();
-      const error = new Error(text.trim() || `Bridge request failed: ${response.status}`);
+      const message = text.trim() || `Bridge request failed: ${response.status}`;
+      if (isBridgeStartupResponse(response.status, message) && Date.now() - startedAt < timeoutMs) {
+        // ponytail: exposed bridge ports can race container wake after /healthz succeeds.
+        const remainingMs = Math.max(0, timeoutMs - (Date.now() - startedAt));
+        const delayMs = Math.min(bridgeRetryDelayMs(response, attempt), remainingMs);
+        if (delayMs > 0) await sleep(delayMs);
+        continue;
+      }
+
+      const error = new Error(message);
       error.status = response.status;
       throw error;
     }
-
-    return response.json();
   }
 
   async function waitForBridge(session) {

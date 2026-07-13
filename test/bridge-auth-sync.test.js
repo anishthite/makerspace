@@ -113,6 +113,47 @@ test('ready bridge reuse syncs current Codex auth before running', async () => {
   }
 });
 
+test('bridge auth sync retries transient container startup responses', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-bridge-startup-retry-'));
+  const previousFetch = globalThis.fetch;
+  let calls = 0;
+
+  globalThis.fetch = async () => {
+    calls += 1;
+    if (calls === 1) {
+      return new Response('{"error":"Container is starting. Please retry in a moment."}', { status: 503, headers: { 'retry-after': '0' } });
+    }
+    return new Response('{"ok":true}\n', { status: 200, headers: { 'content-type': 'application/json' } });
+  };
+
+  try {
+    const config = {
+      sessionFile: path.join(root, 'sessions.json'),
+      settingsFile: path.join(root, 'settings.json'),
+      piDefaultsPackageDir: path.join(root, 'missing-defaults'),
+      bridgeReadyTimeoutMs: 1000,
+    };
+    await writeFile(config.settingsFile, '{}\n');
+    const bridge = createBridgeService({
+      config,
+      provider: { kind: 'test', shouldRefreshSession: () => false, bridgeHeaders: () => ({}) },
+      auth: {
+        readPiAuthForSession: async () => 'auth',
+        readLocalPiSettings: async () => null,
+        readGitHubAuthForSession: async () => null,
+      },
+      runState: runStateStub(),
+    });
+
+    const session = { name: 'thread-wake', bridgeUrl: 'https://bridge.example', bridgeToken: 'secret' };
+    assert.equal(await bridge.refreshBridgeSessionIfNeeded(session), session);
+    assert.equal(calls, 2);
+  } finally {
+    globalThis.fetch = previousFetch;
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('bridge follower back-syncs refreshed remote Pi auth on terminal runs', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-bridge-auth-back-sync-'));
   const sessionFile = path.join(root, 'sessions.json');
