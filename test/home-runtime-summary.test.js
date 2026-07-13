@@ -14,7 +14,8 @@ const threads = readFileSync(new URL('../src/server/threads.js', import.meta.url
 test('unsigned hosted users go to the homepage landing route', () => {
   assert.match(entry, /const HOMEPAGE_PATH = '\/homepage';/);
   assert.match(entry, /fetch\(`\$\{API_BASE\}\/api\/me`/);
-  assert.match(entry, /me\.authRequired && !me\.authenticated && me\.githubConfigured/);
+  assert.match(entry, /me\.authRequired && !me\.authenticated\)/);
+  assert.doesNotMatch(entry, /!me\.authenticated && me\.githubConfigured/);
   assert.match(entry, /location\.replace\(homepageRedirectUrl\(\)\)/);
 });
 
@@ -134,10 +135,11 @@ test('workspace toasts when running agents finish', () => {
   assert.match(js, /import \{ toast \} from 'sonner';/);
   assert.match(js, /function showAgentToast\(title, detail = '', tone = 'success'\)/);
   assert.match(js, /const notify = tone === 'error' \? toast\.error : toast\.success;/);
-  assert.match(js, /description: detail \|\| undefined,\s*duration: 8000,\s*className: 'agent-main-link-toast',\s*action: \{ label: 'Open main', onClick: openMainPage \},/);
+  assert.match(js, /description: detail \|\| undefined,\s*duration: 8000,\s*className: 'agent-main-link-toast',\s*\}\);/);
+  assert.doesNotMatch(js, /action: \{ label: 'Open main'/);
   assert.match(appCss, /\[data-sonner-toaster\] \[data-sonner-toast\]\.agent-main-link-toast\[data-styled="true"\]/);
-  assert.match(appCss, /radial-gradient\(circle at 16px 14px/);
-  assert.match(appCss, /\[data-button\]\[data-action\]/);
+  assert.match(appCss, /background: color-mix\(in srgb, var\(--paper-2\) 84%, var\(--green\) 16%\);/);
+  assert.doesNotMatch(appCss, /\[data-button\]\[data-action\]/);
   assert.match(js, /function notifyFinishedThreads\(threads\)/);
   assert.match(js, /const wasActive = isActiveThread\(\{ runStatus: knownThreadStatuses\.get\(name\) \}\);/);
   assert.match(js, /showAgentToast\(title, detail, rawStatus === 'failed' \? 'error' : 'success'\);/);
@@ -147,13 +149,14 @@ test('workspace toasts when running agents finish', () => {
 
 test('global toasts load outside the workspace screen', () => {
   assert.match(entry, /import \{ startAgentToastWatcher \} from '\.\/runtime\/agent-toasts\.js';/);
+  assert.match(entry, /const publicPages = new Set\(\['desktop', 'traceComponents'\]\);/);
   assert.match(entry, /if \(page !== 'workspace'\) startAgentToastWatcher\(\);/);
   assert.match(agentToasts, /import \{ toast \} from 'sonner';/);
   assert.match(agentToasts, /export function startAgentToastWatcher\(\) \{/);
   assert.match(agentToasts, /function notifyFinishedThreads\(threads\)/);
   assert.match(agentToasts, /const wasActive = isActiveThread\(\{ runStatus: knownThreadStatuses\.get\(name\) \}\);/);
   assert.match(agentToasts, /const notify = tone === 'error' \? toast\.error : toast\.success;/);
-  assert.match(agentToasts, /action: \{ label: 'Open main', onClick: openMainPage \},/);
+  assert.doesNotMatch(agentToasts, /action: \{ label: 'Open main'/);
   assert.match(agentToasts, /showAgentToast\(title, detail, rawStatus === 'failed' \? 'error' : 'success'\);/);
   assert.match(agentToasts, /setInterval\(\(\) => \{\s*if \(document\.visibilityState !== 'visible'\) return;\s*loadThreadsForToasts\(\)\.catch\(\(\) => \{\}\);\s*\}, 10000\);/);
 });

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — agent trace tool card mockup</title>
+<meta name="task" content="Create screenshot artifacts that show exact agent tool-call cards inline for UI review.">
+<meta name="date-started" content="2026-07-13">
+<meta name="date-updated" content="2026-07-13">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,ui,trace,tools,artifact,mockup">
+<meta name="related" content="2026-07-02-process-rail.html,2026-06-25-agent-trace-tray.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-shipped{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Agent trace tool card mockup</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-13 · status <b class="status-shipped">shipped</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Show exact tool-call cards as screenshotable artifacts for design review.</div><b>Source</b><div>Fake trace data covering file, shell, research, workflow, experiment, and goal tools.</div><b>Surface</b><div><code>output/playwright/agent-trace-tool-cards.html</code> plus desktop/mobile screenshots.</div><b>Schema</b><div>None.</div><b>Mobile</b><div>Same artifact rendered at <code>390px</code> width.</div><b>Open Qs</b><div>0.</div></div>
+<h2>UI layout</h2>
+<ol><li><b>Hero</b>: explain density, fake data, status color system.</li><li><b>Trace rail</b>: group tool calls by file, research, coordination, experiment, and goal lanes.</li><li><b>Tool card</b>: show icon, name, status pill, exact call string, intent, input/result, and actions.</li><li><b>Expanded cards</b>: keep mutating calls, failures, questions, and workflows open.</li><li><b>Mobile rows</b>: preserve header and exact call; fold details under the row.</li></ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>output/playwright/agent-trace-tool-cards.html</code></td><td>new</td><td>Standalone static mockup with exact fake tool-call cards.</td></tr><tr><td><code>output/playwright/agent-trace-tool-cards-desktop.png</code></td><td>new</td><td>Full-page desktop screenshot at <code>1440px</code> width.</td></tr><tr><td><code>output/playwright/agent-trace-tool-cards-mobile.png</code></td><td>new</td><td>Full-page narrow screenshot at <code>390px</code> width.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Static artifact over app code. The user asked to see the components before implementation.</td></tr><tr><td>D-002</td><td>Exact call strings inside cards. They are the design object under review.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>One HTML artifact over a React component. Faster review with no product wiring.</td></tr></table>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>playwright screenshot --full-page --viewport-size "1440,1600"</code></td><td>Created <code>agent-trace-tool-cards-desktop.png</code>.</td></tr><tr><td><code>playwright screenshot --full-page --viewport-size "390,1400"</code></td><td>Created <code>agent-trace-tool-cards-mobile.png</code>.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Delete the standalone artifact, screenshots, and this note; no app code or data changes exist.</p>
+<h2>Definition of done</h2>
+<ul><li>Desktop screenshot exists.</li><li>Mobile screenshot exists.</li><li>Mockup includes exact call strings for the visible tool types.</li></ul>
+</body>
+</html>

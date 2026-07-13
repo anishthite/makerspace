@@ -12,7 +12,6 @@ const SEEN_FINISHED_THREADS_KEY = 'spannerSeenFinishedThreads';
 const THINKING_LEVELS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh'];
 const ARCHIVEABLE_THREAD_STATUSES = ['completed', 'ready', 'failed'];
 const API_BASE = String(import.meta.env?.VITE_SPANNER_API_BASE || '').trim().replace(/\/+$/, '');
-const MAIN_PAGE_PATH = '/workspace.html';
 
 function migrateStorageKey(legacyKey, nextKey) {
   try {
@@ -85,17 +84,12 @@ function escapeHtml(value) {
     .replaceAll("'", '&#39;');
 }
 
-function openMainPage() {
-  location.assign(MAIN_PAGE_PATH);
-}
-
 function showAgentToast(title, detail = '', tone = 'success') {
   const notify = tone === 'error' ? toast.error : toast.success;
   notify(title, {
     description: detail || undefined,
     duration: 8000,
     className: 'agent-main-link-toast',
-    action: { label: 'Open main', onClick: openMainPage },
   });
 }
 
@@ -593,7 +587,7 @@ function renderThreadCard(thread) {
     : 'aria-hidden="true"';
   const displayTitle = thread.title || thread.name;
   const archiveButton = canArchiveThread(thread)
-    ? `<button class="textbtn archive-thread" type="button" data-archive-thread="${escapeHtml(thread.name)}">mark as done</button>`
+    ? `<button class="textbtn archive-thread" type="button" data-archive-thread="${escapeHtml(thread.name)}">archive</button>`
     : '';
   return `
     <div class="inbox-item action-thread ${badgeClass}">
@@ -908,13 +902,13 @@ threadsList.addEventListener('click', async (event) => {
   const button = event.target.closest('[data-archive-thread]');
   if (!button) return;
   button.disabled = true;
-  button.textContent = 'marking…';
+  button.textContent = 'archiving…';
   try {
     await fetchJson(`/api/threads/${encodeURIComponent(button.dataset.archiveThread)}/archive`, { method: 'POST' });
     await loadThreads();
   } catch (error) {
     button.disabled = false;
-    button.textContent = 'mark as done';
+    button.textContent = 'archive';
     threadStatus.textContent = error.message;
   }
 });

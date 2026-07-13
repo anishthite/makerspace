@@ -36,6 +36,7 @@ import {
   Switch,
   Tabs,
 } from './components/ui.jsx';
+import { TraceComponentsPage } from './trace-components-page.jsx';
 import {
   Sidebar,
   SidebarContent,
@@ -234,7 +235,7 @@ export function ThreadPage() {
         <div className="thread-main-row">
           <a className="brand" href="/workspace.html" aria-label="Back to workspace"><span className="brand-box"><ArrowLeftIcon className="size-4" aria-hidden="true" /></span><span id="project-label" className="project-pill" hidden></span></a>
           <h1 id="thinking-title">Loading</h1>
-          <div className="header-actions"><StatusPill id="thread-status">connecting</StatusPill><Button id="stop-thread" variant="ghost" className="thread-stop-btn" type="button" hidden><StopCircleIcon {...buttonIconProps} />stop</Button><Button id="resume-thread" variant="ghost" className="thread-resume-btn" type="button" hidden>resume</Button><Button id="delete-thread" variant="ghost" className="thread-delete-btn" type="button" hidden>delete</Button><Button id="archive-thread" variant="primary" className="thread-done-btn" type="button" hidden><CheckCircleIcon {...buttonIconProps} />mark as done</Button></div>
+          <div className="header-actions"><StatusPill id="thread-status">connecting</StatusPill><Button id="stop-thread" variant="ghost" className="thread-stop-btn" type="button" hidden><StopCircleIcon {...buttonIconProps} />stop</Button><Button id="resume-thread" variant="ghost" className="thread-resume-btn" type="button" hidden>resume</Button><Button id="delete-thread" variant="ghost" className="thread-delete-btn" type="button" hidden>delete</Button><Button id="archive-thread" variant="primary" className="thread-done-btn" type="button" hidden><CheckCircleIcon {...buttonIconProps} />archive</Button></div>
         </div>
         <p id="thinking-detail" className={mutedClass}></p>
         <div className="sr-only"><strong id="thread-title">Loading</strong><span id="thread-meta"></span></div>
@@ -334,6 +335,119 @@ export function SettingsPage() {
   </main>;
 }
 
+function DesktopLandingPage() {
+  const receiptRows = [
+    ['AGENTS.md', '✓'],
+    ['skills + prompts', '✓'],
+    ['providers', '✓'],
+    ['env keys', '6 scoped'],
+    ['checks', 'npm test'],
+  ];
+  const workRows = [
+    ['diff', '3 files'],
+    ['checks', 'passed'],
+    ['screenshot', <span className="landing-thumb" aria-hidden="true" />],
+  ];
+  const cards = [
+    ['Starts with your Pi', 'Every run begins by loading the setup you already trust: repo instructions, skills, prompts, providers, setup commands, secrets, and checks.'],
+    ['Runs in a real browser sandbox', 'Start, watch, and reopen Pi work from any browser while the coding agent runs on a remote machine built for the repo.'],
+    ['Comes back with evidence', 'Standing runs return diffs, logs, checks, screenshots, decisions, failures, and next actions—not vague agent summaries.'],
+  ];
+  return <>
+    <style>{`
+      /* Design source: DESIGN.md */
+      .landing-page { --ds-bg:#FAF8F3; --ds-surface:#FFFDF8; --ds-surface-2:#EFEAD9; --ds-text:#241A12; --ds-muted:#4B3A2D; --ds-quiet:#78635A; --ds-line:rgba(31,94,156,.16); --ds-line-strong:rgba(31,94,156,.30); --ds-accent:#1F5E9C; --ds-success:#17634A; min-height:100vh; background-color:var(--ds-bg); background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.14, 0 0 0 0 0.10, 0 0 0 0 0.07, 0 0 0 0.025 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>"); color:var(--ds-text); font:16px/1.5 var(--sans); }
+      .landing-shell { width:min(1120px, calc(100% - 40px)); margin:0 auto; padding:28px 0 56px; }
+      .landing-nav, .landing-actions, .landing-footer, .landing-links, .landing-browser-title, .landing-tabs, .landing-row, .landing-tomorrow { display:flex; align-items:center; }
+      .landing-nav, .landing-footer { justify-content:space-between; gap:16px; }
+      .landing-brand { display:inline-flex; align-items:center; gap:10px; color:inherit; text-decoration:none; font-weight:900; letter-spacing:-.05em; }
+      .landing-brand img { width:30px; height:30px; image-rendering:pixelated; }
+      .landing-links { gap:14px; }
+      .landing-links a, .landing-footer a, .landing-link-button { color:var(--ds-muted); font:inherit; font-size:14px; font-weight:800; text-decoration:none; }
+      .landing-link-button { border:1px solid var(--ds-line); border-radius:8px; padding:8px 11px; background:var(--ds-surface); cursor:pointer; text-transform:lowercase; letter-spacing:.04em; }
+      .landing-page .landing-link-button { background:var(--ds-surface) !important; color:var(--ds-muted) !important; }
+      .landing-hero { display:grid; grid-template-columns:minmax(0,1fr) minmax(320px,400px); gap:clamp(30px,6vw,78px); align-items:center; padding:clamp(58px,10vw,116px) 0 46px; }
+      .landing-kicker, .landing-eyebrow { margin:0; color:var(--ds-accent); font-size:11px; font-weight:900; letter-spacing:.13em; text-transform:lowercase; }
+      .landing-page h1 { max-width:830px; margin:12px 0 18px; font-size:clamp(54px,8.8vw,104px); line-height:.84; letter-spacing:-.1em; font-weight:900; }
+      .landing-lede { max-width:710px; margin:0; color:var(--ds-muted); font-size:clamp(19px,2.2vw,24px); line-height:1.34; font-weight:650; }
+      .landing-actions { justify-content:flex-start; flex-wrap:wrap; gap:12px; margin-top:34px; }
+      .landing-button { display:inline-flex; min-height:48px; align-items:center; justify-content:center; border:1px solid var(--ds-accent); border-radius:8px; padding:0 18px; background:var(--ds-accent); color:#FAF8F3; font-weight:900; text-decoration:none; text-transform:lowercase; }
+      .landing-button.secondary { background:var(--ds-surface); color:var(--ds-accent); border-color:var(--ds-line); }
+      .landing-browser, .landing-card, .signin-modal { border:1px solid var(--ds-line); background:var(--ds-surface); }
+      .landing-browser { border-radius:22px; overflow:hidden; box-shadow:0 24px 80px rgba(31,94,156,.10); }
+      .landing-browser-title { justify-content:space-between; gap:12px; padding:13px 16px; border-bottom:1px solid var(--ds-line); }
+      .landing-tabs { gap:6px; }
+      .landing-dot { width:9px; height:9px; border-radius:999px; background:#B8AB9B; }
+      .landing-url { margin-left:8px; border:1px solid var(--ds-line); border-radius:999px; padding:5px 10px; color:var(--ds-quiet); background:#fff; font-size:12px; font-weight:800; }
+      .landing-state { color:var(--ds-success); font-size:13px; font-weight:900; }
+      .landing-browser-body { display:grid; grid-template-columns:.88fr 1.12fr; gap:12px; padding:14px; }
+      .landing-receipt, .landing-work, .landing-tomorrow { border:1px solid var(--ds-line); border-radius:16px; background:#FFFDF8; }
+      .landing-receipt, .landing-work { padding:13px; }
+      .landing-receipt h2, .landing-work h2 { margin:0 0 10px; font-size:16px; letter-spacing:-.04em; font-weight:900; }
+      .landing-row { justify-content:space-between; gap:8px; border-top:1px solid var(--ds-line); padding:9px 0; color:var(--ds-muted); font-size:13px; font-weight:800; }
+      .landing-row:first-of-type { border-top:0; }
+      .landing-check { color:var(--ds-success); font-weight:900; }
+      .landing-terminal { border:1px solid var(--ds-line-strong); border-radius:12px; padding:11px; background:#DDEBF6; color:var(--ds-text); font-weight:800; }
+      .landing-terminal span { display:block; margin-top:5px; color:var(--ds-muted); font-size:13px; }
+      .landing-thumb { width:54px; height:34px; border:1px solid var(--ds-line); border-radius:8px; background:linear-gradient(135deg,#DDEBF6,#DDEDE6); }
+      .landing-tomorrow { grid-column:1/-1; justify-content:space-between; gap:12px; padding:12px 13px; background:#DDEDE6; color:var(--ds-muted); font-weight:800; }
+      .landing-tomorrow strong { color:var(--ds-success); }
+      .landing-strip { border-top:1px solid var(--ds-line); border-bottom:1px solid var(--ds-line); padding:17px 0; color:var(--ds-muted); font-weight:850; }
+      .landing-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; margin-top:16px; }
+      .landing-card { min-height:148px; border-radius:16px; padding:18px; }
+      .landing-card h2 { margin:0 0 8px; font-size:20px; letter-spacing:-.045em; line-height:1.1; font-weight:900; }
+      .landing-page p { margin:0; color:var(--ds-muted); }
+      .landing-footer { margin-top:52px; color:var(--ds-muted); font-size:13px; }
+      .signin-modal { width:min(480px, calc(100% - 28px)); border-radius:12px; padding:0; color:var(--ds-text); box-shadow:0 24px 70px rgba(31,94,156,.10); }
+      .signin-modal::backdrop { background:rgba(0,0,0,.68); backdrop-filter:blur(5px); }
+      .modal-card { padding:24px; }
+      .modal-head { display:flex; align-items:flex-start; justify-content:space-between; gap:18px; margin-bottom:22px; }
+      .modal-head h2 { margin:4px 0 8px; font-size:30px; line-height:1; }
+      .close-button { width:34px; height:34px; border:1px solid var(--ds-line); border-radius:999px; background:transparent; color:var(--ds-muted); font-size:20px; cursor:pointer; }
+      .github-button { width:100%; min-height:50px; border:1px solid var(--ds-accent); border-radius:8px; background:var(--ds-accent); color:#FAF8F3; font-weight:900; cursor:pointer; text-transform:lowercase; }
+      .github-button:disabled { opacity:.55; cursor:not-allowed; }
+      .modal-proof { margin:18px 0 0; padding-left:18px; color:var(--ds-muted); }
+      .modal-status { min-height:21px; margin-top:14px; color:var(--ds-muted); font-size:14px; }
+      @media (max-width:900px) { .landing-shell { width:min(100% - 28px,1120px); } .landing-nav, .landing-footer { align-items:flex-start; flex-direction:column; } .landing-links { width:100%; justify-content:space-between; } .landing-hero, .landing-grid, .landing-browser-body { grid-template-columns:1fr; } .landing-button { width:100%; } }
+    `}</style>
+    <div className="landing-page">
+      <main className="landing-shell">
+        <nav className="landing-nav" aria-label="Spanner navigation">
+          <a className="landing-brand" href="/"><img src="/logo-mark.svg" alt="" aria-hidden="true" /><span>spanner</span></a>
+          <div className="landing-links"><button id="signin-open" className="landing-link-button" type="button" data-open-signin>Sign in</button><a href="/">web app</a></div>
+        </nav>
+        <section className="landing-hero" aria-labelledby="title">
+          <div>
+            <p className="landing-kicker">remote pi, your setup</p>
+            <h1 id="title">Run your Pi setup in a browser sandbox.</h1>
+            <p className="landing-lede">Spanner opens a real remote coding sandbox, loads your AGENTS.md, skills, prompts, providers, setup commands, and checks, then returns the work as diffs, logs, screenshots, and a run you can reopen tomorrow.</p>
+            <div className="landing-actions"><a className="landing-button" href="/">Open a Pi sandbox</a><a className="landing-button secondary" href="#receipt">See the setup receipt</a></div>
+          </div>
+          <aside className="landing-browser" aria-label="Example agent run" id="receipt">
+            <div className="landing-browser-title"><div className="landing-tabs"><span className="landing-dot"></span><span className="landing-dot"></span><span className="landing-dot"></span><span className="landing-url">spanner.run/thread/pi</span></div><span className="landing-state">remote ready</span></div>
+            <div className="landing-browser-body">
+              <div className="landing-receipt"><p className="landing-eyebrow">setup receipt</p><h2>Loaded before work starts</h2>{receiptRows.map(([label, value]) => <div className="landing-row" key={label}><span>{label}</span><span className={value === '✓' ? 'landing-check' : ''}>{value}</span></div>)}</div>
+              <div className="landing-work"><p className="landing-eyebrow">remote sandbox</p><h2>Pi is working in the repo</h2><div className="landing-terminal">$ pi fix the auth callback race<span>reading files · editing branch · running checks</span></div>{workRows.map(([label, value]) => <div className="landing-row" key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>
+              <div className="landing-tomorrow"><span>Tomorrow&apos;s pass</span><strong>same Pi setup · fresh sandbox · new evidence</strong></div>
+            </div>
+          </aside>
+        </section>
+        <div className="landing-strip">Your Pi habits · fresh remote sandboxes · reviewable work · repeat tomorrow</div>
+        <section className="landing-grid" aria-label="Spanner features">{cards.map(([title, body]) => <article className="landing-card" key={title}><h2>{title}</h2><p>{body}</p></article>)}</section>
+        <footer className="landing-footer"><span>For Pi users who want their local setup to keep working when the laptop closes, the repo needs another pass, or tomorrow&apos;s agent should remember today&apos;s rules.</span><a href="https://github.com/anishthite/spanner-downloads/releases/latest">desktop release</a></footer>
+      </main>
+      <dialog id="signin-modal" className="signin-modal" aria-labelledby="signin-title">
+        <div className="modal-card">
+          <div className="modal-head"><div><p className="landing-eyebrow">GitHub sign-in</p><h2 id="signin-title">Build with your repos.</h2><p>Sign in with GitHub so Spanner can launch agents against the repos you choose.</p></div><button id="signin-close" className="close-button" type="button" aria-label="Close sign-in modal">×</button></div>
+          <button id="github-signin" className="github-button" type="button">Continue with GitHub</button>
+          <p id="signin-status" className="modal-status" role="status" aria-live="polite">Checking GitHub sign-in…</p>
+          <ul className="modal-proof"><li>private repos stay tied to your GitHub account</li><li>agents run in isolated workspaces</li><li>you review every diff before it lands</li></ul>
+        </div>
+      </dialog>
+    </div>
+  </>;
+}
+
 export const pages = {
   project: ProjectPage,
   workspace: WorkspacePage,
@@ -341,4 +455,6 @@ export const pages = {
   settings: SettingsPage,
   history: HistoryPage,
   performance: PerformancePage,
+  desktop: DesktopLandingPage,
+  traceComponents: TraceComponentsPage,
 };

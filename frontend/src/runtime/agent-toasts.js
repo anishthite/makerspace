@@ -19,7 +19,6 @@ migrateStorageKey('workbenchSelectedProject', PROJECT_KEY);
 const ACTIVE_THREAD_STATUSES = ['launching', 'starting', 'queued', 'running'];
 const FINISHED_THREAD_STATUSES = ['completed', 'ready', 'failed'];
 const API_BASE = String(import.meta.env?.VITE_SPANNER_API_BASE || '').trim().replace(/\/+$/, '');
-const MAIN_PAGE_PATH = '/workspace.html';
 
 let loadedThreadSnapshot = false;
 let knownThreadStatuses = new Map();
@@ -83,17 +82,12 @@ function sameSelectedProject(thread) {
   return canonicalRepo(thread?.repoUrl) === canonicalRepo(project.value);
 }
 
-function openMainPage() {
-  location.assign(MAIN_PAGE_PATH);
-}
-
 function showAgentToast(title, detail = '', tone = 'success') {
   const notify = tone === 'error' ? toast.error : toast.success;
   notify(title, {
     description: detail || undefined,
     duration: 8000,
     className: 'agent-main-link-toast',
-    action: { label: 'Open main', onClick: openMainPage },
   });
 }
 

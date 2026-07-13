@@ -132,6 +132,7 @@ let queuedSteeringCount = 0;
 let queuedFollowUpCount = 0;
 let initialResumeScrollDone = false;
 let workflowPollTimer = 0;
+let timelineEntriesCanAnimate = false;
 const excalidrawRenderTokens = new WeakMap();
 const openUIRenderTokens = new WeakMap();
 
@@ -240,6 +241,10 @@ function toggleAgentActivity(anchor = null) {
 
 function syncRunSummaryExpanded(open) {
   document.querySelectorAll('.run-summary').forEach((button) => button.setAttribute('aria-expanded', String(open)));
+}
+
+function markTimelineEnter(article) {
+  if (timelineEntriesCanAnimate) article.classList.add('is-entering');
 }
 
 function getApiBase() {
@@ -831,7 +836,7 @@ function renderArchiveButton(thread = currentThread) {
   if (!archiveButton) return;
   archiveButton.hidden = !canArchiveThread(thread);
   archiveButton.disabled = false;
-  archiveButton.textContent = 'mark as done';
+  archiveButton.textContent = 'archive';
   syncHeaderStatusVisibility();
 }
 
@@ -959,6 +964,7 @@ function appendRunSummaryMarker({ startMs = 0, endMs = 0, status = '', runId = '
   const marker = { button, startMs, endMs, status, runId: String(runId || ''), detail: '' };
   button.addEventListener('click', () => toggleAgentActivity(article));
   updateRunSummaryMarker(marker);
+  markTimelineEnter(article);
   timeline.append(article);
   if (marker.runId) runSummaryMarkers.set(marker.runId, marker);
   followLatest(follow);
@@ -1473,6 +1479,7 @@ function appendTimelineItem(kind, titleText, detailText) {
       ${detailText ? `<p>${escapeHtml(detailText)}</p>` : ''}
     </div>
   `;
+  markTimelineEnter(article);
   timeline.append(article);
   followLatest(follow);
   return article;
@@ -1667,6 +1674,7 @@ function appendMessage(role, label, text = '', images = [], options = {}) {
   if (role === 'assistant') card.append(makeCopyButton(() => messageText.get(body) || body.textContent || '', 'assistant message'));
   renderMessageBody(body, text, role === 'assistant', images);
   if (role === 'assistant') applyAssistantTurnStatus(article, options.turnStatus || null);
+  markTimelineEnter(article);
   timeline.append(article);
   followLatest(follow);
   return body;
@@ -1909,6 +1917,7 @@ function renderTimelineToolEvent(event) {
         <pre></pre>
       </details>
     `;
+    markTimelineEnter(article);
     traceTimeline.append(article);
     node = article.querySelector('.tool-card');
     toolCards.set(key, node);
@@ -1958,6 +1967,7 @@ function renderTimelineThinkingEvent(event) {
         <div class="thinking-body"></div>
       </div>
     `;
+    markTimelineEnter(article);
     traceTimeline.append(article);
     node = article.querySelector('.thinking-card');
     thinkingCards.set(key, node);
@@ -1981,6 +1991,7 @@ function renderTimelineSummaryEvent(event) {
       <p>${escapeHtml(summary)}</p>
     </div>
   `;
+  markTimelineEnter(article);
   traceTimeline.append(article);
   followTraceLatest(follow);
 }
@@ -2223,13 +2234,13 @@ deleteButton?.addEventListener('click', () => {
 
 archiveButton?.addEventListener('click', async () => {
   archiveButton.disabled = true;
-  archiveButton.textContent = 'marking…';
+  archiveButton.textContent = 'archiving…';
   try {
     await fetchJson(`/api/threads/${encodeURIComponent(name)}/archive`, { method: 'POST' });
     window.location.assign('/workspace.html');
   } catch (error) {
     archiveButton.disabled = false;
-    archiveButton.textContent = 'mark as done';
+    archiveButton.textContent = 'archive';
     setStatus(error.message, 'error');
   }
 });
@@ -2321,6 +2332,7 @@ try {
   const { thread, output } = await loadThreadBootstrap();
   restoreInitialThreadPosition();
   const status = output.runStatus || thread.runStatus;
+  timelineEntriesCanAnimate = true;
   if (['launching', 'running', 'starting', 'queued'].includes(status)) streamRun();
 } catch (error) {
   renderEvent({ type: 'status', runStatus: 'failed', warning: error.message, timestamp: new Date().toISOString() });

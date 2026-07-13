@@ -29,6 +29,7 @@ export default defineConfig({
         history: page('history.html'),
         telemetry: page('telemetry.html'),
         localTelemetry: page('local-telemetry.html'),
+        traceComponents: page('trace-components.html'),
         desktop: page('desktop.html'),
         excalidrawViewer: page('excalidraw-viewer.html'),
         excalidrawEditor: page('excalidraw-editor.html'),

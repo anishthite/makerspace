@@ -19,6 +19,7 @@ const runtimeLoaders = {
   settings: () => import('./runtime/settings.js'),
   history: () => import('./runtime/history.js'),
   performance: () => import('./runtime/performance.js'),
+  desktop: () => import('./runtime/desktop.js'),
 };
 
 function homepageRedirectUrl() {
@@ -30,7 +31,7 @@ async function redirectUnsignedHostedUsers() {
   try {
     const response = await fetch(`${API_BASE}/api/me`, { credentials: 'include', cache: 'no-store' });
     const me = await response.json();
-    if (me.authRequired && !me.authenticated && me.githubConfigured) location.replace(homepageRedirectUrl());
+    if (me.authRequired && !me.authenticated) location.replace(homepageRedirectUrl());
   } catch {}
 }
 
@@ -82,12 +83,12 @@ function openMainPageFromToastKey(event) {
 }
 
 applyAppearance();
-void redirectUnsignedHostedUsers();
-document.addEventListener('click', openMainPageFromToast);
-document.addEventListener('keydown', openMainPageFromToastKey);
-
 const root = document.querySelector('#root');
 const page = document.body?.dataset?.reactPage || 'project';
+const publicPages = new Set(['desktop', 'traceComponents']);
+if (!publicPages.has(page)) void redirectUnsignedHostedUsers();
+document.addEventListener('click', openMainPageFromToast);
+document.addEventListener('keydown', openMainPageFromToastKey);
 if (page !== 'workspace') startAgentToastWatcher();
 const reactRoot = root.__spannerRoot || createRoot(root);
 root.__spannerRoot = reactRoot;

@@ -49,7 +49,7 @@ export function Button({ as, href, variant = 'secondary', size = 'md', loading =
   const shared = {
     variant: buttonVariant[variant] || variant,
     size: buttonSize[size] || size,
-    className: cn(legacyClass, 'rounded-md border font-[var(--mono)] font-bold tracking-[.04em] lowercase transition-colors active:scale-[.98] disabled:cursor-wait disabled:opacity-55', buttonClass[variant], buttonSizeClass[size], loading && 'pointer-events-none opacity-70', className),
+    className: cn(legacyClass, 'rounded-md border font-[var(--mono)] font-bold tracking-[.04em] lowercase transition-[background-color,border-color,color,opacity,scale] duration-150 ease-out active:scale-[0.96] disabled:cursor-wait disabled:opacity-55', buttonClass[variant], buttonSizeClass[size], loading && 'pointer-events-none opacity-70', className),
     'data-app-variant': variant,
     'data-app-size': size,
     'aria-busy': loading || undefined,

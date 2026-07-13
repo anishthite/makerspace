@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — literal trace components board</title>
+<meta name="task" content="Add a live page that lays out the literal trace component DOM for editing.">
+<meta name="date-started" content="2026-07-13">
+<meta name="date-updated" content="2026-07-13">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,ui,trace,tools,components,preview">
+<meta name="related" content="2026-07-13-agent-trace-tool-card-mockup.html,2026-07-02-process-rail.html,2026-06-25-agent-trace-tray.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-shipped{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Literal trace components board</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-13 · status <b class="status-shipped">shipped</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Add <code>/trace-components.html</code> as a live board using the actual trace DOM classes.</div><b>Source</b><div><code>frontend/src/runtime/thread.js</code> trace templates and <code>frontend/src/styles/app.css</code> component styles.</div><b>Surface</b><div>React page, Vite input, local static alias, screenshot artifacts.</div><b>Schema</b><div>None.</div><b>Mobile</b><div>Captured narrow screenshot at <code>430px</code>.</div><b>Open Qs</b><div>0.</div></div>
+<h2>UI layout</h2>
+<ol><li><b>Timeline primitives</b>: render run summary, thinking, status, workflow, and summary cards.</li><li><b>Tool groups</b>: render literal <code>details.tool-card</code> cards across file, shell, research, coordination, experiment, and goal tools.</li><li><b>Agent graph</b>: render literal <code>.agent-node</code>, <code>.workflow-map</code>, and <code>.workflow-view-node</code> cards.</li><li><b>Edit targets</b>: show the source files that control markup and styles.</li></ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>frontend/src/trace-components-page.jsx</code></td><td>new</td><td>Live component board with literal trace DOM and fake data.</td></tr><tr><td><code>frontend/trace-components.html</code></td><td>new</td><td>React entry for the component board.</td></tr><tr><td><code>frontend/src/pages.jsx</code></td><td>touch</td><td>Register <code>traceComponents</code>.</td></tr><tr><td><code>frontend/src/entry.jsx</code></td><td>touch</td><td>Treat the board as a public non-watcher page.</td></tr><tr><td><code>vite.config.js</code></td><td>touch</td><td>Build <code>trace-components.html</code>.</td></tr><tr><td><code>src/server/http.js</code></td><td>touch</td><td>Serve <code>/trace-components</code>.</td></tr><tr><td><code>output/playwright/trace-components-literal-desktop.png</code></td><td>new</td><td>Desktop screenshot of the live board.</td></tr><tr><td><code>output/playwright/trace-components-literal-mobile.png</code></td><td>new</td><td>Narrow screenshot of the live board.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Use actual trace class structures. The live renderer is DOM-template based, not a reusable React component.</td></tr><tr><td>D-002</td><td>Add a real route. It lets design edits be checked in browser instead of screenshot-only artifacts.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>Board-only route over refactoring <code>thread.js</code>. Keeps behavior unchanged while the design is unsettled.</td></tr></table>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>npm run build</code></td><td>Passed.</td></tr><tr><td><code>playwright screenshot --full-page --viewport-size "1440,1800"</code></td><td>Created <code>trace-components-literal-desktop.png</code>.</td></tr><tr><td><code>playwright screenshot --full-page --viewport-size "430,1200"</code></td><td>Created <code>trace-components-literal-mobile.png</code>.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Remove the board page, route registration, screenshots, and this note; no runtime trace behavior changes.</p>
+<h2>Definition of done</h2>
+<ul><li><code>/trace-components.html</code> builds.</li><li>Tool cards use live <code>.tool-card</code> markup and <code>app.css</code> styles.</li><li>Desktop and mobile screenshots exist.</li></ul>
+</body>
+</html>
