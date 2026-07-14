@@ -8,6 +8,7 @@ const DENIED_POSTHOG_KEYS = new Set(['$initial_current_url', '$initial_pathname'
 const ROUTE_ALIASES = new Map([
   ['/', '/'],
   ['/index.html', '/'],
+  ['/landing', '/landing'],
   ['/desktop', '/desktop'],
   ['/desktop.html', '/desktop'],
   ['/workspace', '/workspace'],

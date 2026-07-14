@@ -1,4 +1,4 @@
-const HOMEPAGE_PATH = '/homepage';
+const HOMEPAGE_PATH = '/landing';
 
 export function homepageRedirectUrl() {
   return `${HOMEPAGE_PATH}?${new URLSearchParams({ returnTo: location.href })}`;

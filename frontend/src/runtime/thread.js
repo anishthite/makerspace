@@ -730,12 +730,16 @@ function canDeleteThread(thread) {
   return isRemoteLifecycleThread(thread) && !isActiveStatus(status) && !['deleted', 'backing_up'].includes(status);
 }
 
-function isRunningThread(thread = currentThread) {
-  return String(effectiveStatus(thread) || '').toLowerCase() === 'running';
+function canSendActiveDelivery(thread = currentThread) {
+  const status = String(effectiveStatus(thread) || '').toLowerCase();
+  if (status === 'running') return true;
+  return ['queued', 'starting'].includes(status)
+    && isRemoteLifecycleThread(thread)
+    && Boolean(thread?.bridgeClaimed && thread?.bridgeRunId && thread?.bridgeUrl && thread?.hasBridgeToken);
 }
 
 function isStartingThread(thread = currentThread) {
-  return ['launching', 'queued', 'starting', 'reconnecting'].includes(String(effectiveStatus(thread) || '').toLowerCase());
+  return ['launching', 'queued', 'starting', 'reconnecting'].includes(String(effectiveStatus(thread) || '').toLowerCase()) && !canSendActiveDelivery(thread);
 }
 
 function queueCountCopy() {
@@ -746,7 +750,7 @@ function queueCountCopy() {
 }
 
 function renderComposerState(thread = currentThread) {
-  const running = isRunningThread(thread);
+  const activeDelivery = canSendActiveDelivery(thread);
   const starting = isStartingThread(thread);
   const status = String(effectiveStatus(thread) || '').toLowerCase();
   const blocked = ['deleted', 'backing_up'].includes(status);
@@ -757,16 +761,16 @@ function renderComposerState(thread = currentThread) {
         ? 'Sandbox was deleted after backup'
         : status === 'backing_up'
           ? 'Backing up before delete…'
-          : running
-            ? `Enter steers the running agent · Alt+Enter queues a follow-up${queueCountCopy()}`
+          : activeDelivery
+            ? `Enter steers as soon as live · Alt+Enter queues a follow-up${queueCountCopy()}`
             : starting
               ? 'Agent is starting · steering unlocks once it is live'
               : 'Enter sends · Shift+Enter adds a line';
   }
-  if (promptInput) promptInput.placeholder = status === 'suspended' ? 'Send to resume sandbox…' : blocked ? 'Lifecycle action required…' : running ? 'Steer the running agent…' : 'Next task…';
+  if (promptInput) promptInput.placeholder = status === 'suspended' ? 'Send to resume sandbox…' : blocked ? 'Lifecycle action required…' : activeDelivery ? 'Steer the running agent…' : 'Next task…';
   if (sendButton) {
     sendButton.disabled = submitInFlight || starting || blocked;
-    sendButton.textContent = running ? 'steer' : 'send';
+    sendButton.textContent = activeDelivery ? 'steer' : 'send';
   }
 }
 
@@ -1535,7 +1539,7 @@ function renderMessageAttachments(node, images = []) {
 function fillComposerFromInteractiveAction({ prompt = '', delivery = 'followUp' } = {}) {
   if (!promptInput || !prompt) return;
   promptInput.value = prompt;
-  nextSubmitDelivery = delivery === 'followUp' && isRunningThread() ? 'followUp' : 'auto';
+  nextSubmitDelivery = delivery === 'followUp' && canSendActiveDelivery() ? 'followUp' : 'auto';
   promptInput.focus();
   renderComposerState();
   setStatus('review interactive action, then send', 'info');
@@ -2290,7 +2294,7 @@ renderNotesRail();
 promptForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   const typedPrompt = promptInput.value.trim();
-  const delivery = nextSubmitDelivery === 'followUp' ? 'followUp' : isRunningThread() ? 'steer' : 'auto';
+  const delivery = nextSubmitDelivery === 'followUp' ? 'followUp' : canSendActiveDelivery() ? 'steer' : 'auto';
   nextSubmitDelivery = 'auto';
   submitInFlight = true;
   renderComposerState();

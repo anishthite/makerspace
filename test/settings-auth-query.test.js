@@ -35,6 +35,13 @@ test('settings page hides unavailable GitHub auth actions', () => {
   assert.match(settingsJs, /githubLogout\.hidden = true;/);
 });
 
+test('settings page exposes app logout action', () => {
+  assert.match(settingsPage, /id="account-logout"/);
+  assert.match(settingsJs, /fetchJson\('\/api\/me'\)/);
+  assert.match(settingsJs, /fetchJson\('\/api\/auth\/logout', \{ method: 'POST' \}\)/);
+  assert.match(settingsJs, /location\.replace\(homepageRedirectUrl\(\)\)/);
+});
+
 test('desktop Claude auth opens in the system browser', () => {
   assert.match(desktopPreload, /openExternal: \(url\) => ipcRenderer\.invoke\('spanner:open-external', url\)/);
   assert.match(desktopMain, /shell\.openExternal\(target\.href\)/);

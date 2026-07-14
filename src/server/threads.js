@@ -922,7 +922,7 @@ export function createThreadService({ config, provider, http, auth, runState, br
       throw new Error(`Main agent ${name} failed; create a new main agent.`);
     }
     if (!existing.localMode && existing.bridgeClaimed && existing.taskPrompt && isActiveRunStatus(status)) {
-      if (status !== 'running') throw clientError('Main agent is starting; try again in a moment.', 409);
+      if (!['queued', 'starting', 'running'].includes(status)) throw clientError('Main agent is starting; try again in a moment.', 409);
       return sendActiveBridgeThreadMessage(existing, prompt, submittedAtMs, delivery, images);
     }
 

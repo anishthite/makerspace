@@ -257,7 +257,11 @@ export function createCloudflareProvider(config, options = {}) {
       const setup = await exec(session.name, `chmod +x ${shellQuote(DEFAULT_SETUP_PATH)} && ${shellQuote(DEFAULT_SETUP_PATH)}`, { cwd: '/', env: envVars, onData: session.onCreateLog });
       if (setup.exitCode !== 0) throw new Error(`Cloudflare setup failed: ${setup.stderr || setup.stdout || setup.exitCode}`);
       const port = await this.setShare(session.name, { sharePort: session.sharePort || config.bridgePort });
-      return normalizeRemote({ ...remote, ...port }, session);
+      const bridgeUrl = port.bridgeUrl || port.httpsUrl || port.url || '';
+      if (!bridgeUrl) {
+        throw new Error(`Cloudflare broker did not return a bridge URL for ${session.name || 'session'} port ${session.sharePort || config.bridgePort || 4310}. Use the sandbox.spanner.sh broker route or set CLOUDFLARE_SANDBOX_PORT_HOSTNAME.`);
+      }
+      return normalizeRemote({ ...remote, ...port, bridgeUrl, httpsUrl: bridgeUrl }, session);
     },
     async destroySession(sessionOrName) {
       const name = sandboxName(sessionOrName);

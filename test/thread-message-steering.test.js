@@ -6,7 +6,6 @@ import path from 'node:path';
 
 import { createRunState } from '../src/server/run-state.js';
 import { createThreadService } from '../src/server/threads.js';
-import { getStoredSession, upsertSession } from '../src/store.js';
 
 function httpStub() {
   return {
@@ -51,7 +50,7 @@ function createService(config, bridgeCalls) {
   });
 }
 
-test('bridge steering is held until the remote Pi session is running', async () => {
+test('bridge steering is accepted while the remote Pi session is starting', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-steering-'));
   const sessionFile = path.join(root, 'sessions.json');
   const baseSession = {
@@ -75,20 +74,7 @@ test('bridge steering is held until the remote Pi session is running', async () 
     await writeFile(sessionFile, `${JSON.stringify([baseSession])}\n`);
     const bridgeCalls = [];
     const service = createService({ sessionFile, settingsFile: path.join(root, 'settings.json') }, bridgeCalls);
-
-    await assert.rejects(
-      () => service.promptThreadSession('bridge-thread', { prompt: 'steer now', delivery: 'steer', submittedAtMs: 2000 }),
-      (error) => {
-        assert.equal(error.statusCode, 409);
-        assert.match(error.message, /starting/);
-        return true;
-      },
-    );
-    assert.equal(bridgeCalls.length, 0);
-    assert.equal((await getStoredSession(sessionFile, 'bridge-thread')).threadMessages?.length || 0, 0);
-
-    await upsertSession(sessionFile, { name: 'bridge-thread', status: 'running', runStatus: 'running' });
-    const updated = await service.promptThreadSession('bridge-thread', { prompt: 'steer now', delivery: 'steer', submittedAtMs: 3000 });
+    const updated = await service.promptThreadSession('bridge-thread', { prompt: 'steer now', delivery: 'steer', submittedAtMs: 2000 });
 
     assert.equal(bridgeCalls.length, 1);
     assert.equal(bridgeCalls[0].kind, 'fetch');
