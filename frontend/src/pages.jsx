@@ -506,7 +506,7 @@ Keep screenshots, diffs, logs, and comments attached to the run.`;
       <main className="landing-shell">
         <nav className="landing-nav" aria-label="Spanner navigation">
           <a className="landing-brand" href="/"><img className="landing-brand-mark" src="/logo-mark.svg" alt="" aria-hidden="true" />spanner</a>
-          <div className="landing-links"><button id="signin-open" className="landing-link-button" type="button" data-open-signin>Sign in</button><a href="/">web app</a></div>
+          <div className="landing-links"><button id="signin-open" className="landing-link-button" type="button" data-open-signin>Sign in</button></div>
         </nav>
 
         <section className="landing-hero" aria-labelledby="title">
