@@ -488,7 +488,7 @@ export function SettingsPage() {
   return <main className="mx-auto w-[min(1180px,calc(100%_-_34px))] px-0 py-6 pb-18">
     <nav className={topbarClass} aria-label="Settings controls">
       <Brand href="/" label="Spanner home" />
-      <div className={headerActionsClass}><Button as="a" variant="ghost" href="/"><RobotIcon {...buttonIconProps} />agents</Button></div>
+      <div className={headerActionsClass}><Button id="account-logout" variant="ghost" type="button" hidden><SignOutIcon {...buttonIconProps} />Log out</Button><Button as="a" variant="ghost" href="/"><RobotIcon {...buttonIconProps} />agents</Button></div>
     </nav>
     <p id="settings-global-status" className={settingsStatusClass} hidden></p>
 

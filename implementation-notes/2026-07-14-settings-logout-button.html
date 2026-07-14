@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Settings logout button</title>
+<meta name="task" content="Add a Settings-level logout action.">
+<meta name="date-started" content="2026-07-14">
+<meta name="date-updated" content="2026-07-14">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="spanner,settings,auth,logout,ui">
+<meta name="related" content="2026-07-14-settings-accounts-simplification.html,2026-06-30-multi-user-auth.html">
+<style>body{font:14px/1.5 -apple-system,system-ui,sans-serif;max-width:960px;margin:2rem auto;padding:0 1rem}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:6px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6}code{background:#f6f6f6;padding:1px 3px;border-radius:3px}.kv{display:grid;grid-template-columns:120px 1fr;gap:4px 10px}.blast-med{color:#b85c00}</style>
+</head>
+<body>
+<h1>Settings logout button</h1>
+<p><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-14 · status <b>shipped</b> · blast <span class="blast-med">medium</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Add one Settings-level logout action for the signed-in app session.</div><b>Source</b><div>Use existing <code>GET /api/me</code> and <code>POST /api/auth/logout</code>.</div><b>Surface</b><div><code>/settings.html</code> top nav.</div><b>Schema</b><div>None.</div><b>Open Qs</b><div>0.</div></div>
+<h2>UI layout</h2>
+<ol><li><code>#account-logout</code> sits in the Settings top nav and stays hidden when <code>/api/me</code> reports no authenticated user.</li></ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>frontend/src/pages.jsx</code></td><td>touch</td><td>Add the hidden top-nav logout button.</td></tr><tr><td><code>frontend/src/runtime/settings.js</code></td><td>touch</td><td>Show the button from <code>/api/me</code> and post to <code>/api/auth/logout</code>.</td></tr><tr><td><code>test/settings-auth-query.test.js</code></td><td>touch</td><td>Pin the Settings logout wiring.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Reuse <code>/api/auth/logout</code>. New server code would duplicate the existing app-session logout contract.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Revert the button, runtime handler, and assertion; the existing logout endpoint remains unchanged.</p>
+<h2>Verification</h2>
+<table><tr><th>ID</th><th>Command · Result</th></tr><tr><td>V-001</td><td><code>node --test test/settings-auth-query.test.js</code> · pass.</td></tr><tr><td>V-002</td><td><code>npm run build</code> · pass.</td></tr></table>
+<h2>Definition of done</h2>
+<ul><li><code>#account-logout</code> renders in Settings.</li><li>Clicking <code>#account-logout</code> posts to <code>/api/auth/logout</code>.</li><li>Targeted Settings auth test passes.</li><li>Frontend build passes.</li></ul>
+</body>
+</html>

@@ -1,5 +1,5 @@
 import { captureSpannerEvent } from '../lib/posthog.js';
-import { redirectIfAuthRequired } from './auth-redirect.js';
+import { homepageRedirectUrl, redirectIfAuthRequired } from './auth-redirect.js';
 
 const BROWSER_SESSION_KEY = 'spannerBrowserSession';
 const API_BASE = String(import.meta.env?.VITE_SPANNER_API_BASE || '').trim().replace(/\/+$/, '');
@@ -40,6 +40,7 @@ const claudeCodeCodeForm = document.querySelector('#claude-code-code-form');
 const claudeCodeCodeInput = document.querySelector('#claude-code-code');
 const claudeCodePaste = document.querySelector('#claude-code-paste');
 const claudeCodeCodeSubmit = document.querySelector('#claude-code-code-submit');
+const accountLogout = document.querySelector('#account-logout');
 const githubLogin = document.querySelector('#github-login');
 const githubLogout = document.querySelector('#github-logout');
 const githubAppInstall = document.querySelector('#github-app-install');
@@ -424,6 +425,15 @@ async function loadGitHubAuth() {
   return status;
 }
 
+async function loadAccountAuth() {
+  const me = await fetchJson('/api/me');
+  if (accountLogout) {
+    accountLogout.disabled = false;
+    accountLogout.hidden = !(me.authenticated || me.admin);
+  }
+  return me;
+}
+
 async function loadSettings() {
   currentSettings = await fetchJson('/api/settings');
   imageRefInput.value = currentSettings.imageRef || '';
@@ -474,6 +484,7 @@ async function loadPiProfile() {
 async function reloadSettingsData() {
   showGlobalSettingsStatus('');
   [githubStatus, codexStatus, claudeCodeStatus, settingsStatus, piProfileStatus].forEach((target) => { if (target) target.hidden = false; });
+  await loadAccountAuth().catch((error) => handleSettingsLoadError(null, error));
   await loadGitHubAuth().catch((error) => handleSettingsLoadError(githubStatus, error));
   await loadCodexAuth().catch((error) => handleSettingsLoadError(codexStatus, error));
   await loadClaudeCodeAuth().catch((error) => handleSettingsLoadError(claudeCodeStatus, error));
@@ -512,6 +523,19 @@ getBrowserSessionId();
 initDesktopUpdates();
 codexDeviceClose?.addEventListener('click', closeCodexDeviceDialog);
 claudeCodeClose?.addEventListener('click', closeClaudeCodeDialog);
+
+accountLogout?.addEventListener('click', async () => {
+  accountLogout.disabled = true;
+  showGlobalSettingsStatus('Logging out…');
+  try {
+    await fetchJson('/api/auth/logout', { method: 'POST' });
+    try { localStorage.removeItem(BROWSER_SESSION_KEY); } catch {}
+    location.replace(homepageRedirectUrl());
+  } catch (error) {
+    showGlobalSettingsStatus(error.message);
+    accountLogout.disabled = false;
+  }
+});
 
 codexDeviceCopy?.addEventListener('click', async () => {
   const ok = await copyToClipboard(codexDeviceCopy.dataset.code || codexDeviceCode?.textContent || '');
