@@ -16,6 +16,7 @@ function migrateStorageKey(legacyKey, nextKey) {
 
 migrateStorageKey('workbenchBrowserSession', BROWSER_SESSION_KEY);
 const codexLogin = document.querySelector('#codex-login');
+const codexLogout = document.querySelector('#codex-logout');
 const codexStatus = document.querySelector('#codex-status');
 const codexDevice = document.querySelector('#codex-device');
 const codexDeviceDialog = document.querySelector('#codex-device-dialog');
@@ -27,6 +28,7 @@ const codexDeviceOpen = document.querySelector('#codex-device-open');
 const codexDeviceOpenLabel = document.querySelector('#codex-device-open-label');
 const codexDeviceDialogStatus = document.querySelector('#codex-device-dialog-status');
 const claudeCodeLogin = document.querySelector('#claude-code-login');
+const claudeCodeLogout = document.querySelector('#claude-code-logout');
 const claudeCodeStatus = document.querySelector('#claude-code-status');
 const claudeCodeDialog = document.querySelector('#claude-code-dialog');
 const claudeCodeClose = document.querySelector('#claude-code-close');
@@ -176,17 +178,26 @@ function oauthStatusText(status, label) {
   return `Signed in${source ? ` · ${source}` : ''}${suffix}`;
 }
 
+function renderProviderAuth(status, label, loginButton, logoutButton, statusTarget) {
+  const signedIn = Boolean(status.configured);
+  loginButton.disabled = status.disabled === 'sign-in-required';
+  loginButton.hidden = signedIn;
+  if (logoutButton) {
+    logoutButton.disabled = false;
+    logoutButton.hidden = !signedIn;
+  }
+  statusTarget.textContent = oauthStatusText(status, label);
+}
+
 async function loadCodexAuth() {
   const status = await fetchJson('/api/auth/openai-codex');
-  codexLogin.disabled = status.disabled === 'sign-in-required';
-  codexStatus.textContent = oauthStatusText(status, 'Codex');
+  renderProviderAuth(status, 'Codex', codexLogin, codexLogout, codexStatus);
   return status;
 }
 
 async function loadClaudeCodeAuth() {
   const status = await fetchJson('/api/auth/claude-code');
-  claudeCodeLogin.disabled = status.disabled === 'sign-in-required';
-  claudeCodeStatus.textContent = oauthStatusText(status, 'Claude Code');
+  renderProviderAuth(status, 'Claude Code', claudeCodeLogin, claudeCodeLogout, claudeCodeStatus);
   return status;
 }
 
@@ -391,20 +402,19 @@ function renderGitHubAuth(status) {
 
   const connected = Boolean(status.connected);
   const needsReconnect = Boolean(status.needsReconnect);
-  const app = status.app || {};
-  const appAccounts = (app.installations || []).map((entry) => entry.accountLogin).filter(Boolean).join(', ');
   const missingScopes = (status.missingScopes || []).join(', ');
-  githubLogin.textContent = needsReconnect ? 'Reconnect' : 'Sign in';
+  githubLogin.textContent = 'Sign in';
   githubLogin.disabled = false;
   githubLogin.hidden = connected && !needsReconnect;
-  githubLogout.disabled = !connected;
+  githubLogout.disabled = !connected || needsReconnect;
   githubLogout.hidden = !connected;
-  githubAppInstall.disabled = !connected || needsReconnect || !app.installable;
-  githubAppInstall.hidden = !app.configured;
+  if (needsReconnect) githubLogout.hidden = true;
+  githubAppInstall.disabled = true;
+  githubAppInstall.hidden = true;
   githubStatus.textContent = needsReconnect
     ? `Reconnect GitHub to allow workflow file changes${missingScopes ? ` (${missingScopes} scope)` : ''}.`
     : connected
-      ? `Signed in · ${status.user?.login || 'GitHub'}${app.installed ? ` · App installed for ${appAccounts || 'GitHub'}` : app.configured ? ' · Install app for private repo git' : ''}`
+      ? `Signed in · ${status.user?.login || 'GitHub'}`
       : 'Signed out';
 }
 
@@ -739,5 +749,34 @@ if (params.get('githubApp') === 'installed') {
   githubStatus.textContent = 'GitHub App installed';
   history.replaceState({}, '', location.pathname);
 }
+
+async function signOutProvider({ path, label, logoutButton, statusTarget, reload }) {
+  logoutButton.disabled = true;
+  statusTarget.textContent = 'Signing out…';
+  try {
+    await fetchJson(path, { method: 'POST' });
+    await reload();
+  } catch (error) {
+    statusTarget.textContent = error.message;
+    logoutButton.disabled = false;
+    captureSpannerEvent('provider_logout_failed', { provider: label });
+  }
+}
+
+codexLogout?.addEventListener('click', () => signOutProvider({
+  path: '/api/auth/openai-codex/logout',
+  label: 'codex',
+  logoutButton: codexLogout,
+  statusTarget: codexStatus,
+  reload: loadCodexAuth,
+}));
+
+claudeCodeLogout?.addEventListener('click', () => signOutProvider({
+  path: '/api/auth/claude-code/logout',
+  label: 'claude_code',
+  logoutButton: claudeCodeLogout,
+  statusTarget: claudeCodeStatus,
+  reload: loadClaudeCodeAuth,
+}));
 
 reloadSettingsData();

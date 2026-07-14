@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Settings accounts simplification</title>
+<style>
+  body { font: 14px/1.5 -apple-system, system-ui, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; }
+  code { background: #f6f6f6; padding: 1px 3px; border-radius: 3px; }
+</style>
+</head>
+<body>
+<h1>Settings accounts simplification</h1>
+<p><strong>Status:</strong> shipped · <strong>Blast:</strong> medium · <strong>Date:</strong> 2026-07-14</p>
+<table>
+<thead><tr><th>ID</th><th>Area</th><th>Decision</th><th>Files</th></tr></thead>
+<tbody>
+<tr><td>D-1</td><td>Visual hierarchy</td><td>Removed Settings eyebrow/subcopy and replaced the accounts intro with one large <code>1 Accounts</code> title.</td><td><code>frontend/src/pages.jsx</code></td></tr>
+<tr><td>D-2</td><td>Scope</td><td>Kept Pi profile/runtime DOM for existing wiring, but hid those sections and removed their tabs for this pass.</td><td><code>frontend/src/pages.jsx</code></td></tr>
+<tr><td>D-3</td><td>Auth actions</td><td>Account cards now expose one visible primary auth action: sign in when disconnected, sign out when connected; GitHub app install stays hidden.</td><td><code>frontend/src/pages.jsx</code>, <code>frontend/src/runtime/settings.js</code></td></tr>
+<tr><td>D-4</td><td>Provider logout</td><td>Added Codex and Claude Code logout endpoints so signed-in provider cards can actually show a sign-out state.</td><td><code>src/server/auth.js</code>, <code>src/server/routes.js</code></td></tr>
+<tr><td>T-1</td><td>Checks</td><td><code>npm test</code> passed during the implementation; final pass ran <code>npm run build</code> and <code>node --test test/settings-auth-query.test.js</code>.</td><td>terminal</td></tr>
+<tr><td>A-1</td><td>Artifact</td><td>Captured the simplified page for review.</td><td><code>artifacts/settings-page-accounts-simplified.png</code></td></tr>
+<tr><td>D-5</td><td>Visual hierarchy</td><td>Supersedes D-1: removed the leading number from Accounts, made the Accounts heading smaller than Settings, and removed the right-side account tabs.</td><td><code>frontend/src/pages.jsx</code></td></tr>
+<tr><td>T-2</td><td>Checks</td><td>Re-ran <code>npm run build</code> and <code>node --test test/settings-auth-query.test.js</code> after the hierarchy tweak.</td><td>terminal</td></tr>
+</tbody>
+</table>
+</body>
+</html>
