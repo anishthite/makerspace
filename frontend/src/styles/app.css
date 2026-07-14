@@ -678,13 +678,21 @@ button.primary {
   gap: 12px;
   align-items: center;
   border: 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--rule) 62%, transparent);
   border-radius: 6px;
   background: transparent;
   padding: 12px;
   transition: background 140ms ease;
 }
-.inbox-item:last-child { border-bottom: 0; }
+.inbox-item:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 1px;
+  background: color-mix(in srgb, var(--rule) 62%, transparent);
+  pointer-events: none;
+}
 .inbox-item .status-dot { width: 9px; height: 9px; }
 .action-thread .status-dot[data-finished-indicator] { cursor: pointer; position: relative; z-index: 2; }
 .action-thread .status-dot.is-seen { visibility: hidden; box-shadow: none; }
