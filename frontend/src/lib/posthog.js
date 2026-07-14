@@ -4,6 +4,7 @@ const DEFAULT_HOST = 'https://us.i.posthog.com';
 const DESKTOP_ORIGIN = 'https://desktop.spanner.local';
 const WEB_FALLBACK_ORIGIN = 'https://spanner.local';
 const SENSITIVE_KEY_RE = /(prompt|repo|path|url|diff|output|text|message|secret|token|key|password|authorization|cookie|credential)/i;
+const DENIED_POSTHOG_KEYS = new Set(['$initial_current_url', '$initial_pathname', '$referrer', '$initial_referrer']);
 const ROUTE_ALIASES = new Map([
   ['/', '/'],
   ['/index.html', '/'],
@@ -120,7 +121,7 @@ export function sanitizeAnalyticsProperties(properties = {}) {
   };
 
   for (const [key, value] of Object.entries(properties || {})) {
-    if (SENSITIVE_KEY_RE.test(key)) continue;
+    if (DENIED_POSTHOG_KEYS.has(key) || SENSITIVE_KEY_RE.test(key)) continue;
     if (!primitive(value)) continue;
     if (typeof value === 'string') safe[key] = value.slice(0, 120);
     else if (Number.isFinite(value) || typeof value === 'boolean' || value === null) safe[key] = value;
@@ -128,13 +129,16 @@ export function sanitizeAnalyticsProperties(properties = {}) {
   return safe;
 }
 
-function sanitizeBeforeSend(event) {
+export function sanitizeBeforeSend(event) {
   if (!event || typeof event !== 'object') return event;
+  const properties = event.properties || {};
+  const internal = Object.fromEntries(Object.entries(properties).filter(([key]) => key === 'token' || key === 'distinct_id' || (key.startsWith('$') && !DENIED_POSTHOG_KEYS.has(key))));
   if (event.event === '$snapshot' || event.event === '$snapshot_items') {
     return {
       ...event,
       properties: {
-        ...(event.properties || {}),
+        ...internal,
+        $snapshot_data: properties.$snapshot_data,
         $current_url: sanitizePostHogUrl(),
         $pathname: sanitizeSpannerRoute(globalThis.location?.pathname || '/'),
       },
@@ -142,7 +146,10 @@ function sanitizeBeforeSend(event) {
   }
   return {
     ...event,
-    properties: sanitizeAnalyticsProperties(event.properties || {}),
+    properties: {
+      ...internal,
+      ...sanitizeAnalyticsProperties(properties),
+    },
   };
 }
 

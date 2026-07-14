@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   hasSpannerReplayConsent,
   sanitizeAnalyticsProperties,
+  sanitizeBeforeSend,
   sanitizePostHogUrl,
   sanitizeSpannerRoute,
   setSpannerReplayConsent,
@@ -59,6 +60,22 @@ test('drops sensitive analytics properties', () => {
     assert.equal(props.prompt, undefined);
     assert.equal(props.repoPath, undefined);
     assert.equal(props.$current_url, 'https://spanner.example.com/thread');
+  });
+});
+
+test('preserves PostHog internals while dropping sensitive custom props', () => {
+  withLocation('https://spanner.example.com/thread.html?repo=secret', () => {
+    const event = sanitizeBeforeSend({
+      event: 'spanner_test',
+      properties: { token: 'phc_public', distinct_id: 'web:abc', $lib: 'web', $referrer: 'https://secret.example', prompt: 'secret', status: 'ok' },
+    });
+    assert.equal(event.properties.token, 'phc_public');
+    assert.equal(event.properties.distinct_id, 'web:abc');
+    assert.equal(event.properties.$lib, 'web');
+    assert.equal(event.properties.$referrer, undefined);
+    assert.equal(event.properties.prompt, undefined);
+    assert.equal(event.properties.status, 'ok');
+    assert.equal(event.properties.$current_url, 'https://spanner.example.com/thread');
   });
 });
 
