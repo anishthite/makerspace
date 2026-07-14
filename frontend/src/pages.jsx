@@ -346,12 +346,12 @@ export function ProjectPage() {
         <input id="project-repo-source" name="repoSource" type="hidden" value="" readOnly />
         <input id="project-branch" name="branch" type="hidden" value="" readOnly />
 
-        <div id="project-hero" className="grid justify-items-center gap-1.5 text-center">
+        <div id="project-hero" className="grid justify-items-start gap-1.5 text-left">
           <h1 id="project-welcome" className="mb-0 text-[clamp(28px,3vw,38px)] leading-none tracking-[-.05em]">Welcome back.</h1>
           <p id="project-subtitle" className={cn(ledeClass, 'mb-0 max-w-[520px] text-sm')}>Choose a project to open.</p>
         </div>
 
-        <div className="project-picker-panel mx-auto grid w-full max-w-[620px] gap-2.5 rounded-md border border-[var(--rule)] bg-[var(--paper-2)] p-2.5">
+        <div className="project-picker-panel grid w-full max-w-[620px] gap-2.5 rounded-md border border-[var(--rule)] bg-[var(--paper-2)] p-2.5">
           <label className="sr-only" htmlFor="project-repo-url">folder or repo</label>
           <InputGroup as="div" className="relative grid-cols-[minmax(0,1fr)_auto] p-0 [&_input]:px-3 [&_input]:py-2.5">
             <input id="project-repo-url" name="repoUrl" placeholder="owner/repo or URL" aria-label="folder or repo" autoComplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="project-repo-options" required />
@@ -367,7 +367,7 @@ export function ProjectPage() {
         </div>
 
         <div className="project-recent-panel border-t border-[var(--rule)] pt-5" aria-label="Recent projects">
-          <div className="mb-4 grid justify-items-center gap-1 text-center"><h2 className="mb-0">Recent projects</h2><p className={mutedClass}>One click back into a workspace.</p></div>
+          <div className="mb-4 grid justify-items-start gap-1 text-left"><h2 className="mb-0">Recent projects</h2><p className={mutedClass}>One click back into a workspace.</p></div>
           <div id="project-recent-list" className="project-list grid gap-2 md:grid-cols-2"></div>
         </div>
       </Surface>
