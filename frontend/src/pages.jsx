@@ -311,9 +311,9 @@ function RunControls({ launch = false }) {
 function WorkspaceManager({ className = '', prominent = false }) {
   const labelClass = cn(
     'min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-[var(--mono)] font-bold lowercase tracking-[.03em]',
-    prominent ? 'text-[15px] leading-none text-[var(--ink)]' : 'text-[11px]'
+    prominent ? 'text-[16px] leading-none text-[var(--ink)]' : 'text-[11px]'
   );
-  const buttonClass = prominent ? 'h-10 shrink-0 px-3 text-[12px]' : 'h-7 shrink-0 px-1.5 text-[10px]';
+  const buttonClass = prominent ? 'h-10 shrink-0 px-3 text-[12px] text-[var(--ink)]' : 'h-7 shrink-0 px-1.5 text-[10px]';
 
   return <div className={cn('flex min-w-0 items-center text-[var(--ink-3)]', prominent ? 'gap-3' : 'gap-2', className)} aria-label="Selected workspace"><strong id="workspace-label" className={labelClass}>loading…</strong><Button as="a" variant="ghost" size={prominent ? 'md' : 'sm'} className={buttonClass} href="/"><FolderOpenIcon {...buttonIconProps} />switch</Button></div>;
 }
@@ -346,12 +346,12 @@ export function ProjectPage() {
         <input id="project-repo-source" name="repoSource" type="hidden" value="" readOnly />
         <input id="project-branch" name="branch" type="hidden" value="" readOnly />
 
-        <div id="project-hero" className="grid justify-items-center gap-1.5 text-center">
+        <div id="project-hero" className="grid justify-items-start gap-1.5 text-left">
           <h1 id="project-welcome" className="mb-0 text-[clamp(28px,3vw,38px)] leading-none tracking-[-.05em]">Welcome back.</h1>
           <p id="project-subtitle" className={cn(ledeClass, 'mb-0 max-w-[520px] text-sm')}>Choose a project to open.</p>
         </div>
 
-        <div className="project-picker-panel mx-auto grid w-full max-w-[620px] gap-2.5 rounded-md border border-[var(--rule)] bg-[var(--paper-2)] p-2.5">
+        <div className="project-picker-panel grid w-full max-w-[620px] gap-2.5 rounded-md border border-[var(--rule)] bg-[var(--paper-2)] p-2.5">
           <label className="sr-only" htmlFor="project-repo-url">folder or repo</label>
           <InputGroup as="div" className="relative grid-cols-[minmax(0,1fr)_auto] p-0 [&_input]:px-3 [&_input]:py-2.5">
             <input id="project-repo-url" name="repoUrl" placeholder="owner/repo or URL" aria-label="folder or repo" autoComplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="project-repo-options" required />
@@ -367,7 +367,7 @@ export function ProjectPage() {
         </div>
 
         <div className="project-recent-panel border-t border-[var(--rule)] pt-5" aria-label="Recent projects">
-          <div className="mb-4 grid justify-items-center gap-1 text-center"><h2 className="mb-0">Recent projects</h2><p className={mutedClass}>One click back into a workspace.</p></div>
+          <div className="mb-4 grid justify-items-start text-left"><h2 className="mb-0">Recent projects</h2></div>
           <div id="project-recent-list" className="project-list grid gap-2 md:grid-cols-2"></div>
         </div>
       </Surface>
@@ -380,7 +380,10 @@ export function WorkspacePage() {
     <Sidebar className="border-r border-[var(--rule)]" collapsible="none">
       <Surface id="agents-section" className="flex h-full min-h-0 flex-col bg-[var(--paper)]" aria-label="Agents">
         <SidebarHeader className="grid gap-3 border-b border-[var(--rule)] px-3 py-4">
-          <Brand href="/workspace.html" label="Spanner workspace" />
+          <div className="flex w-full items-center gap-2.5">
+            <img className="block size-8 shrink-0 -translate-y-0.5" src="/logo-mark.svg" alt="" aria-hidden="true" />
+            <WorkspaceManager className="min-w-0 flex-1 justify-between" prominent />
+          </div>
         </SidebarHeader>
         <SidebarContent className="min-h-0">
           <ScrollArea id="threads-list" className="action-lanes px-2 pb-5"></ScrollArea>
@@ -388,7 +391,7 @@ export function WorkspacePage() {
       </Surface>
     </Sidebar>
     <SidebarInset className="min-w-0 bg-[var(--bg)] px-[clamp(16px,4vw,56px)] py-6 pb-18 max-sm:px-2.5 max-sm:py-3 max-sm:pb-7">
-      <div className="mx-auto mb-5 flex w-[min(1180px,100%)] items-center gap-2 max-sm:mb-3 max-sm:items-start"><WorkspaceNav active="workspace" showBrand={false} workspaceManagerProminent workspaceManagerClassName="max-w-[min(52vw,560px)]" /></div>
+      <div className="mx-auto mb-5 flex w-[min(1180px,100%)] items-center gap-2 max-sm:mb-3 max-sm:items-start"><WorkspaceNav active="workspace" showBrand={false} showWorkspaceManager={false} /></div>
       <h1 className="sr-only">Start a main agent</h1>
       <GitHubSignInCard compact />
       <InputMessage as="form" id="thread-form" className="launch-card" aria-label="Spin up a main agent">

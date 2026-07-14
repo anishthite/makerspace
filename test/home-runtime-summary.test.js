@@ -83,7 +83,7 @@ test('workspace agents use shadcn sidebar beside launch composer', () => {
 });
 
 test('workspace agents header is fixed, not a layout review surface', () => {
-  assert.match(pages, /<SidebarHeader className="grid gap-3 border-b border-\[var\(--rule\)\] px-3 py-4">\s*<Brand href="\/workspace\.html" label="Spanner workspace" \/>\s*<div className=\{sectionRowClass\}><WorkspaceManager className="w-full justify-between" \/><\/div>/);
+  assert.match(pages, /<SidebarHeader className="grid gap-3 border-b border-\[var\(--rule\)\] px-3 py-4">\s*<div className="flex w-full items-center gap-2\.5">\s*<img className="block size-8 shrink-0 -translate-y-0\.5" src="\/logo-mark\.svg" alt="" aria-hidden="true" \/>\s*<WorkspaceManager className="min-w-0 flex-1 justify-between" prominent \/>\s*<\/div>\s*<\/SidebarHeader>/);
   assert.doesNotMatch(pages, /WorkspaceSidebarLayoutPicker|workspaceSidebarLayouts|data-workspace-sidebar-layout-option|>Agents<\/h2>|id="refresh-threads"/);
   assert.doesNotMatch(js, /WORKSPACE_SIDEBAR_LAYOUT|workspaceSidebarLayout|refreshThreads/);
   assert.doesNotMatch(appCss, /workspace-layout-picker|data-workspace-sidebar-layout/);
