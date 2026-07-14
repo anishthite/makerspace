@@ -79,24 +79,11 @@ function GitHubSignInButton({ id, className = '', children = 'Continue with GitH
 }
 
 function GitHubSignInCard({ compact = false }) {
-  return <Surface id="github-signin-card" className={cn(surfaceClass, 'signin-lightbox grid gap-4 text-center', compact && 'signin-lightbox-compact')} hidden role="dialog" aria-modal="true" aria-labelledby="github-signin-title">
-    <div className="grid gap-3">
-      <p className={eyebrowClass}>spanner beta</p>
-      <h2 id="github-signin-title">Sign in to Spanner</h2>
-      <p id="github-signin-copy" className={ledeClass}>Connect GitHub to launch agents on your repos without sharing credentials with anyone else.</p>
-      <ul className="m-0 grid gap-2 pl-5 text-sm text-[var(--ink-2)]" aria-label="What signing in enables">
-        <li>private repos stay tied to your GitHub account</li>
-        <li>agents run in isolated sandboxes</li>
-        <li>settings and auth stay per-user</li>
-      </ul>
-    </div>
-    <div className="grid content-start gap-3 rounded-md border border-[var(--rule)] bg-[var(--paper-2)] p-4" aria-label="Sign in form">
-      <p className={eyebrowClass}>account</p>
-      <h3>Welcome back</h3>
-      <GitHubSignInButton id="github-signin-main" />
-      <p id="github-signin-status" className={statusLineClass} aria-live="polite">Checking GitHub sign-in…</p>
-      <p className="text-sm text-[var(--ink-3)]">No shared model keys or repo tokens. GitHub opens in a secure OAuth window.</p>
-    </div>
+  return <Surface id="github-signin-card" className={cn(surfaceClass, 'signin-lightbox grid text-center', compact && 'signin-lightbox-compact')} hidden role="dialog" aria-modal="true" aria-labelledby="github-signin-title">
+    <h2 id="github-signin-title">Continue with github</h2>
+    <p className="m-0 text-sm leading-5 text-[var(--ink-3)]">Sign in to choose a repo and start your agent.</p>
+    <GitHubSignInButton id="github-signin-main" className="signin-lightbox-button">Continue with github</GitHubSignInButton>
+    <p id="github-signin-status" className="sr-only" aria-live="polite">Checking GitHub sign-in…</p>
   </Surface>;
 }
 

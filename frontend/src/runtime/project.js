@@ -448,6 +448,10 @@ function renderOnboarding() {
     onboardingDialog.close?.();
     return;
   }
+  if (githubSigninCard && !githubSigninCard.hidden) {
+    onboardingDialog.close?.();
+    return;
+  }
   const steps = [
     ['github', githubConnected],
     ['llm', codexConfigured || claudeCodeConfigured],
