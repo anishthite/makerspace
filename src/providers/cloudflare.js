@@ -168,6 +168,21 @@ function resultFromExec(result = {}) {
   };
 }
 
+async function launchLog(imageSettings, phase, details = {}) {
+  if (typeof imageSettings.onLaunchLog !== 'function') return;
+  try {
+    await imageSettings.onLaunchLog(phase, details);
+  } catch {}
+}
+
+function urlHost(value) {
+  try {
+    return new URL(String(value || '')).hostname;
+  } catch {
+    return '';
+  }
+}
+
 export function createCloudflareProvider(config, options = {}) {
   const fetchImpl = options.fetch || globalThis.fetch;
   if (typeof fetchImpl !== 'function') throw new Error('A fetch implementation is required for the cloudflare provider.');
@@ -241,27 +256,75 @@ export function createCloudflareProvider(config, options = {}) {
     },
     async createSession(session, imageSettings = {}) {
       const envVars = collectForwardedEnv(config, imageSettings);
-      const remote = await request('/sessions', {
-        method: 'POST',
-        body: JSON.stringify({
-          name: session.name,
-          machine: config.cloudflareMachine || 'standard-2',
-          sleepAfter: config.cloudflareSleepAfter || '15m',
-          keepAlive: config.cloudflareKeepAlive !== false,
-          envVars,
-        }),
+      const machine = config.cloudflareMachine || 'standard-2';
+      const sleepAfter = config.cloudflareSleepAfter || '15m';
+      const keepAlive = config.cloudflareKeepAlive !== false;
+      const sharePort = session.sharePort || config.bridgePort || 4310;
+
+      await launchLog(imageSettings, 'cloudflare:session:create_start', {
+        machine,
+        sleepAfter,
+        keepAlive,
+        envKeys: envVars.map((item) => item.key).join(','),
       });
-      await restoreBackups(session);
-      const setupScript = buildSetupScript(session, config);
-      await this.writeRemoteFile(session.name, DEFAULT_SETUP_PATH, setupScript);
-      const setup = await exec(session.name, `chmod +x ${shellQuote(DEFAULT_SETUP_PATH)} && ${shellQuote(DEFAULT_SETUP_PATH)}`, { cwd: '/', env: envVars, onData: session.onCreateLog });
-      if (setup.exitCode !== 0) throw new Error(`Cloudflare setup failed: ${setup.stderr || setup.stdout || setup.exitCode}`);
-      const port = await this.setShare(session.name, { sharePort: session.sharePort || config.bridgePort });
-      const bridgeUrl = port.bridgeUrl || port.httpsUrl || port.url || '';
-      if (!bridgeUrl) {
-        throw new Error(`Cloudflare broker did not return a bridge URL for ${session.name || 'session'} port ${session.sharePort || config.bridgePort || 4310}. Use the sandbox.spanner.sh broker route or set CLOUDFLARE_SANDBOX_PORT_HOSTNAME.`);
+
+      let remote;
+      try {
+        remote = await request('/sessions', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: session.name,
+            machine,
+            sleepAfter,
+            keepAlive,
+            envVars,
+          }),
+        });
+        await launchLog(imageSettings, 'cloudflare:session:create_done', {
+          sandboxId: remote.id || remote.sandboxId || remote.name || session.name,
+          state: remote.state || remote.status || '',
+        });
+      } catch (error) {
+        await launchLog(imageSettings, 'cloudflare:session:create_failed', { error: error.message });
+        throw error;
       }
-      return normalizeRemote({ ...remote, ...port, bridgeUrl, httpsUrl: bridgeUrl }, session);
+
+      try {
+        if (Array.isArray(session.cloudflareBackups) && session.cloudflareBackups.length) {
+          await launchLog(imageSettings, 'cloudflare:restore:start', { backups: session.cloudflareBackups.length });
+          await restoreBackups(session);
+          await launchLog(imageSettings, 'cloudflare:restore:done', { backups: session.cloudflareBackups.length });
+        } else {
+          await restoreBackups(session);
+        }
+
+        await launchLog(imageSettings, 'cloudflare:setup:start');
+        const setupScript = buildSetupScript(session, config);
+        await this.writeRemoteFile(session.name, DEFAULT_SETUP_PATH, setupScript);
+        const setup = await exec(session.name, `chmod +x ${shellQuote(DEFAULT_SETUP_PATH)} && ${shellQuote(DEFAULT_SETUP_PATH)}`, { cwd: '/', env: envVars, onData: session.onCreateLog });
+        if (setup.exitCode !== 0) throw new Error(`Cloudflare setup failed: ${setup.stderr || setup.stdout || setup.exitCode}`);
+        await launchLog(imageSettings, 'cloudflare:setup:done');
+      } catch (error) {
+        await launchLog(imageSettings, 'cloudflare:setup:failed', { error: error.message });
+        throw error;
+      }
+
+      try {
+        await launchLog(imageSettings, 'cloudflare:port_expose:start', { port: sharePort });
+        const port = await this.setShare(session.name, { sharePort });
+        const bridgeUrl = port.bridgeUrl || port.httpsUrl || port.url || '';
+        if (!bridgeUrl) {
+          throw new Error(`Cloudflare broker did not return a bridge URL for ${session.name || 'session'} port ${sharePort}. Use the sandbox.spanner.sh broker route or set CLOUDFLARE_SANDBOX_PORT_HOSTNAME.`);
+        }
+        await launchLog(imageSettings, 'cloudflare:port_expose:done', {
+          port: port.port || sharePort,
+          bridgeHost: urlHost(bridgeUrl),
+        });
+        return normalizeRemote({ ...remote, ...port, bridgeUrl, httpsUrl: bridgeUrl }, session);
+      } catch (error) {
+        await launchLog(imageSettings, 'cloudflare:port_expose:failed', { port: sharePort, error: error.message });
+        throw error;
+      }
     },
     async destroySession(sessionOrName) {
       const name = sandboxName(sessionOrName);

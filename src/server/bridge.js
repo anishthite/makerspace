@@ -85,9 +85,26 @@ export function createBridgeService({ config, provider, auth, runState }) {
     };
   }
 
+  function lastLaunchDiagnostic(session = {}) {
+    const log = Array.isArray(session.bridgeLaunchLog) ? session.bridgeLaunchLog : [];
+    const failed = [...log]
+      .reverse()
+      .find((entry) => entry?.error || /failed$/i.test(String(entry?.phase || '')));
+    const details = [];
+
+    if (session.bridgeLaunchStage) details.push(`last stage: ${session.bridgeLaunchStage}`);
+    if (failed?.phase && failed.phase !== session.bridgeLaunchStage) details.push(`failure stage: ${failed.phase}`);
+    if (failed?.error || failed?.message) details.push(`last error: ${failed.error || failed.message}`);
+    if (!failed?.error && !failed?.message && session.warning) details.push(`warning: ${session.warning}`);
+
+    return details.length ? ` ${details.join('; ')}.` : '';
+  }
+
   function getBridgeBaseUrl(session) {
     const baseUrl = trimTrailingSlash(session.bridgeUrl || session.httpsUrl || '');
-    if (!baseUrl) throw new Error(`No bridge URL is available for ${session.name || 'session'}.`);
+    if (!baseUrl) {
+      throw new Error(`No bridge URL is available for ${session.name || 'session'}. The sandbox record has no bridgeUrl/httpsUrl.${lastLaunchDiagnostic(session)}`);
+    }
     return baseUrl;
   }
 

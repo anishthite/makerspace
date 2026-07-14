@@ -98,6 +98,7 @@ test('createSession provisions through the broker and runs root setup', async ()
 test('createSession rejects broker port responses without a bridge URL', async () => {
   const fetch = fakeFetch({ portResponse: { port: 4310 } });
   const provider = createProvider(config, { fetch });
+  const launchLog = [];
 
   await assert.rejects(() => provider.createSession({
     name: 'thread-missing-url',
@@ -105,7 +106,23 @@ test('createSession rejects broker port responses without a bridge URL', async (
     sharePort: 4310,
     taskPrompt: 'Test prompt',
     bridgeToken: 'bridge-token',
-  }, {}), /Cloudflare broker did not return a bridge URL.*sandbox\.spanner\.sh/);
+  }, {
+    onLaunchLog: async (phase, details) => launchLog.push({ phase, ...details }),
+  }), /Cloudflare broker did not return a bridge URL.*sandbox\.spanner\.sh/);
+
+  assert.deepEqual(
+    launchLog.map((entry) => entry.phase),
+    [
+      'cloudflare:session:create_start',
+      'cloudflare:session:create_done',
+      'cloudflare:setup:start',
+      'cloudflare:setup:done',
+      'cloudflare:port_expose:start',
+      'cloudflare:port_expose:failed',
+    ],
+  );
+  assert.match(launchLog.at(-1).error, /Cloudflare broker did not return a bridge URL/);
+  assert.equal(launchLog.at(-1).port, 4310);
 });
 
 test('createSession retries transient Cloudflare startup responses', async () => {

@@ -416,6 +416,28 @@ test('thread output sync does not create a dead run before bridge URL exists', a
   assert.equal(run.events[0].message, 'waiting for remote bridge');
 });
 
+test('missing bridge URL errors include launch diagnostics', () => {
+  const bridge = createBridgeService({
+    config: {},
+    provider: {},
+    auth: {},
+    runState: runStateStub(),
+  });
+
+  assert.throws(() => bridge.getBridgeBaseUrl({
+    name: 'remote-thread',
+    bridgeLaunchStage: 'cloudflare:port_expose:failed',
+    bridgeLaunchLog: [
+      { phase: 'cloudflare:port_expose:failed', error: 'No bridge URL returned for port 4310: hostname missing' },
+    ],
+  }), (error) => {
+    assert.match(error.message, /No bridge URL is available for remote-thread/);
+    assert.match(error.message, /last stage: cloudflare:port_expose:failed/);
+    assert.match(error.message, /No bridge URL returned for port 4310: hostname missing/);
+    return true;
+  });
+});
+
 test('thread bridge launch persists safe diagnostics', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-bridge-diagnostics-'));
   const sessionFile = path.join(root, 'sessions.json');
