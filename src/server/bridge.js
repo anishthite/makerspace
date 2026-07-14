@@ -329,9 +329,10 @@ export function createBridgeService({ config, provider, auth, runState }) {
 
   function isExpiredThreadBridge(session) {
     if (!session?.threadBridge || session.localMode) return false;
-    if (!session.bridgeMode || session.bridgeClaimed || !session.bridgeUrl || !session.bridgeToken) return false;
+    if (!session.bridgeMode || !session.bridgeUrl || !session.bridgeToken) return false;
     const status = String(session.runStatus || session.status || '').toLowerCase();
-    if (status !== 'ready') return false;
+    if (!['ready', 'completed', 'failed'].includes(status)) return false;
+    if (status === 'ready' && session.bridgeClaimed) return false;
     const ttlMs = finitePositive(config.threadBridgeIdleTtlMs);
     return ttlMs > 0 && idleAgeMs(session) > ttlMs;
   }
@@ -344,6 +345,10 @@ export function createBridgeService({ config, provider, auth, runState }) {
     const suspended = await upsertSession(config.sessionFile, {
       ...session,
       ...remote,
+      taskPrompt: '',
+      images: [],
+      bridgeClaimed: false,
+      warmClaimed: false,
       status: 'suspended',
       runStatus: 'suspended',
       warning: null,

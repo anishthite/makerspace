@@ -145,6 +145,28 @@ test('idle cleanup destroys reusable bridges and auto-suspends thread bridges', 
         updatedAt: expiredAt,
       },
       {
+        name: 'completed-thread',
+        threadBridge: true,
+        bridgeMode: true,
+        bridgeClaimed: true,
+        status: 'completed',
+        runStatus: 'completed',
+        bridgeUrl: 'https://completed.example.test',
+        bridgeToken: 'secret',
+        updatedAt: expiredAt,
+      },
+      {
+        name: 'failed-thread',
+        threadBridge: true,
+        bridgeMode: true,
+        bridgeClaimed: true,
+        status: 'failed',
+        runStatus: 'failed',
+        bridgeUrl: 'https://failed.example.test',
+        bridgeToken: 'secret',
+        updatedAt: expiredAt,
+      },
+      {
         name: 'fresh-thread',
         threadBridge: true,
         bridgeMode: true,
@@ -188,11 +210,17 @@ test('idle cleanup destroys reusable bridges and auto-suspends thread bridges', 
     assert.equal(idleThread.runStatus, 'suspended');
     assert.equal(idleThread.autoSuspendedAt, idleThread.suspendedAt);
     assert.equal(idleThread.cloudflareBackups[0].backup.id, 'idle-thread-backup');
+    const completedThread = await getStoredSession(sessionFile, 'completed-thread');
+    assert.equal(completedThread.runStatus, 'suspended');
+    assert.equal(completedThread.bridgeClaimed, false);
+    const failedThread = await getStoredSession(sessionFile, 'failed-thread');
+    assert.equal(failedThread.runStatus, 'suspended');
+    assert.equal(failedThread.bridgeClaimed, false);
     assert.equal((await getStoredSession(sessionFile, 'fresh-thread')).runStatus, 'ready');
     assert.equal((await getStoredSession(sessionFile, 'active-thread')).runStatus, 'running');
     assert.deepEqual(destroyed, ['idle-reusable']);
-    assert.deepEqual(suspended, ['idle-thread']);
-    assert.equal((await listStoredSessions(sessionFile)).length, 3);
+    assert.deepEqual(suspended, ['idle-thread', 'completed-thread', 'failed-thread']);
+    assert.equal((await listStoredSessions(sessionFile)).length, 5);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
