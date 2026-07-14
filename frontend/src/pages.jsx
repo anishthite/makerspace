@@ -132,7 +132,7 @@ function Brand({ href = '/', label = 'Spanner home', children }) {
   return <a className="inline-flex min-w-0 items-center gap-2.5 font-extrabold leading-none tracking-[-.03em] text-[var(--ink)]" href={href} aria-label={label}>
     <img className="block size-8 shrink-0 -translate-y-0.5" src="/logo-mark.svg" alt="" aria-hidden="true" />
     <span>spanner</span>
-    {children ?? <span id="project-label" className="max-w-[min(32vw,220px)] overflow-hidden text-ellipsis whitespace-nowrap rounded-full border border-[var(--rule)] bg-[var(--paper-2)] px-2 py-1 font-[var(--mono)] text-[11px] font-bold leading-none tracking-normal text-[var(--blue)]" hidden></span>}
+    {children}
   </a>;
 }
 
@@ -153,14 +153,20 @@ function RunControls({ launch = false }) {
   </div>;
 }
 
-function WorkspaceManager({ className = '' }) {
-  return <div className={cn('flex min-w-0 items-center gap-2 text-[var(--ink-3)]', className)} aria-label="Selected workspace"><strong id="workspace-label" className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-[var(--mono)] text-[11px] font-bold lowercase tracking-[.03em]">loading…</strong><Button as="a" variant="ghost" size="sm" className="h-7 shrink-0 px-1.5 text-[10px]" href="/"><FolderOpenIcon {...buttonIconProps} />switch</Button></div>;
+function WorkspaceManager({ className = '', prominent = false }) {
+  const labelClass = cn(
+    'min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-[var(--mono)] font-bold lowercase tracking-[.03em]',
+    prominent ? 'text-[15px] leading-none text-[var(--ink)]' : 'text-[11px]'
+  );
+  const buttonClass = prominent ? 'h-10 shrink-0 px-3 text-[12px]' : 'h-7 shrink-0 px-1.5 text-[10px]';
+
+  return <div className={cn('flex min-w-0 items-center text-[var(--ink-3)]', prominent ? 'gap-3' : 'gap-2', className)} aria-label="Selected workspace"><strong id="workspace-label" className={labelClass}>loading…</strong><Button as="a" variant="ghost" size={prominent ? 'md' : 'sm'} className={buttonClass} href="/"><FolderOpenIcon {...buttonIconProps} />switch</Button></div>;
 }
 
-function WorkspaceNav({ active = 'workspace', showBrand = true, showWorkspaceManager = true }) {
+function WorkspaceNav({ active = 'workspace', showBrand = true, showWorkspaceManager = true, workspaceManagerClassName = '', workspaceManagerProminent = false }) {
   return <nav className={topbarClass} aria-label="Spanner navigation">
     {showBrand && <Brand href="/workspace.html" label="Spanner workspace" />}
-    {showWorkspaceManager && <WorkspaceManager />}
+    {showWorkspaceManager && <WorkspaceManager className={workspaceManagerClassName} prominent={workspaceManagerProminent} />}
     <div className={headerActionsClass}>
       {active === 'workspace' && <AuthPills />}
       {active === 'workspace' && <GitHubSignInButton id="github-signin-nav" className="signin-nav-button">Sign in</GitHubSignInButton>}
@@ -220,7 +226,6 @@ export function WorkspacePage() {
       <Surface id="agents-section" className="flex h-full min-h-0 flex-col bg-[var(--paper)]" aria-label="Agents">
         <SidebarHeader className="grid gap-3 border-b border-[var(--rule)] px-3 py-4">
           <Brand href="/workspace.html" label="Spanner workspace" />
-          <div className={sectionRowClass}><WorkspaceManager className="w-full justify-between" /></div>
         </SidebarHeader>
         <SidebarContent className="min-h-0">
           <ScrollArea id="threads-list" className="action-lanes px-2 pb-5"></ScrollArea>
@@ -228,7 +233,7 @@ export function WorkspacePage() {
       </Surface>
     </Sidebar>
     <SidebarInset className="min-w-0 bg-[var(--bg)] px-[clamp(16px,4vw,56px)] py-6 pb-18 max-sm:px-2.5 max-sm:py-3 max-sm:pb-7">
-      <div className="mx-auto mb-5 flex w-[min(1180px,100%)] items-center gap-2 max-sm:mb-3 max-sm:items-start"><WorkspaceNav active="workspace" showBrand={false} showWorkspaceManager={false} /></div>
+      <div className="mx-auto mb-5 flex w-[min(1180px,100%)] items-center gap-2 max-sm:mb-3 max-sm:items-start"><WorkspaceNav active="workspace" showBrand={false} workspaceManagerProminent workspaceManagerClassName="max-w-[min(52vw,560px)]" /></div>
       <h1 className="sr-only">Start a main agent</h1>
       <GitHubSignInCard compact />
       <InputMessage as="form" id="thread-form" className="launch-card" aria-label="Spin up a main agent">
