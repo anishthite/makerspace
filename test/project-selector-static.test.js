@@ -31,6 +31,10 @@ test('project selector offers desktop local folders', () => {
   assert.match(project, /\/api\/recent-projects/);
   assert.match(project, /project-running-badge/);
   assert.match(project, /function filterRepos\(query/);
+  assert.match(project, /const INITIAL_REPO_SUGGESTIONS = 12/);
+  assert.match(project, /const REPO_SUGGESTION_PAGE_SIZE = 24/);
+  assert.match(project, /function showMoreRepoSuggestions\(\)/);
+  assert.match(project, /repoOptions\.addEventListener\('scroll'/);
   assert.match(project, /function renderRepoSuggestions\(\)/);
   assert.match(project, /repoInput\.addEventListener\('keydown'/);
   assert.match(project, /cache: 'no-store'/);
