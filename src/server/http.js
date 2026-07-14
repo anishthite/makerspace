@@ -12,6 +12,7 @@ function normalizeOrigins(...values) {
 export function createHttpHelpers({ publicDir, allowedOrigin = allowedOriginFromEnv(), allowedOrigins = [] }) {
   const configuredOrigins = normalizeOrigins(allowedOrigins, allowedOrigin);
   const staticAliases = new Map([
+    ['/landing', 'desktop.html'],
     ['/homepage', 'desktop.html'],
     ['/desktop', 'desktop.html'],
     ['/thread', 'thread.html'],

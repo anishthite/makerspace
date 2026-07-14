@@ -200,11 +200,14 @@ test('buildSetupScript skips direct pi auto-run for bridge-backed chat sessions'
   assert.match(bridgeScript, /entries = Array\.isArray\(body\.r\)/);
   assert.match(bridgeScript, /delivery=body\.delivery==="followUp"\?"followUp":body\.delivery==="steer"\?"steer":""/);
   assert.match(bridgeScript, /type:"queue",steering:\[\.\.\.event\.steering\],followUp:\[\.\.\.event\.followUp\]/);
+  assert.match(bridgeScript, /q: \[\]/);
+  assert.match(bridgeScript, /async function fq\(r\)/);
+  assert.match(bridgeScript, /run\.q\.push\(\{d:delivery,p:prompt,i:images\}\)/);
+  assert.match(bridgeScript, /await fq\(run\)/);
   assert.match(bridgeScript, /if\(delivery\)\{/);
   assert.match(bridgeScript, /if\(!run\.child\?\.steer\|\|!run\.child\?\.followUp\)\{/);
   assert.match(bridgeScript, /sendJson\(response,409,\{error:"Main agent is starting; try again in a moment\."\}\)/);
-  assert.match(bridgeScript, /if\(delivery==="followUp"\)await run\.child\.followUp\(prompt,images\[0\]\?images:undefined\)/);
-  assert.match(bridgeScript, /else await run\.child\.steer\(prompt,images\[0\]\?images:undefined\)/);
+  assert.match(bridgeScript, /await run\.child\[delivery\]\(prompt,images\[0\]\?images:undefined\)/);
   assert.match(bridgeScript, /piSession\.prompt\(prompt, images\[0\] \? \{ images \} : undefined\)/);
   assert.match(bridgeScript, /void startRun\(run, prompt, name, submittedAtMs, modelRef, thinkingLevel, images, entries, body\.cwd \|\| workspaceDir\)/);
   assert.match(script, /printf '%s\\n' ready > '\/srv\/spanner\/STATUS'/);

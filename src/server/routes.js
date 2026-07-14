@@ -25,8 +25,10 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
     githubRepoPayload,
     codexAuthStatus,
     startCodexDeviceLogin,
+    logoutCodexAuth,
     claudeCodeAuthStatus,
     startClaudeCodeLogin,
+    logoutClaudeCodeAuth,
     submitClaudeCodeLoginCode,
     getAuthLogin,
     publicAuthLogin,
@@ -349,6 +351,11 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
         return;
       }
 
+      if (request.method === 'POST' && pathname === '/api/auth/openai-codex/logout') {
+        sendJson(response, 200, await logoutCodexAuth(user));
+        return;
+      }
+
       if (request.method === 'GET' && pathname.startsWith('/api/auth/openai-codex/login/')) {
         const id = pathname.split('/').pop();
         const job = getAuthLogin(id, user);
@@ -367,6 +374,11 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
 
       if (request.method === 'POST' && pathname === '/api/auth/claude-code/login') {
         sendJson(response, 202, await startClaudeCodeLogin(user));
+        return;
+      }
+
+      if (request.method === 'POST' && pathname === '/api/auth/claude-code/logout') {
+        sendJson(response, 200, await logoutClaudeCodeAuth(user));
         return;
       }
 

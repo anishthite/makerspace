@@ -88,7 +88,7 @@ export async function listGitHubRepos(token) {
   const repos = [];
   let page = 1;
 
-  while (page <= 4) {
+  while (true) {
     const batch = await fetchGitHubJson(`https://api.github.com/user/repos?sort=updated&per_page=100&page=${page}`, { token });
     repos.push(...batch.map(normalizeGitHubRepo));
     if (batch.length < 100) break;

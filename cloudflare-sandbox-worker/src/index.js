@@ -1,6 +1,9 @@
 import { getSandbox, proxyToSandbox } from '@cloudflare/sandbox';
 
+import { BRIDGE_PORT_TOKEN, bridgeHostPattern, portHostname, portUrl } from './ports.js';
+
 export { Sandbox } from '@cloudflare/sandbox';
+export { bridgeHostPattern, portHostname, stablePortUrl } from './ports.js';
 
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8' };
 const COMMAND_TIMEOUT_MS = 15 * 60_000;
@@ -24,11 +27,6 @@ function requireAuth(request, env) {
 function idFrom(pathname) {
   const match = pathname.match(/^\/sessions\/([^/]+)/);
   return match ? decodeURIComponent(match[1]) : '';
-}
-
-function bridgeHostPattern(env = {}) {
-  const configured = String(env.CLOUDFLARE_SANDBOX_PORT_HOSTNAME || 'spanner.sh').trim().toLowerCase().replace(/^\.+|\.+$/g, '');
-  return configured ? `-bridge.${configured}` : '-bridge.spanner.sh';
 }
 
 function shouldProxyToSandbox(url, env) {
@@ -87,25 +85,19 @@ async function fileRoute(request, env, id, url) {
   return json({ error: 'method not allowed' }, 405);
 }
 
-function portHostname(url, env) {
-  const configured = String(env.CLOUDFLARE_SANDBOX_PORT_HOSTNAME || '').trim();
-  if (configured) return configured;
-  return url.hostname.startsWith('sandbox.') ? url.hostname.slice('sandbox.'.length) : url.hostname;
-}
-
 async function portRoute(request, env, id, url) {
   const port = Number(url.pathname.match(/\/ports\/(\d+)$/)?.[1] || 0);
   if (!port) return json({ error: 'port is required' }, 400);
   const box = sandbox(env, id);
   const hostname = portHostname(url, env);
   try {
-    const exposed = await box.exposePort(port, { hostname, name: 'pi-bridge', token: 'bridge' });
-    return json({ bridgeUrl: exposed.url, httpsUrl: exposed.url, port: exposed.port });
+    const exposed = await box.exposePort(port, { hostname, name: 'pi-bridge', token: BRIDGE_PORT_TOKEN });
+    const bridgeUrl = portUrl(exposed, port, id, hostname, url.protocol);
+    if (!bridgeUrl) throw new Error(`No bridge URL returned for port ${port}.`);
+    return json({ bridgeUrl, httpsUrl: bridgeUrl, port: exposed?.port || port });
   } catch (error) {
-    if (!box.tunnels?.get) throw error;
-    const tunnel = await box.tunnels.get(port);
-    const tunnelUrl = tunnel.url || tunnel;
-    return json({ bridgeUrl: tunnelUrl, httpsUrl: tunnelUrl, port });
+    // ponytail: broker uses HTTP transport; the tunnels API requires RPC and masks the real exposePort error.
+    throw new Error(`No bridge URL returned for port ${port}: ${errorMessage(error)}`);
   }
 }
 
@@ -161,11 +153,11 @@ export default {
         await sandbox(env, id).destroy();
         return json({ ok: true, id, state: 'deleted' });
       }
-      if (request.method === 'POST' && pathname.endsWith('/exec')) return execRoute(request, env, id);
-      if (pathname.endsWith('/files')) return fileRoute(request, env, id, url);
-      if (request.method === 'POST' && pathname.endsWith('/backup')) return backupRoute(request, env, id);
-      if (request.method === 'POST' && pathname.endsWith('/restore')) return restoreRoute(request, env, id);
-      if (request.method === 'POST' && /\/ports\/\d+$/.test(pathname)) return portRoute(request, env, id, url);
+      if (request.method === 'POST' && pathname.endsWith('/exec')) return await execRoute(request, env, id);
+      if (pathname.endsWith('/files')) return await fileRoute(request, env, id, url);
+      if (request.method === 'POST' && pathname.endsWith('/backup')) return await backupRoute(request, env, id);
+      if (request.method === 'POST' && pathname.endsWith('/restore')) return await restoreRoute(request, env, id);
+      if (request.method === 'POST' && /\/ports\/\d+$/.test(pathname)) return await portRoute(request, env, id, url);
       return json({ error: 'not found' }, 404);
     } catch (error) {
       return json({ error: errorMessage(error) }, 500);

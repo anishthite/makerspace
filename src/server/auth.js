@@ -756,6 +756,26 @@ export function createAuthService({ config, http }) {
     return authRequired() ? hostedProviderAuthStatus(user, CLAUDE_CODE_AUTH_PROVIDER) : localProviderAuthStatus(CLAUDE_CODE_AUTH_PROVIDER);
   }
 
+  async function logoutProviderAuth(provider, user = null) {
+    if (authRequired()) {
+      if (!user?.id) throw clientError(`Sign in with GitHub before ${providerLabel(provider)}.`, 401);
+      await authStore.writeUserSecret(user.id, providerSecretKey(provider), '');
+      return hostedProviderAuthStatus(user, provider);
+    }
+
+    const { AuthStorage } = await loadPiSdk();
+    AuthStorage.create().logout(provider);
+    return localProviderAuthStatus(provider);
+  }
+
+  async function logoutCodexAuth(user = null) {
+    return logoutProviderAuth(CODEX_AUTH_PROVIDER, user);
+  }
+
+  async function logoutClaudeCodeAuth(user = null) {
+    return logoutProviderAuth(CLAUDE_CODE_AUTH_PROVIDER, user);
+  }
+
   async function startCodexDeviceLogin(user = null) {
     if (authRequired() && !user?.id) throw clientError('Sign in with GitHub before Codex.', 401);
     const { AuthStorage } = await loadPiSdk();
@@ -1279,8 +1299,10 @@ export function createAuthService({ config, http }) {
     loadPiDefaults,
     codexAuthStatus,
     startCodexDeviceLogin,
+    logoutCodexAuth,
     claudeCodeAuthStatus,
     startClaudeCodeLogin,
+    logoutClaudeCodeAuth,
     submitClaudeCodeLoginCode,
     publicAuthLogin,
     getAuthLogin,

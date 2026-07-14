@@ -51,6 +51,7 @@ test('active storage keys and deploy aliases are listed', () => {
     assert.ok(manifest.storageKeys.includes(key), key);
   }
 
+  assert.ok(manifest.aliases.some((alias) => alias.route === '/landing' && alias.target === '/desktop.html'));
   assert.ok(manifest.aliases.some((alias) => alias.route === '/homepage' && alias.target === '/desktop.html'));
   assert.ok(manifest.aliases.some((alias) => alias.route === '/desktop' && alias.target === '/desktop.html'));
   assert.ok(manifest.aliases.some((alias) => alias.route === '/thread' && alias.target === '/thread.html'));
@@ -58,6 +59,7 @@ test('active storage keys and deploy aliases are listed', () => {
   assert.ok(manifest.aliases.some((alias) => alias.route === '/local-telemetry' && alias.target === '/local-telemetry.html'));
   assert.ok(manifest.aliases.some((alias) => alias.route === '/control-board' && alias.target === '/control-board.html'));
   assert.match(read('src/server.js'), /const publicDir = process\.env\.SPANNER_STATIC_DIR \|\| distDir;/);
-  assert.match(read('src/server/http.js'), /\['\/homepage', 'desktop\.html'\]/);
+  assert.match(read('src/server/http.js'), /\['\/landing', 'desktop\.html'\]/);
+  assert.match(read('vite.config.js'), /url\.pathname === '\/landing'/);
   assert.doesNotMatch(read('src/server.js'), /rootDir, 'public'/);
 });

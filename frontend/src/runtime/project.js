@@ -7,7 +7,8 @@ const BROWSER_SESSION_KEY = 'spannerBrowserSession';
 const PROJECT_KEY = 'spannerSelectedProject';
 const RECENT_PROJECTS_KEY = 'spannerRecentProjects';
 const ONBOARDING_DISMISSED_KEY = 'spannerOnboardingDismissed';
-const MAX_REPO_SUGGESTIONS = 8;
+const INITIAL_REPO_SUGGESTIONS = 12;
+const REPO_SUGGESTION_PAGE_SIZE = 24;
 const API_BASE = String(import.meta.env?.VITE_SPANNER_API_BASE || '').trim().replace(/\/+$/, '');
 
 function migrateStorageKey(legacyKey, nextKey) {
@@ -57,6 +58,7 @@ let githubRepos = [];
 let selectedRepo = null;
 let repoMatches = [];
 let activeRepoMatchIndex = -1;
+let repoSuggestionLimit = INITIAL_REPO_SUGGESTIONS;
 let githubConnected = false;
 let codexConfigured = false;
 let claudeCodeConfigured = false;
@@ -229,7 +231,7 @@ function scoreRepo(repo, query) {
   return fuzzy ? 420 + fuzzy : -1;
 }
 
-function filterRepos(query, limit = MAX_REPO_SUGGESTIONS) {
+function filterRepos(query, limit = repoSuggestionLimit) {
   return githubRepos
     .map((repo) => ({ repo, score: scoreRepo(repo, query) }))
     .filter((entry) => entry.score > 0)
@@ -446,6 +448,10 @@ function renderOnboarding() {
     onboardingDialog.close?.();
     return;
   }
+  if (githubSigninCard && !githubSigninCard.hidden) {
+    onboardingDialog.close?.();
+    return;
+  }
   const steps = [
     ['github', githubConnected],
     ['llm', codexConfigured || claudeCodeConfigured],
@@ -523,6 +529,18 @@ function setActiveRepoMatch(index) {
   renderRepoSuggestions();
 }
 
+function resetRepoSuggestionLimit() {
+  repoSuggestionLimit = INITIAL_REPO_SUGGESTIONS;
+}
+
+function showMoreRepoSuggestions() {
+  if (repoOptions.hidden || repoMatches.length < repoSuggestionLimit) return;
+  const scrollTop = repoOptions.scrollTop;
+  repoSuggestionLimit += REPO_SUGGESTION_PAGE_SIZE;
+  renderRepoSuggestions();
+  repoOptions.scrollTop = scrollTop;
+}
+
 function renderRepoSuggestions() {
   if (providerKind === 'local' || !githubConnected || !githubRepos.length) {
     hideRepoSuggestions();
@@ -595,6 +613,7 @@ function renderProvider(provider) {
 }
 
 function renderRepoOptions(repos) {
+  resetRepoSuggestionLimit();
   repoHint.textContent = repos.length ? `${repos.length} GitHub repos · type to filter` : 'No GitHub repos found.';
   if (document.activeElement === repoInput) renderRepoSuggestions();
 }
@@ -763,7 +782,10 @@ chooseFolder.addEventListener('click', async () => {
   }
 });
 
-repoInput.addEventListener('focus', renderRepoSuggestions);
+repoInput.addEventListener('focus', () => {
+  resetRepoSuggestionLimit();
+  renderRepoSuggestions();
+});
 
 repoInput.addEventListener('input', () => {
   const value = repoInput.value.trim();
@@ -771,6 +793,7 @@ repoInput.addEventListener('input', () => {
     resetRepoSelection(value ? 'Type to filter GitHub repos, or paste a URL.' : '');
   }
   activeRepoMatchIndex = -1;
+  resetRepoSuggestionLimit();
   renderRepoSuggestions();
   renderOnboarding();
 });
@@ -794,6 +817,11 @@ repoInput.addEventListener('keydown', (event) => {
 
 repoOptions.addEventListener('mousedown', (event) => {
   event.preventDefault();
+});
+
+repoOptions.addEventListener('scroll', () => {
+  const nearBottom = repoOptions.scrollTop + repoOptions.clientHeight >= repoOptions.scrollHeight - 32;
+  if (nearBottom) showMoreRepoSuggestions();
 });
 
 repoOptions.addEventListener('click', (event) => {

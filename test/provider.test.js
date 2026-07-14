@@ -20,7 +20,7 @@ const config = {
   defaultTaskPrompt: 'Do the thing.',
 };
 
-function fakeFetch({ sessionStartupFailures = 0 } = {}) {
+function fakeFetch({ sessionStartupFailures = 0, portResponse = { bridgeUrl: 'https://bridge.example.test/', httpsUrl: 'https://bridge.example.test/' } } = {}) {
   const calls = [];
   let failedSessionStarts = 0;
   const fetch = async (url, options = {}) => {
@@ -33,7 +33,7 @@ function fakeFetch({ sessionStartupFailures = 0 } = {}) {
       }
       return Response.json({ id: body.name, name: body.name, state: 'ready' });
     }
-    if (String(url).includes('/ports/')) return Response.json({ bridgeUrl: 'https://bridge.example.test/', httpsUrl: 'https://bridge.example.test/' });
+    if (String(url).includes('/ports/')) return Response.json(portResponse);
     if (String(url).includes('/backup')) return Response.json({ backup: { id: `${body.name || 'backup'}-id`, dir: body.dir } });
     if (String(url).includes('/files') && (options.method || 'GET') === 'GET') {
       const search = new URL(String(url)).searchParams;
@@ -93,6 +93,19 @@ test('createSession provisions through the broker and runs root setup', async ()
   assert.equal(setupExec.body.cwd, '/');
   assert.deepEqual(setupExec.body.env, [{ key: 'ANTHROPIC_API_KEY', value: 'anthropic-key' }]);
   assert.equal(fetch.calls.at(-1).url, 'https://broker.example.test/sessions/thread-one/ports/4310');
+});
+
+test('createSession rejects broker port responses without a bridge URL', async () => {
+  const fetch = fakeFetch({ portResponse: { port: 4310 } });
+  const provider = createProvider(config, { fetch });
+
+  await assert.rejects(() => provider.createSession({
+    name: 'thread-missing-url',
+    bridgeMode: true,
+    sharePort: 4310,
+    taskPrompt: 'Test prompt',
+    bridgeToken: 'bridge-token',
+  }, {}), /Cloudflare broker did not return a bridge URL.*sandbox\.spanner\.sh/);
 });
 
 test('createSession retries transient Cloudflare startup responses', async () => {

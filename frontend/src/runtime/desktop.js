@@ -9,11 +9,14 @@ try {
   localStorage.removeItem('workbenchBrowserSession');
 } catch {}
 
-const openButton = document.querySelector('[data-open-signin]');
-const dialog = document.querySelector('#signin-modal');
-const closeButton = document.querySelector('#signin-close');
-const githubButton = document.querySelector('#github-signin');
-const statusLine = document.querySelector('#signin-status');
+const openButtons = document.querySelectorAll('[data-open-signin]');
+const signInButton = document.querySelector('#signin-open');
+const signInCard = document.querySelector('#github-signin-card');
+const githubButton = document.querySelector('#github-signin-main');
+const statusLine = document.querySelector('#github-signin-status');
+const agentLoop = document.querySelector('[data-landing-agent-loop]');
+const agentComposer = document.querySelector('[data-landing-agent-composer]');
+const agentPrompt = document.querySelector('[data-landing-agent-prompt]');
 let connected = false;
 
 function setStatus(message) {
@@ -66,10 +69,88 @@ async function fetchJson(path, options = {}) {
   return payload;
 }
 
-function openModal() {
-  if (!dialog) return;
-  if (dialog.showModal) dialog.showModal();
-  else dialog.setAttribute('open', '');
+function createAgent({ title, status }, slot, entering = false) {
+  const agent = document.createElement('article');
+  agent.className = `landing-agent${entering ? ' is-entering' : ''}`;
+  agent.style.setProperty('--slot', slot);
+  agent.innerHTML = `<span class="landing-agent-dot"></span><span><strong>${title}</strong><small>${status}</small></span><span class="landing-agent-time">running</span>`;
+  return agent;
+}
+
+function startPromptComposer(target = agentPrompt, composer = agentComposer) {
+  if (!target) return;
+  const prompts = [
+    'review the settings page',
+    'fix the mobile walkthrough',
+    'straighten the layout borders',
+    'load every GitHub repo',
+  ];
+  if (globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+    target.textContent = prompts[0];
+    return;
+  }
+  let promptIndex = 0;
+  let charIndex = 0;
+  function typeNext() {
+    const prompt = prompts[promptIndex % prompts.length];
+    charIndex += 1;
+    target.textContent = prompt.slice(0, charIndex);
+    if (charIndex < prompt.length) {
+      setTimeout(typeNext, 42);
+      return;
+    }
+    composer?.classList.add('is-submitting');
+    setTimeout(() => {
+      composer?.classList.remove('is-submitting');
+      target.textContent = '';
+      charIndex = 0;
+      promptIndex += 1;
+      setTimeout(typeNext, 620);
+    }, 760);
+  }
+  setTimeout(typeNext, 500);
+}
+
+function startAgentLoop(stack = agentLoop) {
+  if (!stack || globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+  const agents = [
+    { title: 'Settings Page Review', status: 'answering' },
+    { title: 'Mobile UI Walkthrough', status: 'running command' },
+    { title: 'Separation Borders', status: 'editing CSS' },
+    { title: 'Main Screen Layout', status: 'thinking' },
+    { title: 'GitHub Repo Loader', status: 'running tests' },
+    { title: 'Auth Callback Race', status: 'reading files' },
+    { title: 'Trace Card Polish', status: 'editing React' },
+    { title: 'Remote Loading Audit', status: 'checking timings' },
+  ];
+  let next = 4;
+
+  function tick() {
+    const first = stack.firstElementChild;
+    if (!first) return;
+    first.classList.add('is-done');
+    first.querySelector('small').textContent = 'finished · evidence ready';
+    first.querySelector('.landing-agent-time').textContent = 'done';
+    setTimeout(() => {
+      Array.from(stack.children).slice(1).forEach((agent, index) => agent.style.setProperty('--slot', index));
+      first.classList.add('is-leaving');
+      setTimeout(() => {
+        first.remove();
+        const incoming = createAgent(agents[next++ % agents.length], stack.children.length, true);
+        stack.appendChild(incoming);
+        requestAnimationFrame(() => incoming.classList.remove('is-entering'));
+      }, 460);
+    }, 850);
+  }
+
+  setTimeout(tick, 900);
+  setInterval(tick, 2600);
+}
+
+function setSignInOpen(open) {
+  if (!signInCard) return;
+  signInCard.hidden = !open;
+  if (open) githubButton?.focus({ preventScroll: true });
 }
 
 async function refreshAuth() {
@@ -77,11 +158,8 @@ async function refreshAuth() {
     const status = await fetchJson('/api/auth/github');
     connected = Boolean(status.connected);
     const login = status.user && status.user.login ? `@${status.user.login}` : 'GitHub';
-    if (openButton) openButton.textContent = connected ? `Signed in ${login}` : 'Sign in';
-    if (githubButton) {
-      githubButton.textContent = connected ? 'Open web app' : 'Continue with GitHub';
-      githubButton.disabled = !connected && !status.configured;
-    }
+    if (signInButton) signInButton.textContent = connected ? `Signed in ${login}` : 'Sign in';
+    if (githubButton) githubButton.disabled = !connected && !status.configured;
     setStatus(connected ? `Signed in as ${login}.` : status.configured ? 'Sign in with GitHub to continue.' : 'GitHub sign-in is not configured yet.');
   } catch (error) {
     setStatus(error.message);
@@ -108,7 +186,13 @@ async function startGitHubSignIn() {
   }
 }
 
-openButton?.addEventListener('click', () => { openModal(); void refreshAuth(); });
-closeButton?.addEventListener('click', () => dialog?.close());
-dialog?.addEventListener('click', (event) => { if (event.target === dialog) dialog.close(); });
+startAgentLoop();
+startPromptComposer();
+
+openButtons.forEach((button) => button.addEventListener('click', () => { setSignInOpen(true); void refreshAuth(); }));
+document.addEventListener('keydown', (event) => { if (event.key === 'Escape') setSignInOpen(false); });
+document.addEventListener('click', (event) => {
+  if (signInCard?.hidden || signInCard?.contains(event.target) || event.target.closest?.('[data-open-signin]')) return;
+  setSignInOpen(false);
+});
 githubButton?.addEventListener('click', () => { void startGitHubSignIn(); });
