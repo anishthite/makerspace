@@ -1,5 +1,6 @@
 import { toast } from 'sonner';
 
+import { captureSpannerEvent } from '../lib/posthog.js';
 import { redirectIfAuthRequired } from './auth-redirect.js';
 import './appearance.js?v=palette-2';
 import { bindImageDropZone, clearImageInput, filesToImageAttachments, imageInputFiles, updateImageStatus } from './image-attachments.js';
@@ -911,6 +912,13 @@ threadForm.addEventListener('submit', async (event) => {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
+    });
+    captureSpannerEvent('thread_created', {
+      source: localProject ? 'local' : 'github',
+      has_branch: Boolean(body.branch),
+      has_images: images.length > 0,
+      model_ref_set: Boolean(modelRefInput.value),
+      thinking_level: thinkingLevelValue(),
     });
     if (localProject) {
       try {

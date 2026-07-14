@@ -1,3 +1,4 @@
+import { captureSpannerEvent } from '../lib/posthog.js';
 import { redirectIfAuthRequired } from './auth-redirect.js';
 
 const BROWSER_SESSION_KEY = 'spannerBrowserSession';
@@ -485,8 +486,10 @@ function initDesktopUpdates() {
     desktopUpdateStatus.textContent = 'Checking for updates…';
     try {
       const result = await desktop.checkForUpdates();
+      captureSpannerEvent('update_checked', { ok: Boolean(result?.ok), platform: 'desktop' });
       desktopUpdateStatus.textContent = result?.message || 'Checking for updates…';
     } catch (error) {
+      captureSpannerEvent('update_checked', { ok: false, platform: 'desktop' });
       desktopUpdateStatus.textContent = error.message;
     } finally {
       desktopCheckUpdates.disabled = false;

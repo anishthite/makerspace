@@ -1,5 +1,6 @@
 import './appearance.js?v=palette-2';
 
+import { captureSpannerEvent } from '../lib/posthog.js';
 import { redirectIfAuthRequired } from './auth-redirect.js';
 
 const BROWSER_SESSION_KEY = 'spannerBrowserSession';
@@ -713,6 +714,11 @@ async function loadStatus() {
 
 async function openWorkspace(project) {
   await saveProject(project);
+  captureSpannerEvent('workspace_opened', {
+    source: project.kind === 'local' ? 'local' : 'github',
+    desktop: Boolean(globalThis.spannerDesktop),
+    has_branch: Boolean(project.branch),
+  });
   if (project.kind === 'local') {
     try {
       await globalThis.spannerDesktop?.rememberFolder?.(project.value);

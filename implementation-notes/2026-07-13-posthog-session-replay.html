@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — PostHog session replay</title>
+<meta name="task" content="Add PostHog product analytics and masked DOM session replay to web and Electron Spanner.">
+<meta name="date-started" content="2026-07-13">
+<meta name="date-updated" content="2026-07-13">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="spanner,analytics,posthog,session-replay,desktop,privacy">
+<meta name="related" content="2026-07-02-db-telemetry-side-app.html,2026-07-02-local-session-telemetry.html,2026-06-23-board-command-inbox-ide-ui.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:900px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}.meta{color:#666}.kv{display:grid;grid-template-columns:160px 1fr;gap:4px 12px}.kv b{font-weight:600}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px}.blast-med{color:#b85c00}</style>
+</head>
+<body>
+<h1>PostHog session replay</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-13 · status <b>shipped</b> · blast <span class="blast-med">medium</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Enable PostHog product events and masked DOM replay for web and Electron.</div><b>Source</b><div><code>posthog-js/dist/module.full.no-external</code> for Electron-safe replay.</div><b>Surface</b><div><code>frontend/src/entry.jsx</code>, hidden Settings control, thread/workspace runtime events.</div><b>Schema</b><div>Env-only: <code>VITE_POSTHOG_KEY</code>, <code>VITE_POSTHOG_HOST</code>, <code>VITE_POSTHOG_PROJECT_ID</code>, <code>VITE_POSTHOG_REPLAY_ENABLED</code>, <code>VITE_POSTHOG_DISABLED</code>.</div><b>Privacy</b><div>Mask prompts, transcripts, tool output, diffs, settings secrets, and repo paths before recording.</div><b>Mobile</b><div>Same web bootstrap; replay is enabled by env and can be force-disabled by env.</div><b>Open Qs</b><div>0.</div></div>
+<h2>Algorithm</h2>
+<ol><li>Return no-op when <code>VITE_POSTHOG_KEY</code> is missing or <code>VITE_POSTHOG_DISABLED=1</code>.</li><li>Use existing <code>spannerBrowserSession</code> as <code>distinct_id</code>, prefixed by <code>web:</code> or <code>desktop:</code>.</li><li>Initialize PostHog with sanitized URLs and enable session recording when <code>VITE_POSTHOG_REPLAY_ENABLED=1</code>, unless local storage explicitly stores <code>spannerPosthogReplayConsent=0</code>.</li><li>Capture manual pageviews and safe lifecycle events only.</li><li>Keep replay configuration out of Settings; env is the control plane.</li></ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>package.json</code>, <code>package-lock.json</code></td><td>touch</td><td>Add <code>posthog-js</code>.</td></tr><tr><td><code>frontend/src/lib/posthog.js</code></td><td>new</td><td>Centralize PostHog bootstrap, replay default, URL sanitization, and capture helpers.</td></tr><tr><td><code>frontend/src/entry.jsx</code></td><td>touch</td><td>Initialize analytics once per React entry.</td></tr><tr><td><code>frontend/src/pages.jsx</code>, <code>frontend/src/runtime/settings.js</code></td><td>touch</td><td>Hide Settings replay control; replay is env-controlled.</td></tr><tr><td><code>frontend/src/runtime/{app,project,thread,desktop}.js</code></td><td>touch</td><td>Capture safe app/thread/run/update events.</td></tr><tr><td><code>test/posthog.test.js</code></td><td>new</td><td>Pin URL sanitization, distinct-id, and replay opt-out behavior.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Use the browser SDK in Electron renderer. Spanner desktop is a Chromium app, so DOM replay covers the UI without native capture.</td></tr><tr><td>D-002</td><td>Make replay env-enabled and hide the Settings control per owner request. Keep <code>VITE_POSTHOG_DISABLED</code> and local <code>spannerPosthogReplayConsent=0</code> as escape hatches.</td></tr><tr><td>D-003</td><td>Sanitize route and event properties at the shared helper. Individual runtime calls stay small.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>DOM replay over native screen recording. Native capture adds OS permissions and records unrelated apps.</td></tr><tr><td>T-002</td><td>Direct helper calls over route-level instrumentation framework. Current pages are multi-entry runtime scripts.</td></tr></table>
+<h2>Verification</h2>
+<table><tr><th>ID</th><th>Check</th><th>Result</th></tr><tr><td>V-001</td><td><code>node --test test/posthog.test.js</code></td><td>Passed 6/6.</td></tr><tr><td>V-002</td><td><code>node --check frontend/src/lib/posthog.js frontend/src/runtime/settings.js</code></td><td>Passed.</td></tr><tr><td>V-003</td><td><code>npm run build</code></td><td>Passed.</td></tr><tr><td>V-004</td><td><code>npm test</code></td><td>Passed 290/290.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Remove the dependency, helper, env entries, and runtime calls; existing Spanner data is unchanged.</p>
+<h2>Definition of done</h2>
+<ul><li>Web and Electron initialize PostHog only when configured.</li><li>Session replay is env-enabled, hidden from Settings, and masks sensitive UI.</li><li>Safe page/run/update events are captured without prompt/output text.</li><li>Focused tests and build pass.</li></ul>
+</body>
+</html>

@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 
 import { Toaster } from './components/ui/sonner.jsx';
 import { pages } from './pages.jsx';
+import { initSpannerAnalytics } from './lib/posthog.js';
 import { applyAppearance } from './runtime/appearance.js';
 import { startAgentToastWatcher } from './runtime/agent-toasts.js';
 import './styles/app.css';
@@ -70,6 +71,7 @@ function openMainPageFromToastKey(event) {
 applyAppearance();
 const root = document.querySelector('#root');
 const page = document.body?.dataset?.reactPage || 'project';
+void initSpannerAnalytics({ page });
 document.addEventListener('click', openMainPageFromToast);
 document.addEventListener('keydown', openMainPageFromToastKey);
 if (page !== 'workspace') startAgentToastWatcher();

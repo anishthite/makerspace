@@ -1,4 +1,5 @@
 import 'diff2html/bundles/css/diff2html.min.css';
+import { captureSpannerEvent } from '../lib/posthog.js';
 import { redirectIfAuthRequired } from './auth-redirect.js';
 import './appearance.js?v=palette-2';
 import { htmlPreviewDocument } from './html-preview.js';
@@ -113,6 +114,7 @@ const messageText = new WeakMap();
 const runSummaryMarkers = new Map();
 const renderedMessageKeys = new Set();
 const renderedAssistantRunIds = new Set();
+const capturedFinishedRuns = new Set();
 let activeRunSummaryMarker = null;
 let runStartedAtMs = 0;
 let runEndedAtMs = 0;
@@ -2037,6 +2039,18 @@ function renderToolEvent(event) {
   scheduleDiffRefresh(event.phase === 'end' ? 250 : 900);
 }
 
+function captureRunFinished(event = {}) {
+  const runId = traceRunKey(event);
+  if (!runId || capturedFinishedRuns.has(runId)) return;
+  capturedFinishedRuns.add(runId);
+  const status = event.runStatus === 'completed' ? 'completed' : event.runStatus === 'failed' ? 'failed' : 'unknown';
+  const durationMs = runStartedAtMs ? Math.max(0, (runEndedAtMs || timestampMs(event.timestamp) || Date.now()) - runStartedAtMs) : null;
+  captureSpannerEvent('run_finished', {
+    status,
+    duration_ms: Number.isFinite(durationMs) ? Math.round(durationMs) : null,
+  });
+}
+
 function renderEvent(event, { appendTranscript = false } = {}) {
   if (!event) return;
   updateLastEventId(event);
@@ -2057,6 +2071,7 @@ function renderEvent(event, { appendTranscript = false } = {}) {
   if (event.chunk && event.type !== 'log') {
     setNow(event);
     if (appendTranscript) appendAssistantChunk(event.chunk);
+    if (event.done || event.runStatus === 'completed' || event.runStatus === 'failed') captureRunFinished(event);
     if (event.session) {
       renderThread(event.session);
       renderThreadHistory(event.session);
@@ -2083,6 +2098,7 @@ function renderEvent(event, { appendTranscript = false } = {}) {
   }
 
   if (event.done || event.runStatus === 'completed' || event.runStatus === 'failed') {
+    captureRunFinished(event);
     finalizeAssistantBody();
     scheduleDiffRefresh(150);
   }
@@ -2296,6 +2312,12 @@ promptForm.addEventListener('submit', async (event) => {
       finalizeAssistantBody();
       activeAssistantBody = null;
     }
+    captureSpannerEvent('run_started', {
+      delivery,
+      has_images: images.length > 0,
+      model_ref_set: Boolean(modelRefInput.value),
+      thinking_level: thinkingLevelValue(),
+    });
     appendMessage('user', 'you', imageAttachmentText(prompt, images.length), images);
     rememberRenderedThreadMessage({ role: 'user', text: prompt, images, timestamp: submittedAt, runId });
     if (!activeDelivery) activeRunSummaryMarker = appendRunSummaryMarker({ startMs: submittedAtMs, status: 'queued', runId });
