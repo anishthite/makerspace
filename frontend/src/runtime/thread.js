@@ -16,6 +16,9 @@ const THINKING_LEVEL_KEY = 'spannerThinkingLevel';
 const THINKING_LEVELS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh'];
 const ARCHIVEABLE_THREAD_STATUSES = ['completed', 'ready', 'failed'];
 const COPY_FEEDBACK_MS = 1200;
+const STREAM_RECONNECT_NOTICE_MS = 2500;
+const STREAM_FALLBACK_POLL_MS = 2500;
+const STREAM_FALLBACK_INITIAL_POLL_MS = 800;
 const PHOSPHOR_COPY_ICON = '<svg viewBox="0 0 256 256" aria-hidden="true" focusable="false"><path d="M216,34H88a6,6,0,0,0-6,6V82H40a6,6,0,0,0-6,6V216a6,6,0,0,0,6,6H168a6,6,0,0,0,6-6V174h42a6,6,0,0,0,6-6V40A6,6,0,0,0,216,34ZM162,210H46V94H162Zm48-48H174V88a6,6,0,0,0-6-6H94V46H210Z" /></svg><span class="sr-only">copy</span>';
 const MAX_INLINE_EXCALIDRAW_ARTIFACTS = 3;
 const MAX_INLINE_DIAGRAM_IMAGE_ARTIFACTS = 4;
@@ -97,6 +100,9 @@ function observeComposerClearance() {
 observeComposerClearance();
 
 let activeStream = null;
+let streamConnected = false;
+let streamReconnectNoticeTimer = 0;
+let streamFallbackPollTimer = 0;
 let currentThread = null;
 let activeAssistantBody = null;
 let defaultThinkingLevel = 'xhigh';
@@ -690,6 +696,10 @@ function isActiveStatus(status) {
   return ['launching', 'running', 'queued', 'starting', 'reconnecting'].includes(String(status || '').toLowerCase());
 }
 
+function isClosedRunStatus(status) {
+  return ['completed', 'failed', 'ready', 'suspended', 'deleted'].includes(String(status || '').toLowerCase());
+}
+
 function statusTone(status) {
   const value = String(status || '').toLowerCase();
   if (value === 'failed' || value === 'error') return 'error';
@@ -1172,7 +1182,7 @@ function activityCopy(event) {
     if (status === 'queued') return ['Queued', detail || 'waiting for main agent'];
     if (status === 'starting') return ['Starting', detail || 'starting main agent session'];
     if (status === 'running') return ['Working', detail || 'streaming updates'];
-    if (status === 'reconnecting') return ['Reconnecting', detail || 'stream lost; retrying'];
+    if (status === 'reconnecting') return ['Reconnecting', detail || 'reconnecting to live updates'];
     if (status === 'completed') return ['Done', detail];
     if (status === 'failed') return ['Failed', detail];
     return [status, detail];
@@ -2159,15 +2169,115 @@ async function loadThreadBootstrap() {
   };
 }
 
+function clearStreamReconnectNotice() {
+  clearTimeout(streamReconnectNoticeTimer);
+  streamReconnectNoticeTimer = 0;
+}
+
+function clearStreamFallbackPoll() {
+  clearTimeout(streamFallbackPollTimer);
+  streamFallbackPollTimer = 0;
+}
+
+function clearStreamRecoveryTimers() {
+  clearStreamReconnectNotice();
+  clearStreamFallbackPoll();
+}
+
+function closeActiveStream() {
+  const stream = activeStream;
+  activeStream = null;
+  if (stream) {
+    stream.onopen = null;
+    stream.onmessage = null;
+    stream.onerror = null;
+    stream.close();
+  }
+  streamConnected = false;
+  clearStreamRecoveryTimers();
+}
+
+function markStreamConnected() {
+  streamConnected = true;
+  clearStreamRecoveryTimers();
+}
+
+function finishStreamStatus(runStatus, session = null) {
+  const status = String(runStatus || '').toLowerCase();
+  closeActiveStream();
+  if (session) {
+    currentThread = { ...currentThread, ...session };
+    renderThread(currentThread);
+    renderThreadHistory(currentThread);
+  }
+  if (status !== 'completed' && status !== 'failed') {
+    if (status) {
+      currentThread = { ...currentThread, status, runStatus: status };
+      renderThread(currentThread);
+    } else {
+      renderComposerState(currentThread);
+    }
+    return;
+  }
+  currentThread = { ...currentThread, status, runStatus: status };
+  setStatus(status === 'completed' ? 'done' : 'failed', statusTone(status));
+  renderStopButton(currentThread);
+  renderLifecycleButtons(currentThread);
+  renderArchiveButton(currentThread);
+  scheduleDiffRefresh(0);
+  submitInFlight = false;
+  finalizeAssistantBody();
+  activeAssistantBody = null;
+  renderComposerState(currentThread);
+}
+
+async function pollStreamFallback() {
+  streamFallbackPollTimer = 0;
+  if (!activeStream || streamConnected) return;
+  try {
+    const payload = await loadOutput();
+    clearStreamReconnectNotice();
+    const status = payload.runStatus || payload.session?.runStatus || payload.session?.status;
+    if (isClosedRunStatus(status)) {
+      finishStreamStatus(status, payload.session);
+      return;
+    }
+  } catch (error) {
+    if (activeStream && !streamConnected) setStatus(error.message, 'error');
+  }
+  if (activeStream && !streamConnected && !streamFallbackPollTimer) {
+    streamFallbackPollTimer = setTimeout(() => { void pollStreamFallback(); }, STREAM_FALLBACK_POLL_MS);
+  }
+}
+
+function scheduleStreamRecovery() {
+  if (!activeStream) return;
+  if (!streamReconnectNoticeTimer) {
+    streamReconnectNoticeTimer = setTimeout(() => {
+      streamReconnectNoticeTimer = 0;
+      if (activeStream && !streamConnected) {
+        setNow({ type: 'status', runStatus: 'reconnecting', warning: 'reconnecting to live updates' });
+      }
+    }, STREAM_RECONNECT_NOTICE_MS);
+  }
+  if (!streamFallbackPollTimer) {
+    streamFallbackPollTimer = setTimeout(() => { void pollStreamFallback(); }, STREAM_FALLBACK_INITIAL_POLL_MS);
+  }
+}
+
 function streamRun() {
-  if (activeStream) activeStream.close();
+  closeActiveStream();
   activeStream = new EventSource(streamUrl(`/api/sessions/${encodeURIComponent(name)}/stream`, lastEventId), { withCredentials: true });
 
   activeStream.onopen = () => {
-    setNow({ type: 'status', runStatus: 'running', warning: 'streaming live updates' });
+    markStreamConnected();
+    if (String(effectiveStatus(currentThread) || '').toLowerCase() === 'running') {
+      setNow({ type: 'status', runStatus: 'running', warning: 'streaming live updates' });
+    }
   };
 
   activeStream.onmessage = (event) => {
+    markStreamConnected();
     const payload = JSON.parse(event.data);
     if (payload.reset) {
       void loadOutput();
@@ -2176,26 +2286,16 @@ function streamRun() {
     }
     renderEvent(payload, { appendTranscript: true });
 
-    if (payload.done || payload.runStatus === 'completed' || payload.runStatus === 'failed') {
-      activeStream.close();
-      activeStream = null;
-      const doneStatus = payload.runStatus === 'completed' ? 'completed' : 'failed';
-      currentThread = { ...currentThread, status: doneStatus, runStatus: doneStatus };
-      setStatus(doneStatus === 'completed' ? 'done' : 'failed', statusTone(doneStatus));
-      renderStopButton(currentThread);
-      renderLifecycleButtons(currentThread);
-      renderArchiveButton(currentThread);
-      scheduleDiffRefresh(0);
-      submitInFlight = false;
-      finalizeAssistantBody();
-      activeAssistantBody = null;
-      renderComposerState(currentThread);
+    if (payload.done || isClosedRunStatus(payload.runStatus)) {
+      const doneStatus = payload.runStatus || (payload.done ? 'failed' : '');
+      finishStreamStatus(doneStatus, payload.session);
     }
   };
 
   activeStream.onerror = () => {
     if (!activeStream) return;
-    setNow({ type: 'status', runStatus: 'reconnecting', warning: 'stream lost; retrying' });
+    streamConnected = false;
+    scheduleStreamRecovery();
   };
 }
 
