@@ -60,17 +60,15 @@ test('home rows avoid workspace folder details', () => {
 });
 
 test('workspace agents use shadcn sidebar beside launch composer', () => {
-  const providerIndex = pages.indexOf('<SidebarProvider className="workspace-shell min-h-svh bg-[var(--bg)]"');
+  const providerIndex = pages.indexOf('<SidebarProvider className="min-h-svh bg-[var(--bg)]"');
   const agentsIndex = pages.indexOf('id="agents-section"');
   const formIndex = pages.indexOf('id="thread-form"');
   const suggestionsIndex = pages.indexOf('id="launch-suggestions"');
   assert.ok(providerIndex > -1 && providerIndex < agentsIndex && agentsIndex < formIndex && formIndex < suggestionsIndex);
   assert.match(pages, /SidebarProvider[\s\S]+from '\.\/components\/ui\/sidebar\.jsx';/);
-  assert.match(pages, /<Sidebar className="border-r border-\[var\(--rule\)\]">/);
+  assert.match(pages, /<Sidebar className="border-r border-\[var\(--rule\)\]" collapsible="none">/);
   assert.match(pages, /<SidebarInset className="min-w-0 bg-\[var\(--bg\)\]/);
-  assert.match(pages, /<SidebarTrigger className="workspace-sidebar-trigger[^"]+md:hidden">agents<\/SidebarTrigger>/);
-  assert.match(appCss, /\.workspace-mobile-nav[\s\S]+position: sticky;/);
-  assert.match(appCss, /\.launch-controls,[\s\S]+\.flow-composer \.composer-controls[\s\S]+display: grid;/);
+  assert.doesNotMatch(pages, /<SidebarTrigger className="workspace-sidebar-trigger" \/>/);
   assert.match(pages, /data-suggested-prompt="Review the current diff/);
   assert.match(pages, /<strong[^>]*>Find next move<\/strong>/);
   assert.match(js, /const launchSuggestions = document\.querySelector\('#launch-suggestions'\);/);

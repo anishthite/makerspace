@@ -26,7 +26,7 @@ import { SidebarIcon } from "@phosphor-icons/react"
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 const SIDEBAR_WIDTH = "16rem"
-const SIDEBAR_WIDTH_MOBILE = "min(88vw, 22rem)"
+const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 
@@ -159,7 +159,7 @@ function Sidebar({
           data-sidebar="sidebar"
           data-slot="sidebar"
           data-mobile="true"
-          className="w-(--sidebar-width) border-[var(--rule)] bg-[var(--paper)] p-0 text-[var(--ink)]"
+          className="w-(--sidebar-width) bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
           style={
             {
               "--sidebar-width": SIDEBAR_WIDTH_MOBILE
@@ -221,8 +221,6 @@ function Sidebar({
 function SidebarTrigger({
   className,
   onClick,
-  children,
-  size,
   ...props
 }) {
   const { toggleSidebar } = useSidebar()
@@ -232,7 +230,7 @@ function SidebarTrigger({
       data-sidebar="trigger"
       data-slot="sidebar-trigger"
       variant="ghost"
-      size={size || (children ? "sm" : "icon-sm")}
+      size="icon-sm"
       className={cn(className)}
       onClick={(event) => {
         onClick?.(event)
@@ -240,7 +238,7 @@ function SidebarTrigger({
       }}
       {...props}>
       <SidebarIcon />
-      {children ?? <span className="sr-only">Toggle Sidebar</span>}
+      <span className="sr-only">Toggle Sidebar</span>
     </Button>
   );
 }
