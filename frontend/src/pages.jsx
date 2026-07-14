@@ -556,7 +556,7 @@ Keep screenshots, diffs, logs, and comments attached to the run.`;
       .landing-page h1 { max-width:920px; margin:0 0 24px; color:var(--ds-text); font-size:clamp(60px,8.2vw,112px); line-height:.9; letter-spacing:-.055em; font-weight:650; }
       .landing-lede { max-width:760px; margin:0; color:var(--ds-muted); font-size:clamp(18px,1.35vw,24px); line-height:1.08; font-weight:650; }
       .landing-actions { flex-wrap:wrap; gap:14px; margin-top:32px; }
-      .landing-button { display:inline-flex; min-height:56px; align-items:center; justify-content:center; border:1px solid color-mix(in srgb,var(--ds-accent) 70%,var(--ds-line)); border-radius:10px; padding:0 22px; background:#f3f1e8; color:#081018; font-family:inherit; font-size:clamp(18px,1rem + .45vw,20px); font-weight:950; text-decoration:none; cursor:pointer; }
+      .landing-button { display:inline-flex; min-height:56px; align-items:center; justify-content:center; border:1px solid #fff; border-radius:10px; padding:0 22px; background:#fff; color:#000; font-family:inherit; font-size:clamp(18px,1rem + .45vw,20px); font-weight:950; text-decoration:none; text-transform:none; letter-spacing:normal; cursor:pointer; }
       .landing-github-link { display:inline-flex; min-height:56px; align-items:center; color:color-mix(in srgb,var(--ds-text) 58%,transparent); }
       .landing-agent-loop { position:relative; min-height:520px; border-left:1px solid rgba(255,255,255,.08); padding-left:30px; }
       .landing-agent-head { position:relative; z-index:1; margin-bottom:18px; color:color-mix(in srgb,var(--ds-text) 58%,transparent); font:900 12px/1 ui-monospace,SFMono-Regular,Menlo,monospace; text-transform:lowercase; }
@@ -673,7 +673,7 @@ Keep screenshots, diffs, logs, and comments attached to the run.`;
           <div>
             <h1 id="title">Easier remote coding with your agent</h1>
             <p className="landing-lede">Spanner gives Pi a real browser sandbox, loads your AGENTS.md, skills, prompts, providers, setup commands, and checks, then brings back evidence you can review.</p>
-            <div className="landing-actions"><button className="landing-button" type="button" data-open-signin>Get Started</button><a className="landing-github-link" href="https://github.com/anishthite/spanner-downloads/releases/latest">View desktop release</a></div>
+            <div className="landing-actions"><button className="landing-button" type="button" data-button="primary" data-open-signin>Get Started</button><a className="landing-github-link" href="https://github.com/anishthite/spanner-downloads/releases/latest">View desktop release</a></div>
           </div>
           <aside className="landing-agent-loop" aria-label="Live agent status loop">
             <div className="landing-agent-head"><span>running agents</span></div>
