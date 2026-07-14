@@ -9,7 +9,8 @@ try {
   localStorage.removeItem('workbenchBrowserSession');
 } catch {}
 
-const openButton = document.querySelector('[data-open-signin]');
+const openButtons = document.querySelectorAll('[data-open-signin]');
+const signInButton = document.querySelector('#signin-open');
 const dialog = document.querySelector('#signin-modal');
 const closeButton = document.querySelector('#signin-close');
 const githubButton = document.querySelector('#github-signin');
@@ -158,7 +159,7 @@ async function refreshAuth() {
     const status = await fetchJson('/api/auth/github');
     connected = Boolean(status.connected);
     const login = status.user && status.user.login ? `@${status.user.login}` : 'GitHub';
-    if (openButton) openButton.textContent = connected ? `Signed in ${login}` : 'Sign in';
+    if (signInButton) signInButton.textContent = connected ? `Signed in ${login}` : 'Sign in';
     if (githubButton) {
       githubButton.textContent = connected ? 'Open web app' : 'Continue with GitHub';
       githubButton.disabled = !connected && !status.configured;
@@ -192,7 +193,7 @@ async function startGitHubSignIn() {
 startAgentLoop();
 startPromptComposer();
 
-openButton?.addEventListener('click', () => { openModal(); void refreshAuth(); });
+openButtons.forEach((button) => button.addEventListener('click', () => { openModal(); void refreshAuth(); }));
 closeButton?.addEventListener('click', () => dialog?.close());
 dialog?.addEventListener('click', (event) => { if (event.target === dialog) dialog.close(); });
 githubButton?.addEventListener('click', () => { void startGitHubSignIn(); });

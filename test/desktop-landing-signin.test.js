@@ -16,6 +16,8 @@ test('desktop landing is a React route with GitHub sign-in behavior', () => {
   assert.match(pages, /src="\/logo-mark\.svg"/);
   assert.match(pages, /id="signin-open"/);
   assert.match(pages, /data-open-signin/);
+  assert.match(pages, />Get Started<\/button>/);
+  assert.doesNotMatch(pages, /Open a Pi sandbox/);
   assert.match(pages, /<dialog id="signin-modal"/);
   assert.match(pages, /data-landing-agent-loop/);
   assert.match(pages, /data-landing-agent-prompt/);
@@ -33,6 +35,8 @@ test('desktop landing is a React route with GitHub sign-in behavior', () => {
   assert.match(runtime, /VITE_SPANNER_API_BASE/);
   assert.match(runtime, /'x-spanner-session': sessionId\(\)/);
   assert.match(runtime, /function targetUrl\(\)/);
+  assert.match(runtime, /querySelectorAll\('\[data-open-signin\]'\)/);
+  assert.match(runtime, /openButtons\.forEach/);
   assert.match(runtime, /JSON\.stringify\(\{ returnTo: targetUrl\(\) \}\)/);
   assert.match(entry, /desktop: \(\) => import\('\.\/runtime\/desktop\.js'\)/);
 });
