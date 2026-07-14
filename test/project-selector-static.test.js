@@ -50,6 +50,8 @@ test('project selector offers desktop local folders', () => {
   assert.match(pages, /Continue with GitHub/);
   assert.match(pages, /data-github-signin/);
   assert.match(pages, /id="github-signin-card" className=\{cn\(surfaceClass/);
+  assert.match(pages, /signin-lightbox/);
+  assert.match(pages, /aria-modal="true"/);
   assert.match(pages, /id="onboarding-dialog"/);
   assert.match(pages, /const \{ actions, steps \} = onboardingContent/);
   assert.match(pages, /data-onboarding-step=\{id\}/);
@@ -86,6 +88,7 @@ test('project selector offers desktop local folders', () => {
   assert.match(project, /const remoteProvider = providerKind === 'cloudflare'/);
   assert.match(project, /onboardingPickRepo\?\.addEventListener\('click', focusProjectPicker\)/);
   assert.match(styles, /\.onboarding-dialog/);
+  assert.match(styles, /\.signin-lightbox \{[\s\S]+position: fixed[\s\S]+translate\(-50%, -50%\)/);
   assert.match(styles, /\.github-login-button\[data-app-variant="primary"\]/);
   assert.match(styles, /\.onboarding-steps li\[data-state="current"\] \.onboarding-step-action/);
   assert.match(styles, /\.onboarding-step-action \.github-login-button\[data-app-variant="primary"\],[\s\S]+background: #fff; color: #111820/);
@@ -110,7 +113,7 @@ test('project selector offers desktop local folders', () => {
   assert.match(app, /const desktop = Boolean\(globalThis\.spannerDesktop\);[\s\S]+const showGate = !desktop && !localProvider/);
   assert.match(app, /button\.hidden = desktop \|\| localProvider/);
   assert.match(app, /threadForm\.hidden = showGate/);
-  assert.match(pages, /md:grid-cols-\[minmax\(0,1\.05fr\)_minmax\(280px,\.7fr\)\]/);
+  assert.doesNotMatch(pages, /md:grid-cols-\[minmax\(0,1\.05fr\)_minmax\(280px,\.7fr\)\]/);
   assert.match(pages, /id="codex"/);
   assert.match(pages, /id="claude-code"/);
   assert.match(pages, /id="github"/);
