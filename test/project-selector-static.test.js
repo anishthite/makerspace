@@ -133,11 +133,14 @@ test('project selector offers desktop local folders', () => {
   assert.match(styles, /\.auth-steps \{/);
   assert.doesNotMatch(settingsJs, /globalThis\.open\?\.\('about:blank', '_blank'\)/);
   assert.match(pages, /const pill = 'group inline-flex/);
-  assert.match(pages, /w-\[min\(760px,calc\(100%_-_clamp\(24px,8vw,160px\)\)\)\]/);
-  assert.match(pages, /id="project-grid" className="mx-auto mt-\[clamp\(24px,6vh,54px\)\] grid max-w-\[640px\] grid-cols-1 gap-4"/);
-  assert.match(pages, /id="project-form" className=\{cn\(surfaceClass, 'grid gap-4 overflow-hidden p-4 md:p-5'\)\}/);
+  assert.match(pages, /w-\[min\(920px,calc\(100%_-_clamp\(24px,8vw,160px\)\)\)\]/);
+  assert.match(pages, /id="project-grid" className="mx-auto mt-\[clamp\(34px,8vh,74px\)\] grid max-w-\[860px\] grid-cols-1 gap-4"/);
+  assert.match(pages, /id="project-form" className=\{cn\(surfaceClass, 'grid gap-5 overflow-hidden p-4 md:p-6'\)\}/);
   assert.match(pages, /id="project-subtitle"/);
-  assert.match(pages, /id="project-hero" className="grid gap-1\.5 text-left/);
+  assert.match(pages, /id="project-hero" className="grid justify-items-center gap-1\.5 text-center/);
+  assert.match(pages, /className="project-recent-panel border-t border-\[var\(--rule\)\] pt-5"/);
+  assert.match(pages, /mb-4 grid justify-items-center gap-1 text-center/);
+  assert.match(pages, /id="project-recent-list" className="project-list grid gap-2 md:grid-cols-2"/);
   assert.match(styles, /grid-template-columns: minmax\(0, 1fr\) auto/);
   assert.match(styles, /\.repo-suggestions \{/);
   assert.match(pages, /id="project-repo-tray" className="flex flex-wrap items-center gap-2"/);

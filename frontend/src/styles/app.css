@@ -767,7 +767,7 @@ body[data-home-ui="ops"] .inbox-item { padding: 18px 14px; }
 .signin-footnote { margin: 0; color: var(--ink-4); font-size: 12px; line-height: 1.45; }
 .project-grid { display: grid; grid-template-columns: 1fr; gap: 18px; align-items: start; }
 .project-card { min-width: 0; border: 1px solid color-mix(in srgb, var(--rule) 82%, var(--ink-4)); border-radius: 6px; background: color-mix(in srgb, var(--paper) 92%, var(--paper-2)); box-shadow: var(--shadow-md); padding: clamp(18px, 1.8vw, 26px); }
-#project-form { display: grid; gap: 12px; }
+#project-form { display: grid; gap: 18px; }
 .project-target { position: relative; grid-template-columns: minmax(0, 1fr) auto; gap: 0; min-height: 48px; overflow: visible; padding: 0 0 0 12px; }
 .project-target .folder-picker-btn {
   align-self: stretch;
@@ -838,12 +838,9 @@ body[data-home-ui="ops"] .inbox-item { padding: 18px 14px; }
 .project-running-badge { display: inline-flex; align-items: center; gap: 5px; flex: none; color: var(--yellow); font: 700 10px/1 var(--mono); text-transform: lowercase; }
 .project-running-badge .status-dot { width: 6px; height: 6px; background: var(--yellow); box-shadow: 0 0 0 4px color-mix(in srgb, var(--yellow) 14%, transparent); animation: status-pulse 1.25s var(--ease-out) infinite; }
 #project-form {
-  border-color: color-mix(in srgb, var(--rule-2) 70%, transparent);
-  border-radius: 8px;
-  background:
-    radial-gradient(circle at 14% 0%, color-mix(in srgb, var(--blue-soft) 46%, transparent), transparent 26rem),
-    linear-gradient(180deg, color-mix(in srgb, var(--paper) 96%, var(--paper-2)), var(--paper));
-  box-shadow: 0 18px 48px rgba(0, 0, 0, .24), inset 0 1px 0 var(--inset-highlight);
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
 }
 #project-welcome {
   margin: 0;
@@ -851,18 +848,19 @@ body[data-home-ui="ops"] .inbox-item { padding: 18px 14px; }
   line-height: .96;
   letter-spacing: -.055em;
 }
+#project-hero { padding-top: clamp(4px, 1.5vw, 12px); }
 #project-hero p { margin: 0; color: var(--ink-3); font-size: 14px; line-height: 1.4; }
 .project-picker-panel {
-  border-color: color-mix(in srgb, var(--rule-2) 55%, transparent);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--paper-2) 62%, var(--bg));
-  box-shadow: inset 0 1px 0 var(--inset-highlight);
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
 }
 .project-picker-panel .target-input {
   grid-template-columns: minmax(0, 1fr) auto;
   min-height: 42px;
-  border-color: color-mix(in srgb, var(--rule-2) 58%, transparent);
-  background: color-mix(in srgb, var(--bg) 38%, transparent);
+  border-color: color-mix(in srgb, var(--rule) 62%, transparent);
+  background: transparent;
 }
 .project-picker-panel input { font-size: 14px; }
 .project-picker-panel #project-choose-folder.project-folder-button {
@@ -875,10 +873,18 @@ body[data-home-ui="ops"] .inbox-item { padding: 18px 14px; }
   background: transparent;
   box-shadow: none;
 }
+.project-picker-panel #project-repo-refresh {
+  padding-left: 0;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
 .project-picker-panel #project-submit { min-height: 40px; letter-spacing: .08em; }
-.project-recent-panel { border-color: color-mix(in srgb, var(--rule) 72%, transparent); }
+.project-recent-panel { border-color: color-mix(in srgb, var(--rule) 70%, transparent); margin-top: 4px; }
 .project-recent-panel h2 { font-size: 18px; }
 #project-recent-list { margin-top: 0; }
+#project-recent-list .empty-state { grid-column: 1 / -1; }
+#project-recent-list .project-choice { min-height: 58px; }
 .onboarding-dialog {
   width: min(960px, calc(100% - 32px));
   margin: auto;
@@ -938,19 +944,19 @@ body[data-home-ui="ops"] .inbox-item { padding: 18px 14px; }
 .onboarding-steps li[data-state="current"] .onboarding-step-body { gap: 7px; }
 .onboarding-steps li[data-state="done"] { border-color: color-mix(in srgb, var(--green) 46%, var(--rule)); }
 .onboarding-steps li[data-state="done"] .onboarding-step-num { background: var(--green); color: var(--bg); }
-.project-choice {
-  border: 1px solid color-mix(in srgb, var(--rule) 78%, transparent);
+button.project-choice:not(.primary-btn):not(.textbtn):not(.run-summary):not(.copy-button):not([data-close-button]):not([data-button]):not([data-cancel]) {
+  border: 1px solid transparent;
   border-radius: 8px;
-  background: color-mix(in srgb, var(--paper) 82%, transparent);
-  box-shadow: inset 0 1px 0 var(--inset-highlight);
+  background: transparent;
+  box-shadow: none;
   transition: border-color .16s var(--ease-out), background .16s var(--ease-out), transform .16s var(--ease-out);
 }
-.project-choice:hover { border-color: color-mix(in srgb, var(--blue) 48%, var(--rule)); background: color-mix(in srgb, var(--blue-soft) 46%, var(--paper)); transform: translateY(-1px); }
-.project-choice:active { transform: translateY(0); }
+button.project-choice:not(.primary-btn):not(.textbtn):not(.run-summary):not(.copy-button):not([data-close-button]):not([data-button]):not([data-cancel]):hover { border-color: color-mix(in srgb, var(--blue) 28%, transparent); background: color-mix(in srgb, var(--blue-soft) 22%, transparent); transform: translateY(-1px); }
+button.project-choice:not(.primary-btn):not(.textbtn):not(.run-summary):not(.copy-button):not([data-close-button]):not([data-button]):not([data-cancel]):active { transform: translateY(0); }
 .empty-state {
   margin: 0;
-  border-color: color-mix(in srgb, var(--rule) 70%, transparent);
-  background: color-mix(in srgb, var(--paper) 58%, transparent);
+  border-color: transparent;
+  background: transparent;
 }
 @media (max-width: 720px) {
   .onboarding-dialog { width: min(100% - 18px, 560px); }
