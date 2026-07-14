@@ -12,9 +12,9 @@ const runState = readFileSync(new URL('../src/server/run-state.js', import.meta.
 const routes = readFileSync(new URL('../src/server/routes.js', import.meta.url), 'utf8');
 const threads = readFileSync(new URL('../src/server/threads.js', import.meta.url), 'utf8');
 
-test('unsigned hosted users go to the homepage landing route from API auth failures', () => {
+test('unsigned hosted users go to the landing route from API auth failures', () => {
   assert.doesNotMatch(entry, /\/api\/me/);
-  assert.match(authRedirect, /const HOMEPAGE_PATH = '\/homepage';/);
+  assert.match(authRedirect, /const HOMEPAGE_PATH = '\/landing';/);
   assert.match(authRedirect, /payload\?\.authRequired/);
   assert.match(authRedirect, /Number\(response\?\.status\) !== 401/);
   assert.match(authRedirect, /location\.replace\(homepageRedirectUrl\(\)\)/);

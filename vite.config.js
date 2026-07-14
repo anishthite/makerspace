@@ -7,11 +7,25 @@ import { defineConfig } from 'vite';
 const frontendRoot = resolve(import.meta.dirname, 'frontend');
 const page = (file) => resolve(frontendRoot, file);
 
+
+function cleanRouteAliasPlugin() {
+  return {
+    name: 'spanner-clean-route-aliases',
+    configureServer(server) {
+      server.middlewares.use((request, _response, next) => {
+        const url = new URL(request.url || '/', 'http://localhost');
+        if (url.pathname === '/landing' || url.pathname === '/landing/') request.url = `/desktop.html${url.search}`;
+        next();
+      });
+    },
+  };
+}
+
 export default defineConfig({
   root: frontendRoot,
   envDir: import.meta.dirname,
   publicDir: resolve(frontendRoot, 'public'),
-  plugins: [react(), tailwindcss()],
+  plugins: [cleanRouteAliasPlugin(), react(), tailwindcss()],
   resolve: {
     alias: {
       '@': resolve(frontendRoot, 'src'),

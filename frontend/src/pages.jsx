@@ -362,109 +362,224 @@ export function SettingsPage() {
 }
 
 function DesktopLandingPage() {
-  const receiptRows = [
-    ['AGENTS.md', '✓'],
-    ['skills + prompts', '✓'],
-    ['providers', '✓'],
-    ['env keys', '6 scoped'],
-    ['checks', 'npm test'],
+  const workflowSteps = [
+    ['Choose a repo', 'Pick a GitHub repo or local folder. Spanner keeps the boring project setup out of the prompt.'],
+    ['Build the sandbox', 'A remote machine starts with the repo, setup commands, and scoped credentials.'],
+    ['Load your Pi setup', 'AGENTS.md, skills, prompts, providers, and checks arrive before work starts.'],
+    ['Let the agent work', 'Pi reads files, edits a branch, runs commands, and streams the transcript back.'],
+    ['Review the evidence', 'Diffs, logs, screenshots, notes, and failures stay attached to the run.'],
+    ['Resume later', 'Reopen the thread tomorrow with the same rules and a fresh sandbox.'],
   ];
-  const workRows = [
-    ['diff', '3 files'],
-    ['checks', 'passed'],
-    ['screenshot', <span className="landing-thumb" aria-hidden="true" />],
-  ];
-  const cards = [
-    ['Starts with your Pi', 'Every run begins by loading the setup you already trust: repo instructions, skills, prompts, providers, setup commands, secrets, and checks.'],
-    ['Runs in a real browser sandbox', 'Start, watch, and reopen Pi work from any browser while the coding agent runs on a remote machine built for the repo.'],
-    ['Comes back with evidence', 'Standing runs return diffs, logs, checks, screenshots, decisions, failures, and next actions—not vague agent summaries.'],
-  ];
+  const proofMarkdown = `# Remote Pi Plan
+Goal: keep local Pi setup and remote sandbox work reviewable.
+
+Move the setup receipt above {==the agent transcript==}{>>This should be the main proof, not a footnote.<<}{#c1}
+
+{~~remote runner~>browser sandbox~~}{#s1} that loads AGENTS.md, skills, prompts, and checks before work starts.
+
+Keep screenshots, diffs, logs, and comments attached to the run.`;
   return <>
     <style>{`
-      /* Design source: DESIGN.md */
-      .landing-page { --ds-bg:#FAF8F3; --ds-surface:#FFFDF8; --ds-surface-2:#EFEAD9; --ds-text:#241A12; --ds-muted:#4B3A2D; --ds-quiet:#78635A; --ds-line:rgba(31,94,156,.16); --ds-line-strong:rgba(31,94,156,.30); --ds-accent:#1F5E9C; --ds-success:#17634A; min-height:100vh; background-color:var(--ds-bg); background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.14, 0 0 0 0 0.10, 0 0 0 0 0.07, 0 0 0 0.025 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>"); color:var(--ds-text); font:16px/1.5 var(--sans); }
-      .landing-shell { width:min(1120px, calc(100% - 40px)); margin:0 auto; padding:28px 0 56px; }
-      .landing-nav, .landing-actions, .landing-footer, .landing-links, .landing-browser-title, .landing-tabs, .landing-row, .landing-tomorrow { display:flex; align-items:center; }
-      .landing-nav, .landing-footer { justify-content:space-between; gap:16px; }
-      .landing-brand { display:inline-flex; align-items:center; gap:10px; color:inherit; text-decoration:none; font-weight:900; letter-spacing:-.05em; }
-      .landing-brand img { width:30px; height:30px; image-rendering:pixelated; }
-      .landing-links { gap:14px; }
-      .landing-links a, .landing-footer a, .landing-link-button { color:var(--ds-muted); font:inherit; font-size:14px; font-weight:800; text-decoration:none; }
-      .landing-link-button { border:1px solid var(--ds-line); border-radius:8px; padding:8px 11px; background:var(--ds-surface); cursor:pointer; text-transform:lowercase; letter-spacing:.04em; }
-      .landing-page .landing-link-button { background:var(--ds-surface) !important; color:var(--ds-muted) !important; }
-      .landing-hero { display:grid; grid-template-columns:minmax(0,1fr) minmax(320px,400px); gap:clamp(30px,6vw,78px); align-items:center; padding:clamp(58px,10vw,116px) 0 46px; }
-      .landing-kicker, .landing-eyebrow { margin:0; color:var(--ds-accent); font-size:11px; font-weight:900; letter-spacing:.13em; text-transform:lowercase; }
-      .landing-page h1 { max-width:830px; margin:12px 0 18px; font-size:clamp(54px,8.8vw,104px); line-height:.84; letter-spacing:-.1em; font-weight:900; }
-      .landing-lede { max-width:710px; margin:0; color:var(--ds-muted); font-size:clamp(19px,2.2vw,24px); line-height:1.34; font-weight:650; }
-      .landing-actions { justify-content:flex-start; flex-wrap:wrap; gap:12px; margin-top:34px; }
-      .landing-button { display:inline-flex; min-height:48px; align-items:center; justify-content:center; border:1px solid var(--ds-accent); border-radius:8px; padding:0 18px; background:var(--ds-accent); color:#FAF8F3; font-weight:900; text-decoration:none; text-transform:lowercase; }
-      .landing-button.secondary { background:var(--ds-surface); color:var(--ds-accent); border-color:var(--ds-line); }
-      .landing-browser, .landing-card, .signin-modal { border:1px solid var(--ds-line); background:var(--ds-surface); }
-      .landing-browser { border-radius:22px; overflow:hidden; box-shadow:0 24px 80px rgba(31,94,156,.10); }
-      .landing-browser-title { justify-content:space-between; gap:12px; padding:13px 16px; border-bottom:1px solid var(--ds-line); }
-      .landing-tabs { gap:6px; }
-      .landing-dot { width:9px; height:9px; border-radius:999px; background:#B8AB9B; }
-      .landing-url { margin-left:8px; border:1px solid var(--ds-line); border-radius:999px; padding:5px 10px; color:var(--ds-quiet); background:#fff; font-size:12px; font-weight:800; }
-      .landing-state { color:var(--ds-success); font-size:13px; font-weight:900; }
-      .landing-browser-body { display:grid; grid-template-columns:.88fr 1.12fr; gap:12px; padding:14px; }
-      .landing-receipt, .landing-work, .landing-tomorrow { border:1px solid var(--ds-line); border-radius:16px; background:#FFFDF8; }
-      .landing-receipt, .landing-work { padding:13px; }
-      .landing-receipt h2, .landing-work h2 { margin:0 0 10px; font-size:16px; letter-spacing:-.04em; font-weight:900; }
-      .landing-row { justify-content:space-between; gap:8px; border-top:1px solid var(--ds-line); padding:9px 0; color:var(--ds-muted); font-size:13px; font-weight:800; }
-      .landing-row:first-of-type { border-top:0; }
-      .landing-check { color:var(--ds-success); font-weight:900; }
-      .landing-terminal { border:1px solid var(--ds-line-strong); border-radius:12px; padding:11px; background:#DDEBF6; color:var(--ds-text); font-weight:800; }
-      .landing-terminal span { display:block; margin-top:5px; color:var(--ds-muted); font-size:13px; }
-      .landing-thumb { width:54px; height:34px; border:1px solid var(--ds-line); border-radius:8px; background:linear-gradient(135deg,#DDEBF6,#DDEDE6); }
-      .landing-tomorrow { grid-column:1/-1; justify-content:space-between; gap:12px; padding:12px 13px; background:#DDEDE6; color:var(--ds-muted); font-weight:800; }
-      .landing-tomorrow strong { color:var(--ds-success); }
-      .landing-strip { border-top:1px solid var(--ds-line); border-bottom:1px solid var(--ds-line); padding:17px 0; color:var(--ds-muted); font-weight:850; }
-      .landing-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; margin-top:16px; }
-      .landing-card { min-height:148px; border-radius:16px; padding:18px; }
-      .landing-card h2 { margin:0 0 8px; font-size:20px; letter-spacing:-.045em; line-height:1.1; font-weight:900; }
-      .landing-page p { margin:0; color:var(--ds-muted); }
-      .landing-footer { margin-top:52px; color:var(--ds-muted); font-size:13px; }
-      .signin-modal { width:min(480px, calc(100% - 28px)); border-radius:12px; padding:0; color:var(--ds-text); box-shadow:0 24px 70px rgba(31,94,156,.10); }
+      /* Design source: roughdraft.md + DESIGN.md */
+      .landing-page { --ds-bg:var(--bg,#050607); --ds-surface:var(--paper,#1D2530); --ds-surface-2:var(--paper-2,#263142); --ds-text:var(--ink,#F1F5FA); --ds-muted:var(--ink-2,#D3DAE7); --ds-quiet:var(--ink-3,#9BA8BA); --ds-line:var(--rule,rgba(140,189,253,.18)); --ds-line-strong:var(--rule-2,rgba(140,189,253,.32)); --ds-accent:var(--blue,#8CBDFD); --ds-green:#64da70; --ds-yellow:#d99a18; --ds-red:var(--red,#F1A1B6); --landing-font:'Inter Variable', Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; position:relative; min-height:100svh; overflow:hidden; background:var(--ds-bg); color:var(--ds-text); font:16px/1.5 var(--landing-font); font-optical-sizing:auto; }
+      .landing-page::before { content:''; position:absolute; inset:0; z-index:1; pointer-events:none; opacity:.16; background-image:radial-gradient(rgba(245,242,234,.22) .55px, transparent .7px),radial-gradient(rgba(245,242,234,.12) .45px, transparent .7px); background-position:0 0,2px 2px; background-size:4px 4px; }
+      .landing-shell { position:relative; z-index:2; display:grid; grid-template-rows:auto 1fr; width:min(1500px, calc(100% - 48px)); min-height:100svh; margin:0 auto; padding:32px 0; }
+      .landing-nav, .landing-links, .landing-actions, .landing-shot-menu, .landing-window-title, .landing-step-head, .landing-footer, .landing-result-toolbar, .landing-agent-head { display:flex; align-items:center; }
+      .landing-nav, .landing-footer, .landing-agent-head { justify-content:space-between; gap:18px; }
+      .landing-brand { display:inline-flex; align-items:center; gap:10px; color:var(--ds-text); text-decoration:none; font-size:clamp(18px,.9rem + .35vw,22px); font-weight:850; letter-spacing:-.03em; }
+      .landing-brand-mark { display:block; width:34px; height:34px; object-fit:contain; transform:translateY(-1px); }
+      .landing-links { gap:18px; }
+      .landing-links a, .landing-footer a, .landing-link-button, .landing-github-link { color:var(--ds-quiet); font:inherit; font-size:13px; font-weight:750; text-decoration:none; }
+      .landing-link-button { border:0; background:transparent; cursor:pointer; padding:0; }
+      .landing-page .landing-link-button { color:var(--ds-quiet) !important; background:transparent !important; }
+      .landing-hero { align-self:center; display:grid; grid-template-columns:minmax(0,.92fr) minmax(360px,.54fr); gap:clamp(34px,6vw,92px); align-items:center; padding:0 0 clamp(48px,12vh,120px); }
+      .landing-page h1 { max-width:920px; margin:0 0 24px; color:var(--ds-text); font-size:clamp(60px,8.2vw,112px); line-height:.9; letter-spacing:-.055em; font-weight:650; }
+      .landing-lede { max-width:760px; margin:0; color:var(--ds-muted); font-size:clamp(18px,1.35vw,24px); line-height:1.08; font-weight:650; }
+      .landing-actions { flex-wrap:wrap; gap:14px; margin-top:32px; }
+      .landing-button { display:inline-flex; min-height:56px; align-items:center; justify-content:center; border:1px solid color-mix(in srgb,var(--ds-accent) 70%,var(--ds-line)); border-radius:10px; padding:0 22px; background:#f3f1e8; color:#081018; font-size:clamp(18px,1rem + .45vw,20px); font-weight:950; text-decoration:none; }
+      .landing-github-link { display:inline-flex; min-height:56px; align-items:center; color:color-mix(in srgb,var(--ds-text) 58%,transparent); }
+      .landing-agent-loop { position:relative; min-height:520px; border-left:1px solid rgba(255,255,255,.08); padding-left:30px; }
+      .landing-agent-head { position:relative; z-index:1; margin-bottom:18px; color:color-mix(in srgb,var(--ds-text) 58%,transparent); font:900 12px/1 ui-monospace,SFMono-Regular,Menlo,monospace; text-transform:lowercase; }
+      .landing-agent-stack { position:relative; z-index:1; height:352px; overflow:hidden; mask-image:linear-gradient(transparent 0,#000 9%,#000 88%,transparent 100%); }
+      .landing-agent { position:absolute; left:0; right:0; display:grid; grid-template-columns:34px minmax(0,1fr) auto; gap:14px; align-items:center; min-height:74px; border:1px solid rgba(255,255,255,.07); border-radius:15px; background:linear-gradient(90deg,rgba(255,255,255,.035),rgba(255,255,255,.012)); padding:14px 16px; transform:translateY(calc(var(--slot) * 86px)); transition:transform .72s cubic-bezier(.2,.8,.2,1),opacity .45s ease,border-color .3s ease,background .3s ease; }
+      .landing-agent.is-leaving { transform:translateY(-88px); opacity:0; }
+      .landing-agent.is-entering { transform:translateY(430px); opacity:0; }
+      .landing-agent.is-done { border-color:rgba(100,218,112,.22); background:linear-gradient(90deg,rgba(100,218,112,.055),rgba(255,255,255,.012)); }
+      .landing-agent-dot { position:relative; width:22px; height:22px; }
+      .landing-agent-dot::before, .landing-agent-dot::after { content:''; position:absolute; inset:50% auto auto 50%; border-radius:999px; transform:translate(-50%,-50%); }
+      .landing-agent-dot::before { width:10px; height:10px; background:var(--ds-yellow); box-shadow:0 0 15px rgba(217,154,24,.88),0 0 34px rgba(217,154,24,.28); animation:landing-agent-pulse 1.8s ease-in-out infinite; }
+      .landing-agent-dot::after { width:26px; height:26px; background:rgba(217,154,24,.11); animation:landing-agent-halo 1.8s ease-in-out infinite; }
+      .landing-agent.is-done .landing-agent-dot::before { background:var(--ds-green); box-shadow:0 0 15px rgba(100,218,112,.9),0 0 34px rgba(100,218,112,.3); animation:none; }
+      .landing-agent.is-done .landing-agent-dot::after { background:rgba(100,218,112,.12); animation:landing-agent-pop .55s ease-out both; }
+      .landing-agent strong { display:block; overflow:hidden; color:var(--ds-text); font-size:18px; line-height:1.1; white-space:nowrap; text-overflow:ellipsis; letter-spacing:-.035em; }
+      .landing-agent small { display:block; margin-top:4px; color:var(--ds-quiet); font-size:14px; }
+      .landing-agent-time { color:color-mix(in srgb,var(--ds-text) 45%,transparent); font:800 12px/1 ui-monospace,SFMono-Regular,Menlo,monospace; }
+      .landing-agent-composer { position:relative; z-index:1; display:grid; grid-template-columns:22px minmax(0,1fr) auto; gap:12px; align-items:center; min-height:54px; margin-top:14px; border:1px solid rgba(255,255,255,.09); border-radius:15px; background:rgba(255,255,255,.018); padding:0 14px; color:color-mix(in srgb,var(--ds-text) 66%,transparent); font:800 13px/1 ui-monospace,SFMono-Regular,Menlo,monospace; transition:border-color .2s ease,box-shadow .2s ease; }
+      .landing-agent-composer.is-submitting { border-color:rgba(217,154,24,.26); box-shadow:0 0 34px rgba(217,154,24,.08); }
+      .landing-agent-plus, .landing-agent-return { color:color-mix(in srgb,var(--ds-text) 42%,transparent); }
+      .landing-agent-prompt { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+      .landing-agent-caret { display:inline-block; width:1px; height:18px; background:color-mix(in srgb,var(--ds-text) 58%,transparent); animation:landing-agent-caret 1s steps(1,end) infinite; }
+      @keyframes landing-agent-pulse { 0%,100%{transform:translate(-50%,-50%) scale(.76);opacity:.62} 50%{transform:translate(-50%,-50%) scale(1.08);opacity:1} }
+      @keyframes landing-agent-halo { 0%,100%{transform:translate(-50%,-50%) scale(.72);opacity:.2} 50%{transform:translate(-50%,-50%) scale(1.18);opacity:.46} }
+      @keyframes landing-agent-pop { from{transform:translate(-50%,-50%) scale(.8);opacity:.65} to{transform:translate(-50%,-50%) scale(1.35);opacity:0} }
+      @keyframes landing-agent-caret { 0%,50%{opacity:1} 51%,100%{opacity:0} }
+      .landing-shot, .landing-workflow, .landing-proof, .landing-footer { display:none; }
+      .landing-shot { margin-top:18px; overflow:hidden; border:1px solid var(--ds-line); border-radius:14px; background:#101722; box-shadow:var(--shadow-xl,0 24px 70px rgba(0,0,0,.24)); }
+      .landing-shot-menu { min-height:34px; justify-content:flex-start; gap:22px; padding:0 16px; background:linear-gradient(180deg,rgba(140,189,253,.22),rgba(140,189,253,.06)); color:var(--ds-muted); font-size:13px; font-weight:800; }
+      .landing-shot-menu time { margin-left:auto; }
+      .landing-shot-body { position:relative; min-height:760px; padding:48px min(5vw,72px); background:radial-gradient(circle at 80% 18%,rgba(140,189,253,.34) 0 16%,transparent 30%),radial-gradient(circle at 98% 92%,rgba(38,96,203,.72) 0 18%,transparent 40%),radial-gradient(circle at 8% 88%,rgba(142,219,210,.35) 0 17%,transparent 36%),linear-gradient(135deg,#1B2130 0,#172234 42%,#111827 100%); }
+      .landing-app-window { width:min(1120px,88%); min-height:690px; overflow:hidden; border:1px solid var(--ds-line); border-radius:18px; background:color-mix(in srgb,var(--ds-surface) 92%,transparent); box-shadow:0 24px 80px rgba(0,0,0,.38); }
+      .landing-window-title { min-height:42px; gap:12px; border-bottom:1px solid var(--ds-line); padding:0 16px; color:var(--ds-quiet); font:800 13px/1 var(--landing-font); }
+      .landing-lights { display:inline-flex; gap:8px; }
+      .landing-lights span { width:11px; height:11px; border-radius:999px; background:#F38BA8; }
+      .landing-lights span:nth-child(2) { background:var(--ds-yellow); }
+      .landing-lights span:nth-child(3) { background:var(--ds-green); }
+      .landing-window-content { position:relative; display:grid; grid-template-columns:minmax(520px,1fr) minmax(220px,.42fr); gap:46px; padding:60px 74px 48px; }
+      .landing-doc, .landing-result, .landing-mini-doc { border:1px solid var(--ds-line); background:var(--ds-surface); box-shadow:var(--shadow-md,0 10px 30px rgba(0,0,0,.20)); }
+      .landing-doc { min-height:540px; border-radius:14px; padding:56px min(5vw,70px); }
+      .landing-doc h2, .landing-section-title { margin:0; font-size:clamp(36px,4vw,54px); line-height:.95; letter-spacing:-.06em; font-weight:900; }
+      .landing-doc h2 { max-width:430px; }
+      .landing-doc p { margin:24px 0 0; max-width:520px; color:var(--ds-muted); font-size:19px; line-height:1.55; }
+      .landing-doc mark { border-radius:4px; background:color-mix(in srgb,var(--ds-yellow) 42%,transparent); color:var(--ds-text); }
+      .landing-callout { border-left:4px solid var(--ds-line-strong); padding-left:22px; color:var(--ds-quiet) !important; }
+      .landing-checks { display:grid; gap:12px; margin-top:48px; color:var(--ds-muted); font-size:18px; font-weight:750; }
+      .landing-checks span { display:flex; gap:12px; align-items:center; }
+      .landing-checks b { display:grid; width:20px; height:20px; place-items:center; border-radius:5px; background:var(--ds-accent); color:#08111D; font-size:13px; }
+      .landing-terminal-card { border:1px solid rgba(0,0,0,.52); border-radius:12px; background:#101722; color:var(--ds-text); box-shadow:0 22px 54px rgba(0,0,0,.34); font-family:var(--landing-font); }
+      .landing-shot .landing-terminal-card { position:absolute; top:100px; right:48px; width:min(620px,45%); }
+      .landing-terminal-top { display:flex; min-height:38px; align-items:center; justify-content:space-between; gap:12px; border-bottom:1px solid var(--ds-line); padding:0 14px; color:var(--ds-quiet); font-size:12px; font-weight:850; }
+      .landing-terminal-body { display:grid; gap:16px; padding:20px; color:var(--ds-muted); font-size:14px; line-height:1.55; }
+      .landing-prompt { margin:0 -20px; padding:8px 20px; background:rgba(255,255,255,.06); color:var(--ds-text); }
+      .landing-tool { color:var(--ds-accent); }
+      .landing-comments { align-self:end; border-left:2px solid var(--ds-line-strong); padding-left:24px; }
+      .landing-comment { margin-top:22px; color:var(--ds-muted); font-size:15px; line-height:1.55; }
+      .landing-avatar { display:inline-grid; width:28px; height:28px; place-items:center; margin-right:8px; border-radius:999px; background:var(--ds-surface-2); color:var(--ds-text); font-size:12px; font-weight:850; }
+      .landing-workflow { margin-top:72px; border-top:1px solid var(--ds-line); padding-top:52px; }
+      .landing-workflow h2, .landing-proof h2 { text-align:center; }
+      .landing-workflow .landing-section-title { font-size:clamp(56px,2.4rem + 2.6vw,68px); letter-spacing:-.055em; }
+      .landing-proof .landing-section-title { font-size:clamp(34px,2vw + 18px,46px); letter-spacing:-.055em; }
+      .landing-workflow-grid { display:grid; grid-template-columns:minmax(0,.8fr) minmax(300px,1.2fr); gap:clamp(28px,5vw,70px); align-items:start; margin-top:36px; }
+      .landing-workflow-visual { position:sticky; top:28px; }
+      .landing-workflow-visual .landing-terminal-card { min-height:260px; }
+      .landing-mini-doc { margin-top:18px; border-radius:12px; padding:22px; }
+      .landing-mini-doc h3 { margin:0 0 10px; font-size:24px; letter-spacing:-.04em; }
+      .landing-mini-doc p { margin:0; color:var(--ds-muted); }
+      .landing-steps { display:grid; gap:0; margin:0; padding:0; list-style:none; }
+      .landing-step { min-height:270px; border-top:1px solid var(--ds-line); padding:42px 0; }
+      .landing-step:first-child { border-top:0; }
+      .landing-step-head { gap:16px; }
+      .landing-step-num { display:grid; min-width:48px; height:48px; place-items:center; border-radius:999px; background:var(--ds-text); color:var(--ds-bg); font-size:28px; font-weight:900; }
+      .landing-step h3 { margin:0; font-size:clamp(28px,3vw,42px); line-height:1; letter-spacing:-.055em; font-weight:900; }
+      .landing-step p { max-width:560px; margin:16px 0 0 64px; color:var(--ds-muted); font-size:18px; line-height:1.55; }
+      .landing-proof { margin-top:64px; border-top:1px solid var(--ds-line); padding-top:50px; }
+      .landing-proof-intro { max-width:760px; margin:14px auto 0; color:var(--ds-muted); text-align:center; font-size:18px; }
+      .landing-proof-grid { display:grid; grid-template-columns:minmax(280px,.72fr) 40px minmax(0,1.28fr); gap:18px; align-items:stretch; margin-top:30px; }
+      .landing-pane-label { min-height:34px; color:var(--ds-quiet); font-size:12px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+      .landing-source pre { position:relative; min-height:430px; margin:0; overflow:auto; border:1px solid rgba(0,0,0,.52); border-radius:12px; background:#101722; color:var(--ds-muted); padding:52px 18px 18px; box-shadow:0 20px 48px rgba(0,0,0,.28); font:13px/1.55 var(--landing-font); white-space:pre-wrap; }
+      .landing-source pre::before { content:'markdown_source'; position:absolute; top:0; right:0; left:0; min-height:40px; border-bottom:1px solid var(--ds-line); padding:12px 14px 0 72px; color:var(--ds-quiet); font:800 12px/1 var(--landing-font); }
+      .landing-source pre::after { content:''; position:absolute; top:15px; left:14px; width:10px; height:10px; border-radius:999px; background:#F38BA8; box-shadow:18px 0 0 var(--ds-yellow),36px 0 0 var(--ds-green); }
+      .landing-arrow { display:grid; place-items:start center; padding-top:58px; color:var(--ds-quiet); font-size:24px; }
+      .landing-result { min-height:430px; border-radius:14px; overflow:hidden; padding:0; }
+      .landing-result-toolbar { min-height:40px; gap:10px; border-bottom:1px solid var(--ds-line); padding:0 14px; color:var(--ds-quiet); font-size:12px; font-weight:800; }
+      .landing-result-body { padding:34px 42px 42px; }
+      .landing-result h3 { margin:0 0 18px; font-size:34px; line-height:1; letter-spacing:-.05em; }
+      .landing-result p { color:var(--ds-muted); font-size:17px; line-height:1.65; }
+      .landing-highlight { border-radius:3px; background:color-mix(in srgb,var(--ds-yellow) 36%,transparent); color:var(--ds-text); }
+      .landing-old { border-radius:4px; background:color-mix(in srgb,var(--ds-red) 20%,transparent); color:var(--ds-red); text-decoration:line-through; text-decoration-color:var(--ds-red); }
+      .landing-new { border-radius:4px; background:color-mix(in srgb,var(--ds-green) 20%,transparent); color:var(--ds-green); text-decoration:underline; text-decoration-color:var(--ds-green); text-underline-offset:3px; }
+      .landing-thread { margin-top:22px; display:grid; grid-template-columns:36px minmax(0,1fr); gap:12px; border-left:2px solid var(--ds-line-strong); padding-left:16px; }
+      .signin-modal { width:min(480px, calc(100% - 28px)); border:1px solid var(--ds-line); border-radius:12px; padding:0; background:var(--ds-surface); color:var(--ds-text); box-shadow:0 24px 70px rgba(0,0,0,.52); }
       .signin-modal::backdrop { background:rgba(0,0,0,.68); backdrop-filter:blur(5px); }
       .modal-card { padding:24px; }
       .modal-head { display:flex; align-items:flex-start; justify-content:space-between; gap:18px; margin-bottom:22px; }
-      .modal-head h2 { margin:4px 0 8px; font-size:30px; line-height:1; }
+      .modal-head h2 { margin:0 0 8px; font-size:30px; line-height:1; }
+      .modal-head p { color:var(--ds-muted); }
       .close-button { width:34px; height:34px; border:1px solid var(--ds-line); border-radius:999px; background:transparent; color:var(--ds-muted); font-size:20px; cursor:pointer; }
-      .github-button { width:100%; min-height:50px; border:1px solid var(--ds-accent); border-radius:8px; background:var(--ds-accent); color:#FAF8F3; font-weight:900; cursor:pointer; text-transform:lowercase; }
+      .github-button { width:100%; min-height:50px; border:1px solid color-mix(in srgb,var(--ds-accent) 70%,var(--ds-line)); border-radius:8px; background:var(--ds-accent); color:#08111D; font-weight:900; cursor:pointer; }
       .github-button:disabled { opacity:.55; cursor:not-allowed; }
       .modal-proof { margin:18px 0 0; padding-left:18px; color:var(--ds-muted); }
       .modal-status { min-height:21px; margin-top:14px; color:var(--ds-muted); font-size:14px; }
-      @media (max-width:900px) { .landing-shell { width:min(100% - 28px,1120px); } .landing-nav, .landing-footer { align-items:flex-start; flex-direction:column; } .landing-links { width:100%; justify-content:space-between; } .landing-hero, .landing-grid, .landing-browser-body { grid-template-columns:1fr; } .landing-button { width:100%; } }
+      .landing-footer { margin-top:64px; border-top:1px solid var(--ds-line); padding-top:22px; color:var(--ds-muted); font-size:14px; }
+      @media (max-width:900px) { .landing-page { overflow:auto; } .landing-shell { width:min(100% - 28px,1120px); padding-top:24px; } .landing-nav, .landing-footer { align-items:flex-start; flex-direction:column; } .landing-links { width:100%; justify-content:space-between; } .landing-hero { grid-template-columns:1fr; padding-top:58px; } .landing-page h1 { font-size:clamp(52px,17vw,82px); } .landing-agent-loop { min-height:440px; border-left:0; padding-left:0; } .landing-agent-time { display:none; } .landing-button, .landing-github-link { width:100%; justify-content:center; } .landing-shot-menu time, .landing-shot-menu span:nth-of-type(n+3) { display:none; } .landing-shot-body { min-height:auto; padding:22px; } .landing-app-window { width:auto; min-height:0; } .landing-window-content { display:block; padding:24px; } .landing-doc { min-height:0; padding:30px 24px; } .landing-shot .landing-terminal-card { position:static; width:auto; margin-top:16px; } .landing-comments { margin-top:18px; } .landing-workflow-grid, .landing-proof-grid { grid-template-columns:1fr; } .landing-workflow-visual { position:static; } .landing-step { min-height:0; } .landing-step p { margin-left:0; } .landing-arrow { display:none; } }
     `}</style>
     <div className="landing-page">
       <main className="landing-shell">
         <nav className="landing-nav" aria-label="Spanner navigation">
-          <a className="landing-brand" href="/"><img src="/logo-mark.svg" alt="" aria-hidden="true" /><span>spanner</span></a>
+          <a className="landing-brand" href="/"><img className="landing-brand-mark" src="/logo-mark.svg" alt="" aria-hidden="true" />spanner</a>
           <div className="landing-links"><button id="signin-open" className="landing-link-button" type="button" data-open-signin>Sign in</button><a href="/">web app</a></div>
         </nav>
+
         <section className="landing-hero" aria-labelledby="title">
           <div>
-            <p className="landing-kicker">remote pi, your setup</p>
-            <h1 id="title">Run your Pi setup in a browser sandbox.</h1>
-            <p className="landing-lede">Spanner opens a real remote coding sandbox, loads your AGENTS.md, skills, prompts, providers, setup commands, and checks, then returns the work as diffs, logs, screenshots, and a run you can reopen tomorrow.</p>
-            <div className="landing-actions"><a className="landing-button" href="/">Open a Pi sandbox</a><a className="landing-button secondary" href="#receipt">See the setup receipt</a></div>
+            <h1 id="title">Easier remote coding with your agent</h1>
+            <p className="landing-lede">Spanner gives Pi a real browser sandbox, loads your AGENTS.md, skills, prompts, providers, setup commands, and checks, then brings back evidence you can review.</p>
+            <div className="landing-actions"><a className="landing-button" href="/">Open a Pi sandbox</a><a className="landing-github-link" href="https://github.com/anishthite/spanner-downloads/releases/latest">View desktop release</a></div>
           </div>
-          <aside className="landing-browser" aria-label="Example agent run" id="receipt">
-            <div className="landing-browser-title"><div className="landing-tabs"><span className="landing-dot"></span><span className="landing-dot"></span><span className="landing-dot"></span><span className="landing-url">spanner.run/thread/pi</span></div><span className="landing-state">remote ready</span></div>
-            <div className="landing-browser-body">
-              <div className="landing-receipt"><p className="landing-eyebrow">setup receipt</p><h2>Loaded before work starts</h2>{receiptRows.map(([label, value]) => <div className="landing-row" key={label}><span>{label}</span><span className={value === '✓' ? 'landing-check' : ''}>{value}</span></div>)}</div>
-              <div className="landing-work"><p className="landing-eyebrow">remote sandbox</p><h2>Pi is working in the repo</h2><div className="landing-terminal">$ pi fix the auth callback race<span>reading files · editing branch · running checks</span></div>{workRows.map(([label, value]) => <div className="landing-row" key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>
-              <div className="landing-tomorrow"><span>Tomorrow&apos;s pass</span><strong>same Pi setup · fresh sandbox · new evidence</strong></div>
+          <aside className="landing-agent-loop" aria-label="Live agent status loop">
+            <div className="landing-agent-head"><span>running agents</span></div>
+            <div className="landing-agent-stack" data-landing-agent-loop>
+              <article className="landing-agent" style={{ '--slot': 0 }}><span className="landing-agent-dot"></span><span><strong>Settings Page Review</strong><small>answering</small></span><span className="landing-agent-time">running</span></article>
+              <article className="landing-agent" style={{ '--slot': 1 }}><span className="landing-agent-dot"></span><span><strong>Mobile UI Walkthrough</strong><small>running command</small></span><span className="landing-agent-time">running</span></article>
+              <article className="landing-agent" style={{ '--slot': 2 }}><span className="landing-agent-dot"></span><span><strong>Separation Borders</strong><small>editing CSS</small></span><span className="landing-agent-time">running</span></article>
+              <article className="landing-agent" style={{ '--slot': 3 }}><span className="landing-agent-dot"></span><span><strong>Main Screen Layout</strong><small>thinking</small></span><span className="landing-agent-time">running</span></article>
             </div>
+            <div className="landing-agent-composer" data-landing-agent-composer aria-hidden="true"><span className="landing-agent-plus">+</span><span className="landing-agent-prompt" data-landing-agent-prompt></span><span className="landing-agent-return">↵</span></div>
           </aside>
         </section>
-        <div className="landing-strip">Your Pi habits · fresh remote sandboxes · reviewable work · repeat tomorrow</div>
-        <section className="landing-grid" aria-label="Spanner features">{cards.map(([title, body]) => <article className="landing-card" key={title}><h2>{title}</h2><p>{body}</p></article>)}</section>
-        <footer className="landing-footer"><span>For Pi users who want their local setup to keep working when the laptop closes, the repo needs another pass, or tomorrow&apos;s agent should remember today&apos;s rules.</span><a href="https://github.com/anishthite/spanner-downloads/releases/latest">desktop release</a></footer>
+
+        <section className="landing-shot" aria-label="Spanner review workspace">
+          <div className="landing-shot-menu"><strong>Spanner</strong><span>File</span><span>Edit</span><span>View</span><span>Window</span><span>Help</span><time>Tue Apr 28&nbsp;&nbsp;11:47 AM</time></div>
+          <div className="landing-shot-body">
+            <div className="landing-app-window">
+              <div className="landing-window-title"><span className="landing-lights" aria-hidden="true"><span></span><span></span><span></span></span><span>~/workspaces/spanner/thread/remote-run.md</span></div>
+              <div className="landing-window-content">
+                <article className="landing-doc" aria-label="Run brief">
+                  <h2>Fix plan ready for review</h2>
+                  <p>Spanner opened the repo, loaded <mark>your Pi defaults</mark>, and kept the agent work tied to one branch.</p>
+                  <p className="landing-callout">Please check the risk notes, the screenshot, and the failing-test explanation before continuing.</p>
+                  <div className="landing-checks" aria-label="Run checklist"><span><b>✓</b> setup receipt saved</span><span><b>✓</b> diff and logs attached</span><span><b>□</b> user review before merge</span></div>
+                </article>
+                <aside className="landing-comments" aria-label="Review comments"><div className="landing-comment"><span className="landing-avatar">A</span><strong>AI</strong><br />The run used your existing AGENTS.md and only scoped GitHub credentials.</div><div className="landing-comment"><span className="landing-avatar">Y</span><strong>You</strong><br />Looks safe. Continue with the smaller fix first.</div></aside>
+              </div>
+            </div>
+            <aside className="landing-terminal-card" aria-label="Agent terminal">
+              <div className="landing-terminal-top"><span className="landing-lights" aria-hidden="true"><span></span><span></span><span></span></span><span>spanner / remote-pi</span></div>
+              <div className="landing-terminal-body"><div>Coding agent<br /><span style={{ color: 'var(--ds-quiet)' }}>workspace ~/repo</span></div><p className="landing-prompt">› fix the auth callback race and show evidence</p><div><span className="landing-tool">Read</span> frontend/src/runtime/desktop.js</div><div><span className="landing-tool">Edit</span> src/server/auth.js</div><div><span className="landing-tool">Check</span> npm test</div><div>Ready: diff, logs, screenshot, next action.</div></div>
+            </aside>
+          </div>
+        </section>
+
+        <section className="landing-workflow" id="how-it-works" aria-labelledby="workflow-title">
+          <h2 id="workflow-title" className="landing-section-title">How it works</h2>
+          <div className="landing-workflow-grid">
+            <ol className="landing-steps">
+              {workflowSteps.map(([title, body], index) => <li className="landing-step" key={title}><div className="landing-step-head"><span className="landing-step-num">{index + 1}</span><h3>{title}</h3></div><p>{body}</p></li>)}
+            </ol>
+            <div className="landing-workflow-visual">
+              <aside className="landing-terminal-card" aria-label="Workflow terminal">
+                <div className="landing-terminal-top"><span className="landing-lights" aria-hidden="true"><span></span><span></span><span></span></span><span>local-agent / spanner</span></div>
+                <div className="landing-terminal-body"><div>Coding agent<br /><span style={{ color: 'var(--ds-quiet)' }}>workspace ~/project</span></div><p className="landing-prompt">› run this in a clean remote sandbox</p><div><span className="landing-tool">Loaded</span> AGENTS.md · skills · prompts</div><div><span className="landing-tool">Running</span> setup commands and checks</div><div><span className="landing-tool">Returned</span> diff + logs + screenshot</div></div>
+              </aside>
+              <article className="landing-mini-doc"><h3>remote-run.md</h3><p>Setup receipt, comments, and next action are ready for review.</p></article>
+            </div>
+          </div>
+        </section>
+
+        <section className="landing-proof" aria-labelledby="proof-title">
+          <h2 id="proof-title" className="landing-section-title">It is still Markdown</h2>
+          <p className="landing-proof-intro">Comments and suggested edits stay portable enough for the agent to read on the next turn.</p>
+          <div className="landing-proof-grid">
+            <div className="landing-source"><div className="landing-pane-label">Source</div><pre>{proofMarkdown}</pre></div>
+            <div className="landing-arrow" aria-hidden="true">→</div>
+            <div><div className="landing-pane-label">Result</div><article className="landing-result"><div className="landing-result-toolbar"><span className="landing-lights" aria-hidden="true"><span></span><span></span><span></span></span><span>remote-run.md</span></div><div className="landing-result-body"><h3>Remote Pi Plan</h3><p>Goal: keep local Pi setup and remote sandbox work reviewable.</p><p>Move the setup receipt above <span className="landing-highlight">the agent transcript</span>.</p><p><span className="landing-old">remote runner</span> <span className="landing-new">browser sandbox</span> that loads AGENTS.md, skills, prompts, and checks before work starts.</p><div className="landing-thread"><span className="landing-avatar">Y</span><p><strong>You</strong><br />Make the setup receipt the main proof, not a footnote.</p></div></div></article></div>
+          </div>
+        </section>
+
+        <footer className="landing-footer"><span>For Pi users who want their local setup, review habits, and project checks to work after the laptop closes.</span><a href="https://github.com/anishthite/spanner-downloads/releases/latest">desktop release</a></footer>
       </main>
       <dialog id="signin-modal" className="signin-modal" aria-labelledby="signin-title">
         <div className="modal-card">
-          <div className="modal-head"><div><p className="landing-eyebrow">GitHub sign-in</p><h2 id="signin-title">Build with your repos.</h2><p>Sign in with GitHub so Spanner can launch agents against the repos you choose.</p></div><button id="signin-close" className="close-button" type="button" aria-label="Close sign-in modal">×</button></div>
+          <div className="modal-head"><div><h2 id="signin-title">Build with your repos.</h2><p>Sign in with GitHub so Spanner can launch agents against the repos you choose.</p></div><button id="signin-close" className="close-button" type="button" aria-label="Close sign-in modal">×</button></div>
           <button id="github-signin" className="github-button" type="button">Continue with GitHub</button>
           <p id="signin-status" className="modal-status" role="status" aria-live="polite">Checking GitHub sign-in…</p>
           <ul className="modal-proof"><li>private repos stay tied to your GitHub account</li><li>agents run in isolated workspaces</li><li>you review every diff before it lands</li></ul>

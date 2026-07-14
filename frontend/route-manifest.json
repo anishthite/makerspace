@@ -188,6 +188,11 @@
   ],
   "aliases": [
     {
+      "route": "/landing",
+      "target": "/desktop.html",
+      "source": "vercel.json"
+    },
+    {
       "route": "/homepage",
       "target": "/desktop.html",
       "source": "vercel.json"

@@ -25,6 +25,7 @@ function withLocation(href, fn) {
 test('sanitizes Spanner routes without query strings', () => {
   assert.equal(sanitizeSpannerRoute('/thread.html?name=secret'), '/thread');
   assert.equal(sanitizeSpannerRoute('/settings.html#github'), '/settings');
+  assert.equal(sanitizeSpannerRoute('/landing?returnTo=secret'), '/landing');
   assert.equal(sanitizeSpannerRoute('/not-a-route?repo=secret'), '/unknown');
 });
 

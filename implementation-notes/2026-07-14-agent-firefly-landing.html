@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Agent firefly landing</title>
+<meta name="task" content="Replace the landing hero shader with a minimal looping running-agent list.">
+<meta name="date-started" content="2026-07-14">
+<meta name="date-updated" content="2026-07-14">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,landing,hero,agents,animation">
+<meta name="related" content="2026-07-14-graphite-landing-shader.html,2026-07-14-landing-route-alias.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  .blast-low { color: #2a7a2a; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>Agent firefly landing</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-14 · status <b>shipped</b> · blast <span class="blast-low">low</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Show a minimal right-side running-agent loop on <code>/landing</code>.</div>
+  <b>Source</b><div><code>artifacts/landing-agent-fireflies-loop.html</code> refined with existing landing copy.</div>
+  <b>Surface</b><div><code>DesktopLandingPage</code> and <code>frontend/src/runtime/desktop.js</code>.</div>
+  <b>Schema</b><div>None.</div>
+  <b>Mobile</b><div>The agent loop stacks below hero copy and hides run-time labels.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>frontend/src/pages.jsx</code></td><td>touch</td><td>Replace the graphite canvas with a minimal looping agent list and dither page grain.</td></tr>
+  <tr><td><code>frontend/src/runtime/desktop.js</code></td><td>touch</td><td>Cycle yellow running rows to green done rows, slide out, and insert the next agent.</td></tr>
+  <tr><td><code>test/desktop-landing-signin.test.js</code></td><td>touch</td><td>Pin the agent loop hook and runtime animation code.</td></tr>
+  <tr><td><code>output/playwright/landing-agent-loop-live.png</code></td><td>new</td><td>Browser screenshot of the wired <code>/landing</code> hero.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Keep the existing H1, lede, and CTAs. The user only changed the visual model.</td></tr>
+  <tr><td>D-002</td><td>Use DOM/CSS animation over WebGL. The selected visual is a list state loop, not a shader.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td>Static sample agents over live data. Landing must work signed out.</td></tr>
+</table>
+
+<h2>Revisions</h2>
+<table>
+  <tr><th>ID</th><th>Change · Reason</th></tr>
+  <tr><td>X-001</td><td>Remove <code>3–4 active</code> and the ghost panel behind rows. The loop should stay minimal.</td></tr>
+  <tr><td>X-002</td><td>Add a fake prompt composer that types and submits sample prompts. It explains how rows enter the loop.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Restore the prior shader canvas and <code>startGraphiteShader</code> runtime from git.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li><code>/landing</code> shows existing copy with a right-side agent loop.</li>
+  <li>Rows pulse yellow, turn green, slide away, and are replaced.</li>
+  <li>Targeted tests, build, and browser screenshot pass.</li>
+</ul>
+</body>
+</html>
