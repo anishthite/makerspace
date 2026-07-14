@@ -106,6 +106,12 @@ test('getConfig infers D1 state store for production deployments with D1 credent
   });
 });
 
+test('getConfig reads control board owner allowlist separately', () => {
+  withEnv({ SPANNER_CONTROL_BOARD_USERS: 'anish,123', SPANNER_ADMIN_USERS: undefined }, () => {
+    assert.deepEqual(getConfig().controlBoardUsers, ['anish', '123']);
+  });
+});
+
 test('host dispatch is opt-in for remote providers', () => {
   withEnv({ INFRA_PROVIDER: 'cloudflare', PI_HOST_DISPATCH: undefined, PI_LOCAL_DISPATCH: undefined }, () => {
     assert.equal(getConfig().hostDispatchEnabled, false);

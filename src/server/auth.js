@@ -408,11 +408,54 @@ export function createAuthService({ config, http }) {
     return Boolean(config.controlApiToken && requestToken(request, url) === config.controlApiToken);
   }
 
+  function normalizedUserList(values = []) {
+    return (Array.isArray(values) ? values : [])
+      .map((value) => String(value || '').trim().toLowerCase())
+      .filter(Boolean);
+  }
+
+  function userIdentityValues(user = {}) {
+    return [user.login, user.githubId, user.id]
+      .map((value) => String(value || '').trim().toLowerCase())
+      .filter(Boolean);
+  }
+
   function userAllowed(user = {}) {
-    const allowed = Array.isArray(config.allowedUsers) ? config.allowedUsers.map((value) => String(value || '').trim().toLowerCase()).filter(Boolean) : [];
+    const allowed = normalizedUserList(config.allowedUsers);
     if (!allowed.length) return true;
-    const values = [user.login, user.githubId, user.id].map((value) => String(value || '').trim().toLowerCase()).filter(Boolean);
-    return values.some((value) => allowed.includes(value));
+    return userIdentityValues(user).some((value) => allowed.includes(value));
+  }
+
+  function controlBoardAllowedUsers() {
+    const configured = normalizedUserList(config.controlBoardUsers);
+    if (configured.length) return configured;
+    const hostedAllowlist = normalizedUserList(config.allowedUsers);
+    return hostedAllowlist.length ? hostedAllowlist : ['anish', 'anishthite'];
+  }
+
+  function isControlBoardUser(user = null) {
+    if (!user) return false;
+    const allowed = controlBoardAllowedUsers();
+    return userIdentityValues(user).some((value) => allowed.includes(value));
+  }
+
+  function canAccessControlBoard(request, url, user = null) {
+    if (hasTrustedControlToken(request, url)) return true;
+    if (!authRequired()) return true;
+    return isControlBoardUser(user);
+  }
+
+  async function requireControlBoardAccess(request, response, url, knownUser = undefined) {
+    const user = knownUser === undefined ? await currentUser(request) : knownUser;
+    if (canAccessControlBoard(request, url, user)) {
+      return { trusted: hasTrustedControlToken(request, url), user };
+    }
+    sendJson(response, user ? 403 : 401, {
+      error: user ? 'Spanner control board is limited to the owner.' : 'Sign in as the Spanner owner to view the control board.',
+      authRequired: authRequired(),
+      githubConfigured: githubAuthConfigured(config),
+    });
+    return null;
   }
 
   function currentUserCacheTtlMs() {
@@ -477,6 +520,7 @@ export function createAuthService({ config, http }) {
       authenticated: Boolean(user),
       authRequired: authRequired(),
       admin: Boolean(trusted),
+      controlBoard: Boolean(trusted || !authRequired() || isControlBoardUser(user)),
       user: publicUser(user),
       githubConfigured: githubAuthConfigured(config),
     };
@@ -1264,6 +1308,8 @@ export function createAuthService({ config, http }) {
     publicMe,
     requireUser,
     logout,
+    canAccessControlBoard,
+    requireControlBoardAccess,
     canAccessSession,
     requireSessionAccess,
     readLocalPiAuth,

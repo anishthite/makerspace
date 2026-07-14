@@ -15,6 +15,7 @@ export function createHttpHelpers({ publicDir, allowedOrigin = allowedOriginFrom
     ['/homepage', 'desktop.html'],
     ['/desktop', 'desktop.html'],
     ['/thread', 'thread.html'],
+    ['/control-board', 'control-board.html'],
     ['/trace-components', 'trace-components.html'],
     ['/telemetry', 'telemetry.html'],
     ['/local-telemetry', 'local-telemetry.html'],

@@ -18,6 +18,7 @@ const runtimeLoaders = {
   settings: () => import('./runtime/settings.js'),
   history: () => import('./runtime/history.js'),
   performance: () => import('./runtime/performance.js'),
+  controlBoard: () => import('./runtime/control-board.js'),
   desktop: () => import('./runtime/desktop.js'),
 };
 

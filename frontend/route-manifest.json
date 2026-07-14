@@ -26,6 +26,11 @@
       "mode": "react"
     },
     {
+      "route": "/control-board.html",
+      "file": "control-board.html",
+      "mode": "react"
+    },
+    {
       "route": "/excalidraw-viewer.html",
       "file": "excalidraw-viewer.html",
       "mode": "vite"
@@ -210,6 +215,11 @@
     {
       "route": "/local-telemetry",
       "target": "/local-telemetry.html",
+      "source": "vercel.json"
+    },
+    {
+      "route": "/control-board",
+      "target": "/control-board.html",
       "source": "vercel.json"
     }
   ],

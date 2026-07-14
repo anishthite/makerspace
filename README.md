@@ -127,6 +127,7 @@ VITE_POSTHOG_DISABLED= # set 1 to force-disable frontend analytics
 SPANNER_AUTH_REQUIRED= # set true to require GitHub sign-in even outside hosted mode
 SPANNER_AUTH_SECRET= # stable secret for signed auth cookies and encrypted OAuth tokens
 SPANNER_ALLOWED_USERS= # optional comma-separated GitHub logins/ids for private beta access
+SPANNER_CONTROL_BOARD_USERS= # optional owner-only control board allowlist; defaults to allowed users or anish/anishthite
 SPANNER_ALLOWED_ORIGIN= # static frontend origin(s) for cross-origin cookie auth; comma-separated list is OK
 SPANNER_AUTH_SAMESITE= # defaults to None when SPANNER_ALLOWED_ORIGIN is set, otherwise Lax
 GITHUB_CLIENT_ID=

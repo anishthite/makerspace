@@ -324,6 +324,31 @@ export function PerformancePage() {
   </main>;
 }
 
+export function ControlBoardPage() {
+  return <main className="mx-auto w-[min(1280px,calc(100%_-_34px))] px-0 py-6 pb-18">
+    <nav className={topbarClass} aria-label="Spanner control board navigation">
+      <Brand href="/control-board.html" label="Spanner control board"><span className="max-w-[min(32vw,220px)] overflow-hidden text-ellipsis whitespace-nowrap rounded-full border border-[var(--rule)] bg-[var(--paper-2)] px-2 py-1 font-[var(--mono)] text-[11px] font-bold leading-none tracking-normal text-[var(--blue)]">control</span></Brand>
+      <div className={headerActionsClass}><Button as="a" variant="ghost" href="/workspace.html"><RobotIcon {...buttonIconProps} />workspace</Button><Button as="a" variant="ghost" href="/telemetry.html"><ChartLineIcon {...buttonIconProps} />telemetry</Button><Button as="a" variant="ghost" href="/settings.html"><GearSixIcon {...buttonIconProps} />settings</Button></div>
+    </nav>
+    <header className="grid gap-4 py-8 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+      <div><p className={eyebrowClass}>owner console</p><h1>Spanner control board</h1><p id="control-board-status" className={ledeClass}>Loading everything Spanner is running…</p></div>
+      <Button id="refresh-control-board" variant="primary" type="button"><ArrowsClockwiseIcon {...buttonIconProps} />refresh</Button>
+    </header>
+    <section id="control-board-stats" className="performance-stats" aria-label="Control board summary"></section>
+    <section className="grid gap-4 lg:grid-cols-[minmax(260px,360px)_minmax(0,1fr)]">
+      <div className="grid content-start gap-4">
+        <Surface className={cn(surfaceClass, 'p-4')}><div className={sectionRowClass}><h2>Signals</h2><DatabaseIcon className="size-4" aria-hidden="true" /></div><ul id="control-board-signals" className="signal-list"></ul></Surface>
+        <Surface className={cn(surfaceClass, 'p-4')}><div className={sectionRowClass}><h2>Backend</h2><TerminalWindowIcon className="size-4" aria-hidden="true" /></div><dl id="control-board-system" className="control-board-kv mt-3 grid gap-2 text-sm"></dl></Surface>
+      </div>
+      <Surface className={cn(surfaceClass, 'table-panel min-w-0 p-4')}><div className={sectionRowClass}><h2>Running things</h2><p id="control-board-count" className={mutedClass}></p></div><ScrollArea className="performance-table-wrap mt-3 overflow-auto"><table className="performance-table control-board-table"><thead><tr><th>thing</th><th>status</th><th>kind</th><th>activity</th><th>bridge</th><th>updated</th></tr></thead><tbody id="control-board-rows"></tbody></table></ScrollArea></Surface>
+    </section>
+    <section className="mt-4 grid gap-4 lg:grid-cols-2">
+      <Surface className={cn(surfaceClass, 'p-4')}><div className={sectionRowClass}><h2>Active run state</h2><p id="control-board-active-count" className={mutedClass}></p></div><div id="control-board-active-runs" className="mt-3 grid gap-2"></div></Surface>
+      <Surface className={cn(surfaceClass, 'p-4')}><div className={sectionRowClass}><h2>Config</h2><DatabaseIcon className="size-4" aria-hidden="true" /></div><dl id="control-board-config" className="control-board-kv mt-3 grid gap-2 text-sm"></dl></Surface>
+    </section>
+  </main>;
+}
+
 export function SettingsPage() {
   const settingsTabs = [
     { href: '#github', label: 'GitHub' },
@@ -486,6 +511,7 @@ export const pages = {
   settings: SettingsPage,
   history: HistoryPage,
   performance: PerformancePage,
+  controlBoard: ControlBoardPage,
   desktop: DesktopLandingPage,
   traceComponents: TraceComponentsPage,
 };

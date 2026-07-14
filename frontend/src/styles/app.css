@@ -1022,6 +1022,12 @@ body[data-home-ui="ops"] .inbox-item { padding: 18px 14px; }
 .performance-table td:first-child a { display: grid; gap: 3px; }
 .performance-table small { color: var(--ink-3); }
 .performance-table td:not(:first-child) small { display: block; margin-top: 3px; }
+.control-board-kv div { display: grid; grid-template-columns: minmax(110px, .55fr) minmax(0, 1fr); gap: 10px; border-top: 1px solid var(--rule); padding-top: 8px; }
+.control-board-kv div:first-child { border-top: 0; padding-top: 0; }
+.control-board-kv dt { color: var(--ink-3); font: 11px/1.2 var(--mono); text-transform: lowercase; }
+.control-board-kv dd { min-width: 0; margin: 0; color: var(--ink-2); overflow-wrap: anywhere; }
+.control-board-run-card { border: 1px solid var(--rule); border-radius: 6px; padding: 10px; background: var(--paper-2); }
+.control-board-run-card strong { display: block; margin-bottom: 4px; }
 
 /* Thread */
 html[data-desktop="true"] body {

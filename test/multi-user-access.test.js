@@ -65,6 +65,23 @@ test('requireUser reuses a caller-provided current user', async () => {
   assert.equal(context.user.id, 'github-1');
 });
 
+test('control board access is owner-only in hosted auth', async () => {
+  const auth = createAuthService({
+    config: { authRequired: true, controlApiToken: 'admin', githubClientSecret: 'secret', controlBoardUsers: ['anishthite'] },
+    http: httpStub(),
+  });
+  const url = new URL('http://localhost:8787/api/control-board');
+
+  assert.equal(auth.canAccessControlBoard({ headers: {} }, url, { login: 'anishthite', id: 'github-1' }), true);
+  assert.equal(auth.canAccessControlBoard({ headers: {} }, url, { login: 'mona', id: 'github-2' }), false);
+  assert.equal(auth.canAccessControlBoard({ headers: { authorization: 'Bearer admin' } }, url, null), true);
+
+  const response = {};
+  const blocked = await auth.requireControlBoardAccess({ headers: {} }, response, url, { login: 'mona', id: 'github-2' });
+  assert.equal(blocked, null);
+  assert.equal(response.status, 403);
+});
+
 test('GitHub login rejects users outside the hosted allowlist', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-allowed-users-'));
   const previousFetch = globalThis.fetch;

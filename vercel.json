@@ -6,6 +6,7 @@
     { "source": "/homepage", "destination": "/desktop.html" },
     { "source": "/desktop", "destination": "/desktop.html" },
     { "source": "/thread", "destination": "/thread.html" },
+    { "source": "/control-board", "destination": "/control-board.html" },
     { "source": "/telemetry", "destination": "/telemetry.html" },
     { "source": "/local-telemetry", "destination": "/local-telemetry.html" }
   ]

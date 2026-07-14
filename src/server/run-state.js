@@ -427,6 +427,223 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
     };
   }
 
+  function controlBoardKind(session = {}) {
+    if (session.workspaceBridge) return 'workspace bridge';
+    if (session.warmBridge) return 'warm bridge';
+    if (session.intentBridge) return 'intent bridge';
+    if (session.threadBridge && session.localMode) return 'local main agent';
+    if (session.threadBridge) return 'main agent';
+    if (session.bridgeMode) return 'bridge';
+    return 'session';
+  }
+
+  function controlBoardRepo(session = {}) {
+    return session.repoFullName || session.repoPath || session.repoUrl || session.remoteWorkspaceDir || '';
+  }
+
+  function incrementCount(counts, key) {
+    const normalized = String(key || 'unknown').toLowerCase() || 'unknown';
+    counts[normalized] = (counts[normalized] || 0) + 1;
+  }
+
+  function byteLength(value) {
+    return Buffer.byteLength(String(value || ''), 'utf8');
+  }
+
+  function eventLabel(event = {}) {
+    if (!event) return '';
+    if (event.type === 'tool') {
+      const phase = event.phase === 'end' ? 'finished' : event.phase === 'start' ? 'started' : 'used';
+      return `${phase} ${normalizeToolName(event.toolName || 'tool')}`;
+    }
+    if (event.type === 'chunk') return compactActivityText(event.chunk, 120) || 'assistant output';
+    if (event.type === 'metric') return compactActivityText(event.metric, 120) || 'metric';
+    if (event.type === 'status') return compactActivityText(event.warning || event.message || event.runStatus, 120) || 'status';
+    if (event.type === 'workflow_status') return compactActivityText(event.status || event.label || event.message, 120) || 'workflow status';
+    if (event.type === 'workflow_result') return compactActivityText(event.label || event.message, 120) || 'workflow result';
+    return compactActivityText(event.label || event.message || event.type, 120);
+  }
+
+  function controlBoardLastEvent(run = {}) {
+    const event = Array.isArray(run.events) ? run.events.at(-1) : null;
+    if (!event) return null;
+    return {
+      id: event.id || null,
+      type: event.type || 'event',
+      timestamp: event.timestamp || '',
+      runStatus: event.runStatus || run.runStatus || '',
+      label: eventLabel(event),
+      warning: event.warning || null,
+    };
+  }
+
+  function controlBoardSession(session = {}) {
+    const decorated = decorateLiveSession(session);
+    const run = activeRuns.get(session.name);
+    const runStatus = String(decorated.runStatus || decorated.status || session.runStatus || session.status || 'unknown').toLowerCase() || 'unknown';
+    const status = String(decorated.status || statusFromRunStatus(runStatus, session.status || 'unknown') || 'unknown').toLowerCase() || 'unknown';
+    const latestActivity = decorated.latestActivity || (run ? latestRunActivity(run) : '');
+
+    return {
+      ...decorated,
+      kind: controlBoardKind(session),
+      repo: controlBoardRepo(session),
+      status,
+      runStatus,
+      ownerUserId: session.ownerUserId || '',
+      source: session.source || decorated.source || '',
+      activeRun: Boolean(run),
+      eventCount: Array.isArray(run?.events) ? run.events.length : 0,
+      outputBytes: byteLength(run?.output),
+      subscriberCount: runSubscribers.get(session.name)?.size || 0,
+      trackedChangeCount: Array.isArray(run?.trackedChanges) ? run.trackedChanges.length : Array.isArray(session.trackedChanges) ? session.trackedChanges.length : 0,
+      latestActivity: latestActivity || '',
+      lastEvent: controlBoardLastEvent(run),
+      bridge: {
+        mode: Boolean(session.bridgeMode),
+        claimed: Boolean(session.bridgeClaimed),
+        warmClaimed: Boolean(session.warmClaimed),
+        warm: Boolean(session.warmBridge),
+        intent: Boolean(session.intentBridge),
+        workspace: Boolean(session.workspaceBridge),
+        hasUrl: Boolean(session.bridgeUrl || session.httpsUrl),
+        workspaceSessionName: session.workspaceSessionName || '',
+      },
+    };
+  }
+
+  function controlBoardRun(name, run = {}) {
+    return {
+      name,
+      runStatus: String(run.runStatus || 'unknown').toLowerCase() || 'unknown',
+      warning: run.warning || null,
+      latestActivity: latestRunActivity(run),
+      eventCount: Array.isArray(run.events) ? run.events.length : 0,
+      outputBytes: byteLength(run.output),
+      subscriberCount: runSubscribers.get(name)?.size || 0,
+      bridgeFollowing: Boolean(run.bridgeFollowing),
+      trackedChangeCount: Array.isArray(run.trackedChanges) ? run.trackedChanges.length : 0,
+      lastEvent: controlBoardLastEvent(run),
+    };
+  }
+
+  function controlBoardConfigPayload() {
+    const controlBoardUsers = Array.isArray(config.controlBoardUsers) ? config.controlBoardUsers : [];
+    const allowedUsers = Array.isArray(config.allowedUsers) ? config.allowedUsers : [];
+    return {
+      projectName: config.projectName || 'spanner',
+      provider: config.provider || provider.kind,
+      stateStore: config.stateStore || 'file',
+      authRequired: Boolean(config.authRequired),
+      workspaceMode: Boolean(config.workspaceMode),
+      hostDispatchEnabled: Boolean(config.hostDispatchEnabled),
+      host: config.host || '',
+      port: config.port,
+      bridgePort: config.bridgePort,
+      warmBridgePoolSize: config.warmBridgePoolSize || 0,
+      idleBridgeTtlMs: config.idleBridgeTtlMs || 0,
+      threadBridgeIdleTtlMs: config.threadBridgeIdleTtlMs || 0,
+      bridgeRunStaleMs: config.bridgeRunStaleMs || 0,
+      cloudflare: {
+        brokerConfigured: Boolean(config.cloudflareBrokerUrl),
+        brokerTokenConfigured: Boolean(config.cloudflareBrokerToken),
+        machine: config.cloudflareMachine || '',
+        keepAlive: config.cloudflareKeepAlive !== false,
+      },
+      storage: {
+        sessionFile: config.sessionFile || '',
+        settingsFile: config.settingsFile || '',
+        workflowRunsDir: config.workflowRunsDir || '',
+        piSessionTraceDir: config.piSessionTraceDir || '',
+      },
+      controlBoardUsers: controlBoardUsers.length
+        ? controlBoardUsers
+        : allowedUsers.length
+          ? allowedUsers
+          : ['anish', 'anishthite'],
+    };
+  }
+
+  function controlBoardSummary(sessions, activeRunsPayload, liveSessions, liveError) {
+    const statusCounts = {};
+    const kindCounts = {};
+    for (const session of sessions) {
+      incrementCount(statusCounts, session.runStatus || session.status);
+      incrementCount(kindCounts, session.kind);
+    }
+    const subscriberCount = activeRunsPayload.reduce((sum, run) => sum + (run.subscriberCount || 0), 0);
+    const readyBridges = sessions.filter((session) => session.bridge?.mode && !session.bridge?.claimed && session.runStatus === 'ready').length;
+    const launchingWarmBridges = sessions.filter((session) => session.bridge?.warm && ['launching', 'starting', 'queued'].includes(session.runStatus)).length;
+
+    return {
+      totalSessions: sessions.length,
+      activeRuns: activeRunsPayload.length,
+      runningSessions: sessions.filter((session) => isActiveRunStatus(session.runStatus || session.status)).length,
+      readyBridges,
+      warmBridges: sessions.filter((session) => session.bridge?.warm).length,
+      launchingWarmBridges,
+      intentBridges: sessions.filter((session) => session.bridge?.intent).length,
+      workspaceBridges: sessions.filter((session) => session.bridge?.workspace).length,
+      threadAgents: sessions.filter((session) => session.threadBridge).length,
+      archivedSessions: sessions.filter((session) => session.archivedAt).length,
+      warningSessions: sessions.filter((session) => session.warning).length,
+      providerSessions: Array.isArray(liveSessions) ? liveSessions.length : 0,
+      liveError: liveError || null,
+      sseSubscribers: subscriberCount,
+      statusCounts,
+      kindCounts,
+    };
+  }
+
+  function controlBoardSignals(summary, configPayload) {
+    const signals = [];
+    signals.push(`${summary.activeRuns} active run(s), ${summary.runningSessions} running session(s), ${summary.sseSubscribers} browser stream subscriber(s).`);
+    signals.push(`Warm bridge pool target ${configPayload.warmBridgePoolSize}; ${summary.readyBridges} idle bridge(s) ready, ${summary.launchingWarmBridges} warm launch(es) in flight.`);
+    signals.push(`Runtime provider ${configPayload.provider}; Cloudflare broker ${configPayload.cloudflare.brokerConfigured ? 'configured' : 'missing'}, keep-alive ${configPayload.cloudflare.keepAlive ? 'on' : 'off'}.`);
+    signals.push(configPayload.authRequired ? 'Owner gate: GitHub auth plus control-board allowlist or CONTROL_API_TOKEN.' : 'Owner gate: single-user/local backend; no hosted multi-user auth is enabled.');
+    if (summary.warningSessions) signals.push(`${summary.warningSessions} session(s) currently carry warnings.`);
+    if (summary.liveError) signals.push(`Provider live-list error: ${summary.liveError}`);
+    return signals;
+  }
+
+  async function controlBoardPayload() {
+    const storedSessions = await listStoredSessions(config.sessionFile);
+    let liveSessions = [];
+    let liveError = null;
+
+    try {
+      liveSessions = await provider.listSessions();
+    } catch (error) {
+      liveError = error.message;
+    }
+
+    const sessions = mergeSessions(storedSessions, liveSessions).map(controlBoardSession);
+    const activeRunPayload = [...activeRuns.entries()].map(([name, run]) => controlBoardRun(name, run));
+    const configPayload = controlBoardConfigPayload();
+    const summary = controlBoardSummary(sessions, activeRunPayload, liveSessions, liveError);
+    const memory = process.memoryUsage();
+
+    return {
+      generatedAt: new Date().toISOString(),
+      provider: provider.info(),
+      summary,
+      signals: controlBoardSignals(summary, configPayload),
+      config: configPayload,
+      process: {
+        pid: process.pid,
+        uptimeMs: Math.round(process.uptime() * 1000),
+        nodeVersion: process.version,
+        platform: process.platform,
+        arch: process.arch,
+        memoryRssBytes: memory.rss,
+        heapUsedBytes: memory.heapUsed,
+        heapTotalBytes: memory.heapTotal,
+      },
+      sessions,
+      activeRuns: activeRunPayload,
+    };
+  }
+
   function performancePatchForSession(session, runStatus = session?.runStatus) {
     const performance = activeRuns.get(session.name)?.performance;
     const patch = performance ? { performance } : {};
@@ -947,6 +1164,7 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
     decorateLiveSession,
     mergeSessions,
     listSessionsPayload,
+    controlBoardPayload,
     performancePatchForSession,
     persistRunStatus,
     threadRunId,

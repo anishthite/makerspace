@@ -109,6 +109,7 @@ export function getConfig() {
     allowedOrigin: allowedOrigins[0] || '',
     allowedOrigins,
     allowedUsers: splitList(process.env.SPANNER_ALLOWED_USERS || process.env.SPANNER_ALLOWED_GITHUB_USERS || ''),
+    controlBoardUsers: splitList(process.env.SPANNER_CONTROL_BOARD_USERS || process.env.SPANNER_ADMIN_USERS || ''),
     stateStore: stateStoreFromEnv(),
     cloudflareBrokerUrl: process.env.CLOUDFLARE_SANDBOX_BROKER_URL || process.env.CLOUDFLARE_BROKER_URL || '',
     cloudflareBrokerToken: process.env.CLOUDFLARE_SANDBOX_BROKER_TOKEN || process.env.CLOUDFLARE_BROKER_TOKEN || '',

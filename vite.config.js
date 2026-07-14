@@ -27,6 +27,7 @@ export default defineConfig({
         thread: page('thread.html'),
         settings: page('settings.html'),
         history: page('history.html'),
+        controlBoard: page('control-board.html'),
         telemetry: page('telemetry.html'),
         localTelemetry: page('local-telemetry.html'),
         traceComponents: page('trace-components.html'),

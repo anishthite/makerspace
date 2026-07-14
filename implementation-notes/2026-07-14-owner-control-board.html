@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Owner control board</title>
+<style>
+  body { font: 14px/1.5 -apple-system, system-ui, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+  th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; }
+  code { background: #f6f6f6; padding: 1px 4px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<h1>Owner control board</h1>
+<p>Status: <strong>shipped</strong> · Blast: medium · Tags: spanner,owner,control-board,auth,frontend</p>
+<table>
+<thead><tr><th>ID</th><th>Decision</th><th>Files</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>D-1</td><td>Add a standalone <code>/control-board.html</code> React MPA page.</td><td><code>frontend/control-board.html</code>, <code>frontend/src/pages.jsx</code>, <code>frontend/src/runtime/control-board.js</code>, <code>vite.config.js</code>, <code>vercel.json</code>, <code>frontend/route-manifest.json</code></td><td>Unlinked owner console; polls every 10s and reuses existing status/table UI.</td></tr>
+<tr><td>D-2</td><td>Gate control board data through a dedicated owner check.</td><td><code>src/server/auth.js</code>, <code>src/server/routes.js</code>, <code>src/config.js</code>, <code>README.md</code></td><td><code>SPANNER_CONTROL_BOARD_USERS</code>/<code>SPANNER_ADMIN_USERS</code> override; otherwise hosted auth falls back to <code>SPANNER_ALLOWED_USERS</code> or <code>anish/anishthite</code>. <code>CONTROL_API_TOKEN</code> remains trusted.</td></tr>
+<tr><td>D-3</td><td>Expose a redacted all-runtimes payload.</td><td><code>src/server/run-state.js</code></td><td>Lists stored sessions, provider sessions, active run state, bridge/session counts, backend process/config booleans; keeps bridge/auth secrets out via existing decoration.</td></tr>
+<tr><td>T-1</td><td>Protected API over hidden static secrecy.</td><td><code>src/server/routes.js</code>, <code>frontend/src/runtime/control-board.js</code></td><td>Backend-served static route checks owner access; separately hosted static can load the shell, but unauthorized users cannot fetch board data.</td></tr>
+<tr><td>A-1</td><td>Verified with route/auth/config tests, full suite, and Vite build.</td><td><code>test/*.test.js</code></td><td><code>node --test ...</code>, <code>npm test</code>, <code>npm run build</code>.</td></tr>
+</tbody>
+</table>
+</body>
+</html>

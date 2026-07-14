@@ -31,6 +31,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
     getAuthLogin,
     publicAuthLogin,
     requireSessionAccess,
+    requireControlBoardAccess,
     loadPiDefaults,
     currentUser,
     publicMe,
@@ -53,6 +54,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
   const {
     listThreadPerformancePayload,
     listThreadsPayload,
+    controlBoardPayload,
     createThreadSession,
     archiveThreadSession,
     unarchiveThreadSession,
@@ -238,6 +240,13 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
 
       if (request.method === 'GET' && pathname === '/api/report') {
         sendJson(response, 200, { provider: provider.info(), report });
+        return;
+      }
+
+      if (request.method === 'GET' && pathname === '/api/control-board') {
+        const context = await requireControlBoardAccess(request, response, url, user);
+        if (!context) return;
+        sendJson(response, 200, trace.wrap(await controlBoardPayload(context)));
         return;
       }
 
@@ -790,6 +799,14 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
           provider: provider.info(),
           session: decorateLiveSession(updated),
         });
+        return;
+      }
+
+      if (request.method === 'GET' && (pathname === '/control-board.html' || pathname === '/control-board')) {
+        const controlUser = await currentUser(request);
+        const context = await requireControlBoardAccess(request, response, url, controlUser);
+        if (!context) return;
+        await serveStatic(pathname, response);
         return;
       }
 
