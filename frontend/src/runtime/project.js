@@ -49,8 +49,8 @@ const projectWelcome = document.querySelector('#project-welcome');
 const projectSubtitle = document.querySelector('#project-subtitle');
 const onboardingDialog = document.querySelector('#onboarding-dialog');
 const onboardingClose = document.querySelector('#onboarding-close');
+const onboardingActionButtons = Array.from(document.querySelectorAll('[data-onboarding-action]'));
 const onboardingPickRepo = document.querySelector('#onboarding-pick-repo');
-const onboardingCodex = document.querySelector('#onboarding-codex');
 
 let providerKind = '';
 let githubRepos = [];
@@ -59,6 +59,7 @@ let repoMatches = [];
 let activeRepoMatchIndex = -1;
 let githubConnected = false;
 let codexConfigured = false;
+let claudeCodeConfigured = false;
 let projectThreadCount = 0;
 let recentProjects = [];
 
@@ -420,12 +421,22 @@ function dismissOnboarding() {
   onboardingDialog?.close?.();
 }
 
-function setOnboardingStep(key, state, label) {
+function showOnboardingAfterGitHubSignIn(connected) {
+  if (!connected || new URLSearchParams(location.search).get('github') !== 'connected') return;
+  try { localStorage.removeItem(ONBOARDING_DISMISSED_KEY); }
+  catch {}
+  history.replaceState({}, '', location.pathname);
+}
+
+function setOnboardingStep(key, state) {
   const step = onboardingDialog?.querySelector(`[data-onboarding-step="${key}"]`);
   if (!step) return;
   step.dataset.state = state;
-  const stateNode = step.querySelector('.onboarding-step-state');
-  if (stateNode) stateNode.textContent = label;
+  const marker = step.querySelector('.onboarding-step-num');
+  if (!marker) return;
+  const number = step.dataset.stepNumber || marker.textContent;
+  marker.textContent = state === 'done' ? '✓' : number;
+  marker.setAttribute('aria-label', state === 'done' ? 'completed' : `step ${number}`);
 }
 
 function renderOnboarding() {
@@ -436,21 +447,17 @@ function renderOnboarding() {
     return;
   }
   const steps = [
-    ['github', githubConnected, 'needed'],
-    ['codex', codexConfigured, 'needed'],
-    ['project', Boolean(cleanProjectValue(repoInput.value)) || readRecentProjects().length > 0, 'pick'],
-    ['agent', projectThreadCount > 0, 'next'],
+    ['github', githubConnected],
+    ['llm', codexConfigured || claudeCodeConfigured],
+    ['project', Boolean(cleanProjectValue(repoInput.value)) || readRecentProjects().length > 0],
+    ['agent', projectThreadCount > 0],
   ];
   const currentIndex = steps.findIndex(([, done]) => !done);
-  for (const [index, [key, done, todoLabel]] of steps.entries()) {
-    setOnboardingStep(key, done ? 'done' : index === currentIndex ? 'current' : 'todo', done ? 'done' : todoLabel);
+  for (const [index, [key, done]] of steps.entries()) {
+    setOnboardingStep(key, done ? 'done' : index === currentIndex ? 'current' : 'todo');
   }
-  if (onboardingPickRepo) onboardingPickRepo.disabled = !githubConnected;
-  if (onboardingCodex) {
-    const disabled = !steps[0][1];
-    onboardingCodex.setAttribute('aria-disabled', disabled ? 'true' : 'false');
-    onboardingCodex.tabIndex = disabled ? -1 : 0;
-  }
+  const currentStep = steps[currentIndex]?.[0] || '';
+  for (const button of onboardingActionButtons) button.hidden = button.dataset.onboardingAction !== currentStep;
   const complete = currentIndex < 0;
   if (complete) dismissOnboarding();
   if (!complete && !onboardingDismissed() && !onboardingDialog.open) {
@@ -649,11 +656,13 @@ async function refreshProjectThreads() {
   renderRecentProjects(payload.threads || []);
 }
 
-function renderProjectAuth(codex = {}, github = {}) {
+function renderProjectAuth(codex = {}, github = {}, claudeCode = {}) {
   codexConfigured = Boolean(codex.configured);
-  renderAuthPill(codexAuthPill, codexAuthLabel, codexConfigured, codexConfigured ? `Codex: ${codex.source || 'signed in'}` : 'Codex: signed out', 'codex');
+  claudeCodeConfigured = Boolean(claudeCode.configured);
+  renderAuthPill(codexAuthPill, codexAuthLabel, codexConfigured || claudeCodeConfigured, codexConfigured ? `Codex: ${codex.source || 'signed in'}` : claudeCodeConfigured ? `Claude: ${claudeCode.source || 'signed in'}` : 'LLM: signed out', 'llm');
   const connected = Boolean(github.connected);
   githubConnected = connected;
+  showOnboardingAfterGitHubSignIn(connected);
   renderWelcome(connected ? github.user : null);
   renderAuthPill(githubAuthPill, githubAuthLabel, connected, connected ? `GitHub: ${github.user?.login || 'connected'}` : github.configured ? 'GitHub: signed out' : 'GitHub: not configured', 'github');
   renderGitHubSignIn(github);
@@ -672,11 +681,12 @@ function renderProjectAuth(codex = {}, github = {}) {
 }
 
 async function loadProjectAuth() {
-  const [codex, github] = await Promise.all([
+  const [codex, github, claudeCode] = await Promise.all([
     fetchJson('/api/auth/openai-codex'),
     fetchJson('/api/auth/github'),
+    fetchJson('/api/auth/claude-code'),
   ]);
-  renderProjectAuth(codex, github);
+  renderProjectAuth(codex, github, claudeCode);
 }
 
 async function loadProjectBootstrap() {
@@ -685,12 +695,12 @@ async function loadProjectBootstrap() {
   renderProvider(payload.provider);
   renderRecentProjects(payload.threads || []);
 
-  if (payload.codex?.deferred || payload.github?.deferred) {
+  if (payload.codex?.deferred || payload.github?.deferred || payload.claudeCode?.deferred) {
     void loadProjectAuth().catch((error) => {
       repoHint.textContent = error.message;
     });
   } else {
-    renderProjectAuth(payload.codex || {}, payload.github || {});
+    renderProjectAuth(payload.codex || {}, payload.github || {}, payload.claudeCode || {});
   }
 }
 

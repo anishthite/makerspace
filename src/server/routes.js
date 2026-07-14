@@ -209,11 +209,12 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
         }
 
         const authStatusPromise = fast
-          ? Promise.resolve({ codex: { deferred: true }, github: { deferred: true, configured: isGitHubAuthConfigured() } })
+          ? Promise.resolve({ codex: { deferred: true }, claudeCode: { deferred: true }, github: { deferred: true, configured: isGitHubAuthConfigured() } })
           : Promise.all([
               trace.step('auth.codex', () => codexAuthStatus(user)),
+              trace.step('auth.claudeCode', () => claudeCodeAuthStatus(user)),
               trace.step('auth.github', () => publicGitHubAuth(user || readBrowserSession(viewerSessionId))),
-            ]).then(([codex, github]) => ({ codex, github }));
+            ]).then(([codex, claudeCode, github]) => ({ codex, claudeCode, github }));
 
         if (page === 'project') {
           const [authStatus, threadPayload, recentProjects] = await Promise.all([

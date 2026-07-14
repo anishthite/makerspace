@@ -36,6 +36,7 @@ import {
   Switch,
   Tabs,
 } from './components/ui.jsx';
+import onboardingContent from './onboarding-content.json';
 import { TraceComponentsPage } from './trace-components-page.jsx';
 import {
   Sidebar,
@@ -72,8 +73,8 @@ function AuthPills() {
   </>;
 }
 
-function GitHubSignInButton({ id, className = '', children = 'Continue with GitHub' }) {
-  return <Button id={id} className={`github-login-button ${className}`.trim()} variant="primary" type="button" data-github-signin><GithubLogoIcon {...buttonIconProps} />{children}</Button>;
+function GitHubSignInButton({ id, className = '', children = 'Continue with GitHub', ...props }) {
+  return <Button id={id} className={`github-login-button ${className}`.trim()} variant="primary" type="button" {...props} data-github-signin><GithubLogoIcon {...buttonIconProps} />{children}</Button>;
 }
 
 function GitHubSignInCard({ compact = false }) {
@@ -99,30 +100,28 @@ function GitHubSignInCard({ compact = false }) {
 }
 
 function ProjectOnboardingDialog() {
-  const steps = [
-    ['github', 'Connect GitHub', 'Use your GitHub account for repos and private workspace access.'],
-    ['codex', 'Sign in to Codex', 'Add model access in Settings so Pi can run the agent.'],
-    ['project', 'Pick a repo', 'Choose a GitHub repo for the sandbox.'],
-    ['agent', 'Start an agent', 'Open the workspace, write one prompt, and let it run.'],
-  ];
+  const { actions, steps } = onboardingContent;
   return <dialog id="onboarding-dialog" className="onboarding-dialog" aria-labelledby="onboarding-title" aria-describedby="onboarding-copy">
     <div className="onboarding-shell">
       <Button id="onboarding-close" variant="ghost" size="icon" type="button" aria-label="close onboarding"><XIcon className="size-4" aria-hidden="true" /></Button>
       <div className="onboarding-copy">
-        <p className={eyebrowClass}>quick start</p>
-        <h2 id="onboarding-title">Let’s get your first agent running.</h2>
-        <p id="onboarding-copy">Four steps. No new account form, no wizard state, no ceremony.</p>
-        <div className="onboarding-actions">
-          <GitHubSignInButton id="onboarding-github">Continue with GitHub</GitHubSignInButton>
-          <Button id="onboarding-pick-repo" variant="ghost" type="button"><FolderOpenIcon {...buttonIconProps} />Pick repo</Button>
-          <Button as="a" id="onboarding-codex" variant="ghost" href="/settings.html#codex"><OpenAiLogoIcon {...buttonIconProps} />Codex settings</Button>
-        </div>
+        <p className={eyebrowClass}>{onboardingContent.eyebrow}</p>
+        <h2 id="onboarding-title">{onboardingContent.title}</h2>
+        <p id="onboarding-copy">{onboardingContent.copy}</p>
       </div>
       <ol className="onboarding-steps" aria-label="Onboarding checklist">
-        {steps.map(([id, title, body], index) => <li key={id} data-onboarding-step={id} data-state="todo">
+        {steps.map(({ id, title, body }, index) => <li key={id} data-onboarding-step={id} data-step-number={index + 1} data-state="todo">
           <span className="onboarding-step-num">{index + 1}</span>
-          <span className="onboarding-step-body"><strong>{title}</strong><small>{body}</small></span>
-          <span className="onboarding-step-state">todo</span>
+          <span className="onboarding-step-body">
+            <strong>{title}</strong>
+            <small>{body}</small>
+            <span className="onboarding-step-action">
+              {id === 'github' && <GitHubSignInButton id="onboarding-github" data-onboarding-action="github" hidden>{actions.github}</GitHubSignInButton>}
+              {id === 'project' && <Button id="onboarding-pick-repo" data-onboarding-action="project" variant="ghost" type="button" hidden><FolderOpenIcon {...buttonIconProps} />{actions.project}</Button>}
+              {id === 'llm' && <Button as="a" id="onboarding-claude" data-onboarding-action="llm" variant="ghost" href="/settings.html#claude-code" hidden><TerminalWindowIcon {...buttonIconProps} />{actions.claude || 'Claude'}</Button>}
+              {id === 'llm' && <Button as="a" id="onboarding-codex" data-onboarding-action="llm" variant="ghost" href="/settings.html#codex" hidden><OpenAiLogoIcon {...buttonIconProps} />{actions.codex || 'Codex'}</Button>}
+            </span>
+          </span>
         </li>)}
       </ol>
     </div>
