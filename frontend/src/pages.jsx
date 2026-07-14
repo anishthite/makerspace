@@ -79,7 +79,7 @@ function GitHubSignInButton({ id, className = '', children = 'Continue with GitH
 }
 
 function GitHubSignInCard({ compact = false }) {
-  return <Surface id="github-signin-card" className={cn(surfaceClass, 'grid gap-4 p-4 md:grid-cols-[minmax(0,1.05fr)_minmax(280px,.7fr)]', compact && 'mb-4')} hidden aria-labelledby="github-signin-title">
+  return <Surface id="github-signin-card" className={cn(surfaceClass, 'signin-lightbox grid gap-4 text-center', compact && 'signin-lightbox-compact')} hidden role="dialog" aria-modal="true" aria-labelledby="github-signin-title">
     <div className="grid gap-3">
       <p className={eyebrowClass}>spanner beta</p>
       <h2 id="github-signin-title">Sign in to Spanner</h2>
@@ -346,12 +346,12 @@ export function ProjectPage() {
         <input id="project-repo-source" name="repoSource" type="hidden" value="" readOnly />
         <input id="project-branch" name="branch" type="hidden" value="" readOnly />
 
-        <div id="project-hero" className="grid justify-items-start gap-1.5 text-left">
+        <div id="project-hero" className="grid justify-items-center gap-1.5 text-center">
           <h1 id="project-welcome" className="mb-0 text-[clamp(28px,3vw,38px)] leading-none tracking-[-.05em]">Welcome back.</h1>
           <p id="project-subtitle" className={cn(ledeClass, 'mb-0 max-w-[520px] text-sm')}>Choose a project to open.</p>
         </div>
 
-        <div className="project-picker-panel grid w-full max-w-[620px] gap-2.5 rounded-md border border-[var(--rule)] bg-[var(--paper-2)] p-2.5">
+        <div className="project-picker-panel mx-auto grid w-full max-w-[620px] gap-2.5 rounded-md border border-[var(--rule)] bg-[var(--paper-2)] p-2.5">
           <label className="sr-only" htmlFor="project-repo-url">folder or repo</label>
           <InputGroup as="div" className="relative grid-cols-[minmax(0,1fr)_auto] p-0 [&_input]:px-3 [&_input]:py-2.5">
             <input id="project-repo-url" name="repoUrl" placeholder="owner/repo or URL" aria-label="folder or repo" autoComplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="project-repo-options" required />
@@ -367,7 +367,7 @@ export function ProjectPage() {
         </div>
 
         <div className="project-recent-panel border-t border-[var(--rule)] pt-5" aria-label="Recent projects">
-          <div className="mb-4 grid justify-items-start text-left"><h2 className="mb-0">Recent projects</h2></div>
+          <div className="mb-4 grid justify-items-center gap-1 text-center"><h2 className="mb-0">Recent projects</h2><p className={mutedClass}>One click back into a workspace.</p></div>
           <div id="project-recent-list" className="project-list grid gap-2 md:grid-cols-2"></div>
         </div>
       </Surface>

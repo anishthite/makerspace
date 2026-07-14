@@ -754,6 +754,9 @@ body[data-home-ui="ops"] .inbox-item { padding: 18px 14px; }
 .project-hero { max-width: 760px; margin: clamp(22px, 5vh, 52px) 0 0; }
 .project-hero h1 { margin-bottom: 8px; font-size: clamp(24px, 3.2vw, 36px); line-height: 1.05; letter-spacing: -.04em; }
 .signin-nav-button { min-width: 84px; }
+.signin-lightbox { position: fixed; top: 50%; left: 50%; z-index: 90; width: min(520px, calc(100% - 32px)); max-height: calc(100svh - 32px); overflow: auto; transform: translate(-50%, -50%); padding: clamp(18px, 3vw, 26px); border-radius: 24px; border-color: color-mix(in srgb, var(--blue) 36%, var(--rule)); box-shadow: 0 24px 80px rgba(0,0,0,.34), 0 0 0 100vmax rgba(3,8,14,.68); }
+.signin-lightbox ul { text-align: left; }
+.signin-lightbox .github-login-button { width: 100%; justify-content: center; }
 .signin-gate { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(280px, .7fr); gap: clamp(18px, 3vw, 34px); align-items: stretch; border: 1px solid color-mix(in srgb, var(--blue) 46%, var(--rule)); border-radius: 24px; padding: clamp(18px, 3vw, 34px); background: radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--blue-soft) 82%, transparent), transparent 34rem), linear-gradient(135deg, color-mix(in srgb, var(--paper) 96%, var(--blue-soft)), color-mix(in srgb, var(--paper) 90%, var(--bg))); box-shadow: var(--shadow-xl), var(--shadow); }
 .signin-gate.compact { grid-area: launch; width: min(920px, 100%); margin: 18px auto 14px; }
 .signin-copy { display: grid; align-content: center; gap: 18px; min-height: clamp(360px, 42vh, 520px); }
