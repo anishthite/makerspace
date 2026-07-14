@@ -18,7 +18,9 @@ test('desktop landing is a React route with GitHub sign-in behavior', () => {
   assert.match(pages, /data-open-signin/);
   assert.match(pages, />Get Started<\/button>/);
   assert.doesNotMatch(pages, /Open a Pi sandbox/);
-  assert.match(pages, /<dialog id="signin-modal"/);
+  assert.match(pages, /<GitHubSignInCard \/>/);
+  assert.doesNotMatch(pages, /<dialog id="signin-modal"/);
+  assert.doesNotMatch(pages, /modal-proof|signin-close|github-button/);
   assert.match(pages, /data-landing-agent-loop/);
   assert.match(pages, /data-landing-agent-prompt/);
   assert.match(pages, /\.landing-agent-loop/);
@@ -36,7 +38,11 @@ test('desktop landing is a React route with GitHub sign-in behavior', () => {
   assert.match(runtime, /'x-spanner-session': sessionId\(\)/);
   assert.match(runtime, /function targetUrl\(\)/);
   assert.match(runtime, /querySelectorAll\('\[data-open-signin\]'\)/);
+  assert.match(runtime, /querySelector\('#github-signin-card'\)/);
+  assert.match(runtime, /querySelector\('#github-signin-main'\)/);
+  assert.match(runtime, /function setSignInOpen\(open\)/);
   assert.match(runtime, /openButtons\.forEach/);
+  assert.doesNotMatch(runtime, /signin-modal|signin-close|openModal/);
   assert.match(runtime, /JSON\.stringify\(\{ returnTo: targetUrl\(\) \}\)/);
   assert.match(entry, /desktop: \(\) => import\('\.\/runtime\/desktop\.js'\)/);
 });

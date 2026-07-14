@@ -635,17 +635,6 @@ Keep screenshots, diffs, logs, and comments attached to the run.`;
       .landing-old { border-radius:4px; background:color-mix(in srgb,var(--ds-red) 20%,transparent); color:var(--ds-red); text-decoration:line-through; text-decoration-color:var(--ds-red); }
       .landing-new { border-radius:4px; background:color-mix(in srgb,var(--ds-green) 20%,transparent); color:var(--ds-green); text-decoration:underline; text-decoration-color:var(--ds-green); text-underline-offset:3px; }
       .landing-thread { margin-top:22px; display:grid; grid-template-columns:36px minmax(0,1fr); gap:12px; border-left:2px solid var(--ds-line-strong); padding-left:16px; }
-      .signin-modal { width:min(480px, calc(100% - 28px)); border:1px solid var(--ds-line); border-radius:12px; padding:0; background:var(--ds-surface); color:var(--ds-text); box-shadow:0 24px 70px rgba(0,0,0,.52); }
-      .signin-modal::backdrop { background:rgba(0,0,0,.68); backdrop-filter:blur(5px); }
-      .modal-card { padding:24px; }
-      .modal-head { display:flex; align-items:flex-start; justify-content:space-between; gap:18px; margin-bottom:22px; }
-      .modal-head h2 { margin:0 0 8px; font-size:30px; line-height:1; }
-      .modal-head p { color:var(--ds-muted); }
-      .close-button { width:34px; height:34px; border:1px solid var(--ds-line); border-radius:999px; background:transparent; color:var(--ds-muted); font-size:20px; cursor:pointer; }
-      .github-button { width:100%; min-height:50px; border:1px solid color-mix(in srgb,var(--ds-accent) 70%,var(--ds-line)); border-radius:8px; background:var(--ds-accent); color:#08111D; font-weight:900; cursor:pointer; }
-      .github-button:disabled { opacity:.55; cursor:not-allowed; }
-      .modal-proof { margin:18px 0 0; padding-left:18px; color:var(--ds-muted); }
-      .modal-status { min-height:21px; margin-top:14px; color:var(--ds-muted); font-size:14px; }
       .landing-footer { margin-top:64px; border-top:1px solid var(--ds-line); padding-top:22px; color:var(--ds-muted); font-size:14px; }
       @media (max-width:900px) { .landing-page { overflow:auto; } .landing-shell { width:min(100% - 28px,1120px); padding-top:24px; } .landing-nav, .landing-footer { align-items:flex-start; flex-direction:column; } .landing-links { width:100%; justify-content:space-between; } .landing-hero { grid-template-columns:1fr; padding-top:58px; } .landing-page h1 { font-size:clamp(52px,17vw,82px); } .landing-agent-loop { min-height:440px; border-left:0; padding-left:0; } .landing-agent-time { display:none; } .landing-button, .landing-github-link { width:100%; justify-content:center; } .landing-shot-menu time, .landing-shot-menu span:nth-of-type(n+3) { display:none; } .landing-shot-body { min-height:auto; padding:22px; } .landing-app-window { width:auto; min-height:0; } .landing-window-content { display:block; padding:24px; } .landing-doc { min-height:0; padding:30px 24px; } .landing-shot .landing-terminal-card { position:static; width:auto; margin-top:16px; } .landing-comments { margin-top:18px; } .landing-workflow-grid, .landing-proof-grid { grid-template-columns:1fr; } .landing-workflow-visual { position:static; } .landing-step { min-height:0; } .landing-step p { margin-left:0; } .landing-arrow { display:none; } }
     `}</style>
@@ -724,14 +713,7 @@ Keep screenshots, diffs, logs, and comments attached to the run.`;
 
         <footer className="landing-footer"><span>For Pi users who want their local setup, review habits, and project checks to work after the laptop closes.</span><a href="https://github.com/anishthite/spanner-downloads/releases/latest">desktop release</a></footer>
       </main>
-      <dialog id="signin-modal" className="signin-modal" aria-labelledby="signin-title">
-        <div className="modal-card">
-          <div className="modal-head"><div><h2 id="signin-title">Build with your repos.</h2><p>Sign in with GitHub so Spanner can launch agents against the repos you choose.</p></div><button id="signin-close" className="close-button" type="button" aria-label="Close sign-in modal">×</button></div>
-          <button id="github-signin" className="github-button" type="button">Continue with GitHub</button>
-          <p id="signin-status" className="modal-status" role="status" aria-live="polite">Checking GitHub sign-in…</p>
-          <ul className="modal-proof"><li>private repos stay tied to your GitHub account</li><li>agents run in isolated workspaces</li><li>you review every diff before it lands</li></ul>
-        </div>
-      </dialog>
+      <GitHubSignInCard />
     </div>
   </>;
 }

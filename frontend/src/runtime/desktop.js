@@ -11,10 +11,9 @@ try {
 
 const openButtons = document.querySelectorAll('[data-open-signin]');
 const signInButton = document.querySelector('#signin-open');
-const dialog = document.querySelector('#signin-modal');
-const closeButton = document.querySelector('#signin-close');
-const githubButton = document.querySelector('#github-signin');
-const statusLine = document.querySelector('#signin-status');
+const signInCard = document.querySelector('#github-signin-card');
+const githubButton = document.querySelector('#github-signin-main');
+const statusLine = document.querySelector('#github-signin-status');
 const agentLoop = document.querySelector('[data-landing-agent-loop]');
 const agentComposer = document.querySelector('[data-landing-agent-composer]');
 const agentPrompt = document.querySelector('[data-landing-agent-prompt]');
@@ -148,10 +147,10 @@ function startAgentLoop(stack = agentLoop) {
   setInterval(tick, 2600);
 }
 
-function openModal() {
-  if (!dialog) return;
-  if (dialog.showModal) dialog.showModal();
-  else dialog.setAttribute('open', '');
+function setSignInOpen(open) {
+  if (!signInCard) return;
+  signInCard.hidden = !open;
+  if (open) githubButton?.focus({ preventScroll: true });
 }
 
 async function refreshAuth() {
@@ -160,10 +159,7 @@ async function refreshAuth() {
     connected = Boolean(status.connected);
     const login = status.user && status.user.login ? `@${status.user.login}` : 'GitHub';
     if (signInButton) signInButton.textContent = connected ? `Signed in ${login}` : 'Sign in';
-    if (githubButton) {
-      githubButton.textContent = connected ? 'Open web app' : 'Continue with GitHub';
-      githubButton.disabled = !connected && !status.configured;
-    }
+    if (githubButton) githubButton.disabled = !connected && !status.configured;
     setStatus(connected ? `Signed in as ${login}.` : status.configured ? 'Sign in with GitHub to continue.' : 'GitHub sign-in is not configured yet.');
   } catch (error) {
     setStatus(error.message);
@@ -193,7 +189,10 @@ async function startGitHubSignIn() {
 startAgentLoop();
 startPromptComposer();
 
-openButtons.forEach((button) => button.addEventListener('click', () => { openModal(); void refreshAuth(); }));
-closeButton?.addEventListener('click', () => dialog?.close());
-dialog?.addEventListener('click', (event) => { if (event.target === dialog) dialog.close(); });
+openButtons.forEach((button) => button.addEventListener('click', () => { setSignInOpen(true); void refreshAuth(); }));
+document.addEventListener('keydown', (event) => { if (event.key === 'Escape') setSignInOpen(false); });
+document.addEventListener('click', (event) => {
+  if (signInCard?.hidden || signInCard?.contains(event.target) || event.target.closest?.('[data-open-signin]')) return;
+  setSignInOpen(false);
+});
 githubButton?.addEventListener('click', () => { void startGitHubSignIn(); });
