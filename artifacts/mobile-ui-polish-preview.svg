@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1080" viewBox="0 0 1440 1080" fill="none">
+  <defs>
+    <style>
+      .bg{fill:#0E1118}.paper{fill:#151923}.paper2{fill:#1B2130}.blue{fill:#89B4FA}.green{fill:#A6E3A1}.yellow{fill:#E0AF68}.ink{fill:#E6EDF3}.ink2{fill:#C8D0E0}.muted{fill:#8B95AA}.quiet{fill:#667085}.line{stroke:rgba(137,180,250,.22)}.line2{stroke:rgba(137,180,250,.34)}
+      .title{font:800 46px/1 Inter,ui-sans-serif,system-ui;letter-spacing:-2px}.h{font:800 24px/1 Inter,ui-sans-serif,system-ui;letter-spacing:-.8px}.label{font:800 13px/1 Inter,ui-sans-serif,system-ui;letter-spacing:.8px;text-transform:lowercase}.body{font:500 16px/1.35 Inter,ui-sans-serif,system-ui}.small{font:500 13px/1.25 Inter,ui-sans-serif,system-ui}.mono{font:700 12px/1.25 ui-monospace,SFMono-Regular,Menlo,monospace}
+    </style>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="24" stdDeviation="28" flood-color="#000" flood-opacity=".42"/></filter>
+  </defs>
+  <rect width="1440" height="1080" class="bg"/>
+  <circle cx="210" cy="-80" r="360" fill="#89B4FA" opacity=".08"/>
+  <text x="64" y="72" class="title ink">Mobile UI polish preview</text>
+  <text x="64" y="108" class="body muted">Workspace agents are now a drawer, controls stop wrapping randomly, thread cards use full width, and diff review goes full-screen.</text>
+
+  <!-- Phone 1 -->
+  <g transform="translate(70 170)" filter="url(#shadow)">
+    <rect x="0" y="0" width="300" height="620" rx="34" fill="#070A10" stroke="rgba(255,255,255,.14)"/>
+    <rect x="10" y="10" width="280" height="600" rx="26" class="bg"/>
+    <rect x="10" y="10" width="280" height="54" rx="26" fill="#0E1118"/>
+    <rect x="20" y="22" width="84" height="30" rx="15" class="paper line"/>
+    <text x="39" y="42" class="label ink2">☰ agents</text>
+    <rect x="178" y="22" width="45" height="28" rx="14" class="paper line"/><text x="190" y="40" class="mono muted">codex</text>
+    <rect x="229" y="22" width="49" height="28" rx="14" class="blue"/><text x="240" y="40" class="mono bg">signin</text>
+    <rect x="10" y="10" width="246" height="600" rx="26" class="paper" stroke="rgba(137,180,250,.24)"/>
+    <rect x="10" y="10" width="246" height="92" rx="26" class="paper"/>
+    <rect x="28" y="30" width="28" height="28" rx="6" class="blue"/><rect x="34" y="46" width="44" height="8" rx="2" class="green"/>
+    <text x="66" y="50" class="h ink">spanner</text>
+    <rect x="28" y="66" width="168" height="24" rx="12" class="paper2 line"/><text x="39" y="82" class="mono blue">workspace · mobile-ui</text>
+    <line x1="10" y1="102" x2="256" y2="102" stroke="rgba(137,180,250,.18)"/>
+    <g transform="translate(28 124)">
+      <circle cx="5" cy="14" r="5" class="yellow"/><text x="24" y="16" class="body ink2" font-weight="800">Fix checkout race</text><text x="24" y="38" class="small quiet">running · editing callback</text>
+      <line x1="0" y1="58" x2="208" y2="58" stroke="rgba(137,180,250,.15)"/>
+      <circle cx="5" cy="86" r="5" class="green"/><text x="24" y="88" class="body ink2" font-weight="800">Mobile UI polish</text><text x="24" y="110" class="small quiet">done · changed 4 files</text>
+      <line x1="0" y1="130" x2="208" y2="130" stroke="rgba(137,180,250,.15)"/>
+      <circle cx="5" cy="158" r="5" class="quiet"/><text x="24" y="160" class="body ink2" font-weight="800">Prep handoff</text><text x="24" y="182" class="small quiet">finished · 2h ago</text>
+    </g>
+  </g>
+  <text x="82" y="832" class="h ink">1 · agents drawer</text>
+  <text x="82" y="862" class="body muted">No squeezed desktop sidebar on phones.</text>
+
+  <!-- Phone 2 -->
+  <g transform="translate(405 170)" filter="url(#shadow)">
+    <rect width="300" height="620" rx="34" fill="#070A10" stroke="rgba(255,255,255,.14)"/>
+    <rect x="10" y="10" width="280" height="600" rx="26" class="bg"/>
+    <rect x="20" y="24" width="84" height="30" rx="15" class="paper line"/><text x="39" y="44" class="label ink2">☰ agents</text>
+    <rect x="190" y="24" width="42" height="28" rx="14" class="paper line"/><text x="199" y="42" class="mono muted">codex</text>
+    <rect x="238" y="24" width="40" height="28" rx="14" class="paper line"/><text x="247" y="42" class="mono muted">gear</text>
+    <g transform="translate(20 116)">
+      <rect width="260" height="282" rx="20" fill="#18243A" stroke="rgba(137,180,250,.34)"/>
+      <text x="18" y="44" class="body ink" style="font-size:20px;font-weight:700;letter-spacing:-.8px">Tell the main agent what to do…</text>
+      <g transform="translate(10 146)">
+        <rect width="38" height="38" rx="10" class="paper line"/><text x="15" y="25" class="h ink2">+</text>
+        <rect x="46" width="194" height="38" rx="10" class="paper line"/><text x="58" y="24" class="label blue">model</text><text x="112" y="24" class="small muted">codex-xhigh</text>
+        <rect y="48" width="240" height="38" rx="10" class="paper line"/><text x="12" y="72" class="label blue">thinking</text><text x="88" y="72" class="small muted">xhigh · ━━━━━●</text>
+      </g>
+      <rect x="10" y="242" width="240" height="30" rx="10" class="blue"/><text x="105" y="262" class="label bg">start agent</text>
+    </g>
+    <g transform="translate(20 416)">
+      <text x="0" y="0" dy="14" class="body muted" font-weight="800">Suggested starts</text>
+      <text x="8" y="52" class="h quiet">+</text><text x="44" y="45" class="body ink2" font-weight="800">Find next move</text><text x="44" y="68" class="small quiet">Review diff, notes, and recent agents.</text>
+      <text x="8" y="116" class="h quiet">+</text><text x="44" y="109" class="body ink2" font-weight="800">Fix a paper cut</text><text x="44" y="132" class="small quiet">Walk the core flow and verify it.</text>
+    </g>
+  </g>
+  <text x="417" y="832" class="h ink">2 · composer grid</text>
+  <text x="417" y="862" class="body muted">Attachment + model + thinking have stable rows.</text>
+
+  <!-- Phone 3 -->
+  <g transform="translate(740 170)" filter="url(#shadow)">
+    <rect width="300" height="620" rx="34" fill="#070A10" stroke="rgba(255,255,255,.14)"/>
+    <rect x="10" y="10" width="280" height="600" rx="26" class="bg"/>
+    <rect x="10" y="10" width="280" height="96" rx="26" fill="#0E1118" stroke="rgba(137,180,250,.16)"/>
+    <rect x="22" y="24" width="36" height="36" rx="10" class="paper line"/><text x="34" y="47" class="h ink2">←</text>
+    <text x="70" y="48" class="h blue">Mobile UI polish</text>
+    <rect x="22" y="68" width="65" height="25" rx="13" class="paper2 line"/><text x="35" y="85" class="mono yellow">running</text>
+    <rect x="93" y="68" width="45" height="25" rx="13" class="paper line"/><text x="105" y="85" class="mono muted">stop</text>
+    <rect x="144" y="68" width="62" height="25" rx="13" class="blue"/><text x="158" y="85" class="mono bg">archive</text>
+    <g transform="translate(16 122)">
+      <rect width="268" height="82" rx="12" class="paper line"/><text x="12" y="24" class="mono muted">you</text><text x="226" y="24" class="mono muted">now</text><text x="12" y="54" class="body ink2">figure out some mobile ui…</text>
+      <rect y="96" width="268" height="116" rx="12" class="paper line"/><text x="12" y="120" class="mono muted">assistant</text><text x="205" y="120" class="mono muted">working</text><text x="12" y="150" class="body ink2">Full-width cards, no tiny spine,</text><text x="12" y="174" class="body ink2">composer above safe-area bottom.</text>
+      <rect y="226" width="268" height="74" rx="12" class="paper2 line"/><text x="12" y="252" class="mono muted">tool</text><text x="12" y="278" class="body ink2">app.css · mobile query updated</text>
+    </g>
+    <g transform="translate(16 468)">
+      <rect width="268" height="132" rx="18" fill="#18243A" stroke="rgba(137,180,250,.34)"/>
+      <text x="14" y="36" class="body ink2" style="font-size:16px">Next task…</text>
+      <rect x="10" y="76" width="38" height="30" rx="9" class="paper line"/><text x="24" y="96" class="body ink2">+</text>
+      <rect x="56" y="76" width="94" height="30" rx="9" class="paper line"/><text x="66" y="96" class="mono muted">model codex</text>
+      <rect x="158" y="76" width="100" height="30" rx="9" class="blue"/><text x="196" y="96" class="mono bg">send</text>
+    </g>
+  </g>
+  <text x="752" y="832" class="h ink">3 · thread reading</text>
+  <text x="752" y="862" class="body muted">Full-width messages and reachable actions.</text>
+
+  <!-- Phone 4 -->
+  <g transform="translate(1075 170)" filter="url(#shadow)">
+    <rect width="300" height="620" rx="34" fill="#070A10" stroke="rgba(255,255,255,.14)"/>
+    <rect x="10" y="10" width="280" height="600" rx="26" class="paper"/>
+    <rect x="10" y="10" width="280" height="74" rx="26" class="paper" stroke="rgba(137,180,250,.16)"/>
+    <text x="26" y="34" class="label blue">changes</text><text x="26" y="62" class="h ink">Full diff</text>
+    <rect x="218" y="28" width="54" height="30" rx="15" class="paper2 line"/><text x="232" y="47" class="mono muted">close</text>
+    <rect x="10" y="84" width="280" height="46" class="paper2"/>
+    <rect x="22" y="94" width="58" height="26" rx="13" class="blue"/><text x="34" y="111" class="mono bg">app.css</text>
+    <rect x="88" y="94" width="66" height="26" rx="13" class="paper line"/><text x="101" y="111" class="mono muted">pages.jsx</text>
+    <rect x="162" y="94" width="76" height="26" rx="13" class="paper line"/><text x="173" y="111" class="mono muted">sidebar.jsx</text>
+    <rect x="10" y="130" width="280" height="480" fill="#080D14"/>
+    <text x="24" y="164" class="mono muted">@@ mobile layout @@</text>
+    <text x="24" y="196" class="mono green">+ .diff-dialog { width: 100vw; }</text>
+    <text x="24" y="222" class="mono green">+ .diff-dialog-shell { grid-template-columns: 1fr; }</text>
+    <text x="24" y="264" class="mono muted">@@ thread reading @@</text>
+    <text x="24" y="296" class="mono green">+ .timeline-flow { padding-left: 0; }</text>
+    <text x="24" y="322" class="mono green">+ .timeline-dot { display: none; }</text>
+    <text x="24" y="348" class="mono green">+ .message-card { width: 100%; }</text>
+  </g>
+  <text x="1087" y="832" class="h ink">4 · full-screen diff</text>
+  <text x="1087" y="862" class="body muted">File chips across the top, code gets the screen.</text>
+</svg>

@@ -44,6 +44,7 @@ import {
   SidebarHeader,
   SidebarInset,
   SidebarProvider,
+  SidebarTrigger,
 } from './components/ui/sidebar.jsx';
 import { cn } from '#lib/utils';
 
@@ -215,8 +216,8 @@ export function ProjectPage() {
 }
 
 export function WorkspacePage() {
-  return <SidebarProvider className="min-h-svh bg-[var(--bg)]" style={{ '--sidebar-width': 'var(--workspace-sidebar-width, 22rem)' }}>
-    <Sidebar className="border-r border-[var(--rule)]" collapsible="none">
+  return <SidebarProvider className="workspace-shell min-h-svh bg-[var(--bg)]" style={{ '--sidebar-width': 'var(--workspace-sidebar-width, 22rem)' }}>
+    <Sidebar className="border-r border-[var(--rule)]">
       <Surface id="agents-section" className="flex h-full min-h-0 flex-col bg-[var(--paper)]" aria-label="Agents">
         <SidebarHeader className="grid gap-3 border-b border-[var(--rule)] px-3 py-4">
           <Brand href="/workspace.html" label="Spanner workspace" />
@@ -227,8 +228,11 @@ export function WorkspacePage() {
         </SidebarContent>
       </Surface>
     </Sidebar>
-    <SidebarInset className="min-w-0 bg-[var(--bg)] px-[clamp(16px,4vw,56px)] py-6 pb-18 max-sm:px-2.5 max-sm:py-3 max-sm:pb-7">
-      <div className="mx-auto mb-5 flex w-[min(1180px,100%)] items-center gap-2 max-sm:mb-3 max-sm:items-start"><WorkspaceNav active="workspace" showBrand={false} showWorkspaceManager={false} /></div>
+    <SidebarInset className="min-w-0 bg-[var(--bg)] px-[clamp(16px,4vw,56px)] py-6 pb-18 max-sm:px-2.5 max-sm:py-2 max-sm:pb-7">
+      <div className="workspace-mobile-nav mx-auto mb-5 flex w-[min(1180px,100%)] items-center gap-2 max-sm:mb-3">
+        <SidebarTrigger className="workspace-sidebar-trigger border-[var(--rule)] bg-[var(--paper)] px-3 font-[var(--mono)] text-[11px] font-bold lowercase tracking-[.04em] text-[var(--ink-2)] hover:bg-[var(--blue-soft)] hover:text-[var(--blue)] md:hidden">agents</SidebarTrigger>
+        <WorkspaceNav active="workspace" showBrand={false} showWorkspaceManager={false} />
+      </div>
       <h1 className="sr-only">Start a main agent</h1>
       <GitHubSignInCard compact />
       <InputMessage as="form" id="thread-form" className="launch-card" aria-label="Spin up a main agent">
