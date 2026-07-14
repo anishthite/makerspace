@@ -205,9 +205,10 @@ test('follow-up responses and reopened active runs hydrate message history', () 
 test('running thread composer labels steer and follow-up delivery', () => {
   assert.match(pages, /id="composer-hint"/);
   assert.match(css, /\.composer-hint/);
-  assert.match(js, /Enter steers the running agent · Alt\+Enter queues a follow-up/);
+  assert.match(js, /Enter steers as soon as live · Alt\+Enter queues a follow-up/);
+  assert.match(js, /function canSendActiveDelivery/);
   assert.match(js, /nextSubmitDelivery = 'followUp'/);
-  assert.match(js, /const delivery = nextSubmitDelivery === 'followUp' \? 'followUp' : isRunningThread\(\) \? 'steer' : 'auto'/);
+  assert.match(js, /const delivery = nextSubmitDelivery === 'followUp' \? 'followUp' : canSendActiveDelivery\(\) \? 'steer' : 'auto'/);
   assert.match(js, /delivery,\s*submittedAtMs/);
   assert.match(js, /if \(!activeDelivery\) activeRunSummaryMarker = appendRunSummaryMarker/);
   assert.match(js, /event\.type === 'queue'\) updateQueueState\(event\)/);
