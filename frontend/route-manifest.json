@@ -101,6 +101,11 @@
       "mode": "react"
     },
     {
+      "route": "/onboarding-editor.html",
+      "file": "onboarding-editor.html",
+      "mode": "react"
+    },
+    {
       "route": "/sandbox-provider-guide.html",
       "file": "sandbox-provider-guide.html",
       "mode": "copy"

@@ -1,3 +1,5 @@
+import { useEffect, useMemo, useState } from 'react';
+
 import {
   ArrowLeftIcon,
   ArrowsClockwiseIcon,
@@ -125,6 +127,160 @@ function ProjectOnboardingDialog() {
       </ol>
     </div>
   </dialog>;
+}
+
+const ONBOARDING_EDITOR_API = '/__spanner/onboarding-content';
+
+function copyOnboardingContent(value = onboardingContent) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function normalizeOnboardingContent(value) {
+  const fallback = copyOnboardingContent();
+  const incoming = value && typeof value === 'object' ? value : {};
+  return {
+    ...fallback,
+    ...incoming,
+    actions: { ...fallback.actions, ...(incoming.actions || {}) },
+    statusLabels: { ...fallback.statusLabels, ...(incoming.statusLabels || {}) },
+    steps: Array.isArray(incoming.steps) && incoming.steps.length
+      ? incoming.steps.map((step, index) => ({ ...(fallback.steps[index] || {}), ...step }))
+      : fallback.steps,
+  };
+}
+
+function OnboardingPreview({ content, activeIndex }) {
+  const activeStepId = content.steps[activeIndex]?.id;
+  return <div className="onboarding-editor-preview" aria-label="Onboarding preview">
+    <div className="onboarding-dialog onboarding-editor-dialog">
+      <div className="onboarding-shell">
+        <Button className="onboarding-editor-close" variant="ghost" size="icon" type="button" aria-label="close onboarding"><XIcon className="size-4" aria-hidden="true" /></Button>
+        <div className="onboarding-copy">
+          <p className={eyebrowClass}>{content.eyebrow}</p>
+          <h2>{content.title}</h2>
+          <p>{content.copy}</p>
+        </div>
+        <ol className="onboarding-steps" aria-label="Onboarding checklist preview">
+          {content.steps.map((step, index) => {
+            const state = index < activeIndex ? 'done' : index === activeIndex ? 'current' : 'todo';
+            return <li key={step.id} data-state={state}>
+              <span className="onboarding-step-num">{state === 'done' ? '✓' : index + 1}</span>
+              <span className="onboarding-step-body">
+                <strong>{step.title}</strong>
+                <small>{step.body}</small>
+                {state === 'current' && <span className="onboarding-step-action">
+                  {activeStepId === 'github' && <Button className="github-login-button" variant="primary" type="button"><GithubLogoIcon {...buttonIconProps} />{content.actions.github}</Button>}
+                  {activeStepId === 'project' && <Button variant="ghost" type="button"><FolderOpenIcon {...buttonIconProps} />{content.actions.project}</Button>}
+                  {activeStepId === 'llm' && <Button variant="ghost" type="button"><TerminalWindowIcon {...buttonIconProps} />{content.actions.claude || 'Claude'}</Button>}
+                  {activeStepId === 'llm' && <Button variant="ghost" type="button"><OpenAiLogoIcon {...buttonIconProps} />{content.actions.codex || 'Codex'}</Button>}
+                </span>}
+              </span>
+            </li>;
+          })}
+        </ol>
+      </div>
+    </div>
+  </div>;
+}
+
+function OnboardingEditorPage() {
+  const [draft, setDraft] = useState(() => copyOnboardingContent());
+  const [activeStep, setActiveStep] = useState(0);
+  const [status, setStatus] = useState('Save writes to frontend/src/onboarding-content.json in Vite dev.');
+  const activeIndex = useMemo(() => Math.min(activeStep, Math.max(draft.steps.length - 1, 0)), [activeStep, draft.steps.length]);
+  const step = draft.steps[activeIndex] || draft.steps[0];
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(ONBOARDING_EDITOR_API, { cache: 'no-store' })
+      .then((response) => response.ok ? response.json() : null)
+      .then((content) => {
+        if (!cancelled && content) setDraft(normalizeOnboardingContent(content));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  function updateField(field, value) {
+    setDraft((current) => ({ ...current, [field]: value }));
+  }
+
+  function updateGroup(group, key, value) {
+    setDraft((current) => ({ ...current, [group]: { ...current[group], [key]: value } }));
+  }
+
+  function updateStep(field, value) {
+    setDraft((current) => ({
+      ...current,
+      steps: current.steps.map((item, index) => index === activeIndex ? { ...item, [field]: value } : item),
+    }));
+  }
+
+  async function saveContent(event) {
+    event.preventDefault();
+    setStatus('Saving…');
+    try {
+      const response = await fetch(ONBOARDING_EDITOR_API, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(draft),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || 'Save endpoint unavailable.');
+      setStatus(`Saved ${payload.file || 'frontend/src/onboarding-content.json'}.`);
+    } catch (error) {
+      setStatus(`Save failed: ${error.message} Run npm run frontend:dev.`);
+    }
+  }
+
+  return <main className="onboarding-editor-page mx-auto w-[min(1180px,calc(100%_-_clamp(24px,6vw,96px)))] px-0 py-5 pb-14 max-sm:w-[min(900px,calc(100%_-_24px))]">
+    <nav className={topbarClass} aria-label="Spanner navigation">
+      <Brand href="/" label="Spanner projects"><span className="rounded-full border border-[var(--rule)] bg-[var(--paper-2)] px-2 py-1 font-[var(--mono)] text-[11px] font-bold leading-none tracking-normal text-[var(--blue)]">onboarding editor</span></Brand>
+      <div className={headerActionsClass}><Button as="a" variant="ghost" href="/">Project page</Button></div>
+    </nav>
+
+    <header className="mt-8 mb-5 max-w-[760px]">
+      <p className={eyebrowClass}>local editor</p>
+      <h1 className="mb-2 text-[clamp(42px,6vw,78px)] leading-[.86] tracking-[-.08em]">Edit onboarding state by state.</h1>
+      <p className={ledeClass}>Pick a step, edit the copy, preview the exact checklist state, then save it back to source.</p>
+    </header>
+
+    <div className="onboarding-editor-grid">
+      <section>
+        <div className="onboarding-editor-state-tabs" aria-label="Preview state">
+          {draft.steps.map((item, index) => <Button key={item.id} variant={index === activeIndex ? 'primary' : 'ghost'} size="sm" type="button" onClick={() => setActiveStep(index)}>{index + 1}. {item.title || item.id}</Button>)}
+        </div>
+        <OnboardingPreview content={draft} activeIndex={activeIndex} />
+      </section>
+
+      <Surface as="form" className="onboarding-editor-form grid gap-3 p-4" onSubmit={saveContent}>
+        <div className="flex items-center justify-between gap-3">
+          <div><p className={eyebrowClass}>state {activeIndex + 1}</p><h2 className="m-0 text-xl">{step?.title || 'Step'}</h2></div>
+          <Button variant="primary" type="submit"><FloppyDiskIcon {...buttonIconProps} />Save</Button>
+        </div>
+
+        <label className="onboarding-editor-field">Eyebrow<input value={draft.eyebrow} onChange={(event) => updateField('eyebrow', event.target.value)} /></label>
+        <label className="onboarding-editor-field">Title<textarea rows="2" value={draft.title} onChange={(event) => updateField('title', event.target.value)} /></label>
+        <label className="onboarding-editor-field">Body<textarea rows="3" value={draft.copy} onChange={(event) => updateField('copy', event.target.value)} /></label>
+
+        <div className="onboarding-editor-two">
+          <label className="onboarding-editor-field">GitHub action<input value={draft.actions.github} onChange={(event) => updateGroup('actions', 'github', event.target.value)} /></label>
+          <label className="onboarding-editor-field">Repo action<input value={draft.actions.project} onChange={(event) => updateGroup('actions', 'project', event.target.value)} /></label>
+          <label className="onboarding-editor-field">Claude action<input value={draft.actions.claude || ''} onChange={(event) => updateGroup('actions', 'claude', event.target.value)} /></label>
+          <label className="onboarding-editor-field">Codex action<input value={draft.actions.codex} onChange={(event) => updateGroup('actions', 'codex', event.target.value)} /></label>
+          <label className="onboarding-editor-field">Done label<input value={draft.statusLabels.done} onChange={(event) => updateGroup('statusLabels', 'done', event.target.value)} /></label>
+          <label className="onboarding-editor-field">Todo label<input value={draft.statusLabels.todo} onChange={(event) => updateGroup('statusLabels', 'todo', event.target.value)} /></label>
+          {step && <label className="onboarding-editor-field">Current label<input value={draft.statusLabels[step.id] || ''} onChange={(event) => updateGroup('statusLabels', step.id, event.target.value)} /></label>}
+        </div>
+
+        {step && <>
+          <label className="onboarding-editor-field">Step title<input value={step.title} onChange={(event) => updateStep('title', event.target.value)} /></label>
+          <label className="onboarding-editor-field">Step body<textarea rows="3" value={step.body} onChange={(event) => updateStep('body', event.target.value)} /></label>
+        </>}
+        <p className={statusLineClass} role="status" aria-live="polite">{status}</p>
+      </Surface>
+    </div>
+  </main>;
 }
 
 function Brand({ href = '/', label = 'Spanner home', children }) {
@@ -358,6 +514,7 @@ export function SettingsPage() {
       <div className={settingsSectionHeadClass}><p className={eyebrowClass}>03 · runtime</p><h2 id="runtime-title">Set remote sandbox defaults.</h2><p>Leave fields blank to keep safe defaults or existing secrets.</p></div>
       <div className="grid gap-4 lg:grid-cols-2"><Surface as="section" id="sandbox" className={settingsCardClass} aria-labelledby="sandbox-title"><div className={settingsCardHeadClass}><span className={settingsMarkClass} aria-hidden="true"><CubeIcon className="size-4" /></span><div><h3 id="sandbox-title">Sandbox</h3><p>Image and registry credentials for remote environments.</p></div></div><form id="settings-form" className="stack-lg"><div className="form-grid"><label className="full-width"><span>Image ref</span><input id="image-ref" name="imageRef" placeholder="image ref" /><small>Blank = default.</small></label><label><span>Registry username</span><input id="registry-username" name="registryUsername" placeholder="username" autoComplete="username" /></label><label><span>Registry token</span><input id="registry-password" name="registryPassword" type="password" placeholder="token" autoComplete="current-password" /><small>Blank keeps current.</small></label><label className="full-width"><span>Anthropic API key</span><input id="anthropic-api-key" name="anthropicApiKey" type="password" placeholder="API key" autoComplete="off" /><small>Blank keeps current.</small></label></div><div className="form-actions flex flex-wrap items-center gap-2"><Button id="settings-submit" variant="primary" type="submit"><FloppyDiskIcon {...buttonIconProps} />Save sandbox</Button><p id="settings-status" className={settingsStatusClass}>Loading…</p></div></form></Surface><Surface as="section" id="desktop-updates" className={settingsCardClass} hidden aria-labelledby="desktop-updates-title"><div className={settingsCardHeadClass}><span className={settingsMarkClass} aria-hidden="true"><TerminalWindowIcon className="size-4" /></span><div><h3 id="desktop-updates-title">Desktop updates</h3><p>Check GitHub Releases for a newer desktop build.</p></div></div><p id="desktop-update-status" className={settingsStatusClass}>Desktop only.</p><div className={settingsActionsClass}><Button id="desktop-check-updates" variant="ghost" type="button"><ArrowsClockwiseIcon {...buttonIconProps} />Check for updates</Button></div></Surface></div>
     </section>
+
   </main>;
 }
 
@@ -597,5 +754,6 @@ export const pages = {
   history: HistoryPage,
   performance: PerformancePage,
   desktop: DesktopLandingPage,
+  onboardingEditor: OnboardingEditorPage,
   traceComponents: TraceComponentsPage,
 };

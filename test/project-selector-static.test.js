@@ -94,6 +94,9 @@ test('project selector offers desktop local folders', () => {
   assert.doesNotMatch(styles, /content: 'current step'/);
   assert.doesNotMatch(styles, /\.onboarding-step-state/);
   assert.doesNotMatch(styles, /\.onboarding-actions/);
+  assert.match(styles, /\.onboarding-editor-grid/);
+  assert.match(pages, /function OnboardingEditorPage\(\)/);
+  assert.match(pages, /__spanner\/onboarding-content/);
   assert.match(project, /function startGitHubSignIn/);
   assert.match(project, /\/api\/auth\/github\/login/);
   assert.match(project, /renderGitHubSignIn\(github\)/);
