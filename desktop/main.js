@@ -20,6 +20,7 @@ const rootDir = path.resolve(__dirname, '..');
 let serverProcess = null;
 let mainWindow = null;
 let userDataMigrated = false;
+const EXTERNAL_PROTOCOLS = new Set(['http:', 'https:', 'vscode:', 'vscode-insiders:', 'cursor:', 'zed:', 'jetbrains:']);
 
 function sendUpdateStatus(message) {
   BrowserWindow.getAllWindows().forEach((window) => {
@@ -45,11 +46,13 @@ function initialFolderArg() {
 
 const initialFolder = initialFolderArg();
 
+function folderName(value) {
+  const text = cleanFolder(value).replace(/[\\/]+$/, '');
+  return text.split(/[\\/]+/).filter(Boolean).pop() || '';
+}
+
 function projectName() {
-  const explicit = cleanFolder(process.env.SPANNER_PROJECT);
-  if (explicit) return explicit;
-  const normalized = initialFolder.replace(/[\\/]+$/, '');
-  return path.basename(normalized) || '';
+  return folderName(process.env.SPANNER_PROJECT) || folderName(initialFolder);
 }
 
 function projectHomeDir() {
@@ -182,7 +185,7 @@ ipcMain.handle('spanner:choose-folder', async (_event, folder) => {
 
 async function openExternalUrl(url) {
   const target = new URL(String(url || ''));
-  if (!['http:', 'https:'].includes(target.protocol)) throw new Error('Only http(s) URLs can be opened.');
+  if (!EXTERNAL_PROTOCOLS.has(target.protocol)) throw new Error('Only safe external URLs can be opened.');
   await shell.openExternal(target.href);
 }
 
