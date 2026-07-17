@@ -444,9 +444,10 @@ test('thread output sync does not create a dead run before bridge URL exists', a
   assert.equal(run.events[0].message, 'waiting for remote bridge');
 });
 
-test('thread bridge launch persists safe diagnostics', async () => {
+test('thread bridge launch failure destroys Cloudflare sandbox and keeps safe diagnostics', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-bridge-diagnostics-'));
   const sessionFile = path.join(root, 'sessions.json');
+  const destroyed = [];
 
   try {
     const bridge = createBridgeService({
@@ -457,11 +458,12 @@ test('thread bridge launch persists safe diagnostics', async () => {
         bridgePort: 4310,
       },
       provider: {
-        kind: 'test',
+        kind: 'cloudflare',
         createSession: async (_session, imageSettings) => {
           await imageSettings.onLaunchLog('provider:test_step', { bridgeToken: 'secret', ok: true });
           throw new Error('sandbox boom');
         },
+        destroySession: async (name) => { destroyed.push(name); },
       },
       auth: {
         readPiAuthForSession: async () => null,
@@ -482,10 +484,13 @@ test('thread bridge launch persists safe diagnostics', async () => {
 
     const stored = await waitForValue(async () => {
       const session = await getStoredSession(sessionFile, 'diagnostic-thread');
-      return session?.warning === 'sandbox boom' ? session : null;
+      const phases = session?.bridgeLaunchLog?.map((entry) => entry.phase) || [];
+      return phases.includes('launch:destroyed_after_failure') ? session : null;
     });
     const phases = stored.bridgeLaunchLog.map((entry) => entry.phase);
 
+    assert.deepEqual(destroyed, ['diagnostic-thread']);
+    assert.equal(stored.warning, 'sandbox boom');
     assert.ok(phases.includes('thread_launch:queued'));
     assert.ok(phases.includes('thread_launch:worker_start'));
     assert.ok(phases.includes('provider:test_step'));

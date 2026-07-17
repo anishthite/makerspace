@@ -28,35 +28,7 @@ function promptBlock(event: any): string {
   ].filter(Boolean).join('\n\n');
 }
 
-function registerInferenceProvider(pi: any) {
-  pi.registerProvider('inference', {
-    name: 'Inference.net',
-    baseUrl: 'https://api.inference.net/v1',
-    api: 'openai-completions',
-    apiKey: '$INFERENCE_API_KEY',
-    models: [{
-      id: 'nvidia/nemotron3-super',
-      name: 'NVIDIA Nemotron 3 Super',
-      reasoning: false,
-      input: ['text'],
-      contextWindow: 128000,
-      maxTokens: 1024,
-      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-      compat: {
-        supportsStore: false,
-        supportsDeveloperRole: false,
-        supportsReasoningEffort: false,
-        supportsUsageInStreaming: false,
-        maxTokensField: 'max_tokens',
-        supportsStrictMode: false,
-      },
-    }],
-  });
-}
-
 export default function spannerDefaults(pi: any) {
-  registerInferenceProvider(pi);
-
   if (!agents && !rules) return;
 
   pi.on('before_agent_start', (event: any) => {

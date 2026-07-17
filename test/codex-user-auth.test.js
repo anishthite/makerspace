@@ -1,10 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
+import { createInMemoryCredentialStore } from '../src/pi-runtime.js';
 import { createAuthService } from '../src/server/auth.js';
 
 function testHttp() {
@@ -239,17 +240,60 @@ test('readGitHubAuthForSession falls back to the server token in single-user mod
   }
 });
 
-test('hosted Codex auth populates model picker defaults', async () => {
+test('local Codex and Claude auth populate all signed-in model picker defaults', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-local-models-'));
+  const agentDir = path.join(root, 'pi-agent');
+  try {
+    const { ModelRuntime } = await import('@earendil-works/pi-coding-agent');
+    const credential = { type: 'oauth', access: 'access-token', refresh: 'refresh-token', expires: Date.now() + 60_000, accountId: 'acct' };
+    const claudeCredential = { type: 'oauth', access: 'claude-access', refresh: 'claude-refresh', expires: Date.now() + 60_000 };
+    await mkdir(agentDir, { recursive: true });
+    await writeFile(path.join(agentDir, 'auth.json'), JSON.stringify({ 'openai-codex': credential, anthropic: claudeCredential }), 'utf8');
+    await writeFile(path.join(agentDir, 'settings.json'), JSON.stringify({ enabledModels: ['openai-codex/gpt-5.4-mini'] }), 'utf8');
+
+    const auth = createAuthService({ config: { ...config(root), authRequired: false, piAgentDir: agentDir }, http: testHttp() });
+    const expectedRuntime = await ModelRuntime.create({
+      credentials: createInMemoryCredentialStore({ 'openai-codex': credential, anthropic: claudeCredential }),
+      modelsPath: null,
+      allowModelNetwork: false,
+    });
+    const expected = (await expectedRuntime.getAvailable()).map((model) => `${model.provider}/${model.id}`);
+    const defaults = await auth.loadPiDefaults();
+
+    assert.equal(defaults.models[0], 'openai-codex/gpt-5.4-mini');
+    assert.ok(expected.includes('openai-codex/gpt-5.6-luna'));
+    for (const ref of expected) assert.ok(defaults.models.includes(ref), ref);
+    assert.equal(defaults.models.includes('inference/nvidia/nemotron3-super'), false);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('hosted Codex and Claude auth populate all signed-in model picker defaults', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-codex-models-'));
   try {
+    const { ModelRuntime } = await import('@earendil-works/pi-coding-agent');
     const auth = createAuthService({ config: config(root), http: testHttp() });
     const user = await auth.authStore.upsertUser({ githubId: '1', login: 'octo' });
     const credential = { type: 'oauth', access: 'access-token', refresh: 'refresh-token', expires: Date.now() + 60_000, accountId: 'acct' };
+    const claudeCredential = { type: 'oauth', access: 'claude-access', refresh: 'claude-refresh', expires: Date.now() + 60_000 };
 
     await auth.authStore.writeUserSecret(user.id, 'openai-codex-auth', JSON.stringify(credential));
+    await auth.authStore.writeUserSecret(user.id, 'claude-code-auth', JSON.stringify(claudeCredential));
 
+    const expectedRuntime = await ModelRuntime.create({
+      credentials: createInMemoryCredentialStore({ 'openai-codex': credential, anthropic: claudeCredential }),
+      modelsPath: null,
+      allowModelNetwork: false,
+    });
+    const expected = (await expectedRuntime.getAvailable()).map((model) => `${model.provider}/${model.id}`);
     const defaults = await auth.loadPiDefaults(user);
-    assert.ok(defaults.models.includes('openai-codex/gpt-5.5'));
+
+    assert.ok(expected.includes('openai-codex/gpt-5.5'));
+    assert.ok(expected.includes('openai-codex/gpt-5.6-luna'));
+    assert.ok(expected.includes('anthropic/claude-opus-4-8'));
+    assert.deepEqual(defaults.models, expected);
+    assert.equal(defaults.models.includes('inference/nvidia/nemotron3-super'), false);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

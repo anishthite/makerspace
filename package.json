@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "@cloudflare/sandbox": "^0.12.3",
-    "@earendil-works/pi-coding-agent": "0.79.7",
+    "@earendil-works/pi-coding-agent": "0.80.10",
     "@fontsource-variable/inter": "^5.2.8",
     "@hookform/resolvers": "^5.4.0",
     "@openuidev/react-lang": "^0.2.8",

@@ -25,13 +25,23 @@ test('spanner Pi defaults package exposes pi resources', async () => {
   assert.match(extension, /before_agent_start/);
   assert.match(extension, /context\/AGENTS\.md/);
   assert.match(extension, /contextHasAgents/);
-  assert.match(extension, /registerProvider\('inference'/);
-  assert.match(extension, /\$INFERENCE_API_KEY/);
+  assert.doesNotMatch(extension, /registerProvider\('inference'/);
+  assert.doesNotMatch(extension, /\$INFERENCE_API_KEY/);
 
   for (const skill of ['code-simplifier', 'playground', 'excalidraw-diagram', 'ponytail', 'ponytail-audit', 'ponytail-debt', 'ponytail-help', 'ponytail-review', 'emil-design-eng']) {
     assert.match(await readFile(path.join(packageDir, 'skills', skill, 'SKILL.md'), 'utf8'), /#|---|name:/);
   }
   await assert.rejects(readFile(path.join(packageDir, 'skills/excalidraw-diagram/references/.venv/pyvenv.cfg'), 'utf8'), /ENOENT/);
+});
+
+test('Cloudflare image leaves model availability to provider auth', async () => {
+  const dockerfile = await readFile('image/Dockerfile', 'utf8');
+  const manifest = JSON.parse(await readFile('image/package.json', 'utf8'));
+
+  assert.equal(manifest.dependencies['@earendil-works/pi-coding-agent'], '0.80.10');
+  assert.doesNotMatch(dockerfile, /enabledModels/);
+  assert.doesNotMatch(dockerfile, /inference\/nvidia/);
+  assert.doesNotMatch(dockerfile, /"defaultProvider":"openai-codex"/);
 });
 
 test('createPiResourceOptions adds package resource paths when present', async () => {
@@ -77,7 +87,7 @@ test('createPiResourceOptions applies extension provider registrations', async (
   const providers = [];
   const runtime = {
     pendingProviderRegistrations: [
-      { name: 'inference', config: { apiKey: '$INFERENCE_API_KEY' }, extensionPath: 'defaults.ts' },
+      { name: 'custom-proxy', config: { apiKey: '$CUSTOM_API_KEY' }, extensionPath: 'defaults.ts' },
     ],
   };
   const fakeSdk = {
@@ -89,6 +99,8 @@ test('createPiResourceOptions applies extension provider registrations', async (
       create: (authStorage, modelsPath) => ({
         authStorage,
         modelsPath,
+        models: [],
+        getAll() { return this.models; },
         registerProvider: (name, config) => providers.push({ name, config }),
       }),
     },
@@ -108,7 +120,7 @@ test('createPiResourceOptions applies extension provider registrations', async (
     packageDir,
   });
 
-  assert.deepEqual(providers, [{ name: 'inference', config: { apiKey: '$INFERENCE_API_KEY' } }]);
+  assert.deepEqual(providers, [{ name: 'custom-proxy', config: { apiKey: '$CUSTOM_API_KEY' } }]);
   assert.equal(result.modelRegistry.modelsPath, '/tmp/fake-agent/models.json');
   assert.deepEqual(runtime.pendingProviderRegistrations, []);
   assert.deepEqual(result.diagnostics, []);

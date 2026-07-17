@@ -26,6 +26,7 @@ import {
   githubAppInstallConfigured,
   githubRepoOwner,
 } from '../github-app.js';
+import { createInMemoryCredentialStore, createPiModelRegistry, createPiModelRuntime, writeCredentialFile } from '../pi-runtime.js';
 import { resolvePiSdkPackageDir } from '../pi-sdk-package.js';
 import { pruneBrowserSessions } from '../resource-utils.js';
 
@@ -512,10 +513,22 @@ export function createAuthService({ config, http }) {
     return piAiPromise;
   }
 
+  function localPiAgentDir() {
+    return config.piAgentDir || process.env.PI_CODING_AGENT_DIR || path.join(homedir(), '.pi', 'agent');
+  }
+
+  function localPiAuthPath() {
+    return path.join(localPiAgentDir(), 'auth.json');
+  }
+
+  function localPiModelsPath() {
+    return path.join(localPiAgentDir(), 'models.json');
+  }
+
   async function readPiSettingsFile() {
     if (authRequired()) return {};
     try {
-      const settingsPath = path.join(homedir(), '.pi', 'agent', 'settings.json');
+      const settingsPath = path.join(localPiAgentDir(), 'settings.json');
       return JSON.parse(await readFile(settingsPath, 'utf8'));
     } catch {
       return {};
@@ -541,18 +554,27 @@ export function createAuthService({ config, http }) {
   function configuredModelRefs(settings = {}, availableModels = []) {
     const enabledModels = Array.isArray(settings.enabledModels) ? settings.enabledModels : [];
     return uniqueModelRefs([
-      ...(enabledModels.length ? enabledModels : availableModels.map(modelRefFromPiModel)),
-      'inference/nvidia/nemotron3-super',
+      ...enabledModels,
+      ...availableModels.map(modelRefFromPiModel),
     ]);
   }
 
   async function availablePiModels(user = null) {
     try {
-      const { AuthStorage, ModelRegistry } = await loadPiSdk();
-      const authStorage = authRequired()
+      const sdk = await loadPiSdk();
+      const credentials = authRequired()
         ? await authStorageForSession({ ownerUserId: user?.id || '' })
-        : AuthStorage.create();
-      return ModelRegistry.create(authStorage).getAvailable();
+        : undefined;
+      const modelRuntime = await createPiModelRuntime(sdk, {
+        credentials,
+        authPath: credentials ? undefined : localPiAuthPath(),
+        modelsPath: authRequired() ? null : localPiModelsPath(),
+      });
+      if (modelRuntime?.getAvailable) return [...await modelRuntime.getAvailable()];
+
+      const authStorage = credentials || sdk.AuthStorage.create(localPiAuthPath());
+      const modelRegistry = createPiModelRegistry(sdk, { authStorage, modelsPath: authRequired() ? undefined : localPiModelsPath() });
+      return modelRegistry?.getAvailable?.() || [];
     } catch {
       return [];
     }
@@ -563,7 +585,7 @@ export function createAuthService({ config, http }) {
       model: 'Pi default model',
       agent: 'Pi default model',
       thinking: 'medium',
-      models: ['inference/nvidia/nemotron3-super'],
+      models: [],
     };
   }
 
@@ -666,11 +688,12 @@ export function createAuthService({ config, http }) {
     if (!stored) return null;
     if (Date.now() + 30_000 < stored.credential.expires) return stored;
 
-    const { AuthStorage } = await loadPiSdk();
-    const authStorage = AuthStorage.inMemory({ [provider]: stored.credential });
-    const apiKey = await authStorage.getApiKey(provider, { includeFallback: false });
-    const credential = normalizeOAuthCredential(authStorage.get(provider), provider);
-    if (!apiKey || !credential) throw new Error(`${providerLabel(provider)} auth expired. Sign in again in Settings → ${providerLabel(provider)}.`);
+    const sdk = await loadPiSdk();
+    const credentials = createInMemoryCredentialStore({ [provider]: stored.credential });
+    const modelRuntime = await createPiModelRuntime(sdk, { credentials, modelsPath: null });
+    const auth = await modelRuntime?.getAuth?.(provider);
+    const credential = normalizeOAuthCredential(await credentials.read(provider), provider);
+    if (!auth || !credential) throw new Error(`${providerLabel(provider)} auth expired. Sign in again in Settings → ${providerLabel(provider)}.`);
     await authStore.writeUserSecret(userId, providerSecretKey(provider), JSON.stringify(credential));
     return { credential, updatedAt: new Date().toISOString() };
   }
@@ -699,8 +722,10 @@ export function createAuthService({ config, http }) {
   }
 
   async function localProviderAuthStatus(provider) {
-    const { AuthStorage } = await loadPiSdk();
-    const authStorage = AuthStorage.create();
+    const sdk = await loadPiSdk();
+    const modelRuntime = await createPiModelRuntime(sdk, { authPath: localPiAuthPath(), modelsPath: localPiModelsPath() });
+    if (modelRuntime?.getProviderAuthStatus) return modelRuntime.getProviderAuthStatus(provider);
+    const authStorage = sdk.AuthStorage.create(localPiAuthPath());
     return authStorage.getAuthStatus(provider);
   }
 
@@ -719,8 +744,10 @@ export function createAuthService({ config, http }) {
       return hostedProviderAuthStatus(user, provider);
     }
 
-    const { AuthStorage } = await loadPiSdk();
-    AuthStorage.create().logout(provider);
+    const sdk = await loadPiSdk();
+    const modelRuntime = await createPiModelRuntime(sdk, { authPath: localPiAuthPath(), modelsPath: localPiModelsPath() });
+    if (modelRuntime?.logout) await modelRuntime.logout(provider);
+    else sdk.AuthStorage.create(localPiAuthPath()).logout(provider);
     return localProviderAuthStatus(provider);
   }
 
@@ -734,8 +761,14 @@ export function createAuthService({ config, http }) {
 
   async function startCodexDeviceLogin(user = null) {
     if (authRequired() && !user?.id) throw clientError('Sign in with GitHub before Codex.', 401);
-    const { AuthStorage } = await loadPiSdk();
-    const authStorage = authRequired() ? AuthStorage.inMemory() : AuthStorage.create();
+    const sdk = await loadPiSdk();
+    const credentials = authRequired() ? createInMemoryCredentialStore() : undefined;
+    const modelRuntime = await createPiModelRuntime(sdk, {
+      credentials,
+      authPath: credentials ? undefined : localPiAuthPath(),
+      modelsPath: authRequired() ? null : localPiModelsPath(),
+    });
+    const authStorage = modelRuntime ? null : authRequired() ? sdk.AuthStorage.inMemory() : sdk.AuthStorage.create(localPiAuthPath());
     const id = randomUUID();
     const controller = new AbortController();
     const job = {
@@ -753,27 +786,50 @@ export function createAuthService({ config, http }) {
       job.rejectDevice = reject;
     });
 
-    authStorage.login(CODEX_AUTH_PROVIDER, {
-      signal: controller.signal,
-      onSelect: async (prompt) => prompt.options.find((option) => /device/i.test(option.label))?.id,
-      onAuth: () => {},
-      onDeviceCode: (info) => {
-        job.status = 'waiting';
-        job.device = info;
-        job.resolveDevice?.();
-      },
-      onPrompt: async (prompt) => {
-        if (prompt.allowEmpty) return '';
-        throw new Error(prompt.message || 'Login needs input.');
-      },
-      onManualCodeInput: async () => {
-        throw new Error('Manual code input is not supported here.');
-      },
-      onProgress: (message) => {
-        job.progress = message;
-      },
-    }).then(async () => {
-      const credential = normalizeOAuthCredential(authStorage.get(CODEX_AUTH_PROVIDER), CODEX_AUTH_PROVIDER);
+    const loginPromise = modelRuntime
+      ? modelRuntime.login(CODEX_AUTH_PROVIDER, 'oauth', {
+          signal: controller.signal,
+          prompt: async (prompt) => {
+            if (prompt.type === 'select') return prompt.options.find((option) => /device/i.test(option.label))?.id;
+            if (prompt.type === 'manual_code') throw new Error('Manual code input is not supported here.');
+            throw new Error(prompt.message || 'Login needs input.');
+          },
+          notify: (event) => {
+            if (event.type === 'device_code') {
+              job.status = 'waiting';
+              job.device = event;
+              job.resolveDevice?.();
+            } else if (event.type === 'progress') {
+              job.progress = event.message;
+            }
+          },
+        })
+      : authStorage.login(CODEX_AUTH_PROVIDER, {
+          signal: controller.signal,
+          onSelect: async (prompt) => prompt.options.find((option) => /device/i.test(option.label))?.id,
+          onAuth: () => {},
+          onDeviceCode: (info) => {
+            job.status = 'waiting';
+            job.device = info;
+            job.resolveDevice?.();
+          },
+          onPrompt: async (prompt) => {
+            if (prompt.allowEmpty) return '';
+            throw new Error(prompt.message || 'Login needs input.');
+          },
+          onManualCodeInput: async () => {
+            throw new Error('Manual code input is not supported here.');
+          },
+          onProgress: (message) => {
+            job.progress = message;
+          },
+        });
+
+    loginPromise.then(async (result) => {
+      const credential = normalizeOAuthCredential(
+        result || await credentials?.read(CODEX_AUTH_PROVIDER) || authStorage?.get?.(CODEX_AUTH_PROVIDER),
+        CODEX_AUTH_PROVIDER,
+      );
       if (authRequired() && credential) {
         await authStore.writeUserSecret(user.id, CODEX_USER_SECRET_KEY, JSON.stringify(credential));
       }
@@ -815,11 +871,7 @@ export function createAuthService({ config, http }) {
       return;
     }
 
-    const { AuthStorage } = await loadPiSdk();
-    const authStorage = AuthStorage.create();
-    authStorage.set(CLAUDE_CODE_AUTH_PROVIDER, credential);
-    const [error] = authStorage.drainErrors?.() || [];
-    if (error) throw error;
+    await writeCredentialFile(localPiAuthPath(), CLAUDE_CODE_AUTH_PROVIDER, credential);
   }
 
   function submitManualClaudeCodeLoginCode(job, body = {}) {
@@ -1040,7 +1092,7 @@ export function createAuthService({ config, http }) {
   async function readLocalPiAuth() {
     if (authRequired()) return null;
     try {
-      const text = await readFile(path.join(homedir(), '.pi', 'agent', 'auth.json'), 'utf8');
+      const text = await readFile(path.join(localPiAgentDir(), 'auth.json'), 'utf8');
       return text.trim() ? text : null;
     } catch (error) {
       if (error.code === 'ENOENT') return null;
@@ -1085,14 +1137,13 @@ export function createAuthService({ config, http }) {
 
   async function authStorageForSession(session = {}) {
     if (!authRequired()) return null;
-    const { AuthStorage } = await loadPiSdk();
-    return AuthStorage.inMemory(session?.ownerUserId ? await readFreshUserPiCredentials(session.ownerUserId) : {});
+    return createInMemoryCredentialStore(session?.ownerUserId ? await readFreshUserPiCredentials(session.ownerUserId) : {});
   }
 
   async function readLocalPiSettings() {
     if (authRequired()) return null;
     try {
-      const text = await readFile(path.join(homedir(), '.pi', 'agent', 'settings.json'), 'utf8');
+      const text = await readFile(path.join(localPiAgentDir(), 'settings.json'), 'utf8');
       return text.trim() ? text : null;
     } catch (error) {
       if (error.code === 'ENOENT') return null;

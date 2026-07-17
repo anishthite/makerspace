@@ -298,7 +298,6 @@ function buildBridgeScriptSource(session, config) {
     '  };',
     '}',
     '',
-
     'function safeRunCwd(v=""){',
     'const root=path.resolve(workspaceDir);',
     'const cwd=path.resolve(String(v||"").trim()||root);',
@@ -315,7 +314,7 @@ function buildBridgeScriptSource(session, config) {
     '    const slash = modelRef.indexOf("/");',
     '    const provider = slash > 0 ? modelRef.slice(0, slash) : "";',
     '    const id = slash > 0 ? modelRef.slice(slash + 1) : modelRef;',
-    '    const model = provider ? services.modelRegistry.find(provider, id) : services.modelRegistry.getAll().find((item) => item.id === id);',
+    '    const model = provider ? services.modelRuntime.getModel(provider, id) : services.modelRuntime.getModels().find((item) => item.id === id);',
     '    if (!model) throw new Error(`model ${modelRef}`);',
     '    options.model = model;',
     '  }',

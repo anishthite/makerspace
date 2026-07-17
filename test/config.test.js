@@ -51,8 +51,20 @@ test('collectForwardedEnv only forwards shared GitHub tokens in single-user mode
   });
 });
 
+test('default forwarded env excludes Inference.net', () => {
+  withEnv({ FORWARD_ENV_KEYS: undefined, INFRA_PROVIDER: 'local', SPANNER_HOME: '/tmp/spanner-test-home' }, () => {
+    const keys = getConfig().forwardEnvKeys;
+    assert.ok(keys.includes('ANTHROPIC_API_KEY'));
+    assert.equal(keys.includes('INFERENCE_API_KEY'), false);
+  });
+});
+
 test('getConfig names the visible project from env or explicit home', () => {
   withEnv({ INFRA_PROVIDER: 'local', SPANNER_PROJECT: 'site-ui', SPANNER_NAME: undefined, SPANNER_HOME: '/tmp/spanner/site', RECENT_PROJECTS_DATA_PATH: undefined }, () => {
+    assert.equal(getConfig().projectName, 'site-ui');
+  });
+
+  withEnv({ INFRA_PROVIDER: 'local', SPANNER_PROJECT: '/Users/me/work/site-ui', SPANNER_NAME: undefined, SPANNER_HOME: '/tmp/spanner/site', RECENT_PROJECTS_DATA_PATH: undefined }, () => {
     assert.equal(getConfig().projectName, 'site-ui');
   });
 

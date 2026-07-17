@@ -3,6 +3,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { createPiResourceOptions, resolvePiDefaultsPackageDir } from './pi-defaults-package.js';
+import { createPiModelRegistry, createPiModelRuntime } from './pi-runtime.js';
 import { resolvePiSdkPackageDir } from './pi-sdk-package.js';
 import { readPiProfile } from './pi-profile.js';
 import { isTransientSandboxError } from './provider.js';
@@ -150,12 +151,13 @@ async function resolvePiOptions(config, session = {}, piOptions = {}) {
   if (thinkingLevel) options.thinkingLevel = thinkingLevel;
   if (!parsedModel.modelRef) return { sdk, options };
 
-  const authStorage = piOptions.authStorage || sdk.AuthStorage.create();
-  const modelRegistry = piOptions.modelRegistry || sdk.ModelRegistry.create(authStorage);
+  const modelRuntime = await createPiModelRuntime(sdk, { modelRuntime: piOptions.modelRuntime, credentials: piOptions.authStorage || piOptions.credentials });
+  const authStorage = piOptions.authStorage || (!modelRuntime && sdk.AuthStorage?.create?.());
+  const modelRegistry = createPiModelRegistry(sdk, { modelRegistry: piOptions.modelRegistry, modelRuntime, authStorage });
   const model = findModel(modelRegistry, parsedModel.modelRef);
   if (!model) throw new Error(`Pi model not found: ${parsedModel.modelRef}`);
 
-  return { sdk, options: { ...options, authStorage, modelRegistry, model } };
+  return { sdk, options: { ...options, ...(authStorage ? { authStorage } : {}), ...(modelRuntime ? { modelRuntime } : {}), ...(modelRegistry ? { modelRegistry } : {}), model } };
 }
 
 export async function preloadHostPiRunner(config) {

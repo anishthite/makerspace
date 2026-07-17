@@ -162,7 +162,7 @@ IDLE_BRIDGE_TTL_MS=3600000
 WARM_BRIDGE_POOL_SIZE=0
 PI_BRIDGE_STREAM_STALL_MS=60000
 PI_BRIDGE_RUN_MISSING_GRACE_MS=30000
-FORWARD_ENV_KEYS=GH_TOKEN,GITHUB_TOKEN,ANTHROPIC_API_KEY,OPENAI_API_KEY,GOOGLE_API_KEY,GEMINI_API_KEY,OPENROUTER_API_KEY,INFERENCE_API_KEY
+FORWARD_ENV_KEYS=GH_TOKEN,GITHUB_TOKEN,ANTHROPIC_API_KEY,OPENAI_API_KEY,GOOGLE_API_KEY,GEMINI_API_KEY,OPENROUTER_API_KEY
 PI_INSTALL_COMMAND=npm install -g --ignore-scripts @earendil-works/pi-coding-agent
 ```
 
@@ -180,7 +180,7 @@ For hosted App Platform deployments, set the three Cloudflare D1 values above; p
 
 Spanner ships a starter Pi package at `packages/spanner-pi-defaults`. Local and host-dispatch SDK runs load it directly when the directory exists. The Cloudflare runtime image copies it into the sandbox at `REMOTE_PI_DEFAULTS_PACKAGE_DIR`, and the remote bridge loads that baked copy without touching user dotfiles.
 
-The package contains a prompt-injecting extension, the `inference/nvidia/nemotron3-super` provider registration, starter skills, and prompts. Set `INFERENCE_API_KEY` to use Inference.net. Publish the same package later for online installs with `pi install npm:@spanner/pi-defaults@0.1.0`.
+The package contains a prompt-injecting extension, starter skills, and prompts. Publish the same package later for online installs with `pi install npm:@spanner/pi-defaults@0.1.0`.
 
 ## API
 

@@ -740,6 +740,22 @@ export function createBridgeService({ config, provider, auth, runState }) {
     });
   }
 
+  async function cleanupCloudflareLaunchFailure(session, message) {
+    if (provider.kind !== 'cloudflare' || !provider.destroySession || config.workspaceMode || session?.workspaceBridge) return;
+    try {
+      await provider.destroySession(session.name);
+      await recordBridgeLaunchLog(session.name, 'launch:destroyed_after_failure');
+    } catch (error) {
+      const warning = `${message} Cleanup failed: ${error.message}`;
+      await upsertSession(config.sessionFile, {
+        name: session.name,
+        warning,
+        updatedAt: new Date().toISOString(),
+      });
+      await recordBridgeLaunchLog(session.name, 'launch:destroy_failed', { error: error.message });
+    }
+  }
+
   async function markBridgeLaunchFailed(name, message) {
     setRunState(name, { runStatus: 'failed', warning: message });
     appendRunStatus(name, 'failed', { warning: message, done: true });
@@ -747,13 +763,14 @@ export function createBridgeService({ config, provider, auth, runState }) {
     if (!existing) return;
     await recordBridgeLaunchLog(name, 'launch:failed', { error: message });
     const current = (await getStoredSession(config.sessionFile, name)) || existing;
-    await upsertSession(config.sessionFile, {
+    const failed = await upsertSession(config.sessionFile, {
       ...current,
       status: 'failed',
       runStatus: 'failed',
       warning: message,
       updatedAt: new Date().toISOString(),
     });
+    await cleanupCloudflareLaunchFailure(failed, message);
   }
 
   async function startClaimedBridgeRun(name, current, readyMessage) {

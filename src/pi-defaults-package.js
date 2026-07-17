@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 
+import { createPiModelRegistry, createPiModelRuntime } from './pi-runtime.js';
 import { piProfileResourceOverrides } from './pi-profile.js';
 
 export const PI_DEFAULTS_PACKAGE_NAME = '@spanner/pi-defaults';
@@ -76,8 +77,16 @@ function prependAgentsFile(current, agentsFile) {
 export async function createPiResourceOptions(sdk, options = {}) {
   const cwd = options.cwd || process.cwd();
   const agentDir = options.agentDir || defaultAgentDir(sdk);
-  const authStorage = options.authStorage || sdk.AuthStorage?.create?.(path.join(agentDir, 'auth.json'));
-  const modelRegistry = options.modelRegistry || (authStorage && sdk.ModelRegistry?.create?.(authStorage, path.join(agentDir, 'models.json')));
+  const authPath = path.join(agentDir, 'auth.json');
+  const modelsPath = path.join(agentDir, 'models.json');
+  const authStorage = options.authStorage || sdk.AuthStorage?.create?.(authPath);
+  const modelRuntime = await createPiModelRuntime(sdk, {
+    modelRuntime: options.modelRuntime,
+    credentials: options.credentials || authStorage,
+    authPath,
+    modelsPath,
+  });
+  const modelRegistry = createPiModelRegistry(sdk, { modelRegistry: options.modelRegistry, modelRuntime, authStorage, modelsPath });
   const settingsManager = options.settingsManager || sdk.SettingsManager.create(cwd, agentDir);
   const defaults = piDefaultsResourcePaths(options.packageDir);
   const defaultsAgentsFile = readDefaultsAgentsFile(defaults);
@@ -99,6 +108,7 @@ export async function createPiResourceOptions(sdk, options = {}) {
 
   return {
     ...(authStorage ? { authStorage } : {}),
+    ...(modelRuntime ? { modelRuntime } : {}),
     ...(modelRegistry ? { modelRegistry } : {}),
     settingsManager,
     resourceLoader,

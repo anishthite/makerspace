@@ -19,7 +19,6 @@ const DEFAULT_FORWARD_ENV_KEYS = [
   'GEMINI_API_KEY',
   'OPENROUTER_API_KEY',
   'DEEPSEEK_API_KEY',
-  'INFERENCE_API_KEY',
 ];
 
 function splitList(value) {
@@ -67,8 +66,13 @@ export function allowedOriginFromEnv(env = process.env) {
   return allowedOriginsFromEnv(env)[0] || '';
 }
 
+function projectTitle(value) {
+  const text = String(value || '').trim().replace(/[\\/]+$/, '');
+  return text.split(/[\\/]+/).filter(Boolean).pop()?.replace(/^\.+/, '').trim() || text;
+}
+
 function projectNameFromEnv(localDataDir) {
-  const explicit = String(process.env.SPANNER_PROJECT || process.env.SPANNER_NAME || '').trim();
+  const explicit = projectTitle(process.env.SPANNER_PROJECT || process.env.SPANNER_NAME);
   if (explicit) return explicit;
 
   if (process.env.SPANNER_HOME) {

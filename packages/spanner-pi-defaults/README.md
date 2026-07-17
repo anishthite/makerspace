@@ -4,7 +4,7 @@ Starter Pi package for Spanner sessions.
 
 It bundles:
 
-- `extensions/spanner-defaults.ts` — appends Spanner product rules and registers `inference/nvidia/nemotron3-super` without editing user dotfiles.
+- `extensions/spanner-defaults.ts` — appends Spanner product rules without editing user dotfiles.
 - `skills/` — optional workflow skills, including `code-simplifier`, `playground`, `excalidraw-diagram`, Ponytail helpers, and `emil-design-eng`.
 - `prompts/` — slash prompt templates.
 
@@ -28,7 +28,6 @@ Spanner loads this package as additional Pi resource paths when the package dire
 Override the local package dir with `SPANNER_PI_DEFAULTS_PACKAGE_DIR`.
 Override the remote baked path with `REMOTE_PI_DEFAULTS_PACKAGE_DIR`.
 
-Set `INFERENCE_API_KEY` to use the bundled Inference.net provider.
 
 When this is published, the same package can be installed with:
 

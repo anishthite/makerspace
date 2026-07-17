@@ -1,3 +1,5 @@
+import { createPiModelRegistry, createPiModelRuntime } from './pi-runtime.js';
+
 export const DEFAULT_THREAD_TITLE_MODEL = 'openai-codex/gpt-5.4-mini';
 const MAX_TITLE_LENGTH = 64;
 const MAX_SUMMARY_LENGTH = 140;
@@ -268,36 +270,43 @@ export function cleanFinalTurnStatus(value) {
 async function generateShortText(options, settings) {
   const modelRef = String(options.modelRef || DEFAULT_THREAD_TITLE_MODEL).trim();
   if (!modelRef || modelRef.toLowerCase() === 'off') return '';
-  if (!options.loadPiSdk || !options.loadPiAi) throw new Error('Pi SDK loaders are required.');
+  if (!options.loadPiSdk) throw new Error('Pi SDK loader is required.');
 
-  const [{ AuthStorage, ModelRegistry }, { completeSimple }] = await Promise.all([
-    options.loadPiSdk(),
-    options.loadPiAi(),
-  ]);
-  const authStorage = options.authStorage || AuthStorage.create();
-  const modelRegistry = options.modelRegistry || ModelRegistry.create(authStorage);
+  const sdk = await options.loadPiSdk();
+  const modelRuntime = await createPiModelRuntime(sdk, {
+    modelRuntime: options.modelRuntime,
+    credentials: options.credentials || options.authStorage,
+  });
+  const authStorage = options.authStorage || (!modelRuntime && sdk.AuthStorage?.create?.());
+  const modelRegistry = createPiModelRegistry(sdk, { modelRegistry: options.modelRegistry, modelRuntime, authStorage });
   const model = resolveThreadTitleModel(modelRegistry, modelRef);
   if (!model) throw new Error(`${settings.label} model not found: ${modelRef}`);
 
-  const apiKey = await authStorage.getApiKey(model.provider, { includeFallback: true });
-  if (!apiKey) throw new Error(`No auth configured for ${model.provider}.`);
+  const context = {
+    systemPrompt: settings.systemPrompt,
+    messages: [{ role: 'user', content: settings.prompt, timestamp: Date.now() }],
+  };
+  const requestOptions = {
+    signal: options.signal,
+    maxTokens: settings.maxTokens,
+    temperature: settings.temperature,
+    reasoning: settings.reasoning || 'minimal',
+    cacheRetention: 'none',
+  };
 
-  const response = await completeSimple(
-    model,
-    {
-      systemPrompt: settings.systemPrompt,
-      messages: [{ role: 'user', content: settings.prompt, timestamp: Date.now() }],
-    },
-    {
-      apiKey,
-      env: authStorage.getProviderEnv?.(model.provider),
-      signal: options.signal,
-      maxTokens: settings.maxTokens,
-      temperature: settings.temperature,
-      reasoning: settings.reasoning || 'minimal',
-      cacheRetention: 'none',
-    },
-  );
+  const response = modelRuntime?.completeSimple
+    ? await modelRuntime.completeSimple(model, context, requestOptions)
+    : await (async () => {
+        if (!options.loadPiAi) throw new Error('Pi AI loader is required.');
+        const { completeSimple } = await options.loadPiAi();
+        const apiKey = await authStorage.getApiKey(model.provider, { includeFallback: true });
+        if (!apiKey) throw new Error(`No auth configured for ${model.provider}.`);
+        return completeSimple(model, context, {
+          ...requestOptions,
+          apiKey,
+          env: authStorage.getProviderEnv?.(model.provider),
+        });
+      })();
 
   if (response.stopReason === 'error') throw new Error(response.errorMessage || `${settings.label} generation failed.`);
   const result = settings.clean(assistantText(response));
