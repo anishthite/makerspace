@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Local reconnect cursor</title>
+<meta name="task" content="Reset stale thread stream cursors between local reruns">
+<meta name="date-started" content="2026-07-16">
+<meta name="date-updated" content="2026-07-16">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,desktop,local,sse,thread">
+<meta name="related" content="2026-07-06-thread-page-live-stream.html,2026-07-06-remote-sse-buffering.html,2026-07-12-direct-llm-chunk-stream.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code { font-family: ui-monospace, Menlo, monospace; background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  ul { margin: .3rem 0 .8rem 1.2rem; padding: 0; }
+  li { margin: .15rem 0; }
+  .blast-low { color: #2a7a2a; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>Local reconnect cursor</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-16 · status <b>shipped</b> · blast <span class="blast-low">low</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Start each fresh thread run with a clean frontend SSE cursor.</div>
+  <b>Source</b><div><code>lastEventId</code> and <code>seenEvents</code> in <code>frontend/src/runtime/thread.js</code>.</div>
+  <b>Surface</b><div>Thread page stream at <code>/api/sessions/:name/stream?after=...</code>.</div>
+  <b>Schema</b><div>None.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>frontend/src/runtime/thread.js</code></td><td>touch</td><td>Clear stream cursor state before opening a fresh run stream.</td></tr>
+  <tr><td><code>test/thread-stream-cursor.test.js</code></td><td>new</td><td>Assert stale <code>after</code> drops reset-run events and source resets before <code>streamRun()</code>.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Reset only for non-active submissions. Steering stays inside the current run cursor.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td><code>resetThreadStreamState()</code> over server-wide monotonic ids. One frontend state leak caused the desktop symptom.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Revert the helper and test file to restore prior cursor behavior.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>Fresh local reruns call <code>streamRun()</code> with <code>after=0</code>.</li>
+  <li>Active steering keeps the existing stream cursor.</li>
+  <li><code>node --test test/thread-stream-cursor.test.js</code> passes.</li>
+</ul>
+</body>
+</html>

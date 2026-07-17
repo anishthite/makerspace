@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Todo gutter</title>
+<meta name="task" content="Show Pi agent todos in the thread left gutter.">
+<meta name="date-started" content="2026-07-16">
+<meta name="date-updated" content="2026-07-16">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,ui,thread,todo,tools">
+<meta name="related" content="2026-07-02-workflow-agent-rail.html,2026-06-24-pi-toolcall-streaming.html,2026-06-24-thread-activity-visibility.html">
+<style>
+body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}
+</style>
+</head>
+<body>
+<h1>Todo gutter</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-16 · status <b class="status-shipped">shipped</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Show current Pi <code>todo</code> tasks in the thread left gutter.</div><b>Source</b><div>Use existing <code>tool</code> events with <code>toolName="todo"</code> and <code>details.tasks</code>.</div><b>Surface</b><div><code>/thread.html</code> rail, <code>/api/sessions/:name/output</code>, live SSE stream.</div><b>Schema</b><div>Add optional stored <code>session.todoState</code> JSON snapshot.</div><b>Mobile</b><div>Todo card stacks with the existing <code>.agent-column</code> cards.</div><b>Open Qs</b><div>0.</div></div>
+<h2>Algorithm</h2>
+<ol><li>On a completed <code>todo</code> tool event, normalize <code>details.tasks</code> into <code>{tasks,nextId,updatedAt}</code>.</li><li>Store the snapshot on the active run and upsert <code>session.todoState</code> for reloads.</li><li>Render non-deleted tasks sorted by <code>in_progress</code>, <code>pending</code>, then <code>completed</code>.</li></ol>
+<h2>UI layout</h2>
+<ol><li><b>Todo rail</b>: show <code>done/total</code> in the rail head and up to eight task rows.</li><li><b>Task row</b>: show status dot, <code>#id</code>, subject, and active form only for <code>in_progress</code>.</li><li><b>Empty state</b>: hide the rail when there are no non-deleted tasks.</li></ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>src/server/run-state.js</code></td><td>touch</td><td>Persist normalized todo snapshots from tool results.</td></tr><tr><td><code>frontend/src/pages.jsx</code></td><td>touch</td><td>Add the hidden <code>#todo-rail</code> card to the thread gutter.</td></tr><tr><td><code>frontend/src/runtime/thread.js</code></td><td>touch</td><td>Render stored and live todo snapshots.</td></tr><tr><td><code>frontend/src/styles/app.css</code></td><td>touch</td><td>Style compact todo rail rows.</td></tr><tr><td><code>test/todo-gutter.test.js</code></td><td>new</td><td>Pin persistence and UI wiring.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Reuse <code>todo</code> tool <code>details.tasks</code>. Pi already persists todo state through tool-result details.</td></tr><tr><td>D-002</td><td>Persist one latest snapshot on the thread session. Reloads need state without replaying full Pi JSONL in the browser.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td><code>session.todoState</code> over a new endpoint. Existing bootstrap/output payloads already carry thread state.</td></tr><tr><td>T-002</td><td>Hide empty rail over showing a placeholder. The gutter should stay quiet until the agent creates tasks.</td></tr></table>
+<h2>Assumptions</h2>
+<ul><li>A-001 · The active Pi todo tool emits <code>details.tasks</code>. If wrong: the rail stays hidden until a parser fallback is added.</li></ul>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Revert the rail, reducer, style, and test edits; stale <code>todoState</code> keys are ignored.</p>
+<h2>Validation</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>node --check src/server/run-state.js &amp;&amp; node --check frontend/src/runtime/thread.js &amp;&amp; node --check test/todo-gutter.test.js &amp;&amp; node --test test/todo-gutter.test.js</code></td><td>Passed 3/3.</td></tr><tr><td><code>node --test test/thread-trace-tray.test.js test/todo-gutter.test.js</code></td><td>Passed 32/32.</td></tr><tr><td><code>npm run build</code></td><td>Passed.</td></tr></table>
+<h2>Definition of done</h2>
+<ul><li>Thread gutter shows live todo updates after <code>todo</code> tool completion.</li><li>Reloaded thread shows persisted todos from <code>session.todoState</code>.</li><li>Focused todo gutter test and syntax checks pass.</li></ul>
+</body>
+</html>

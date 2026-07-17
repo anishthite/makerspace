@@ -71,8 +71,7 @@ async function fetchJson(path) {
   try {
     payload = text ? JSON.parse(text) : {};
   } catch {
-    const detail = text.trim() || `Request failed: ${response.status}`;
-    throw new Error(detail === 'Not found' ? 'Backend unavailable. Check Settings.' : detail);
+    throw new Error('Backend unavailable. Check Settings.');
   }
   if (!response.ok) {
     if (redirectIfAuthRequired(payload, response)) return new Promise(() => {});

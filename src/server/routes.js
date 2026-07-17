@@ -98,6 +98,39 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
     };
   }
 
+  function wantsInteractiveHtmlArtifact(url) {
+    const mode = String(url.searchParams.get('interactive') || url.searchParams.get('mode') || '').toLowerCase();
+    return ['1', 'true', 'yes', 'interactive'].includes(mode);
+  }
+
+  function htmlArtifactCsp(interactive = false) {
+    if (!interactive) return "default-src 'none'; img-src data: blob:; style-src 'unsafe-inline'; script-src 'none'; sandbox";
+    return [
+      "default-src 'none'",
+      "base-uri 'none'",
+      "object-src 'none'",
+      "img-src 'self' https: data: blob:",
+      "media-src 'self' https: data: blob:",
+      "font-src 'self' https: data:",
+      "style-src 'self' 'unsafe-inline' https:",
+      "script-src 'self' 'unsafe-inline' https: blob:",
+      "connect-src 'self' https:",
+      "worker-src 'self' blob:",
+      "frame-src 'self' https:",
+      'sandbox allow-scripts allow-forms allow-pointer-lock allow-popups allow-modals',
+    ].join('; ');
+  }
+
+  const interactiveHtmlArtifactShim = `<script data-spanner-interaction-shim>(()=>{let t=null;const s='[tabindex],canvas,button,input,select,textarea,a[href]';const u=n=>n&&n!==document.body&&n!==document.documentElement;const p=e=>{const n=e.target?.closest?.(s)||e.target;if(u(n))t=n};window.addEventListener('pointerover',p,true);window.addEventListener('pointerdown',p,true);window.addEventListener('focusin',p,true);window.addEventListener('keydown',e=>{if(u(e.target))return;const r=t||document.querySelector(s);if(!r||r===e.target)return;const c=new KeyboardEvent(e.type,{key:e.key,code:e.code,location:e.location,ctrlKey:e.ctrlKey,shiftKey:e.shiftKey,altKey:e.altKey,metaKey:e.metaKey,repeat:e.repeat,bubbles:true,cancelable:true});if(!r.dispatchEvent(c))e.preventDefault()},true);})();</script>`;
+
+  function htmlArtifactData(artifact, interactive = false) {
+    if (!interactive) return artifact.data;
+    const html = String(artifact.data || '');
+    return /<\/body\s*>/i.test(html)
+      ? html.replace(/<\/body\s*>/i, `${interactiveHtmlArtifactShim}</body>`)
+      : `${html}${interactiveHtmlArtifactShim}`;
+  }
+
   return async function handleRequest(request, response) {
     try {
       bindCorsRequest?.(request, response);
@@ -556,9 +589,10 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
       if (request.method === 'GET' && threadArtifactHtmlMatch) {
         const name = decodeURIComponent(threadArtifactHtmlMatch[1]);
         const artifact = await threadHtmlArtifactPayload(name, url.searchParams.get('path'), viewerSessionId, trusted, user);
-        sendText(response, 200, artifact.data, artifact.contentType, {
+        const interactive = wantsInteractiveHtmlArtifact(url);
+        sendText(response, 200, htmlArtifactData(artifact, interactive), artifact.contentType, {
           'cache-control': 'no-store',
-          'content-security-policy': "default-src 'none'; img-src data: blob:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; sandbox allow-scripts",
+          'content-security-policy': htmlArtifactCsp(interactive),
           'x-content-type-options': 'nosniff',
         });
         return;

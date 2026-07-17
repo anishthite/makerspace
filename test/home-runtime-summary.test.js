@@ -8,6 +8,7 @@ const authRedirect = readFileSync(new URL('../frontend/src/runtime/auth-redirect
 const js = readFileSync(new URL('../frontend/src/runtime/app.js', import.meta.url), 'utf8');
 const agentToasts = readFileSync(new URL('../frontend/src/runtime/agent-toasts.js', import.meta.url), 'utf8');
 const appCss = readFileSync(new URL('../frontend/src/styles/app.css', import.meta.url), 'utf8');
+const fluidCss = readFileSync(new URL('../frontend/src/styles/fluid-ui.css', import.meta.url), 'utf8');
 const runState = readFileSync(new URL('../src/server/run-state.js', import.meta.url), 'utf8');
 const routes = readFileSync(new URL('../src/server/routes.js', import.meta.url), 'utf8');
 const threads = readFileSync(new URL('../src/server/threads.js', import.meta.url), 'utf8');
@@ -66,24 +67,57 @@ test('workspace agents use shadcn sidebar beside launch composer', () => {
   const suggestionsIndex = pages.indexOf('id="launch-suggestions"');
   assert.ok(providerIndex > -1 && providerIndex < agentsIndex && agentsIndex < formIndex && formIndex < suggestionsIndex);
   assert.match(pages, /SidebarProvider[\s\S]+from '\.\/components\/ui\/sidebar\.jsx';/);
-  assert.match(pages, /<Sidebar className="border-r border-\[var\(--rule\)\]" collapsible="none">/);
+  assert.match(pages, /<Sidebar className="border-r border-\[var\(--rule\)\]" collapsible="offcanvas">/);
   assert.match(pages, /<SidebarInset className="min-w-0 bg-\[var\(--bg\)\]/);
-  assert.doesNotMatch(pages, /<SidebarTrigger className="workspace-sidebar-trigger" \/>/);
-  assert.match(pages, /data-suggested-prompt="Review the current diff/);
-  assert.match(pages, /<strong[^>]*>Find next move<\/strong>/);
+  assert.match(pages, /workspace-mobile-sidebar-launcher/);
+  assert.match(pages, /<SidebarTrigger className="workspace-sidebar-trigger" aria-label="open agents"/);
+  assert.match(fluidCss, /\.spanner-sidebar-desktop-shell,\n\.spanner-sidebar-desktop-container \{\n  display: none;/);
+  assert.match(fluidCss, /@media \(min-width: 768px\) \{[\s\S]+\.spanner-sidebar-desktop-shell \{\n    display: block;/);
+  assert.match(fluidCss, /\.workspace-mobile-sidebar-launcher \{\n    display: none;/);
+  assert.match(pages, /data-suggested-prompt="Read the README, package files/);
+  assert.match(pages, /<strong[^>]*>Make repo diagram<\/strong>/);
+  assert.match(pages, /<strong[^>]*>Run health check<\/strong>/);
+  assert.match(pages, /<strong[^>]*>Find first task<\/strong>/);
+  assert.doesNotMatch(pages, /Find paper cuts/);
   assert.match(js, /const launchSuggestions = document\.querySelector\('#launch-suggestions'\);/);
+  assert.match(pages, /MagnifyingGlassIcon/);
+  assert.match(pages, /className="agent-search border-0 bg-transparent px-0 shadow-none \[&_input\]:min-w-0 \[&_input\]:py-1\.5"/);
+  assert.match(pages, /<input id="agent-search" type="search" placeholder="search all agents"/);
+  assert.match(js, /const agentSearchInput = document\.querySelector\('#agent-search'\);/);
+  assert.match(js, /function filterAgentThreads\(threads\)/);
+  assert.ok(js.includes("document.addEventListener('input', (event) => {\n  if (event.target?.matches?.('#agent-search')) renderThreads(currentWorkspaceThreads, { suggestions: false });\n});"));
   assert.match(js, /async function loadWorkspaceLaunchSuggestions\(threads\)/);
   assert.match(js, /function workspaceSuggestionThreadContext\(thread\)/);
   assert.match(js, /fetchJson\('\/api\/workspace-suggestions'/);
-  assert.match(js, /loadWorkspaceLaunchSuggestions\(threads\)\.catch\(\(\) => \{\}\);/);
+  assert.match(js, /loadWorkspaceLaunchSuggestions\(currentWorkspaceThreads\)\.catch\(\(\) => \{\}\);/);
   assert.match(routes, /pathname === '\/api\/workspace-suggestions'/);
   assert.match(runState, /generateWorkspaceLaunchSuggestionsForThreads/);
   assert.doesNotMatch(js, /thread\?\.suggestedNextSteps/);
   assert.match(js, /promptInput\.value = button\.dataset\.suggestedPrompt \|\| '';/);
 });
 
-test('workspace agents header is fixed, not a layout review surface', () => {
-  assert.match(pages, /<SidebarHeader className="grid gap-3 border-b border-\[var\(--rule\)\] px-3 py-4">\s*<div className="flex w-full items-center gap-2\.5">\s*<img className="block size-8 shrink-0 -translate-y-0\.5" src="\/logo-mark\.svg" alt="" aria-hidden="true" \/>\s*<WorkspaceManager className="min-w-0 flex-1 justify-between" prominent \/>\s*<\/div>\s*<\/SidebarHeader>/);
+test('workspace agents header has project quick switcher, not a layout review surface', () => {
+  assert.match(pages, /CaretUpIcon/);
+  assert.match(pages, /CaretDownIcon/);
+  assert.match(pages, /id="workspace-switcher-toggle"/);
+  assert.match(pages, /id="workspace-switcher-search"/);
+  assert.match(pages, /id="workspace-switcher-recents"/);
+  assert.match(pages, />Browse all projects<\/strong>/);
+  assert.doesNotMatch(pages, />return home<\/a>/);
+  assert.match(pages, /<WorkspaceManager className="min-w-0 flex-1 justify-between" prominent quickSwitch \/>/);
+  assert.match(js, /const RECENT_PROJECTS_KEY = 'spannerRecentProjects';/);
+  assert.match(js, /const workspaceSwitcherSearch = document\.querySelector\('#workspace-switcher-search'\);/);
+  assert.match(js, /function switcherProjectMatches\(project, query\)/);
+  assert.match(js, /workspaceSwitcherSearch\?\.addEventListener\('input'/);
+  assert.match(js, /fetchJson\('\/api\/recent-projects'\)/);
+  assert.match(js, /data-workspace-project-index/);
+  assert.match(js, /aria-current="page"/);
+  assert.doesNotMatch(js, /<em>current<\/em>/);
+  assert.match(js, /localStorage\.setItem\(PROJECT_KEY, JSON\.stringify\(project\)\)/);
+  assert.match(appCss, /\.workspace-switch-caret-icon/);
+  assert.match(appCss, /\.workspace-switcher-menu/);
+  assert.match(appCss, /\.workspace-switcher-search/);
+  assert.match(appCss, /\.workspace-switcher-project\[aria-current="page"\]/);
   assert.doesNotMatch(pages, /WorkspaceSidebarLayoutPicker|workspaceSidebarLayouts|data-workspace-sidebar-layout-option|>Agents<\/h2>|id="refresh-threads"/);
   assert.doesNotMatch(js, /WORKSPACE_SIDEBAR_LAYOUT|workspaceSidebarLayout|refreshThreads/);
   assert.doesNotMatch(appCss, /workspace-layout-picker|data-workspace-sidebar-layout/);
@@ -121,9 +155,13 @@ test('recently finished rows show title, run meta, then summary', () => {
 test('recently finished success indicators can be dismissed locally', () => {
   assert.ok(js.includes("const SEEN_FINISHED_THREADS_KEY = 'spannerSeenFinishedThreads';"));
   assert.ok(js.includes("return !active && ['completed', 'ready'].includes(rawStatus);"));
+  assert.match(js, /function hasFreshFinishedIndicator\(thread\) \{/);
+  assert.match(js, /const freshFinishedCount = grouped\.done\.filter\(hasFreshFinishedIndicator\)\.length;/);
+  assert.ok(js.includes('data-finished-indicator-count'));
+  assert.match(js, /list\.querySelectorAll\('\[data-finished-indicator\]'\)\.length/);
   assert.ok(js.includes('data-finished-indicator="${escapeHtml(indicatorKey)}"'));
   assert.ok(js.includes('data-finished-thread="${escapeHtml(indicatorKey)}"'));
-  assert.match(js, /threadsList\.addEventListener\('keydown'/);
+  assert.ok(js.includes("document.addEventListener('keydown', (event) => {\n  if (!event.target?.closest?.('#threads-list')) return;"));
 });
 
 test('workspace toasts when running agents finish', () => {
@@ -142,6 +180,7 @@ test('workspace toasts when running agents finish', () => {
   assert.match(appCss, /background: color-mix\(in srgb, var\(--paper-2\) 84%, var\(--green\) 16%\);/);
   assert.doesNotMatch(appCss, /\[data-button\]\[data-action\]/);
   assert.match(js, /function notifyFinishedThreads\(threads\)/);
+  assert.equal((js.match(/notifyFinishedThreads\(workspaceSwitcherThreads\);/g) || []).length, 2);
   assert.match(js, /const wasActive = isActiveThread\(\{ runStatus: knownThreadStatuses\.get\(name\) \}\);/);
   assert.match(js, /showAgentToast\(title, detail, rawStatus === 'failed' \? 'error' : 'success'\);/);
   assert.doesNotMatch(`${js}\n${agentToasts}\n${appCss}`, /#agent-toast-stack|\.agent-toast/);
@@ -154,6 +193,8 @@ test('global toasts load outside the workspace screen', () => {
   assert.match(agentToasts, /import \{ toast \} from 'sonner';/);
   assert.match(agentToasts, /export function startAgentToastWatcher\(\) \{/);
   assert.match(agentToasts, /function notifyFinishedThreads\(threads\)/);
+  assert.match(agentToasts, /for \(const thread of threads\) \{/);
+  assert.doesNotMatch(agentToasts, /sameSelectedProject|spannerSelectedProject|PROJECT_KEY/);
   assert.match(agentToasts, /const wasActive = isActiveThread\(\{ runStatus: knownThreadStatuses\.get\(name\) \}\);/);
   assert.match(agentToasts, /const notify = tone === 'error' \? toast\.error : toast\.success;/);
   assert.doesNotMatch(agentToasts, /action: \{ label: 'Open main'/);

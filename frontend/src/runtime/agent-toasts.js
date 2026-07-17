@@ -1,7 +1,6 @@
 import { toast } from 'sonner';
 
 const BROWSER_SESSION_KEY = 'spannerBrowserSession';
-const PROJECT_KEY = 'spannerSelectedProject';
 
 function migrateStorageKey(legacyKey, nextKey) {
   try {
@@ -14,7 +13,6 @@ function migrateStorageKey(legacyKey, nextKey) {
 }
 
 migrateStorageKey('workbenchBrowserSession', BROWSER_SESSION_KEY);
-migrateStorageKey('workbenchSelectedProject', PROJECT_KEY);
 
 const ACTIVE_THREAD_STATUSES = ['launching', 'starting', 'queued', 'running'];
 const FINISHED_THREAD_STATUSES = ['completed', 'ready', 'failed'];
@@ -48,38 +46,6 @@ async function fetchJson(path) {
   const payload = text ? JSON.parse(text) : {};
   if (!response.ok) throw new Error(payload.error || `Request failed: ${response.status}`);
   return payload;
-}
-
-function readSelectedProject() {
-  try {
-    const project = JSON.parse(localStorage.getItem(PROJECT_KEY) || 'null');
-    return project?.value ? project : null;
-  } catch {
-    return null;
-  }
-}
-
-function cleanProjectValue(value) {
-  return String(value || '').trim().replace(/[\\/]+$/, '');
-}
-
-function normalizeRepoUrl(value) {
-  const text = String(value || '').trim();
-  if (!text) return '';
-  if (/^[\w.-]+\/[\w.-]+(?:\.git)?$/i.test(text)) return `https://github.com/${text.replace(/\.git$/i, '')}.git`;
-  if (/^github\.com\//i.test(text)) return `https://${text.replace(/\.git$/i, '')}.git`;
-  return text;
-}
-
-function canonicalRepo(value) {
-  return normalizeRepoUrl(value).replace(/\.git$/i, '').toLowerCase();
-}
-
-function sameSelectedProject(thread) {
-  const project = readSelectedProject();
-  if (!project?.value) return true;
-  if (project.kind === 'local') return cleanProjectValue(thread?.repoPath) === cleanProjectValue(project.value);
-  return canonicalRepo(thread?.repoUrl) === canonicalRepo(project.value);
 }
 
 function showAgentToast(title, detail = '', tone = 'success') {
@@ -135,7 +101,7 @@ function finishedOutcome(thread, rawStatus) {
 
 function notifyFinishedThreads(threads) {
   const nextStatuses = new Map();
-  for (const thread of threads.filter(sameSelectedProject)) {
+  for (const thread of threads) {
     const name = String(thread?.name || '');
     const rawStatus = effectiveThreadStatus(thread) || 'unknown';
     if (name) nextStatuses.set(name, rawStatus);

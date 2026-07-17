@@ -18,6 +18,7 @@
     "frontend:dev": "vite --host 127.0.0.1",
     "build": "vite build",
     "test": "node --test test/*.test.js",
+    "mobile:smoke": "node scripts/mobile-smoke.mjs",
     "desktop:dev": "VITE_SPANNER_API_BASE= npm run build && electron desktop/main.js",
     "desktop:package": "bash scripts/package-desktop.sh",
     "desktop:release": "SIGN_IDENTITY=\"Developer ID Application: Mahesh Thite (2EJKM9WA68)\" TEAM_ID=2EJKM9WA68 NOTARY_PROFILE=makerspace-notary bash scripts/package-desktop.sh",

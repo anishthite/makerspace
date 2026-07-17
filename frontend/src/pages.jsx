@@ -3,6 +3,8 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeftIcon,
   ArrowsClockwiseIcon,
+  CaretDownIcon,
+  CaretUpIcon,
   ChartLineIcon,
   CheckCircleIcon,
   ClockCounterClockwiseIcon,
@@ -14,6 +16,7 @@ import {
   GearSixIcon,
   GitDiffIcon,
   GithubLogoIcon,
+  MagnifyingGlassIcon,
   OpenAiLogoIcon,
   PaperPlaneTiltIcon,
   PlusIcon,
@@ -45,6 +48,7 @@ import {
   SidebarHeader,
   SidebarInset,
   SidebarProvider,
+  SidebarTrigger,
 } from './components/ui/sidebar.jsx';
 import { cn } from '#lib/utils';
 
@@ -52,8 +56,8 @@ const buttonIconProps = { 'aria-hidden': true, 'data-icon': 'inline-start', clas
 const eyebrowClass = 'mb-2 font-[var(--mono)] text-[11px] font-bold lowercase tracking-[.12em] text-[var(--blue)]';
 const mutedClass = 'text-[var(--ink-3)]';
 const ledeClass = 'mb-0 max-w-[680px] text-lg text-[var(--ink-2)]';
-const topbarClass = 'flex min-h-11 w-full items-center justify-start gap-3.5';
-const headerActionsClass = 'ml-auto flex flex-wrap items-center justify-end gap-2';
+const topbarClass = 'flex min-h-11 w-full flex-wrap items-center justify-start gap-3.5 max-sm:items-start';
+const headerActionsClass = 'ml-auto flex flex-wrap items-center justify-end gap-2 max-sm:ml-0 max-sm:w-full max-sm:justify-start';
 const surfaceClass = 'rounded-md border border-[var(--rule)] bg-[var(--paper)] shadow-[var(--shadow)]';
 const sectionRowClass = 'flex items-center justify-between gap-3';
 const statusLineClass = 'min-h-5 text-sm text-[var(--ink-3)]';
@@ -67,7 +71,7 @@ const settingsStatusClass = 'min-h-5 text-sm text-[var(--ink-3)]';
 
 function AuthPills() {
   const pill = 'group inline-flex max-w-full items-center gap-1.5 overflow-hidden text-ellipsis whitespace-nowrap rounded-md border border-transparent bg-[color-mix(in_srgb,var(--paper)_62%,transparent)] px-2 py-1 font-[var(--mono)] text-[11px] lowercase text-[var(--ink-3)]';
-  const dot = 'size-2 shrink-0 rounded-full bg-[var(--green)] shadow-[0_0_0_4px_color-mix(in_srgb,var(--green)_14%,transparent)] group-data-[status=checking]:animate-[status-pulse_1.25s_var(--ease-out)_infinite] group-data-[status=checking]:bg-[var(--yellow)] group-data-[status=checking]:shadow-[0_0_0_4px_color-mix(in_srgb,var(--yellow)_14%,transparent)] group-data-[status=missing]:bg-[var(--yellow)] group-data-[status=missing]:shadow-[0_0_0_4px_color-mix(in_srgb,var(--yellow)_14%,transparent)] group-data-[status=error]:bg-[var(--red)] group-data-[status=error]:shadow-[0_0_0_4px_color-mix(in_srgb,var(--red)_14%,transparent)]';
+  const dot = 'size-2 shrink-0 rounded-full bg-[var(--green)] group-data-[status=checking]:animate-[status-pulse_1.25s_var(--ease-out)_infinite] group-data-[status=checking]:bg-[var(--yellow)] group-data-[status=checking]:shadow-[0_0_0_4px_color-mix(in_srgb,var(--yellow)_14%,transparent)] group-data-[status=missing]:bg-[var(--yellow)] group-data-[status=missing]:shadow-[0_0_0_4px_color-mix(in_srgb,var(--yellow)_14%,transparent)] group-data-[status=error]:bg-[var(--red)] group-data-[status=error]:shadow-[0_0_0_4px_color-mix(in_srgb,var(--red)_14%,transparent)]';
   return <>
     <a id="codex-auth-pill" className={pill} href="/settings.html#codex" data-status="checking" aria-live="polite"><span className={dot} aria-hidden="true"></span><span id="codex-auth-label">codex</span></a>
     <a id="github-auth-pill" className={pill} href="/settings.html#github" data-status="checking" aria-live="polite"><span className={dot} aria-hidden="true"></span><span id="github-auth-label">github</span></a>
@@ -279,30 +283,50 @@ function Brand({ href = '/', label = 'Spanner home', children }) {
 }
 
 function RunControls({ launch = false }) {
-  return <div className={`composer-controls${launch ? ' launch-controls' : ''}`} aria-label="main agent run controls">
-    <div className="attachment-row composer-attachment-row">
+  return <div className={cn('composer-controls min-w-0 max-sm:w-full max-sm:flex-wrap', launch && 'launch-controls')} aria-label="main agent run controls">
+    <div className="attachment-row composer-attachment-row max-sm:flex-[1_1_auto]">
       <Button as="label" variant="ghost" size="sm" className="attach-btn" htmlFor="prompt-images" aria-label="add images" title="add images"><PlusIcon {...buttonIconProps} /></Button>
       <input id="prompt-images" className="image-input" name="images" type="file" accept="image/png,image/jpeg,image/gif,image/webp" multiple />
       <span id="image-status" className="attachment-status muted" role="status" aria-live="polite"></span>
     </div>
-    <InputGroup label="model" className="model-picker">
+    <InputGroup label="model" className="model-picker max-sm:flex-[1_1_100%]">
       <Select id="model-ref" name="modelRef"><option value="">loading model…</option></Select>
     </InputGroup>
-    <InputGroup label="thinking" className="thinking-slider">
+    <InputGroup label="thinking" className="thinking-slider max-sm:flex-[1_1_100%]">
       <Slider id="thinking-level" min="0" max="5" step="1" defaultValue="5" />
       <output id="thinking-level-value" htmlFor="thinking-level">xhigh</output>
     </InputGroup>
   </div>;
 }
 
-function WorkspaceManager({ className = '', prominent = false }) {
+function WorkspaceSwitchCaretIcon() {
+  return <span className="workspace-switch-caret-icon" aria-hidden="true">
+    <CaretUpIcon className="size-3" weight="bold" />
+    <CaretDownIcon className="size-3" weight="bold" />
+  </span>;
+}
+
+function WorkspaceQuickSwitcher({ prominent = false, labelClass = '' }) {
+  return <div className="workspace-switcher relative min-w-0 flex-1">
+    <button id="workspace-switcher-toggle" className={cn('textbtn workspace-switcher-toggle', prominent ? 'h-10' : 'h-7')} type="button" aria-label="switch projects" aria-haspopup="dialog" aria-expanded="false" aria-controls="workspace-switcher-menu"><strong id="workspace-label" className={labelClass}>loading…</strong><WorkspaceSwitchCaretIcon /></button>
+    <div id="workspace-switcher-menu" className="workspace-switcher-menu" role="dialog" aria-label="Project switcher" hidden>
+      <label className="sr-only" htmlFor="workspace-switcher-search">Search projects</label>
+      <input id="workspace-switcher-search" className="workspace-switcher-search" type="search" placeholder="Search projects…" autoComplete="off" />
+      <div id="workspace-switcher-recents" className="workspace-switcher-recents"><p className="workspace-switcher-empty">loading…</p></div>
+      <div className="workspace-switcher-divider" aria-hidden="true"></div>
+      <a className="workspace-switcher-home" href="/"><strong>Browse all projects</strong><small>Open or add a workspace</small></a>
+    </div>
+  </div>;
+}
+
+function WorkspaceManager({ className = '', prominent = false, quickSwitch = false }) {
   const labelClass = cn(
     'min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-[var(--mono)] font-bold lowercase tracking-[.03em]',
     prominent ? 'text-[16px] leading-none text-[var(--ink)]' : 'text-[11px]'
   );
   const buttonClass = prominent ? 'h-10 shrink-0 px-3 text-[12px] text-[var(--ink)]' : 'h-7 shrink-0 px-1.5 text-[10px]';
 
-  return <div className={cn('flex min-w-0 items-center text-[var(--ink-3)]', prominent ? 'gap-3' : 'gap-2', className)} aria-label="Selected workspace"><strong id="workspace-label" className={labelClass}>loading…</strong><Button as="a" variant="ghost" size={prominent ? 'md' : 'sm'} className={buttonClass} href="/"><FolderOpenIcon {...buttonIconProps} />switch</Button></div>;
+  return <div className={cn('flex min-w-0 items-center text-[var(--ink-3)]', prominent ? 'gap-3' : 'gap-2', className)} aria-label="Selected workspace">{quickSwitch ? <WorkspaceQuickSwitcher prominent={prominent} labelClass={labelClass} /> : <><strong id="workspace-label" className={labelClass}>loading…</strong><Button as="a" variant="ghost" size={prominent ? 'md' : 'sm'} className={buttonClass} href="/"><FolderOpenIcon {...buttonIconProps} />switch</Button></>}</div>;
 }
 
 function WorkspaceNav({ active = 'workspace', showBrand = true, showWorkspaceManager = true, workspaceManagerClassName = '', workspaceManagerProminent = false }) {
@@ -364,13 +388,16 @@ export function ProjectPage() {
 
 export function WorkspacePage() {
   return <SidebarProvider className="min-h-svh bg-[var(--bg)]" style={{ '--sidebar-width': 'var(--workspace-sidebar-width, 22rem)' }}>
-    <Sidebar className="border-r border-[var(--rule)]" collapsible="none">
-      <Surface id="agents-section" className="flex h-full min-h-0 flex-col bg-[var(--paper)]" aria-label="Agents">
+    <Sidebar className="border-r border-[var(--rule)]" collapsible="offcanvas">
+      <Surface id="agents-section" className="flex h-full min-h-0 flex-col bg-[color-mix(in_srgb,var(--paper)_44%,transparent)]" aria-label="Agents">
         <SidebarHeader className="grid gap-3 border-b border-[var(--rule)] px-3 py-4">
           <div className="flex w-full items-center gap-2.5">
             <img className="block size-8 shrink-0 -translate-y-0.5" src="/logo-mark.svg" alt="" aria-hidden="true" />
-            <WorkspaceManager className="min-w-0 flex-1 justify-between" prominent />
+            <WorkspaceManager className="min-w-0 flex-1 justify-between" prominent quickSwitch />
           </div>
+          <InputGroup label={<MagnifyingGlassIcon className="size-4" aria-hidden="true" />} className="agent-search border-0 bg-transparent px-0 shadow-none [&_input]:min-w-0 [&_input]:py-1.5" as="div">
+            <input id="agent-search" type="search" placeholder="search all agents" autoComplete="off" aria-label="Search agents" aria-controls="threads-list" />
+          </InputGroup>
         </SidebarHeader>
         <SidebarContent className="min-h-0">
           <ScrollArea id="threads-list" className="action-lanes px-2 pb-5"></ScrollArea>
@@ -378,7 +405,13 @@ export function WorkspacePage() {
       </Surface>
     </Sidebar>
     <SidebarInset className="min-w-0 bg-[var(--bg)] px-[clamp(16px,4vw,56px)] py-6 pb-18 max-sm:px-2.5 max-sm:py-3 max-sm:pb-7">
-      <div className="mx-auto mb-5 flex w-[min(1180px,100%)] items-center gap-2 max-sm:mb-3 max-sm:items-start"><WorkspaceNav active="workspace" showBrand={false} showWorkspaceManager={false} /></div>
+      <div className="mx-auto mb-5 flex w-[min(1180px,100%)] min-w-0 items-center gap-2 max-sm:mb-3 max-sm:items-start">
+        <div className="workspace-mobile-sidebar-launcher shrink-0 items-center gap-1">
+          <SidebarTrigger className="workspace-sidebar-trigger" aria-label="open agents" title="open agents" />
+          <span className="font-[var(--mono)] text-[11px] font-bold lowercase text-[var(--blue)]">agents</span>
+        </div>
+        <WorkspaceNav active="workspace" showBrand={false} showWorkspaceManager={false} />
+      </div>
       <h1 className="sr-only">Start a main agent</h1>
       <GitHubSignInCard compact />
       <InputMessage as="form" id="thread-form" className="launch-card" aria-label="Spin up a main agent">
@@ -399,9 +432,9 @@ export function WorkspacePage() {
         </div>
         <div className="advanced-fields launch-details"><input name="name" placeholder="main agent name" /><div id="provider-banner" className="notice" aria-live="polite">Connecting…</div></div>
         <section id="launch-suggestions" className="launch-suggestions" aria-label="Suggested starter prompts">
-          <button type="button" data-suggested-prompt="Review the current diff, recent implementation notes, and latest finished agents, then pick the highest-leverage next task and do the smallest safe piece."><strong>Find next move</strong><span>Review diff, notes, and recent agents; do the smallest safe piece.</span></button>
-          <button type="button" data-suggested-prompt="Use the product's main flow, identify one confusing or broken interaction, fix it, and run the narrowest check that proves it."><strong>Fix a paper cut</strong><span>Walk the core flow, repair one edge, and verify it.</span></button>
-          <button type="button" data-suggested-prompt="Read the current workspace state and prepare a concise handoff with risks, next commands, and one safe cleanup if obvious."><strong>Prep a handoff</strong><span>Summarize risks, next commands, and one safe cleanup.</span></button>
+          <button type="button" data-suggested-prompt="Read the README, package files, and top-level source folders. Create a concise architecture diagram artifact showing the app entry points, key folders, runtime boundaries, and safest first command to try."><strong>Make repo diagram</strong><span>Draw the app structure, entry points, and runtime boundaries.</span></button>
+          <button type="button" data-suggested-prompt="Find the existing install, test, lint, and build commands. Run the smallest safe check that proves the repo is wired up, then summarize any failure with the next fix."><strong>Run health check</strong><span>Verify setup with the narrowest useful check.</span></button>
+          <button type="button" data-suggested-prompt="Scan the README, TODOs, issues if available, current git status, and implementation notes if present. Recommend three small safe starter tasks with evidence and a check for each."><strong>Find first task</strong><span>Turn repo signals into small evidence-backed next steps.</span></button>
         </section>
         <p id="thread-status" className="status-line"></p>
       </InputMessage>
@@ -413,9 +446,9 @@ export function ThreadPage() {
   return <main className="thread-flow-shell">
     <section className="thread-stage" aria-label="Main agent workspace">
       <header className="thread-main-header">
-        <div className="thread-main-row">
+        <div className="thread-main-row max-sm:flex-wrap max-sm:items-start">
           <a className="brand" href="/workspace.html" aria-label="Back to workspace"><span className="brand-box"><ArrowLeftIcon className="size-4" aria-hidden="true" /></span><span id="project-label" className="project-pill" hidden></span></a>
-          <h1 id="thinking-title">Loading</h1>
+          <h1 id="thinking-title" className="min-w-0">Loading</h1>
           <div className="header-actions"><StatusPill id="thread-status">connecting</StatusPill><Button id="stop-thread" variant="ghost" className="thread-stop-btn" type="button" hidden><StopCircleIcon {...buttonIconProps} />stop</Button><Button id="resume-thread" variant="ghost" className="thread-resume-btn" type="button" hidden>resume</Button><Button id="delete-thread" variant="ghost" className="thread-delete-btn" type="button" hidden>delete</Button><Button id="archive-thread" variant="primary" className="thread-done-btn" type="button" hidden><CheckCircleIcon {...buttonIconProps} />archive</Button></div>
         </div>
         <p id="thinking-detail" className={mutedClass}></p>
@@ -426,6 +459,10 @@ export function ThreadPage() {
           <div className="rail-head"><span>workflow agents</span><strong id="agent-graph-count">idle</strong></div>
           <p className="rail-hint">click for full workflow trace</p>
           <div id="agent-graph" className="agent-graph"></div>
+        </Surface>
+        <Surface as="section" id="todo-rail" className="todo-rail flow-card" aria-label="Agent todos" hidden>
+          <div className="rail-head"><span>todos</span><strong id="todo-count">0/0</strong></div>
+          <div id="todo-list" className="todo-list"></div>
         </Surface>
         <button id="diff-box" className="diff-box flow-card" type="button" hidden><span className="inline-flex items-center gap-1.5"><GitDiffIcon className="size-4" aria-hidden="true" />changes</span><strong id="diff-count">0 files edited · 0 lines</strong></button>
       </aside>
@@ -556,8 +593,8 @@ Keep screenshots, diffs, logs, and comments attached to the run.`;
       .landing-agent-dot::before, .landing-agent-dot::after { content:''; position:absolute; inset:50% auto auto 50%; border-radius:999px; transform:translate(-50%,-50%); }
       .landing-agent-dot::before { width:10px; height:10px; background:var(--ds-yellow); box-shadow:0 0 15px rgba(217,154,24,.88),0 0 34px rgba(217,154,24,.28); animation:landing-agent-pulse 1.8s ease-in-out infinite; }
       .landing-agent-dot::after { width:26px; height:26px; background:rgba(217,154,24,.11); animation:landing-agent-halo 1.8s ease-in-out infinite; }
-      .landing-agent.is-done .landing-agent-dot::before { background:var(--ds-green); box-shadow:0 0 15px rgba(100,218,112,.9),0 0 34px rgba(100,218,112,.3); animation:none; }
-      .landing-agent.is-done .landing-agent-dot::after { background:rgba(100,218,112,.12); animation:landing-agent-pop .55s ease-out both; }
+      .landing-agent.is-done .landing-agent-dot::before { background:var(--ds-green); box-shadow:none; animation:none; }
+      .landing-agent.is-done .landing-agent-dot::after { display:none; }
       .landing-agent strong { display:block; overflow:hidden; color:var(--ds-text); font-size:18px; line-height:1.1; white-space:nowrap; text-overflow:ellipsis; letter-spacing:-.035em; }
       .landing-agent small { display:block; margin-top:4px; color:var(--ds-quiet); font-size:14px; }
       .landing-agent-time { color:color-mix(in srgb,var(--ds-text) 45%,transparent); font:800 12px/1 ui-monospace,SFMono-Regular,Menlo,monospace; }

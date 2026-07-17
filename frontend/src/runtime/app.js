@@ -10,6 +10,7 @@ const BROWSER_SESSION_KEY = 'spannerBrowserSession';
 const MODEL_REF_KEY = 'spannerModelRef';
 const THINKING_LEVEL_KEY = 'spannerThinkingLevel';
 const PROJECT_KEY = 'spannerSelectedProject';
+const RECENT_PROJECTS_KEY = 'spannerRecentProjects';
 const SEEN_FINISHED_THREADS_KEY = 'spannerSeenFinishedThreads';
 const WORKSPACE_THREADS_CACHE_KEY = 'spannerWorkspaceThreadsCache';
 const THINKING_LEVELS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh'];
@@ -30,11 +31,15 @@ migrateStorageKey('workbenchBrowserSession', BROWSER_SESSION_KEY);
 migrateStorageKey('workbenchModelRef', MODEL_REF_KEY);
 migrateStorageKey('workbenchThinkingLevel', THINKING_LEVEL_KEY);
 migrateStorageKey('workbenchSelectedProject', PROJECT_KEY);
+migrateStorageKey('workbenchRecentProjects', RECENT_PROJECTS_KEY);
 migrateStorageKey('workbenchSeenFinishedThreads', SEEN_FINISHED_THREADS_KEY);
 
 const providerBanner = document.querySelector('#provider-banner');
 const projectLabel = document.querySelector('#project-label');
-const workspaceLabel = document.querySelector('#workspace-label');
+const workspaceSwitcherToggle = document.querySelector('#workspace-switcher-toggle');
+const workspaceSwitcherMenu = document.querySelector('#workspace-switcher-menu');
+const workspaceSwitcherSearch = document.querySelector('#workspace-switcher-search');
+const workspaceSwitcherRecents = document.querySelector('#workspace-switcher-recents');
 const codexAuthPill = document.querySelector('#codex-auth-pill');
 const codexAuthLabel = document.querySelector('#codex-auth-label');
 const githubAuthPill = document.querySelector('#github-auth-pill');
@@ -62,11 +67,18 @@ const threadSubmit = document.querySelector('#thread-submit');
 const threadStatus = document.querySelector('#thread-status');
 const launchSuggestions = document.querySelector('#launch-suggestions');
 const launchSuggestionsInitialHtml = launchSuggestions?.innerHTML || '';
-const threadsList = document.querySelector('#threads-list');
+const agentSearchInput = document.querySelector('#agent-search');
+let threadsList = document.querySelector('#threads-list');
+let syncedThreadsList = threadsList;
+let syncThreadsListScheduled = false;
 
 let githubRepos = [];
 let selectedRepo = null;
 let selectedProject = readSelectedProject();
+let recentProjects = readCachedRecentProjects();
+let workspaceSwitcherThreads = [];
+let currentWorkspaceThreads = [];
+let workspaceSwitcherSearchQuery = '';
 let localProvider = false;
 let defaultThinkingLevel = 'xhigh';
 let runtimeTickTimer = null;
@@ -214,6 +226,24 @@ function readSelectedProject() {
   }
 }
 
+function normalizeRecentProjects(projects) {
+  return Array.isArray(projects) ? projects.filter((project) => project?.value).slice(0, 8) : [];
+}
+
+function readCachedRecentProjects() {
+  try {
+    return normalizeRecentProjects(JSON.parse(localStorage.getItem(RECENT_PROJECTS_KEY) || '[]'));
+  } catch {
+    return [];
+  }
+}
+
+function cacheRecentProjects(projects) {
+  recentProjects = normalizeRecentProjects(projects);
+  localStorage.setItem(RECENT_PROJECTS_KEY, JSON.stringify(recentProjects));
+  return recentProjects;
+}
+
 function workspaceThreadsCacheKey() {
   const key = selectedProject?.value ? `${selectedProject.kind || ''}:${selectedProject.value}` : 'all';
   return `${WORKSPACE_THREADS_CACHE_KEY}:${key}`;
@@ -265,12 +295,130 @@ function cleanProjectValue(value) {
   return String(value || '').trim().replace(/[\\/]+$/, '');
 }
 
+function looksLikeLocalPath(value) {
+  return /^(~|\/|[A-Za-z]:[\\/]|\\\\)/.test(String(value || '').trim());
+}
+
+function folderLabel(value) {
+  const text = cleanProjectValue(value);
+  return text.split(/[\\/]+/).filter(Boolean).pop() || text || 'workspace';
+}
+
 function compactProjectLabel(value) {
   const text = cleanProjectValue(value)
     .replace(/^https?:\/\/github\.com\//i, '')
     .replace(/\.git$/i, '');
   const parts = text.split(/[\\/]+/).filter(Boolean);
   return parts.slice(-2).join('/') || text || 'workspace';
+}
+
+function selectedProjectLabel(project) {
+  return project?.kind === 'local' || looksLikeLocalPath(project?.value)
+    ? folderLabel(project?.value)
+    : project?.label || compactProjectLabel(project?.value);
+}
+
+function acceptsSwitcherProject(project) {
+  return localProvider || Boolean(globalThis.spannerDesktop?.chooseFolder) || (project?.kind !== 'local' && !looksLikeLocalPath(project?.value));
+}
+
+function sameSwitcherProject(left, right) {
+  if (!left?.value || !right?.value) return false;
+  if (left.kind === 'local' || right.kind === 'local' || looksLikeLocalPath(left.value) || looksLikeLocalPath(right.value)) {
+    return cleanProjectValue(left.value) === cleanProjectValue(right.value);
+  }
+  return canonicalRepo(left.value) === canonicalRepo(right.value);
+}
+
+function threadMatchesProject(thread, project) {
+  if (!project?.value) return false;
+  if (project.kind === 'local' || looksLikeLocalPath(project.value)) return cleanProjectValue(thread.repoPath) === cleanProjectValue(project.value);
+  return canonicalRepo(thread.repoUrl) === canonicalRepo(project.value);
+}
+
+function switcherRunningCount(project) {
+  return workspaceSwitcherThreads.filter((thread) => isActiveThread(thread) && threadMatchesProject(thread, project)).length;
+}
+
+function switcherUnreadCount(project) {
+  return workspaceSwitcherThreads.filter((thread) => {
+    const rawStatus = effectiveThreadStatus(thread) || 'unknown';
+    return threadMatchesProject(thread, project) && canDismissFinishedIndicator(rawStatus, isActiveThread(thread)) && !seenFinishedThreads.has(finishedIndicatorKey(thread, rawStatus));
+  }).length;
+}
+
+function normalizedProjectSearch(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/^https?:\/\/github\.com\//, '')
+    .replace(/^github\.com\//, '')
+    .replace(/\.git$/i, '')
+    .trim();
+}
+
+function switcherProjectMatches(project, query) {
+  const tokens = normalizedProjectSearch(query).split(/\s+/).filter(Boolean);
+  if (!tokens.length) return true;
+  const text = normalizedProjectSearch([selectedProjectLabel(project), project?.value, project?.repoSource, project?.branch].filter(Boolean).join(' '));
+  return tokens.every((token) => text.includes(token));
+}
+
+function renderWorkspaceSwitcher(message = '') {
+  if (!workspaceSwitcherRecents) return;
+  const query = workspaceSwitcherSearchQuery.trim();
+  const projects = recentProjects
+    .map((project, index) => ({ project, index }))
+    .filter(({ project }) => acceptsSwitcherProject(project) && switcherProjectMatches(project, query))
+    .slice(0, query ? 12 : 6);
+  if (!projects.length) {
+    workspaceSwitcherRecents.innerHTML = `<p class="workspace-switcher-empty">${escapeHtml(message || (query ? `No projects match “${query}”.` : 'No recent projects yet.'))}</p>`;
+    return;
+  }
+  workspaceSwitcherRecents.innerHTML = projects.map(({ project, index }) => {
+    const active = sameSwitcherProject(project, selectedProject);
+    const unread = switcherUnreadCount(project);
+    const running = switcherRunningCount(project);
+    const counts = [
+      unread ? `<span class="project-activity-badge project-unread-badge" aria-label="${escapeHtml(`${unread} unread finished agent${unread === 1 ? '' : 's'}`)}"><span class="status-dot" aria-hidden="true"></span>${escapeHtml(unread)}</span>` : '',
+      running ? `<span class="project-activity-badge project-running-badge" aria-label="${escapeHtml(`${running} running agent${running === 1 ? '' : 's'}`)}"><span class="status-dot" aria-hidden="true"></span>${escapeHtml(running)}</span>` : '',
+    ].filter(Boolean).join('');
+    return `
+      <button class="workspace-switcher-project" type="button" data-workspace-project-index="${index}"${active ? ' aria-current="page"' : ''}>
+        <span><strong>${escapeHtml(selectedProjectLabel(project))}</strong>${counts ? `<span class="project-activity-badges">${counts}</span>` : ''}</span>
+        <small>${escapeHtml(project.value)}</small>
+      </button>
+    `;
+  }).join('');
+}
+
+async function loadRecentProjects() {
+  try {
+    const payload = await fetchJson('/api/recent-projects');
+    cacheRecentProjects(payload.projects || []);
+    renderWorkspaceSwitcher();
+  } catch {
+    renderWorkspaceSwitcher();
+  }
+}
+
+function setWorkspaceSwitcherOpen(open) {
+  if (!workspaceSwitcherToggle || !workspaceSwitcherMenu) return;
+  workspaceSwitcherMenu.hidden = !open;
+  workspaceSwitcherToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (open) setTimeout(() => {
+    if (!workspaceSwitcherMenu.hidden) workspaceSwitcherSearch?.focus();
+  }, 0);
+}
+
+function switchWorkspaceProject(project) {
+  if (!project?.value) return;
+  if (sameSwitcherProject(project, selectedProject)) {
+    setWorkspaceSwitcherOpen(false);
+    return;
+  }
+  localStorage.setItem(PROJECT_KEY, JSON.stringify(project));
+  selectedProject = project;
+  location.href = '/workspace.html';
 }
 
 function applySelectedProject() {
@@ -281,9 +429,9 @@ function applySelectedProject() {
   repoUrlInput.value = selectedProject.value || '';
   repoSourceInput.value = selectedProject.repoSource || '';
   branchInput.value = selectedProject.branch || '';
-  if (workspaceLabel) {
-    workspaceLabel.textContent = selectedProject.label || compactProjectLabel(selectedProject.value);
-    workspaceLabel.title = selectedProject.value;
+  for (const label of document.querySelectorAll('#workspace-label')) {
+    label.textContent = selectedProjectLabel(selectedProject);
+    label.title = selectedProject.value;
   }
 }
 
@@ -364,6 +512,7 @@ function renderProvider(provider) {
     ? [target, provider.kind, summary].filter(Boolean).join(' · ')
     : target;
   applyProviderMode(provider);
+  renderWorkspaceSwitcher();
 }
 
 function renderModelOptions(model, options = []) {
@@ -556,6 +705,11 @@ function canDismissFinishedIndicator(rawStatus, active) {
   return !active && ['completed', 'ready'].includes(rawStatus);
 }
 
+function hasFreshFinishedIndicator(thread) {
+  const rawStatus = effectiveThreadStatus(thread) || 'unknown';
+  return canDismissFinishedIndicator(rawStatus, isActiveThread(thread)) && !seenFinishedThreads.has(finishedIndicatorKey(thread, rawStatus));
+}
+
 function formatFinishedAgo(value) {
   const elapsed = formatElapsed(value).replace(/m\b/g, ' min');
   return elapsed ? `finished ${elapsed} ago` : '';
@@ -586,6 +740,26 @@ function runningActivity(thread, rawStatus = effectiveThreadStatus(thread)) {
   if (status === 'queued') return 'waiting for main agent';
   if (status === 'launching' || status === 'starting') return 'starting main agent';
   return status === 'running' ? 'working' : status || 'working';
+}
+
+function agentSearchQuery() {
+  return String(agentSearchInput?.value || '').trim().toLowerCase();
+}
+
+function agentSearchText(thread) {
+  const rawStatus = effectiveThreadStatus(thread) || 'unknown';
+  return [
+    thread?.title,
+    thread?.name,
+    rawStatus,
+    isActiveThread(thread) ? runningActivity(thread, rawStatus) : finishedOutcome(thread, rawStatus),
+  ].join(' ').toLowerCase();
+}
+
+function filterAgentThreads(threads) {
+  const query = agentSearchQuery();
+  if (!query) return threads;
+  return threads.filter((thread) => agentSearchText(thread).includes(query));
 }
 
 function canArchiveThread(thread) {
@@ -659,8 +833,14 @@ function renderThreadCard(thread) {
   `;
 }
 
+function currentThreadsListNode() {
+  threadsList = document.querySelector('#threads-list');
+  return threadsList;
+}
+
 function updateRuntimeLabels() {
-  const labels = threadsList.querySelectorAll('[data-runtime-start]');
+  const list = currentThreadsListNode();
+  const labels = list?.querySelectorAll('[data-runtime-start]') || [];
   for (const label of labels) {
     label.textContent = `running ${formatElapsed(label.dataset.runtimeStart, Date.now(), true)}`;
   }
@@ -671,7 +851,8 @@ function updateRuntimeLabels() {
 }
 
 function syncRuntimeTick() {
-  const hasActiveRuntime = Boolean(threadsList.querySelector('[data-runtime-start]'));
+  const list = currentThreadsListNode();
+  const hasActiveRuntime = Boolean(list?.querySelector('[data-runtime-start]'));
   if (hasActiveRuntime && !runtimeTickTimer) {
     runtimeTickTimer = setInterval(updateRuntimeLabels, 1000);
   } else if (!hasActiveRuntime && runtimeTickTimer) {
@@ -680,8 +861,18 @@ function syncRuntimeTick() {
   }
 }
 
+function updateFinishedIndicatorCount() {
+  const list = currentThreadsListNode();
+  const badge = list?.querySelector('[data-finished-indicator-count]');
+  if (!badge) return;
+  const count = list.querySelectorAll('[data-finished-indicator]').length;
+  badge.hidden = count < 1;
+  badge.textContent = `${count} new`;
+}
+
 function dismissFinishedIndicator(indicator) {
   rememberSeenFinishedThread(indicator.dataset.finishedIndicator);
+  renderWorkspaceSwitcher();
   indicator.classList.add('is-seen');
   indicator.removeAttribute('role');
   indicator.removeAttribute('tabindex');
@@ -689,6 +880,7 @@ function dismissFinishedIndicator(indicator) {
   indicator.removeAttribute('title');
   indicator.removeAttribute('data-finished-indicator');
   indicator.setAttribute('aria-hidden', 'true');
+  updateFinishedIndicatorCount();
 }
 
 function clipSuggestionText(value, max = 140) {
@@ -755,18 +947,28 @@ function renderLaunchSuggestions(suggestions) {
 }
 
 function renderThreads(threads, options = {}) {
+  currentWorkspaceThreads = Array.isArray(threads) ? threads : [];
+  const filteredThreads = filterAgentThreads(currentWorkspaceThreads);
+  const searchActive = Boolean(agentSearchQuery());
   const lanes = [
-    { key: 'running', title: 'Running', empty: 'No agents running.' },
-    { key: 'done', title: 'Recently finished', empty: 'Nothing finished recently.' },
+    { key: 'running', title: 'Running', empty: searchActive ? 'No matching running agents.' : 'No agents running.' },
+    { key: 'done', title: 'Recently finished', empty: searchActive && !filteredThreads.length ? 'No agents match that search.' : searchActive ? 'No matching finished agents.' : 'Nothing finished recently.' },
   ];
   const grouped = Object.fromEntries(lanes.map((lane) => [lane.key, []]));
-  for (const thread of threads) grouped[threadLane(thread)].push(thread);
+  for (const thread of filteredThreads) grouped[threadLane(thread)].push(thread);
   grouped.done.sort((left, right) => finishedAtMs(right) - finishedAtMs(left));
 
+  const freshFinishedCount = grouped.done.filter(hasFreshFinishedIndicator).length;
   finishedThreadNames = grouped.done.filter(canArchiveThread).map((thread) => thread.name);
-  if (options.suggestions !== false) loadWorkspaceLaunchSuggestions(threads).catch(() => {});
+  if (options.suggestions !== false) loadWorkspaceLaunchSuggestions(currentWorkspaceThreads).catch(() => {});
   const visibleLanes = grouped.running.length ? lanes : lanes.filter((lane) => lane.key !== 'running');
-  threadsList.innerHTML = visibleLanes.map((lane) => {
+  const list = currentThreadsListNode();
+  if (!list) {
+    syncRuntimeTick();
+    return;
+  }
+  list.innerHTML = visibleLanes.map((lane) => {
+    const freshBadge = lane.key === 'done' && freshFinishedCount ? `<span class="fresh-finished-count" data-finished-indicator-count>${freshFinishedCount} new</span>` : '';
     const historyLink = lane.key === 'done' ? '<a class="textbtn lane-history" href="/history.html">history</a>' : '';
     const clearButton = lane.key === 'done' && finishedThreadNames.length ? '<button id="clear-finished-threads" class="textbtn lane-clear" type="button">clear</button>' : '';
     return `
@@ -774,7 +976,7 @@ function renderThreads(threads, options = {}) {
       <div class="action-lane-head">
         <h3>${escapeHtml(lane.title)}</h3>
         <span class="action-lane-tools">
-          <span class="action-count">${grouped[lane.key].length}</span>
+          ${freshBadge}<span class="action-count">${grouped[lane.key].length}</span>
           ${historyLink}${clearButton}
         </span>
       </div>
@@ -784,16 +986,39 @@ function renderThreads(threads, options = {}) {
     </section>
   `;
   }).join('');
+  updateFinishedIndicatorCount();
   syncRuntimeTick();
+}
+
+function syncThreadsListMount() {
+  const list = currentThreadsListNode();
+  if (!list || list === syncedThreadsList) return;
+  syncedThreadsList = list;
+  applySelectedProject();
+  renderThreads(currentWorkspaceThreads.length ? currentWorkspaceThreads : cachedWorkspaceThreads().filter(sameSelectedProject), { suggestions: false });
+}
+
+function scheduleSyncThreadsListMount() {
+  if (syncThreadsListScheduled) return;
+  syncThreadsListScheduled = true;
+  requestAnimationFrame(() => {
+    syncThreadsListScheduled = false;
+    syncThreadsListMount();
+  });
+}
+
+if (globalThis.MutationObserver) {
+  new MutationObserver(scheduleSyncThreadsListMount).observe(document.body, { childList: true, subtree: true });
 }
 
 async function loadThreads() {
   const payload = await fetchJson('/api/threads');
-  const threads = (payload.threads || []).filter(sameSelectedProject);
+  workspaceSwitcherThreads = payload.threads || [];
+  const threads = workspaceSwitcherThreads.filter(sameSelectedProject);
   renderProvider(payload.provider);
   renderPiDefaults(payload.defaults || {});
   cacheWorkspaceThreads(threads);
-  notifyFinishedThreads(threads);
+  notifyFinishedThreads(workspaceSwitcherThreads);
   renderThreads(threads);
   return payload;
 }
@@ -808,11 +1033,12 @@ async function loadWorkspaceAuth() {
 
 async function loadWorkspaceBootstrap() {
   const payload = await fetchJson('/api/bootstrap?page=workspace&fast=1');
-  const threads = (payload.threads || []).filter(sameSelectedProject);
+  workspaceSwitcherThreads = payload.threads || [];
+  const threads = workspaceSwitcherThreads.filter(sameSelectedProject);
   renderProvider(payload.provider);
   renderPiDefaults(payload.defaults || {});
   cacheWorkspaceThreads(threads);
-  notifyFinishedThreads(threads);
+  notifyFinishedThreads(workspaceSwitcherThreads);
   renderThreads(threads);
   if (payload.codex?.deferred || payload.github?.deferred) {
     void loadWorkspaceAuth().catch((error) => {
@@ -839,6 +1065,8 @@ async function reloadControlData() {
 
 getBrowserSessionId();
 applySelectedProject();
+renderWorkspaceSwitcher();
+void loadRecentProjects();
 renderCachedWorkspaceThreads();
 loadRunControls();
 modelRefInput.addEventListener('change', saveRunControls);
@@ -849,6 +1077,9 @@ thinkingLevelInput.addEventListener('input', () => {
 imageInput?.addEventListener('change', () => updateImageStatus(imageInput, imageStatus));
 bindImageDropZone(threadForm, imageInput, imageStatus);
 submitOnEnter(promptInput, threadForm, threadSubmit);
+document.addEventListener('input', (event) => {
+  if (event.target?.matches?.('#agent-search')) renderThreads(currentWorkspaceThreads, { suggestions: false });
+});
 
 repoRefresh.addEventListener('click', async () => {
   if (localProvider) return;
@@ -946,7 +1177,33 @@ launchSuggestions?.addEventListener('click', (event) => {
 
 for (const button of githubSigninButtons) button.addEventListener('click', () => startGitHubSignIn());
 
-threadsList.addEventListener('click', async (event) => {
+workspaceSwitcherToggle?.addEventListener('click', () => {
+  setWorkspaceSwitcherOpen(workspaceSwitcherMenu?.hidden !== false);
+});
+
+workspaceSwitcherSearch?.addEventListener('input', () => {
+  workspaceSwitcherSearchQuery = workspaceSwitcherSearch.value;
+  renderWorkspaceSwitcher();
+});
+
+workspaceSwitcherRecents?.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-workspace-project-index]');
+  if (!button) return;
+  switchWorkspaceProject(recentProjects[Number(button.dataset.workspaceProjectIndex)]);
+});
+
+document.addEventListener('mousedown', (event) => {
+  if (!workspaceSwitcherMenu || workspaceSwitcherMenu.hidden) return;
+  if (workspaceSwitcherMenu.contains(event.target) || workspaceSwitcherToggle?.contains(event.target)) return;
+  setWorkspaceSwitcherOpen(false);
+});
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') setWorkspaceSwitcherOpen(false);
+});
+
+document.addEventListener('click', async (event) => {
+  if (!event.target?.closest?.('#threads-list')) return;
   const indicator = event.target.closest('[data-finished-indicator]');
   if (indicator) {
     event.preventDefault();
@@ -990,7 +1247,8 @@ threadsList.addEventListener('click', async (event) => {
   }
 });
 
-threadsList.addEventListener('keydown', (event) => {
+document.addEventListener('keydown', (event) => {
+  if (!event.target?.closest?.('#threads-list')) return;
   if (event.key !== 'Enter' && event.key !== ' ') return;
   const indicator = event.target.closest('[data-finished-indicator]');
   if (!indicator) return;

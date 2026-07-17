@@ -33,6 +33,7 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
         nextEventId: 1,
         bridgeFollowing: false,
         trackedChanges: [],
+        todoState: null,
         toolCalls: new Map(),
       });
     }
@@ -63,6 +64,7 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
     run.events.push(payload);
     run.performance = applyPerformanceEvent(run.performance, payload);
     recordTrackedChangeEvent(name, payload);
+    recordTodoEvent(name, payload);
     if (run.events.length > 2000) {
       run.events.shift();
     }
@@ -90,6 +92,7 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
     const run = ensureRunState(name);
     if (Array.isArray(patch.events) && patch.events.length === 0) {
       run.trackedChanges = [];
+      run.todoState = null;
       run.toolCalls = new Map();
     }
     Object.assign(run, patch);
@@ -107,6 +110,7 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
       performance: null,
       nextEventId: 1,
       bridgeFollowing: false,
+      todoState: null,
       ...patch,
     });
   }
@@ -274,6 +278,57 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
     void persistTrackedChanges(name).catch((error) => console.warn(`[spanner] failed to persist tracked changes for ${name}: ${error.message}`));
   }
 
+  function normalizeTodoStatus(value) {
+    const status = String(value || '').toLowerCase();
+    return ['pending', 'in_progress', 'completed', 'deleted'].includes(status) ? status : 'pending';
+  }
+
+  function normalizeTodoTask(task) {
+    if (!task || typeof task !== 'object') return null;
+    const id = Number(task.id);
+    const subject = compactActivityText(task.subject || task.text || task.title || '', 220);
+    if (!Number.isFinite(id) || id <= 0 || !subject) return null;
+    return {
+      id,
+      subject,
+      status: normalizeTodoStatus(task.status || (task.done ? 'completed' : 'pending')),
+      ...(task.description ? { description: compactActivityText(task.description, 400) } : {}),
+      ...(task.activeForm ? { activeForm: compactActivityText(task.activeForm, 160) } : {}),
+      ...(Array.isArray(task.blockedBy) ? { blockedBy: task.blockedBy.map(Number).filter(Number.isFinite) } : {}),
+      ...(task.owner ? { owner: compactActivityText(task.owner, 120) } : {}),
+    };
+  }
+
+  function todoStateFromToolEvent(event) {
+    const toolName = normalizeToolName(event.toolName).toLowerCase();
+    if (event.type !== 'tool' || event.phase !== 'end' || toolName !== 'todo') return null;
+    const details = event.details && typeof event.details === 'object' ? event.details : null;
+    const rawTasks = Array.isArray(details?.tasks) ? details.tasks : Array.isArray(details?.todos) ? details.todos : null;
+    if (!rawTasks) return null;
+    return {
+      tasks: rawTasks.map(normalizeTodoTask).filter(Boolean),
+      nextId: Number.isFinite(Number(details.nextId)) ? Number(details.nextId) : undefined,
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  async function persistTodoState(name, todoState) {
+    const session = await getStoredSession(config.sessionFile, name);
+    if (!session) return;
+    await upsertSession(config.sessionFile, {
+      ...session,
+      todoState,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  function recordTodoEvent(name, event) {
+    const todoState = todoStateFromToolEvent(event);
+    if (!todoState) return;
+    ensureRunState(name).todoState = todoState;
+    void persistTodoState(name, todoState).catch((error) => console.warn(`[spanner] failed to persist todo state for ${name}: ${error.message}`));
+  }
+
   const FINISHED_RUN_STATUSES = ['completed', 'ready', 'failed'];
 
   function statusFromRunStatus(runStatus, fallbackStatus = 'unknown') {
@@ -383,6 +438,7 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
       status: statusFromRunStatus(run.runStatus, decorated.status),
       runStatus: run.runStatus,
       warning: run.warning,
+      todoState: run.todoState || visible.todoState,
       latestActivity: latestActivity || undefined,
     };
   }

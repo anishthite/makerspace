@@ -6,6 +6,7 @@ import { redirectIfAuthRequired } from './auth-redirect.js';
 const BROWSER_SESSION_KEY = 'spannerBrowserSession';
 const PROJECT_KEY = 'spannerSelectedProject';
 const RECENT_PROJECTS_KEY = 'spannerRecentProjects';
+const SEEN_FINISHED_THREADS_KEY = 'spannerSeenFinishedThreads';
 const ONBOARDING_DISMISSED_KEY = 'spannerOnboardingDismissed';
 const INITIAL_REPO_SUGGESTIONS = 12;
 const REPO_SUGGESTION_PAGE_SIZE = 24;
@@ -24,6 +25,7 @@ function migrateStorageKey(legacyKey, nextKey) {
 migrateStorageKey('workbenchBrowserSession', BROWSER_SESSION_KEY);
 migrateStorageKey('workbenchSelectedProject', PROJECT_KEY);
 migrateStorageKey('workbenchRecentProjects', RECENT_PROJECTS_KEY);
+migrateStorageKey('workbenchSeenFinishedThreads', SEEN_FINISHED_THREADS_KEY);
 
 const codexAuthPill = document.querySelector('#codex-auth-pill');
 const codexAuthLabel = document.querySelector('#codex-auth-label');
@@ -64,6 +66,7 @@ let codexConfigured = false;
 let claudeCodeConfigured = false;
 let projectThreadCount = 0;
 let recentProjects = [];
+let seenFinishedThreads = readSeenFinishedThreads();
 
 function getBrowserSessionId() {
   let sessionId = localStorage.getItem(BROWSER_SESSION_KEY) || '';
@@ -72,6 +75,15 @@ function getBrowserSessionId() {
     localStorage.setItem(BROWSER_SESSION_KEY, sessionId);
   }
   return sessionId;
+}
+
+function readSeenFinishedThreads() {
+  try {
+    const value = JSON.parse(localStorage.getItem(SEEN_FINISHED_THREADS_KEY) || '[]');
+    return new Set(Array.isArray(value) ? value : []);
+  } catch {
+    return new Set();
+  }
 }
 
 function getApiBase() {
@@ -137,6 +149,11 @@ function canonicalRepo(value) {
 
 function cleanProjectValue(value) {
   return String(value || '').trim().replace(/[\\/]+$/, '');
+}
+
+function folderLabel(value) {
+  const text = cleanProjectValue(value);
+  return text.split(/[\\/]+/).filter(Boolean).pop() || text || 'workspace';
 }
 
 function projectLabel(value) {
@@ -277,7 +294,7 @@ function projectFromInput() {
     return {
       kind: 'local',
       value: rawValue,
-      label: projectLabel(rawValue),
+      label: folderLabel(rawValue),
       repoSource: '',
       branch: '',
     };
@@ -375,7 +392,29 @@ function runningAgentCount(project, threads = []) {
   return threads.filter((thread) => isActiveThread(thread) && threadMatchesProject(thread, project)).length;
 }
 
+function finishedAtMs(thread) {
+  const runEndedAtMs = Number(thread?.runEndedAtMs);
+  const value = Number.isFinite(runEndedAtMs) && runEndedAtMs > 0
+    ? runEndedAtMs
+    : Date.parse(thread?.endedAt || thread?.completedAt || thread?.updatedAt || thread?.createdAt || '');
+  return Number.isNaN(value) ? 0 : value;
+}
+
+function finishedIndicatorKey(thread, rawStatus) {
+  return `${thread?.name || ''}|${rawStatus || ''}|${finishedAtMs(thread) || ''}`;
+}
+
+function isUnreadFinishedThread(thread) {
+  const rawStatus = effectiveThreadStatus(thread) || 'unknown';
+  return !isActiveThread(thread) && ['completed', 'ready'].includes(rawStatus) && !seenFinishedThreads.has(finishedIndicatorKey(thread, rawStatus));
+}
+
+function unreadFinishedCount(project, threads = []) {
+  return threads.filter((thread) => isUnreadFinishedThread(thread) && threadMatchesProject(thread, project)).length;
+}
+
 function renderRecentProjects(threads = []) {
+  seenFinishedThreads = readSeenFinishedThreads();
   projectThreadCount = Array.isArray(threads) ? threads.length : 0;
   const projects = readRecentProjects()
     .map((project, index) => ({ project, index }))
@@ -385,13 +424,19 @@ function renderRecentProjects(threads = []) {
     return;
   }
   recentList.innerHTML = projects.map(({ project, index }) => {
+    const unread = unreadFinishedCount(project, threads);
     const running = runningAgentCount(project, threads);
-    const runningLabel = `${running} agent${running === 1 ? '' : 's'} running`;
+    const unreadLabel = `${unread} unread finished agent${unread === 1 ? '' : 's'}`;
+    const runningLabel = `${running} running agent${running === 1 ? '' : 's'}`;
+    const badges = [
+      unread ? `<span class="project-activity-badge project-unread-badge" aria-label="${escapeHtml(unreadLabel)}"><span class="status-dot" aria-hidden="true"></span>${escapeHtml(unread)}</span>` : '',
+      running ? `<span class="project-activity-badge project-running-badge" aria-label="${escapeHtml(runningLabel)}"><span class="status-dot" aria-hidden="true"></span>${escapeHtml(running)}</span>` : '',
+    ].filter(Boolean).join('');
     return `
       <button class="project-choice" type="button" data-project-index="${index}">
         <span class="project-choice-title">
-          <strong>${escapeHtml(project.label || projectLabel(project.value))}</strong>
-          ${running ? `<span class="project-running-badge"><span class="status-dot" aria-hidden="true"></span>${escapeHtml(runningLabel)}</span>` : ''}
+          <strong>${escapeHtml(project.kind === 'local' || looksLikeLocalPath(project.value) ? folderLabel(project.value) : project.label || projectLabel(project.value))}</strong>
+          ${badges ? `<span class="project-activity-badges">${badges}</span>` : ''}
         </span>
         <small>${escapeHtml(project.value)}</small>
       </button>

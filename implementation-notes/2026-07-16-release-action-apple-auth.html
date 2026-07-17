@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Release action Apple auth</title>
+<meta name="task" content="Diagnose and tighten the desktop release GitHub Action failure.">
+<meta name="date-started" content="2026-07-16">
+<meta name="date-updated" content="2026-07-16">
+<meta name="status" content="ready-for-review">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="spanner,desktop,release,github,actions,notarization">
+<meta name="related" content="2026-06-30-desktop-ota-updates.html,2026-06-29-notarized-desktop-release-script.html,2026-07-13-desktop-release-v0-0-8.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-med{color:#b85c00}.status-ready{color:#1a5fb4}</style>
+</head>
+<body>
+<h1>Release action Apple auth</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-16 · status <b class="status-ready">ready-for-review</b> · blast <span class="blast-med">medium</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Find why <code>.github/workflows/release.yml</code> fails and apply the repo-side fix.</div><b>Root cause</b><div>Latest runs fail at <code>xcrun notarytool store-credentials</code> with Apple <code>401 Invalid credentials</code>.</div><b>Surface</b><div>GitHub Actions release workflow only.</div><b>Secret action</b><div>Rotate <code>APPLE_APP_SPECIFIC_PASSWORD</code> for the same <code>APPLE_ID</code> and <code>APPLE_TEAM_ID</code>.</div><b>Open Qs</b><div>0.</div></div>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>.github/workflows/release.yml</code></td><td>touch</td><td>Add manual dispatch and run setup-node on <code>24</code> to match release dependencies.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Keep the notary credential validation. It fails before a long build when the Apple secret is stale.</td></tr><tr><td>D-002</td><td>Use Node <code>24</code> in Actions. Bundled Electron/Pi packages require Node <code>&gt;=22</code>, so Node <code>20</code> is a latent release failure.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>One-line workflow fixes over rewriting release scripts. The current failure is secret-side, not packaging logic.</td></tr></table>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>gh run view 29370684080 --log-failed</code></td><td>Confirmed Apple <code>401 Invalid credentials</code> at notary credential storage.</td></tr><tr><td><code>bash -n scripts/release-push.sh scripts/package-desktop.sh</code></td><td>Passed.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Revert the workflow file to automatic push-only Node <code>20</code>; no runtime app code changes.</p>
+<h2>Followups</h2>
+<ul><li>L-001 · Replace the GitHub secret <code>APPLE_APP_SPECIFIC_PASSWORD</code> with a fresh Apple app-specific password, then rerun the workflow.</li></ul>
+<h2>Definition of done</h2>
+<ul><li>Workflow can be manually dispatched after secret rotation.</li><li>Action shell uses Node <code>24</code> for release scripts.</li><li>Latest failure is identified as Apple notary credentials, not GitHub release upload.</li></ul>
+</body>
+</html>

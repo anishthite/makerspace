@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Finished indicator count</title>
+<meta name="task" content="Show how many recently finished green-dot indicators are visible on the workspace page.">
+<meta name="date-started" content="2026-07-16">
+<meta name="date-updated" content="2026-07-16">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,ui,workspace,agents,finished,count">
+<meta name="related" content="2026-07-12-workspace-agents-sidebar.html,2026-07-12-finished-agent-row-three-lines.html,2026-07-16-global-agent-notifier.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-shipped{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Finished indicator count</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-16 · status <b class="status-shipped">shipped</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Show the visible green-dot count beside <code>Recently finished</code>.</div><b>Source</b><div><code>[data-finished-indicator]</code> rendered from current threads and <code>spannerSeenFinishedThreads</code>.</div><b>Surface</b><div><code>/workspace.html</code> agents sidebar.</div><b>Schema</b><div>None.</div><b>Mobile</b><div>Uses existing lane tool wrapping.</div><b>Open Qs</b><div>0.</div></div>
+<h2>UI layout</h2>
+<ol><li><b>Recently finished lane</b>: show <code>N new</code> before the existing total row count.</li><li><b>Dismiss action</b>: decrement <code>N new</code> when a green dot is hidden.</li></ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>frontend/src/runtime/app.js</code></td><td>touch</td><td>Count fresh finished indicators and resync the count after render or dismiss.</td></tr><tr><td><code>frontend/src/styles/app.css</code></td><td>touch</td><td>Add compact green <code>N new</code> badge styling.</td></tr><tr><td><code>test/home-runtime-summary.test.js</code></td><td>touch</td><td>Pin count helper and DOM-derived badge resync.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Count <code>[data-finished-indicator]</code>. It matches the visible green dots instead of all finished rows.</td></tr><tr><td>D-002</td><td>Leave restart persistence unchanged. User said not to fix that reset bug in this pass.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td><code>N new</code> badge over changing the existing total badge. Existing total still explains list length.</td></tr></table>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>node --check frontend/src/runtime/app.js &amp;&amp; node --check test/home-runtime-summary.test.js &amp;&amp; node --test test/home-runtime-summary.test.js</code></td><td>Passed 14/14.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Remove <code>fresh-finished-count</code>, <code>hasFreshFinishedIndicator()</code>, <code>updateFinishedIndicatorCount()</code>, and the static assertions.</p>
+<h2>Definition of done</h2>
+<ul><li>Finished lane shows visible green-dot count.</li><li>Count drops after hiding a green dot.</li><li>Narrow home runtime summary test passes.</li></ul>
+</body>
+</html>

@@ -30,6 +30,10 @@ test('project selector offers desktop local folders', () => {
   assert.match(project, /spannerSelectedProject/);
   assert.match(project, /\/api\/recent-projects/);
   assert.match(project, /project-running-badge/);
+  assert.match(project, /project-unread-badge/);
+  assert.match(project, /const SEEN_FINISHED_THREADS_KEY = 'spannerSeenFinishedThreads'/);
+  assert.match(project, /function unreadFinishedCount\(project, threads = \[\]\)/);
+  assert.match(styles, /\.project-unread-badge \{ color: var\(--green\); \}/);
   assert.match(project, /function filterRepos\(query/);
   assert.match(project, /const INITIAL_REPO_SUGGESTIONS = 12/);
   assert.match(project, /const REPO_SUGGESTION_PAGE_SIZE = 24/);
@@ -149,9 +153,9 @@ test('project selector offers desktop local folders', () => {
   assert.match(pages, /id="project-grid" className="mx-auto mt-\[clamp\(34px,8vh,74px\)\] grid max-w-\[860px\] grid-cols-1 gap-4"/);
   assert.match(pages, /id="project-form" className=\{cn\(surfaceClass, 'grid gap-5 overflow-hidden p-4 md:p-6'\)\}/);
   assert.match(pages, /id="project-subtitle"/);
-  assert.match(pages, /id="project-hero" className="grid justify-items-start gap-1\.5 text-left/);
+  assert.match(pages, /id="project-hero" className="grid justify-items-(?:center|start) gap-1\.5 text-(?:center|left)/);
   assert.match(pages, /className="project-recent-panel border-t border-\[var\(--rule\)\] pt-5"/);
-  assert.match(pages, /mb-4 grid justify-items-start gap-1 text-left/);
+  assert.match(pages, /mb-4 grid justify-items-(?:center|start) gap-1 text-(?:center|left)/);
   assert.match(pages, /id="project-recent-list" className="project-list grid gap-2 md:grid-cols-2"/);
   assert.match(styles, /grid-template-columns: minmax\(0, 1fr\) auto/);
   assert.match(styles, /\.repo-suggestions \{/);

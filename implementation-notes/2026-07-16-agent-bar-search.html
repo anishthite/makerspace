@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Agent bar search</title>
+<meta name="task" content="Add local search to the workspace agent sidebar.">
+<meta name="date-started" content="2026-07-16">
+<meta name="date-updated" content="2026-07-16">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,ui,workspace,agents,search">
+<meta name="related" content="2026-07-12-workspace-agents-sidebar.html,2026-07-12-workspace-sidebar-header-cleanup.html,2026-07-16-workspace-quick-switcher.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}</style>
+</head><body>
+<h1>Agent bar search</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-07-16 · status <b class="status-shipped">shipped</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Add a search input above the workspace agent lanes.</div><b>Source</b><div>Filter the already-loaded workspace thread list in memory.</div><b>Surface</b><div><code>/workspace.html</code> sidebar header and <code>frontend/src/runtime/app.js</code> render path.</div><b>Schema</b><div>No API or stored-data change.</div><b>Open Qs</b><div>0; search matches visible row text, status, name, and summary.</div></div>
+<h2>UI layout</h2>
+<ol><li><b>Search</b>: place a native <code>type="search"</code> control under the workspace quick switcher.</li><li><b>Lanes</b>: keep running/finished grouping and update counts to the filtered rows.</li></ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>frontend/src/pages.jsx</code></td><td>touch</td><td>Add the sidebar search field.</td></tr><tr><td><code>frontend/src/runtime/app.js</code></td><td>touch</td><td>Filter loaded threads locally before rendering lanes.</td></tr><tr><td><code>frontend/src/styles/app.css</code></td><td>touch</td><td>Style the existing finished-count badge preserved by the render path.</td></tr><tr><td><code>test/home-runtime-summary.test.js</code></td><td>touch</td><td>Pin the markup and local-filter behavior.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Filter client-side only. The sidebar already has the current project threads.</td></tr><tr><td>D-002</td><td>Reuse <code>InputGroup</code>. Existing input styling covers the sidebar without new CSS.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>Substring matching over fuzzy scoring. It is one pass and predictable.</td></tr></table>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>node --check frontend/src/runtime/app.js &amp;&amp; node --test test/home-runtime-summary.test.js</code></td><td>Passed 14/14.</td></tr><tr><td><code>npx vite build --outDir /tmp/spanner-agent-search-build --emptyOutDir</code></td><td>Passed.</td></tr><tr><td><code>git diff --check -- frontend/src/pages.jsx frontend/src/runtime/app.js frontend/src/styles/app.css test/home-runtime-summary.test.js implementation-notes/2026-07-16-agent-bar-search.html implementation-notes/INDEX.html</code></td><td>Passed.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Remove the search input and local filter helper; the API and thread rows stay unchanged.</p>
+<h2>Definition of done</h2>
+<ul><li>Search input appears at the top of the agent sidebar.</li><li>Typing filters current-project agent rows without network calls.</li><li>Focused static test passes.</li></ul>
+</body></html>

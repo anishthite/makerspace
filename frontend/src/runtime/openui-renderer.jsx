@@ -4,6 +4,7 @@ import { Renderer } from '@openuidev/react-lang';
 import { openuiChatLibrary } from '@openuidev/react-ui/genui-lib';
 import '@openuidev/react-ui/components.css';
 
+import { openSafeLink } from './link-rendering.js';
 import { extractOpenUIArtifacts, openUIActionPrompt } from './openui-artifacts.js';
 
 function unmountOpenUIRoots(node) {
@@ -23,6 +24,10 @@ function OpenUIArtifact({ source, onAction }) {
         isStreaming={false}
         toolProvider={null}
         onAction={(event) => {
+          if (event?.type === 'open_url') {
+            void openSafeLink(event.params?.url);
+            return;
+          }
           const prompt = openUIActionPrompt(event);
           if (prompt) onAction?.({ prompt, delivery: 'followUp' });
         }}

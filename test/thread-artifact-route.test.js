@@ -50,6 +50,7 @@ test('thread artifact route serves local Excalidraw drawings only', async () => 
   try {
     await writeFile(path.join(tempDir, 'diagram.excalidraw'), `${JSON.stringify({ type: 'excalidraw', elements: [], appState: {}, files: {} })}\n`);
     await writeFile(path.join(tempDir, 'diagram.png'), Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=', 'base64'));
+    await writeFile(path.join(tempDir, 'demo.html'), '<!doctype html><script type="module" src="https://example.com/demo.js"></script>\n');
     await writeFile(path.join(tempDir, 'notes.txt'), 'not a drawing\n');
     await writeFile(sessionFile, `${JSON.stringify([
       {
@@ -92,6 +93,25 @@ test('thread artifact route serves local Excalidraw drawings only', async () => 
     assert.equal(image.headers.get('content-type'), 'image/png');
     assert.match(image.headers.get('content-security-policy') || '', /sandbox/);
     assert.ok((await image.arrayBuffer()).byteLength > 0);
+
+    const html = await fetch(`${baseUrl}/api/threads/viewer/artifacts/html?path=demo.html`, { headers });
+    assert.equal(html.status, 200);
+    assert.equal(html.headers.get('content-type'), 'text/html; charset=utf-8');
+    const passiveCsp = html.headers.get('content-security-policy') || '';
+    assert.match(passiveCsp, /script-src 'none'/);
+    assert.match(passiveCsp, /sandbox$/);
+    assert.doesNotMatch(passiveCsp, /allow-scripts/);
+    assert.doesNotMatch(passiveCsp, /allow-pointer-lock/);
+    assert.doesNotMatch(passiveCsp, /allow-same-origin/);
+    assert.doesNotMatch(await html.text(), /data-spanner-interaction-shim/);
+
+    const interactiveHtml = await fetch(`${baseUrl}/api/threads/viewer/artifacts/html?path=demo.html&interactive=1`, { headers });
+    assert.equal(interactiveHtml.status, 200);
+    const interactiveCsp = interactiveHtml.headers.get('content-security-policy') || '';
+    assert.match(interactiveCsp, /script-src[^;]*https:/);
+    assert.match(interactiveCsp, /sandbox[^;]*allow-pointer-lock/);
+    assert.doesNotMatch(interactiveCsp, /allow-same-origin/);
+    assert.match(await interactiveHtml.text(), /data-spanner-interaction-shim/);
 
     const save = await fetch(`${baseUrl}/api/threads/viewer/artifacts?path=diagram.excalidraw`, {
       method: 'POST',

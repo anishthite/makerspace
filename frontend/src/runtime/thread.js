@@ -4,6 +4,7 @@ import { redirectIfAuthRequired } from './auth-redirect.js';
 import './appearance.js?v=palette-2';
 import { htmlPreviewDocument } from './html-preview.js';
 import { renderInteractiveArtifacts, stripInteractiveArtifactBlocks } from './interactive-artifacts.js';
+import { openSafeLink, renderLinkedText } from './link-rendering.js';
 import { extractOpenUIArtifacts, stripOpenUIArtifactBlocks } from './openui-artifacts.js';
 import { submitOnEnter } from './submit-on-enter.js';
 import { bindImageDropZone, clearImageInput, filesToImageAttachments, imageAttachmentSrc, imageAttachmentText, imageInputFiles, updateImageStatus } from './image-attachments.js';
@@ -55,6 +56,9 @@ const agentActivity = document.querySelector('#agent-trace');
 const agentActivityClose = document.querySelector('#agent-activity-close');
 const agentGraph = document.querySelector('#agent-graph');
 const agentGraphCount = document.querySelector('#agent-graph-count');
+const todoRail = document.querySelector('#todo-rail');
+const todoCount = document.querySelector('#todo-count');
+const todoList = document.querySelector('#todo-list');
 const activityNote = document.querySelector('#activity-note');
 const notesList = document.querySelector('#notes-list');
 const notesCount = document.querySelector('#notes-count');
@@ -108,6 +112,7 @@ const seenEvents = new Set();
 const graphTools = new Map();
 const workflowRuns = new Map();
 const toolCards = new Map();
+let currentTodoState = null;
 const thinkingCards = new Map();
 const notesByPath = new Map();
 const messageText = new WeakMap();
@@ -374,10 +379,11 @@ function diagramImageArtifactUrl(artifactPath) {
   return url.toString();
 }
 
-function htmlArtifactUrl(artifactPath) {
+function htmlArtifactUrl(artifactPath, options = {}) {
   const url = new URL(apiUrl(`/api/threads/${encodeURIComponent(name)}/artifacts/html`), location.origin);
   url.searchParams.set('path', artifactPath);
   url.searchParams.set('browserSession', getBrowserSessionId());
+  if (options.interactive) url.searchParams.set('interactive', '1');
   return url.toString();
 }
 
@@ -553,6 +559,26 @@ function appendDiagramImageArtifactCard(section, artifact) {
   section.append(card);
 }
 
+const HTML_ARTIFACT_PASSIVE_SANDBOX = '';
+const HTML_ARTIFACT_INTERACTIVE_SANDBOX = 'allow-scripts allow-forms allow-pointer-lock allow-popups allow-modals';
+
+function focusHtmlArtifactFrame(frame) {
+  try {
+    frame.focus({ preventScroll: true });
+    frame.contentWindow?.focus();
+  } catch {}
+}
+
+function setHtmlArtifactFrameMode(frame, artifactPath, interactive = false) {
+  frame.dataset.interactive = interactive ? 'true' : 'false';
+  frame.classList.toggle('is-interactive', interactive);
+  frame.tabIndex = interactive ? 0 : -1;
+  frame.allow = interactive ? 'fullscreen; pointer-lock' : '';
+  frame.setAttribute('sandbox', interactive ? HTML_ARTIFACT_INTERACTIVE_SANDBOX : HTML_ARTIFACT_PASSIVE_SANDBOX);
+  frame.src = htmlArtifactUrl(artifactPath, { interactive });
+  if (interactive) requestAnimationFrame(() => focusHtmlArtifactFrame(frame));
+}
+
 function appendHtmlArtifactCard(section, artifactPath) {
   const card = document.createElement('article');
   card.className = 'excalidraw-card html-artifact-card';
@@ -563,12 +589,20 @@ function appendHtmlArtifactCard(section, artifactPath) {
   const title = document.createElement('strong');
   title.textContent = artifactPath.split('/').at(-1) || artifactPath;
   title.title = artifactPath;
+  const controls = document.createElement('span');
+  controls.className = 'html-artifact-controls';
   const link = document.createElement('a');
-  link.href = htmlArtifactUrl(artifactPath);
+  link.href = htmlArtifactUrl(artifactPath, { interactive: true });
   link.target = '_blank';
   link.rel = 'noopener noreferrer';
   link.textContent = 'open';
-  head.append(title, link);
+  const interact = document.createElement('button');
+  interact.type = 'button';
+  interact.className = 'html-artifact-interact';
+  interact.textContent = 'interact';
+  interact.title = 'Trust this artifact for pointer, wheel, keyboard, and networked demo input.';
+  controls.append(link, interact);
+  head.append(title, controls);
 
   const frame = document.createElement('iframe');
   frame.className = 'html-artifact-frame';
@@ -576,8 +610,16 @@ function appendHtmlArtifactCard(section, artifactPath) {
   frame.loading = 'lazy';
   frame.referrerPolicy = 'no-referrer';
   frame.dataset.artifactPath = artifactPath;
-  frame.setAttribute('sandbox', 'allow-scripts');
-  frame.src = htmlArtifactUrl(artifactPath);
+  frame.addEventListener('load', () => { if (frame.dataset.interactive === 'true') focusHtmlArtifactFrame(frame); });
+  frame.addEventListener('pointerenter', () => { if (frame.dataset.interactive === 'true') focusHtmlArtifactFrame(frame); });
+  interact.addEventListener('click', () => {
+    card.classList.add('is-interactive');
+    interact.disabled = true;
+    interact.textContent = 'interactive';
+    interact.setAttribute('aria-pressed', 'true');
+    setHtmlArtifactFrameMode(frame, artifactPath, true);
+  });
+  setHtmlArtifactFrameMode(frame, artifactPath);
 
   card.append(head, frame);
   section.append(card);
@@ -673,7 +715,13 @@ async function fetchJson(path, options = {}) {
     ...options,
     headers: { ...authHeaders(), ...(options.headers || {}) },
   });
-  const payload = await response.json();
+  const text = await response.text();
+  let payload;
+  try {
+    payload = text ? JSON.parse(text) : {};
+  } catch {
+    throw new Error('Backend unavailable. Check Settings.');
+  }
   if (!response.ok) {
     if (redirectIfAuthRequired(payload, response)) return new Promise(() => {});
     throw new Error(payload.error || `Request failed: ${response.status}`);
@@ -913,6 +961,7 @@ function renderThread(thread) {
   renderLifecycleButtons(thread);
   renderArchiveButton(thread);
   renderAgentGraph();
+  syncTodoStateFromThread(thread);
   renderSuggestedNextSteps(thread);
   renderComposerState(thread);
 }
@@ -1062,6 +1111,13 @@ function updateLastEventId(event) {
   if (Number.isFinite(id) && id > lastEventId) lastEventId = id;
 }
 
+function resetThreadStreamState() {
+  // ponytail: server run ids restart each run; per-run client cursor is enough.
+  lastEventId = 0;
+  fallbackEventId = 0;
+  seenEvents.clear();
+}
+
 function compactToolTarget(value) {
   if (Array.isArray(value)) {
     const parts = value.map(compactToolTarget).filter(Boolean);
@@ -1127,6 +1183,87 @@ function toolDisplay(event = {}) {
     target,
     action: toolAction(event, target),
   };
+}
+
+function todoToolName(event = {}) {
+  return String(event.toolName || '').toLowerCase().split('.').pop();
+}
+
+function normalizeTodoStatus(value) {
+  const status = String(value || '').toLowerCase();
+  return ['pending', 'in_progress', 'completed', 'deleted'].includes(status) ? status : 'pending';
+}
+
+function normalizeTodoTask(task = {}) {
+  const id = Number(task.id);
+  const subject = clamp(String(task.subject || task.text || task.title || '').replace(/\s+/g, ' ').trim(), 220);
+  if (!Number.isFinite(id) || id <= 0 || !subject) return null;
+  return {
+    id,
+    subject,
+    status: normalizeTodoStatus(task.status || (task.done ? 'completed' : 'pending')),
+    description: task.description ? clamp(String(task.description).replace(/\s+/g, ' ').trim(), 400) : '',
+    activeForm: task.activeForm ? clamp(String(task.activeForm).replace(/\s+/g, ' ').trim(), 160) : '',
+    blockedBy: Array.isArray(task.blockedBy) ? task.blockedBy.map(Number).filter(Number.isFinite) : [],
+    owner: task.owner ? clamp(String(task.owner).replace(/\s+/g, ' ').trim(), 120) : '',
+  };
+}
+
+function normalizeTodoState(value = {}) {
+  const rawTasks = Array.isArray(value.tasks) ? value.tasks : Array.isArray(value.todos) ? value.todos : null;
+  if (!rawTasks) return null;
+  return {
+    tasks: rawTasks.map(normalizeTodoTask).filter(Boolean),
+    nextId: Number.isFinite(Number(value.nextId)) ? Number(value.nextId) : undefined,
+    updatedAt: String(value.updatedAt || ''),
+  };
+}
+
+function todoStateFromEvent(event = {}) {
+  if (event.type !== 'tool' || event.phase !== 'end' || todoToolName(event) !== 'todo') return null;
+  return normalizeTodoState(event.details || {});
+}
+
+function visibleTodoTasks(state = {}) {
+  return (Array.isArray(state.tasks) ? state.tasks : [])
+    .filter((task) => task.status !== 'deleted')
+    .sort((left, right) => left.id - right.id);
+}
+
+function todoTaskHtml(task) {
+  const active = task.status === 'in_progress' && task.activeForm ? `<small>${escapeHtml(task.activeForm)}</small>` : '';
+  return `<article class="todo-item ${escapeHtml(task.status)}"><span class="todo-dot" aria-hidden="true"></span><div><strong>#${escapeHtml(task.id)} ${escapeHtml(task.subject)}</strong>${active}</div></article>`;
+}
+
+function renderTodoRail(state = currentTodoState) {
+  if (!todoRail || !todoCount || !todoList) return;
+  const tasks = visibleTodoTasks(state || {});
+  todoRail.hidden = !tasks.length;
+  if (!tasks.length) {
+    todoCount.textContent = '0/0';
+    todoList.innerHTML = '';
+    return;
+  }
+  const done = tasks.filter((task) => task.status === 'completed').length;
+  todoCount.textContent = `${done}/${tasks.length}`;
+  const shown = tasks.slice(0, 8).map(todoTaskHtml).join('');
+  const remaining = tasks.length > 8 ? `<p class="todo-more">+${tasks.length - 8} more</p>` : '';
+  todoList.innerHTML = `${shown}${remaining}`;
+}
+
+function setTodoState(state) {
+  currentTodoState = normalizeTodoState(state || {}) || null;
+  renderTodoRail(currentTodoState);
+}
+
+function syncTodoStateFromThread(thread = {}) {
+  if (!Object.prototype.hasOwnProperty.call(thread, 'todoState')) return;
+  setTodoState(thread.todoState || { tasks: [] });
+}
+
+function syncTodoStateFromEvent(event = {}) {
+  const state = todoStateFromEvent(event);
+  if (state) setTodoState(state);
 }
 
 function syncRunSummaryToolDetail(event = {}, detail = '') {
@@ -1570,7 +1707,7 @@ function renderMessageBody(node, text, allowHtml = false, images = []) {
   if (!preview) {
     node.dataset.renderMode = 'text';
     card?.classList.remove('html-rendered');
-    node.textContent = displayText;
+    renderLinkedText(node, displayText);
     renderMessageAttachments(node, images);
     renderExcalidrawArtifacts(node, raw);
     renderHtmlArtifacts(node, raw);
@@ -2038,6 +2175,7 @@ function renderWorkflowEvent(event) {
 
 function renderToolEvent(event) {
   updateAgentGraphForTool(event);
+  syncTodoStateFromEvent(event);
   renderImplementationNoteEvent(event);
   renderTimelineToolEvent(event);
   scheduleDiffRefresh(event.phase === 'end' ? 250 : 900);
@@ -2214,6 +2352,12 @@ diffDialogClose?.addEventListener('click', () => diffDialog?.close());
 diffDialog?.addEventListener('click', (event) => {
   if (event.target === diffDialog) diffDialog.close();
 });
+timeline?.addEventListener('click', (event) => {
+  const link = event.target?.closest?.('a.rendered-link');
+  if (!link || !timeline.contains(link)) return;
+  event.preventDefault();
+  void openSafeLink(link.getAttribute('href'));
+});
 agentActivityClose?.addEventListener('click', () => setAgentActivityOpen(false));
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && isAgentActivityOpen()) setAgentActivityOpen(false);
@@ -2312,6 +2456,7 @@ promptForm.addEventListener('submit', async (event) => {
     const submittedAt = new Date(submittedAtMs).toISOString();
     const activeDelivery = delivery !== 'auto';
     const runId = activeDelivery ? currentRunId(currentThread) || String(submittedAtMs) : String(submittedAtMs);
+    if (!activeDelivery) resetThreadStreamState();
     if (activeDelivery) {
       finalizeAssistantBody();
       activeAssistantBody = null;
@@ -2367,7 +2512,11 @@ try {
   const status = output.runStatus || thread.runStatus;
   timelineEntriesCanAnimate = true;
   if (['launching', 'running', 'starting', 'queued'].includes(status)) streamRun();
-  if (output.deferred) void loadOutput().catch((error) => setStatus(error.message, 'error'));
+  if (output.deferred) {
+    void loadOutput()
+      .then(() => restoreInitialThreadPosition())
+      .catch((error) => setStatus(error.message, 'error'));
+  }
 } catch (error) {
   renderEvent({ type: 'status', runStatus: 'failed', warning: error.message, timestamp: new Date().toISOString() });
   setStatus(error.message, 'error');

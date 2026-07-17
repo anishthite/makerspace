@@ -73,12 +73,23 @@ function looksLikeLocalPath(value) {
   return /^(~|\/|[A-Za-z]:[\\/]|\\\\)/.test(String(value || '').trim());
 }
 
+function folderLabel(value) {
+  const text = cleanProjectValue(value);
+  return text.split(/[\\/]+/).filter(Boolean).pop() || text || 'workspace';
+}
+
 function compactProjectLabel(value) {
   const text = cleanProjectValue(value)
     .replace(/^https?:\/\/github\.com\//i, '')
     .replace(/\.git$/i, '');
   const parts = text.split(/[\\/]+/).filter(Boolean);
   return parts.slice(-2).join('/') || text || 'workspace';
+}
+
+function selectedProjectLabel(project) {
+  return project?.kind === 'local' || looksLikeLocalPath(project?.value)
+    ? folderLabel(project?.value)
+    : project?.label || compactProjectLabel(project?.value);
 }
 
 function normalizeRepoUrl(value) {
@@ -118,7 +129,13 @@ function apiUrl(path) {
 
 async function fetchJson(path, options = {}) {
   const response = await fetch(apiUrl(path), { credentials: 'include', ...options, headers: { ...authHeaders(), ...(options.headers || {}) } });
-  const payload = await response.json();
+  const text = await response.text();
+  let payload;
+  try {
+    payload = text ? JSON.parse(text) : {};
+  } catch {
+    throw new Error('Backend unavailable. Check Settings.');
+  }
   if (!response.ok) {
     if (redirectIfAuthRequired(payload, response)) return new Promise(() => {});
     throw new Error(payload.error || `Request failed: ${response.status}`);
@@ -230,7 +247,7 @@ function renderProject(provider) {
 
 function renderWorkspace(project) {
   if (!workspaceLabel) return;
-  workspaceLabel.textContent = project?.label || compactProjectLabel(project?.value);
+  workspaceLabel.textContent = selectedProjectLabel(project);
   workspaceLabel.title = project?.value || '';
 }
 

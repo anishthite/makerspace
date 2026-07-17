@@ -155,3 +155,26 @@
     @apply font-sans;
   }
 }
+
+.spanner-sidebar-desktop-shell,
+.spanner-sidebar-desktop-container {
+  display: none;
+}
+
+.workspace-mobile-sidebar-launcher {
+  display: flex;
+}
+
+@media (min-width: 768px) {
+  .spanner-sidebar-desktop-shell {
+    display: block;
+  }
+
+  .spanner-sidebar-desktop-container {
+    display: flex;
+  }
+
+  .workspace-mobile-sidebar-launcher {
+    display: none;
+  }
+}

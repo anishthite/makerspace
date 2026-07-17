@@ -7,6 +7,7 @@ const pages = readFileSync(new URL('../frontend/src/pages.jsx', import.meta.url)
 const components = readFileSync(new URL('../frontend/src/components/ui.jsx', import.meta.url), 'utf8');
 const threadHtml = readFileSync(new URL('../frontend/thread.html', import.meta.url), 'utf8');
 const js = readFileSync(new URL('../frontend/src/runtime/thread.js', import.meta.url), 'utf8');
+const openuiRenderer = readFileSync(new URL('../frontend/src/runtime/openui-renderer.jsx', import.meta.url), 'utf8');
 const artifactUtils = readFileSync(new URL('../frontend/src/runtime/excalidraw-artifacts.js', import.meta.url), 'utf8');
 const routes = readFileSync(new URL('../src/server/routes.js', import.meta.url), 'utf8');
 const threadService = readFileSync(new URL('../src/server/threads.js', import.meta.url), 'utf8');
@@ -128,7 +129,7 @@ test('thread main header spans above the sidebar', () => {
   const workspaceIndex = pages.indexOf('<section className="flow-wrap thread-workspace"');
   assert.ok(headerIndex > -1 && headerIndex < sidebarIndex);
   assert.ok(sidebarIndex < workspaceIndex);
-  assert.match(pages, /<div className="thread-main-row">[\s\S]+href="\/workspace\.html"[\s\S]+id="thinking-title"[\s\S]+id="archive-thread"[\s\S]+<\/div>/);
+  assert.match(pages, /<div className="thread-main-row[^"]*">[\s\S]+href="\/workspace\.html"[\s\S]+id="thinking-title"[\s\S]+id="archive-thread"[\s\S]+<\/div>/);
   assert.match(css, /\.thread-main-header \{ position: sticky; top: 0; z-index: 20; grid-column: 1 \/ -1; [^}]*display: grid/);
   assert.match(css, /\.thread-main-row \{ display: flex; align-items: center/);
   assert.match(css, /\.thread-main-row h1 \{[^}]*font-size: clamp\(20px, 2\.2vw, 28px\)/);
@@ -239,16 +240,21 @@ test('html assistant messages still render mentioned image artifacts', () => {
   assert.doesNotMatch(js, /renderExcalidrawArtifacts\(node, raw, \{ includeImages: false \}\)/);
 });
 
-test('generated html artifacts render in sandboxed iframes', () => {
-  const block = js.slice(js.indexOf('function appendHtmlArtifactCard'), js.indexOf('function renderHtmlArtifacts'));
+test('generated html artifacts render in opt-in trusted iframes', () => {
+  const block = js.slice(js.indexOf('const HTML_ARTIFACT_PASSIVE_SANDBOX'), js.indexOf('function renderHtmlArtifacts'));
   assert.notEqual(block, '');
   assert.match(artifactUtils, /HTML_ARTIFACT_TOKEN_RE/);
   assert.match(artifactUtils, /export function htmlArtifactPaths/);
   assert.match(js, /htmlArtifactPaths/);
-  assert.match(js, /function htmlArtifactUrl\(artifactPath\)/);
+  assert.match(js, /function htmlArtifactUrl\(artifactPath, options = \{\}\)/);
   assert.match(js, /function htmlArtifactStateUrl\(artifactPath, stateKey = 'default'\)/);
+  assert.match(block, /HTML_ARTIFACT_PASSIVE_SANDBOX = ''/);
+  assert.match(block, /HTML_ARTIFACT_INTERACTIVE_SANDBOX = 'allow-scripts allow-forms allow-pointer-lock allow-popups allow-modals'/);
   assert.match(block, /frame\.dataset\.artifactPath = artifactPath/);
-  assert.match(block, /frame\.setAttribute\('sandbox', 'allow-scripts'\)/);
+  assert.match(block, /htmlArtifactUrl\(artifactPath, \{ interactive \}\)/);
+  assert.match(block, /htmlArtifactUrl\(artifactPath, \{ interactive: true \}\)/);
+  assert.match(block, /interact\.addEventListener\('click'/);
+  assert.match(block, /focusHtmlArtifactFrame/);
   assert.doesNotMatch(block, /allow-same-origin/);
   assert.match(js, /window\.addEventListener\('message', handleHtmlArtifactStateMessage\)/);
   assert.match(js, /spanner:artifact-state:save/);
@@ -256,10 +262,16 @@ test('generated html artifacts render in sandboxed iframes', () => {
   assert.match(js, /spanner:artifact-state:saved/);
   assert.match(js, /renderHtmlArtifacts\(node, raw\)/);
   assert.match(css, /\.html-artifact-frame/);
+  assert.match(css, /\.html-artifact-interact/);
   assert.match(routes, /artifacts\\\/html/);
   assert.match(routes, /artifacts\\\/state/);
   assert.match(routes, /saveThreadHtmlArtifactStatePayload/);
-  assert.match(routes, /sandbox allow-scripts/);
+  assert.match(routes, /function htmlArtifactCsp/);
+  assert.match(routes, /function htmlArtifactData/);
+  assert.match(routes, /data-spanner-interaction-shim/);
+  assert.match(routes, /script-src 'none'; sandbox/);
+  assert.match(routes, /sandbox allow-scripts allow-forms allow-pointer-lock/);
+  assert.doesNotMatch(routes, /allow-same-origin/);
   assert.match(threadService, /function safeHtmlArtifactPath/);
   assert.match(threadService, /function safeArtifactStateKey/);
   assert.match(threadService, /threadHtmlArtifactPayload/);
@@ -268,8 +280,18 @@ test('generated html artifacts render in sandboxed iframes', () => {
 
 test('openui assistant messages still scan raw text for media artifacts', () => {
   assert.match(js, /const displayText = allowHtml \? stripOpenUIArtifactBlocks\(stripInteractiveArtifactBlocks\(raw\)\) : raw;/);
-  assert.match(js, /node\.textContent = displayText;\n\s*renderMessageAttachments\(node, images\);\n\s*renderExcalidrawArtifacts\(node, raw\);/);
+  assert.match(js, /renderLinkedText\(node, displayText\);\n\s*renderMessageAttachments\(node, images\);\n\s*renderExcalidrawArtifacts\(node, raw\);/);
   assert.match(js, /renderExcalidrawArtifacts\(node, raw, \{ skipImagePaths: htmlImageArtifactPaths\(displayText\) \}\);/);
+});
+
+test('assistant text links render and OpenUI URL actions open externally', () => {
+  assert.match(js, /import \{ openSafeLink, renderLinkedText \} from '\.\/link-rendering\.js'/);
+  assert.match(js, /renderLinkedText\(node, displayText\)/);
+  assert.match(js, /a\.rendered-link/);
+  assert.match(js, /void openSafeLink\(link\.getAttribute\('href'\)\)/);
+  assert.match(css, /\.message-body a\.rendered-link/);
+  assert.match(openuiRenderer, /event\?\.type === 'open_url'/);
+  assert.match(openuiRenderer, /void openSafeLink\(event\.params\?\.url\)/);
 });
 
 test('openui fenced blocks render after assistant message text without extra chrome', () => {
@@ -293,6 +315,7 @@ test('opening a populated thread scrolls back to the latest user turn', () => {
   assert.match(js, /timeline\.querySelector\('\.message-item\.assistant'\)/);
   assert.match(js, /target\.getBoundingClientRect\(\)\.top \+ window\.scrollY - offset/);
   assert.match(js, /const \{ thread, output \} = await loadThreadBootstrap\(\);\n\s*restoreInitialThreadPosition\(\);/);
+  assert.match(js, /if \(output\.deferred\) \{\n\s*void loadOutput\(\)\n\s*\.then\(\(\) => restoreInitialThreadPosition\(\)\)/);
 });
 
 test('final turn status colors the matching assistant message', () => {
