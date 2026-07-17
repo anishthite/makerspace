@@ -21,6 +21,7 @@ test('desktop sends local API token as a request header', () => {
 
 test('desktop package build keeps frontend on same-origin API', () => {
   assert.match(packageScript, /VITE_SPANNER_API_BASE= npm run build/);
+  assert.match(packageScript, /node "\$ROOT\/node_modules\/electron\/install\.js"/);
   assert.match(packageScript, /frontend\/public\/logo-mark\.svg/);
   assert.doesNotMatch(packageScript, /desktop src public dist/);
 });

@@ -19,6 +19,11 @@ ARCH="${ARCH:-$(cd "$ROOT" && node -p "process.arch")}"
 OTA_ZIP_PATH="$OUT_DIR/spanner-mac-$ARCH.zip"
 ELECTRON_APP="$(cd "$ROOT" && node -e "const path = require('node:path'); console.log(path.join(path.dirname(require.resolve('electron')), 'dist', 'Electron.app'))")"
 
+if [[ ! -d "$ELECTRON_APP" && -f "$ROOT/node_modules/electron/install.js" ]]; then
+  echo "Electron.app not found; downloading Electron binary" >&2
+  (cd "$ROOT" && node "$ROOT/node_modules/electron/install.js")
+fi
+
 if [[ ! -d "$ELECTRON_APP" ]]; then
   echo "Electron.app not found at $ELECTRON_APP" >&2
   echo "Run npm install first." >&2
