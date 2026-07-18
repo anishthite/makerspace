@@ -56,6 +56,20 @@ function envObject(envVars = []) {
     .map((item) => [String(item.key), String(item.value)]));
 }
 
+function boolEnv(value) {
+  return /^(1|true|yes)$/i.test(String(value || ''));
+}
+
+function localBucketForRequest(env, body = {}) {
+  return typeof body.localBucket === 'boolean' ? body.localBucket : boolEnv(env.LOCAL_DEV);
+}
+
+function normalizeBackupForRestore(env, backup) {
+  if (!backup || typeof backup !== 'object' || localBucketForRequest(env) || !backup.localBucket) return backup;
+  const { localBucket, ...rest } = backup;
+  return rest;
+}
+
 async function execRoute(request, env, id) {
   const body = await bodyJson(request);
   const result = await sandbox(env, id).exec(String(body.command || 'true'), {
@@ -103,21 +117,20 @@ async function portRoute(request, env, id, url) {
 
 async function backupRoute(request, env, id) {
   const body = await bodyJson(request);
-  const dir = String(body.dir || '/workspace');
-  const backup = await sandbox(env, id).createBackup({
-    dir,
+  const options = {
+    dir: String(body.dir || '/workspace'),
     name: body.name || `${id}-backup`,
     ttl: Number(body.ttl || 7 * 24 * 60 * 60),
-    // ponytail: R2 binding mode avoids managing separate S3 credentials; revisit for huge repos.
-    localBucket: body.localBucket !== false,
-  });
+  };
+  if (localBucketForRequest(env, body)) options.localBucket = true;
+  const backup = await sandbox(env, id).createBackup(options);
   return json({ backup });
 }
 
 async function restoreRoute(request, env, id) {
   const body = await bodyJson(request);
   if (!body.backup) return json({ error: 'backup is required' }, 400);
-  return json(await sandbox(env, id).restoreBackup(body.backup));
+  return json(await sandbox(env, id).restoreBackup(normalizeBackupForRestore(env, body.backup)));
 }
 
 export default {
