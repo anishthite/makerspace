@@ -31,6 +31,7 @@ function startServer() {
   const command = process.platform === 'win32' ? 'npm.cmd' : 'npm';
   const child = spawn(command, ['run', 'frontend:dev', '--', '--port', String(PORT), '--strictPort'], {
     stdio: ['ignore', 'pipe', 'pipe'],
+    detached: process.platform !== 'win32',
     env: { ...process.env, BROWSER: 'none' },
   });
   let logs = '';
@@ -53,15 +54,26 @@ async function waitForServer(server) {
 }
 
 function run(command, args, options = {}) {
+  const { timeoutMs = 45000, ...spawnOptions } = options;
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'], ...options });
+    const child = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'], ...spawnOptions });
     let stdout = '';
     let stderr = '';
+    let timedOut = false;
+    const timer = timeoutMs ? setTimeout(() => {
+      timedOut = true;
+      child.kill('SIGKILL');
+    }, timeoutMs) : null;
     child.stdout.on('data', (chunk) => { stdout += chunk; });
     child.stderr.on('data', (chunk) => { stderr += chunk; });
-    child.on('error', reject);
+    child.on('error', (error) => {
+      if (timer) clearTimeout(timer);
+      reject(error);
+    });
     child.on('close', (code) => {
-      if (code === 0) resolve(stdout);
+      if (timer) clearTimeout(timer);
+      if (timedOut) reject(new Error(`${command} ${args.join(' ')} timed out after ${timeoutMs}ms.\n${stdout}\n${stderr}`));
+      else if (code === 0) resolve(stdout);
       else reject(new Error(`${command} ${args.join(' ')} failed (${code}).\n${stdout}\n${stderr}`));
     });
   });
@@ -74,6 +86,38 @@ function pwArgs(...args) {
 async function pw(...args) {
   const [command, ...rest] = pwArgs(...args);
   return run(command, rest);
+}
+
+async function pwTimed(timeoutMs, ...args) {
+  const [command, ...rest] = pwArgs(...args);
+  return run(command, rest, { timeoutMs });
+}
+
+function stopServer(server) {
+  if (!server || server.killed) return Promise.resolve();
+  const signalServer = (signal) => {
+    try {
+      if (process.platform !== 'win32') process.kill(-server.pid, signal);
+      else server.kill(signal);
+    } catch {
+      try { server.kill(signal); } catch {}
+    }
+  };
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      resolve();
+    };
+    const timer = setTimeout(() => {
+      signalServer('SIGKILL');
+      finish();
+    }, 3000);
+    server.once('exit', finish);
+    signalServer('SIGTERM');
+  });
 }
 
 function parseResult(output) {
@@ -125,6 +169,23 @@ function auditScript(controls) {
   }`;
 }
 
+function drawerAuditScript() {
+  return `() => {
+    const sheet = document.querySelector('.spanner-sidebar-mobile-sheet[data-mobile=true]');
+    const search = sheet?.querySelector('.agent-search');
+    const sheetRect = sheet?.getBoundingClientRect();
+    const searchRect = search?.getBoundingClientRect();
+    return {
+      found: Boolean(sheet),
+      viewport: innerWidth,
+      width: sheetRect ? Math.round(sheetRect.width) : 0,
+      right: sheetRect ? Math.round(sheetRect.right) : 0,
+      searchRight: searchRect ? Math.round(searchRect.right) : 0,
+      searchContained: Boolean(sheetRect && searchRect && searchRect.right <= sheetRect.right + 1),
+    };
+  }`;
+}
+
 async function main() {
   const server = startServer();
   try {
@@ -149,13 +210,17 @@ async function main() {
         await pw('click', '[data-sidebar="trigger"]');
         await delay(500);
         const drawer = parseResult(await pw('eval', auditScript(['#threads-list'])));
+        const drawerLayout = parseResult(await pw('eval', drawerAuditScript()));
         const drawerText = parseResult(await pw('eval', "() => ({ label: document.querySelector('#workspace-label')?.textContent || '', threads: document.querySelector('#threads-list')?.innerText || '' })"));
         const drawerMissing = drawer.controls.filter((control) => !control.found || !control.visible);
         const drawerEmpty = !/Running|Recently finished|Audit mobile/.test(drawerText.threads);
-        if (drawer.scrollWidth > drawer.width + 1 || drawerMissing.length || drawerEmpty || drawerText.label === 'loading…') {
-          failures.push({ name: 'workspace drawer', drawerMissing, drawerEmpty, drawerText, result: drawer });
+        const drawerTooNarrow = !drawerLayout.found || drawerLayout.right < drawerLayout.viewport - 18;
+        if (drawer.scrollWidth > drawer.width + 1 || drawerMissing.length || drawerEmpty || drawerText.label === 'loading…' || drawerTooNarrow || !drawerLayout.searchContained) {
+          failures.push({ name: 'workspace drawer', drawerMissing, drawerEmpty, drawerTooNarrow, drawerLayout, drawerText, result: drawer });
         }
         if (SCREENSHOTS) await pw('screenshot', '--filename', 'output/mobile-smoke/workspace-drawer.png', '--full-page');
+        await pw('press', 'Escape').catch(() => {});
+        await delay(150);
       }
     }
 
@@ -164,8 +229,8 @@ async function main() {
       process.exitCode = 1;
     }
   } finally {
-    await pw('close').catch(() => {});
-    if (server) server.kill('SIGTERM');
+    await pwTimed(8000, 'close').catch(() => {});
+    await stopServer(server);
   }
 }
 
