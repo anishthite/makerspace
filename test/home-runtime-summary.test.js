@@ -7,6 +7,7 @@ const entry = readFileSync(new URL('../frontend/src/entry.jsx', import.meta.url)
 const authRedirect = readFileSync(new URL('../frontend/src/runtime/auth-redirect.js', import.meta.url), 'utf8');
 const js = readFileSync(new URL('../frontend/src/runtime/app.js', import.meta.url), 'utf8');
 const agentToasts = readFileSync(new URL('../frontend/src/runtime/agent-toasts.js', import.meta.url), 'utf8');
+const sidebar = readFileSync(new URL('../frontend/src/components/ui/sidebar.jsx', import.meta.url), 'utf8');
 const appCss = readFileSync(new URL('../frontend/src/styles/app.css', import.meta.url), 'utf8');
 const fluidCss = readFileSync(new URL('../frontend/src/styles/fluid-ui.css', import.meta.url), 'utf8');
 const runState = readFileSync(new URL('../src/server/run-state.js', import.meta.url), 'utf8');
@@ -71,6 +72,10 @@ test('workspace agents use shadcn sidebar beside launch composer', () => {
   assert.match(pages, /<SidebarInset className="min-w-0 bg-\[var\(--bg\)\]/);
   assert.match(pages, /workspace-mobile-sidebar-launcher/);
   assert.match(pages, /<SidebarTrigger className="workspace-sidebar-trigger" aria-label="open agents"/);
+  assert.match(sidebar, /const SIDEBAR_WIDTH_MOBILE = "min\(28rem, calc\(100vw - 0\.75rem\)\)"/);
+  assert.match(sidebar, /className="spanner-sidebar-mobile-sheet w-\(--sidebar-width\) max-w-none/);
+  assert.match(fluidCss, /\.spanner-sidebar-mobile-sheet\[data-mobile="true"\] \{[\s\S]+width: var\(--sidebar-width\);/);
+  assert.match(fluidCss, /\.spanner-sidebar-mobile-sheet\[data-mobile="true"\] \.agent-search,[\s\S]+width: 100%;/);
   assert.match(fluidCss, /\.spanner-sidebar-desktop-shell,\n\.spanner-sidebar-desktop-container \{\n  display: none;/);
   assert.match(fluidCss, /@media \(min-width: 768px\) \{[\s\S]+\.spanner-sidebar-desktop-shell \{\n    display: block;/);
   assert.match(fluidCss, /\.workspace-mobile-sidebar-launcher \{\n    display: none;/);
