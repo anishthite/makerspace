@@ -453,6 +453,103 @@ button.primary {
 .workspace-agents-sidebar .finished-meta time { color: var(--ink-4); font: 11px/1.25 var(--sans); text-transform: none; }
 .workspace-agents-sidebar .archive-thread { padding: 4px 6px; }
 .workspace-agents-sidebar .action-thread .answer-preview { grid-column: 2; margin-top: 1px; font-size: 12px; line-height: 1.25; }
+.spanner-sidebar-mobile-sheet[data-mobile="true"] {
+  width: var(--sidebar-width);
+  max-width: calc(100vw - max(1rem, env(safe-area-inset-right)));
+  border-right-color: color-mix(in srgb, var(--rule) 72%, transparent);
+  border-radius: 0 24px 24px 0;
+  background: color-mix(in srgb, var(--paper) 96%, #050607);
+  box-shadow: 24px 0 80px rgba(0, 0, 0, .42), 2px 0 0 color-mix(in srgb, var(--ink) 5%, transparent);
+  -webkit-tap-highlight-color: transparent;
+}
+.spanner-sidebar-mobile-sheet[data-mobile="true"] #agents-section {
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--paper) 98%, #050607), color-mix(in srgb, var(--paper) 90%, #050607));
+}
+.spanner-sidebar-mobile-sheet[data-mobile="true"] [data-sidebar="header"] {
+  gap: 13px;
+  padding: max(1rem, env(safe-area-inset-top)) 12px 13px;
+}
+.spanner-sidebar-mobile-sheet[data-mobile="true"] [data-sidebar="header"] > .flex,
+.spanner-sidebar-mobile-sheet[data-mobile="true"] .workspace-switcher,
+.spanner-sidebar-mobile-sheet[data-mobile="true"] .workspace-switcher-toggle {
+  min-width: 0;
+}
+.spanner-sidebar-mobile-sheet[data-mobile="true"] [data-sidebar="header"] img {
+  width: 30px;
+  height: 30px;
+}
+.spanner-sidebar-mobile-sheet[data-mobile="true"] .workspace-switcher-toggle {
+  min-height: 40px;
+  padding: 0 2px 0 0;
+  border-radius: 14px;
+}
+.spanner-sidebar-mobile-sheet[data-mobile="true"] .workspace-switcher-toggle strong {
+  max-width: 100%;
+  font-size: 15px;
+  letter-spacing: -.01em;
+}
+.spanner-sidebar-mobile-sheet[data-mobile="true"] .workspace-switch-caret-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  color: var(--ink-2);
+}
+.spanner-sidebar-mobile-sheet[data-mobile="true"] .agent-search {
+  min-height: 46px;
+  border: 1px solid color-mix(in srgb, var(--rule) 88%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--paper-2) 34%, transparent);
+  padding: 0 12px;
+}
+.spanner-sidebar-mobile-sheet[data-mobile="true"] .agent-search:focus-within {
+  border-color: color-mix(in srgb, var(--blue) 42%, var(--rule));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue-soft) 38%, transparent);
+}
+.spanner-sidebar-mobile-sheet[data-mobile="true"] .agent-search input {
+  font-size: 15px;
+}
+.spanner-sidebar-mobile-sheet[data-mobile="true"] .action-lanes {
+  gap: 18px;
+  margin-top: 8px;
+}
+.spanner-sidebar-mobile-sheet[data-mobile="true"] .action-lane-head {
+  padding: 12px 0 8px;
+}
+.spanner-sidebar-mobile-sheet[data-mobile="true"] .action-lane-head h3 {
+  white-space: nowrap;
+}
+.spanner-sidebar-mobile-sheet[data-mobile="true"] .action-lane-tools {
+  gap: 5px;
+}
+.spanner-sidebar-mobile-sheet[data-mobile="true"] .inbox-item.action-thread {
+  min-height: 62px;
+  border-radius: 14px;
+  padding: 12px 6px;
+  touch-action: manipulation;
+  transition: background 120ms var(--ease-out), transform 120ms var(--ease-out);
+}
+.spanner-sidebar-mobile-sheet[data-mobile="true"] .inbox-item.action-thread:active {
+  background: color-mix(in srgb, var(--blue-soft) 30%, transparent);
+  transform: scale(.99);
+}
+.spanner-sidebar-mobile-sheet[data-mobile="true"] .inbox-main strong {
+  font-size: 15px;
+  letter-spacing: -.02em;
+}
+.spanner-sidebar-mobile-sheet[data-mobile="true"] .answer-preview {
+  display: -webkit-box;
+  margin-top: 8px;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+@media (max-width: 360px) {
+  .spanner-sidebar-mobile-sheet[data-mobile="true"] {
+    border-radius: 0 18px 18px 0;
+  }
+}
 .home-topbar { display: flex; align-items: center; justify-content: flex-start; gap: 14px; min-height: 44px; }
 .home-topbar .header-actions { margin-left: auto; }
 .home-actions .auth-pill { border-color: transparent; background: color-mix(in srgb, var(--paper) 62%, transparent); }
