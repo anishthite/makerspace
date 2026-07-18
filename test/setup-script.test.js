@@ -82,7 +82,10 @@ test('buildSetupScript clones a repo and auto-runs pi when requested', () => {
   assert.match(bridgeScript, /function defaultsResourceOptions\(\)/);
   assert.match(bridgeScript, /additionalExtensionPaths: \[packageDir\]/);
   assert.match(bridgeScript, /createAgentSessionServices\(\{ cwd, agentDir: authDir, resourceLoaderOptions: defaultsResourceOptions\(\) \}\)/);
-  assert.match(bridgeScript, /const id = slash > 0 \? modelRef\.slice\(slash \+ 1\) : modelRef/);
+  assert.match(bridgeScript, /id=s>0\?modelRef\.slice\(s\+1\):modelRef/);
+  assert.match(bridgeScript, /r=services\.modelRuntime,g=services\.modelRegistry/);
+  assert.match(bridgeScript, /model=s<1\?r\?\.getModels\?\.\(\)\?\.find/);
+  assert.match(bridgeScript, /r\?\.getModel\?\.\(p,id\)\|\|g\?\.find\?\.\(p,id\)/);
   assert.match(bridgeScript, /restoreSessionFile\(resume\?\.name, resume\?\.entries\)/);
   assert.match(bridgeScript, /SessionManager\.open\(sessionFile, sessionDir, cwd\)/);
   assert.match(bridgeScript, /chunk: "\[system\] main agent session trace: " \+ piSession\.sessionFile \+ "\\n"/);
