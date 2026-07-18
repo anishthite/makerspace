@@ -20,3 +20,10 @@ test('Cloudflare worker awaits async route handlers inside error guard', async (
   assert.match(source, /return await portRoute\(/);
   assert.doesNotMatch(source, /box\.tunnels/);
 });
+
+test('Cloudflare worker uses production backup transfer by default', async () => {
+  const source = await readFile(new URL('../cloudflare-sandbox-worker/src/index.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /localBucket:\s*body\.localBucket\s*!==\s*false/);
+  assert.match(source, /if \(localBucketForRequest\(env, body\)\) options\.localBucket = true;/);
+  assert.match(source, /restoreBackup\(normalizeBackupForRestore\(env, body\.backup\)\)/);
+});

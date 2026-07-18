@@ -8,8 +8,12 @@ routes = [
   { pattern = "*-bridge.spanner.sh/*", zone_name = "spanner.sh" },
 ]
 
-# Set CLOUDFLARE_ACCOUNT_ID in your shell; keep account_id out of git.
+# Set CLOUDFLARE_ACCOUNT_ID in your shell for deploy; keep account_id out of git.
 # Set BROKER_TOKEN with: wrangler secret put BROKER_TOKEN
+# Set CLOUDFLARE_R2_ACCOUNT_ID (or CLOUDFLARE_ACCOUNT_ID), R2_ACCESS_KEY_ID, and R2_SECRET_ACCESS_KEY with wrangler secret put for production backups.
+
+[vars]
+BACKUP_BUCKET_NAME = "spanner-sandbox-backups"
 
 [[containers]]
 class_name = "Sandbox"
