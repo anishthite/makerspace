@@ -165,6 +165,45 @@
   display: flex;
 }
 
+.spanner-sidebar-mobile-sheet[data-mobile="true"] {
+  width: var(--sidebar-width);
+  max-width: none;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  border-color: var(--rule);
+}
+
+.spanner-sidebar-mobile-sheet[data-mobile="true"] #agents-section {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--paper) 62%, transparent);
+}
+
+.spanner-sidebar-mobile-sheet[data-mobile="true"] [data-sidebar="header"] {
+  padding-top: max(1rem, env(safe-area-inset-top));
+}
+
+.spanner-sidebar-mobile-sheet[data-mobile="true"] [data-sidebar="content"],
+.spanner-sidebar-mobile-sheet[data-mobile="true"] #threads-list,
+.spanner-sidebar-mobile-sheet[data-mobile="true"] .agent-search,
+.spanner-sidebar-mobile-sheet[data-mobile="true"] .workspace-switcher,
+.spanner-sidebar-mobile-sheet[data-mobile="true"] .workspace-switcher-toggle {
+  width: 100%;
+  min-width: 0;
+}
+
+.spanner-sidebar-mobile-sheet[data-mobile="true"] #threads-list {
+  padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+}
+
+.spanner-sidebar-mobile-sheet[data-mobile="true"] .workspace-switcher-menu {
+  right: auto;
+  left: 0;
+  width: min(100%, calc(100vw - 1.5rem));
+}
+
 @media (min-width: 768px) {
   .spanner-sidebar-desktop-shell {
     display: block;

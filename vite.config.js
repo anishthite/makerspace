@@ -74,6 +74,7 @@ function cleanRouteAliasPlugin() {
       server.middlewares.use((request, _response, next) => {
         const url = new URL(request.url || '/', 'http://localhost');
         if (url.pathname === '/landing' || url.pathname === '/landing/') request.url = `/desktop.html${url.search}`;
+        if (url.pathname === '/chimes' || url.pathname === '/chimes/') request.url = `/chimes.html${url.search}`;
         next();
       });
     },
@@ -102,6 +103,7 @@ export default defineConfig({
         history: page('history.html'),
         telemetry: page('telemetry.html'),
         localTelemetry: page('local-telemetry.html'),
+        chimes: page('chimes.html'),
         traceComponents: page('trace-components.html'),
         desktop: page('desktop.html'),
         onboardingEditor: page('onboarding-editor.html'),
