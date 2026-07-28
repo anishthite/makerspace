@@ -34,6 +34,9 @@ test('React core routes are explicit Vite MPA entries', () => {
   }
   assert.ok(manifest.routes.some((route) => route.route === '/' && route.file === 'index.html'));
   assert.match(read('vite.config.js'), /index\.html[\s\S]+workspace\.html[\s\S]+thread\.html[\s\S]+settings\.html/);
+  assert.ok(existsSync(new URL('frontend/chimes.html', root)));
+  assert.ok(manifest.routes.some((route) => route.route === '/chimes.html' && route.file === 'chimes.html' && route.mode === 'vite'));
+  assert.match(read('vite.config.js'), /chimes: page\('chimes\.html'\)/);
 });
 
 test('static public pages stay in frontend/public for Vite copy', () => {
@@ -47,7 +50,7 @@ test('static public pages stay in frontend/public for Vite copy', () => {
 });
 
 test('active storage keys and deploy aliases are listed', () => {
-  for (const key of ['spannerBrowserSession', 'spannerSelectedProject', 'spannerModelRef', 'spannerThinkingLevel', 'spannerSeenFinishedThreads', 'spannerRecentProjects']) {
+  for (const key of ['spannerBrowserSession', 'spannerSelectedProject', 'spannerModelRef', 'spannerThinkingLevel', 'spannerSeenFinishedThreads', 'spannerRecentProjects', 'spannerCompletionChime']) {
     assert.ok(manifest.storageKeys.includes(key), key);
   }
 
@@ -55,9 +58,13 @@ test('active storage keys and deploy aliases are listed', () => {
   assert.ok(manifest.aliases.some((alias) => alias.route === '/homepage' && alias.target === '/desktop.html'));
   assert.ok(manifest.aliases.some((alias) => alias.route === '/desktop' && alias.target === '/desktop.html'));
   assert.ok(manifest.aliases.some((alias) => alias.route === '/thread' && alias.target === '/thread.html'));
+  assert.ok(manifest.aliases.some((alias) => alias.route === '/chimes' && alias.target === '/chimes.html'));
   assert.ok(manifest.aliases.some((alias) => alias.route === '/telemetry' && alias.target === '/telemetry.html'));
   assert.ok(manifest.aliases.some((alias) => alias.route === '/local-telemetry' && alias.target === '/local-telemetry.html'));
+  assert.match(read('vercel.json'), /"source": "\/chimes", "destination": "\/chimes\.html"/);
+  assert.match(read('vite.config.js'), /url\.pathname === '\/chimes'/);
   assert.match(read('src/server.js'), /const publicDir = process\.env\.SPANNER_STATIC_DIR \|\| distDir;/);
+  assert.match(read('src/server/http.js'), /\['\/chimes', 'chimes\.html'\]/);
   assert.match(read('src/server/http.js'), /\['\/landing', 'desktop\.html'\]/);
   assert.match(read('vite.config.js'), /url\.pathname === '\/landing'/);
   assert.doesNotMatch(read('src/server.js'), /rootDir, 'public'/);

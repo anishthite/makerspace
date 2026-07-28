@@ -7,6 +7,9 @@ const entry = readFileSync(new URL('../frontend/src/entry.jsx', import.meta.url)
 const authRedirect = readFileSync(new URL('../frontend/src/runtime/auth-redirect.js', import.meta.url), 'utf8');
 const js = readFileSync(new URL('../frontend/src/runtime/app.js', import.meta.url), 'utf8');
 const agentToasts = readFileSync(new URL('../frontend/src/runtime/agent-toasts.js', import.meta.url), 'utf8');
+const completionChimes = readFileSync(new URL('../frontend/src/runtime/completion-chimes.js', import.meta.url), 'utf8');
+const chimePreview = readFileSync(new URL('../frontend/src/runtime/chime-preview.js', import.meta.url), 'utf8');
+const chimeHtml = readFileSync(new URL('../frontend/chimes.html', import.meta.url), 'utf8');
 const sidebar = readFileSync(new URL('../frontend/src/components/ui/sidebar.jsx', import.meta.url), 'utf8');
 const appCss = readFileSync(new URL('../frontend/src/styles/app.css', import.meta.url), 'utf8');
 const fluidCss = readFileSync(new URL('../frontend/src/styles/fluid-ui.css', import.meta.url), 'utf8');
@@ -177,8 +180,10 @@ test('workspace toasts when running agents finish', () => {
   assert.match(entry, /closest\?\.\('\[data-sonner-toast\]\.agent-main-link-toast'\)/);
   assert.match(entry, /location\.assign\(MAIN_PAGE_PATH\)/);
   assert.match(js, /import \{ toast \} from 'sonner';/);
+  assert.match(js, /import \{ playCompletionChime \} from '\.\/completion-chimes\.js';/);
   assert.match(js, /function showAgentToast\(title, detail = '', tone = 'success'\)/);
   assert.match(js, /const notify = tone === 'error' \? toast\.error : toast\.success;/);
+  assert.match(js, /playCompletionChime\(\{ outcome: tone \}\)\.catch\(\(\) => \{\}\);/);
   assert.match(js, /description: detail \|\| undefined,\s*duration: 8000,\s*className: 'agent-main-link-toast',\s*\}\);/);
   assert.doesNotMatch(js, /action: \{ label: 'Open main'/);
   assert.match(appCss, /\[data-sonner-toaster\] \[data-sonner-toast\]\.agent-main-link-toast\[data-styled="true"\]/);
@@ -196,15 +201,34 @@ test('global toasts load outside the workspace screen', () => {
   assert.match(entry, /import \{ startAgentToastWatcher \} from '\.\/runtime\/agent-toasts\.js';/);
   assert.match(entry, /if \(page !== 'workspace'\) startAgentToastWatcher\(\);/);
   assert.match(agentToasts, /import \{ toast \} from 'sonner';/);
+  assert.match(agentToasts, /import \{ playCompletionChime \} from '\.\/completion-chimes\.js';/);
   assert.match(agentToasts, /export function startAgentToastWatcher\(\) \{/);
   assert.match(agentToasts, /function notifyFinishedThreads\(threads\)/);
   assert.match(agentToasts, /for \(const thread of threads\) \{/);
   assert.doesNotMatch(agentToasts, /sameSelectedProject|spannerSelectedProject|PROJECT_KEY/);
   assert.match(agentToasts, /const wasActive = isActiveThread\(\{ runStatus: knownThreadStatuses\.get\(name\) \}\);/);
   assert.match(agentToasts, /const notify = tone === 'error' \? toast\.error : toast\.success;/);
+  assert.match(agentToasts, /playCompletionChime\(\{ outcome: tone \}\)\.catch\(\(\) => \{\}\);/);
   assert.doesNotMatch(agentToasts, /action: \{ label: 'Open main'/);
   assert.match(agentToasts, /showAgentToast\(title, detail, rawStatus === 'failed' \? 'error' : 'success'\);/);
   assert.match(agentToasts, /setInterval\(\(\) => \{\s*if \(document\.visibilityState !== 'visible'\) return;\s*loadThreadsForToasts\(\)\.catch\(\(\) => \{\}\);\s*\}, 10000\);/);
+});
+
+test('completion chimes use spark as the installed finish sound', () => {
+  assert.match(completionChimes, /export const COMPLETION_CHIME_KEY = 'spannerCompletionChime';/);
+  assert.match(completionChimes, /export const DEFAULT_COMPLETION_CHIME = 'spark';/);
+  assert.match(completionChimes, /id: 'spark'/);
+  assert.doesNotMatch(completionChimes, /id: 'glass'|id: 'bloom'|id: 'calm'|id: 'off'/);
+  assert.match(completionChimes, /globalThis\.AudioContext \|\| globalThis\.webkitAudioContext/);
+  assert.match(completionChimes, /oscillator\.frequency\.setValueAtTime\(step\.frequency, start\)/);
+  assert.match(completionChimes, /gain\.gain\.exponentialRampToValueAtTime/);
+  assert.match(completionChimes, /outcome === 'error' \? errorSteps\(\) : chime\.steps/);
+  assert.match(chimeHtml, /<title>Spanner Chimes<\/title>/);
+  assert.match(chimeHtml, /id="play-spark"/);
+  assert.match(chimeHtml, /id="play-failed"/);
+  assert.match(chimePreview, /import \{[\s\S]+playCompletionChime[\s\S]+readCompletionChime[\s\S]+writeCompletionChime/);
+  assert.match(chimePreview, /writeCompletionChime\('spark'\);/);
+  assert.match(chimePreview, /playCompletionChime\(\{ id: 'spark', outcome: 'success' \}\)/);
 });
 
 test('new runs clear stale terminal runtime fields', () => {

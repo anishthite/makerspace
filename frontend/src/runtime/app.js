@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { captureSpannerEvent } from '../lib/posthog.js';
 import { redirectIfAuthRequired } from './auth-redirect.js';
 import './appearance.js?v=palette-2';
+import { playCompletionChime } from './completion-chimes.js';
 import { bindImageDropZone, clearImageInput, filesToImageAttachments, imageInputFiles, updateImageStatus } from './image-attachments.js';
 import { submitOnEnter } from './submit-on-enter.js';
 
@@ -101,6 +102,7 @@ function escapeHtml(value) {
 
 function showAgentToast(title, detail = '', tone = 'success') {
   const notify = tone === 'error' ? toast.error : toast.success;
+  playCompletionChime({ outcome: tone }).catch(() => {});
   notify(title, {
     description: detail || undefined,
     duration: 8000,

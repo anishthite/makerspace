@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Agent finish chimes</title>
+<meta name="task" content="Play short chimes when agents finish and provide a page to test variations.">
+<meta name="date-started" content="2026-07-26">
+<meta name="date-updated" content="2026-07-26">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,ui,agents,toast,audio,chimes,preview">
+<meta name="related" content="2026-07-12-sonner-toast-migration.html,2026-07-12-simple-toast-variants.html,2026-07-17-project-global-toasts.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Agent finish chimes</h1>
+<p class="meta"><code>add-done-chimes</code> · worktree <code>/Users/anishthite/conductor/workspaces/makerspace/lyon</code> · 2026-07-26 · status <b class="status-shipped">shipped</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Play the <code>spark</code> chime when an active agent transitions to finished.</div><b>Source</b><div>Existing finish-toast transition in <code>app.js</code> and <code>agent-toasts.js</code>.</div><b>Surface</b><div><code>/workspace.html</code>, non-workspace pages, and <code>/chimes.html</code>.</div><b>Schema</b><div>Add localStorage key <code>spannerCompletionChime</code>.</div><b>Mobile</b><div>Preview uses wrapping buttons; runtime audio is UI-free.</div><b>Open Qs</b><div>0; <code>spark</code> is the only valid chime.</div></div>
+<h2>Algorithm</h2>
+<ol><li>Detect a finish transition only when previous status is active and next status is <code>completed</code>, <code>ready</code>, or <code>failed</code>.</li><li>Show the existing toast and call <code>playCompletionChime()</code> once per finish key.</li><li>Build tones with <code>AudioContext</code>, short oscillator envelopes, and silent fallback when autoplay blocks playback.</li></ol>
+<h2>UI layout</h2>
+<ol><li><b>Preview</b>: <code>/chimes.html</code> lists chime variations with play and select buttons.</li><li><b>State</b>: selected variation writes <code>spannerCompletionChime</code> and is reused by finish toasts.</li></ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>frontend/src/runtime/completion-chimes.js</code></td><td>new</td><td>Define variations, selection storage, and Web Audio playback.</td></tr><tr><td><code>frontend/src/runtime/chime-preview.js</code></td><td>new</td><td>Render test controls for each variation.</td></tr><tr><td><code>frontend/chimes.html</code></td><td>new</td><td>Add standalone review page for chime testing.</td></tr><tr><td><code>frontend/src/runtime/app.js</code></td><td>touch</td><td>Play chime from workspace finish toasts.</td></tr><tr><td><code>frontend/src/runtime/agent-toasts.js</code></td><td>touch</td><td>Play chime from global finish toasts.</td></tr><tr><td><code>vite.config.js</code>, <code>frontend/route-manifest.json</code>, <code>src/server/http.js</code>, <code>vercel.json</code></td><td>touch</td><td>Register the chime preview page and clean alias.</td></tr><tr><td><code>test/home-runtime-summary.test.js</code>, <code>test/frontend-route-manifest.test.js</code></td><td>touch</td><td>Pin chime wiring and route metadata.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Use synthesized Web Audio tones. Avoids bundled audio assets and licensing review.</td></tr><tr><td>D-002</td><td>Use <code>glass</code> as the default. Superseded by <code>D-004</code>.</td></tr><tr><td>D-003</td><td>Keep selection in <code>localStorage</code>. Chime preference is device-local UI state.</td></tr><tr><td>D-004</td><td>Use only <code>spark</code>. User selected it after testing variations.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td><code>/chimes.html</code> over settings integration. The user asked to test variations now.</td></tr></table>
+<h2>Assumptions</h2>
+<ul><li>A-001 · Browser autoplay rules may block first background chime until a user gesture occurs; playback fails silently.</li></ul>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>node --check frontend/src/runtime/completion-chimes.js frontend/src/runtime/chime-preview.js frontend/src/runtime/app.js frontend/src/runtime/agent-toasts.js</code></td><td>Passed.</td></tr><tr><td><code>node --test test/home-runtime-summary.test.js test/frontend-route-manifest.test.js</code></td><td>Passed 19/19.</td></tr><tr><td><code>npm run build</code></td><td>Passed; existing chunk-size warnings remain.</td></tr><tr><td><code>curl -I http://127.0.0.1:5176/chimes</code></td><td>Returned <code>200 OK</code>.</td></tr><tr><td><code>npx playwright screenshot --browser chromium --channel chrome --wait-for-selector '#chime-list .chime-option' http://127.0.0.1:5176/chimes.html .context/chime-preview/chimes.png</code></td><td>Passed.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Remove the new modules/page and imports; finish toasts continue without sound.</p>
+<h2>Definition of done</h2>
+<ul><li>Workspace and global finish toasts invoke the selected chime once per finish key.</li><li><code>/chimes.html</code> lets the user play and select variations.</li><li>Focused static tests and <code>npm run build</code> pass.</li></ul>
+</body>
+</html>

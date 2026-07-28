@@ -1,5 +1,7 @@
 import { toast } from 'sonner';
 
+import { playCompletionChime } from './completion-chimes.js';
+
 const BROWSER_SESSION_KEY = 'spannerBrowserSession';
 
 function migrateStorageKey(legacyKey, nextKey) {
@@ -50,6 +52,7 @@ async function fetchJson(path) {
 
 function showAgentToast(title, detail = '', tone = 'success') {
   const notify = tone === 'error' ? toast.error : toast.success;
+  playCompletionChime({ outcome: tone }).catch(() => {});
   notify(title, {
     description: detail || undefined,
     duration: 8000,

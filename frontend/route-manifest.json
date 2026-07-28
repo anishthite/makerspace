@@ -21,6 +21,11 @@
       "mode": "copy"
     },
     {
+      "route": "/chimes.html",
+      "file": "chimes.html",
+      "mode": "vite"
+    },
+    {
       "route": "/desktop.html",
       "file": "desktop.html",
       "mode": "react"
@@ -208,6 +213,11 @@
       "source": "vercel.json"
     },
     {
+      "route": "/chimes",
+      "target": "/chimes.html",
+      "source": "vercel.json"
+    },
+    {
       "route": "/thread",
       "target": "/thread.html",
       "source": "vercel.json"
@@ -229,6 +239,7 @@
     "spannerModelRef",
     "spannerThinkingLevel",
     "spannerSeenFinishedThreads",
-    "spannerRecentProjects"
+    "spannerRecentProjects",
+    "spannerCompletionChime"
   ]
 }

@@ -7,6 +7,7 @@
     { "source": "/homepage", "destination": "/desktop.html" },
     { "source": "/desktop", "destination": "/desktop.html" },
     { "source": "/thread", "destination": "/thread.html" },
+    { "source": "/chimes", "destination": "/chimes.html" },
     { "source": "/telemetry", "destination": "/telemetry.html" },
     { "source": "/local-telemetry", "destination": "/local-telemetry.html" }
   ]
