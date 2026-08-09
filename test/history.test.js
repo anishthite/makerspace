@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import { readFileSync } from 'node:fs';
 
-import { canUnarchiveHistoryRow, filterHistoryRows, filterSessionsByProject, historyKind, historyStats, normalizeHistoryRow } from '../frontend/src/runtime/history.js';
+import { canUnarchiveHistoryRow, filterHistoryRows, filterSessionsByProject, historyKind, historyRowMatchesFilter, historyStats, normalizeHistoryRow } from '../frontend/src/runtime/history.js';
 
 const historyJs = readFileSync(new URL('../frontend/src/runtime/history.js', import.meta.url), 'utf8');
 const historyHtml = readFileSync(new URL('../frontend/history.html', import.meta.url), 'utf8');
@@ -41,6 +41,21 @@ test('history rows label agents and search prompt/repo text', () => {
   assert.equal(filterHistoryRows([row], 'missing').length, 0);
 });
 
+test('history filters combine status buckets with search text', () => {
+  const rows = [
+    normalizeHistoryRow({ name: 'active-thread', threadBridge: true, repoUrl: 'https://github.com/acme/api.git', initialPrompt: 'Fix cache', runStatus: 'running' }),
+    normalizeHistoryRow({ name: 'archived-thread', threadBridge: true, repoUrl: 'https://github.com/acme/web.git', initialPrompt: 'Polish history', runStatus: 'ready', archivedAt: '2026-08-01T10:00:00Z' }),
+    normalizeHistoryRow({ name: 'failed-session', bridgeMode: true, repoUrl: 'https://github.com/acme/ops.git', initialPrompt: 'Deploy worker', status: 'failed' }),
+  ];
+
+  assert.equal(historyRowMatchesFilter(rows[0], 'active'), true);
+  assert.deepEqual(filterHistoryRows(rows, '', 'threads').map((row) => row.name), ['active-thread', 'archived-thread']);
+  assert.deepEqual(filterHistoryRows(rows, '', 'sessions').map((row) => row.name), ['failed-session']);
+  assert.deepEqual(filterHistoryRows(rows, '', 'archived').map((row) => row.name), ['archived-thread']);
+  assert.deepEqual(filterHistoryRows(rows, 'worker', 'failed').map((row) => row.name), ['failed-session']);
+  assert.deepEqual(filterHistoryRows(rows, 'worker', 'active').map((row) => row.name), []);
+});
+
 test('history rows expose restore only for archived thread agents', () => {
   assert.equal(canUnarchiveHistoryRow({ archived: true, href: '/thread.html?name=done' }), true);
   assert.equal(canUnarchiveHistoryRow({ archived: true }), false);
@@ -49,6 +64,8 @@ test('history rows expose restore only for archived thread agents', () => {
   assert.match(historyJs, /\/api\/threads\/\$\{encodeURIComponent\(name\)\}\/unarchive/);
   assert.match(historyHtml, /data-react-page="history"/);
   assert.match(historyHtml, /\/src\/entry\.jsx/);
+  assert.match(historyJs, /data-history-filter/);
+  assert.match(historyJs, /history-filter-summary/);
 });
 
 test('history filters sessions to the selected project', () => {

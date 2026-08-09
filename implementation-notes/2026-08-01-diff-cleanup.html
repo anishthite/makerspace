@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec - diff cleanup</title>
+<meta name="task" content="Remove unrelated public typography and local data diffs from the branch.">
+<meta name="date-started" content="2026-08-01">
+<meta name="date-updated" content="2026-08-01">
+<meta name="status" content="ready-for-review">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,cleanup,diff,public-assets">
+<meta name="related" content="2026-07-06-pixel-bench-logo-variations.html,2026-08-01-global-sidebar-cache-hydration.html">
+<style>
+body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}
+h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}
+table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}
+th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}
+.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-ready-for-review{color:#b85c00}
+</style>
+</head>
+<body>
+<h1>diff cleanup</h1>
+<p class="meta"><code>agent-ui-components</code> · worktree <code>/Users/anishthite/conductor/workspaces/makerspace/tripoli</code> · 2026-08-01 · status <b class="status-ready-for-review">ready-for-review</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Keep the branch focused on agent UI, sidebar, runtime, and local OAuth changes.</div>
+  <b>Source</b><div>User questioned unrelated diffs, especially <code>frontend/public/logo*</code>.</div>
+  <b>Surface</b><div>Working tree cleanup only.</div>
+  <b>Schema</b><div>None.</div>
+  <b>Mobile</b><div>Untouched.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+<tr><td><code>frontend/public/logo*</code>, <code>frontend/public/logos/*.svg</code></td><td>revert</td><td>Drop font-only logo preview changes.</td></tr>
+<tr><td><code>frontend/public/*.html</code>, <code>frontend/public/thread-message-variations/styles.css</code></td><td>revert</td><td>Drop static support-page font-only changes.</td></tr>
+<tr><td><code>frontend/src/components/ui/chart.jsx</code>, <code>frontend/src/components/ui/kbd.jsx</code>, <code>frontend/src/styles/fluid-ui.css</code>, <code>test/appearance.test.js</code></td><td>revert</td><td>Drop the broad font-standardization test/code residue.</td></tr>
+<tr><td><code>frontend/src/styles/app.css</code></td><td>touch</td><td>Restore the existing <code>--mono</code>/<code>--sans</code> token shape while preserving UI feature styles.</td></tr>
+<tr><td><code>data/recent-projects.json.github-14373068.json</code></td><td>delete</td><td>Remove untracked local recent-project snapshot.</td></tr>
+<tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Replace the stale font-standardization row with this cleanup row.</td></tr>
+</table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr>
+<tr><td>D-001</td><td>Revert public logo and static preview typography. These assets do not support the active agent UI/sidebar work.</td></tr>
+<tr><td>D-002</td><td>Remove the untracked recent-project snapshot. It is local state and should not ship.</td></tr>
+</table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+<tr><td>T-001</td><td>Targeted cleanup over broad diff reduction. Sidebar, assistant-ui, runtime, and OAuth changes still map to named work streams.</td></tr>
+</table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Restore the reverted paths from the prior working tree or reapply the removed font-standardization task if that direction becomes intentional.</p>
+<h2>Verification</h2>
+<table><tr><th>ID</th><th>Check</th><th>Result</th></tr>
+<tr><td>V-001</td><td><code>node --check</code> on changed JS runtime/server files.</td><td>Pass.</td></tr>
+<tr><td>V-002</td><td><code>node --test test/frontend-route-manifest.test.js test/appearance.test.js test/config.test.js test/desktop-auth-token.test.js test/home-runtime-summary.test.js test/startup-bootstrap-route.test.js test/thread-trace-tray.test.js test/todo-gutter.test.js test/multi-user-access.test.js</code></td><td>Pass, 88/88.</td></tr>
+<tr><td>V-003</td><td><code>git diff --check</code></td><td>Pass.</td></tr>
+<tr><td>V-004</td><td><code>npm run build</code></td><td>Pass with existing large-chunk warning.</td></tr>
+</table>
+<h2>Definition of done</h2>
+<ul>
+  <li>Logo and static public pages no longer appear in <code>git status</code>.</li>
+  <li>Local data snapshot is absent from untracked files.</li>
+  <li>Focused syntax, tests, build, and whitespace checks pass.</li>
+</ul>
+</body>
+</html>

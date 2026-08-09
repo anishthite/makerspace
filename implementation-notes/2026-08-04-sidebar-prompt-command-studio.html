@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Sidebar prompt command studio</title>
+<meta name="task" content="Redesign the sidebar main-agent prompt lightbox as a clearer, more deliberate command surface.">
+<meta name="date-started" content="2026-08-04">
+<meta name="date-updated" content="2026-08-04">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,ui,sidebar,prompt,lightbox,command-studio">
+<meta name="related" content="2026-08-03-sidebar-prompt-lightbox-polish.html,2026-08-01-sidebar-plus-composer-lightbox.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Sidebar prompt command studio</h1>
+<p class="meta"><code>agent-ui-components</code> · worktree <code>/Users/anishthite/conductor/workspaces/makerspace/tripoli</code> · 2026-08-04 · status <b class="status-shipped">shipped</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Make <code>#sidebar-prompt-lightbox</code> read as one composed command surface instead of a loose row of controls.</div><b>Source</b><div>User attached the current modal and asked for a much stronger visual result.</div><b>Surface</b><div><code>#sidebar-prompt-lightbox</code> on every page that exposes <code>data-sidebar-new-thread</code>.</div><b>Schema</b><div>None.</div><b>Mobile</b><div>Keep controls ordered, tappable, and inside the modal at narrow widths.</div><b>Open Qs</b><div>0; preserve the existing launch flow and text.</div></div>
+<h2>UI layout</h2>
+<ol><li><b>Shell</b>: constrain the modal to a command-sheet proportion with a charcoal metal palette and a single blue operational accent.</li><li><b>Header</b>: name the action and keep project selection in the same compact header rail.</li><li><b>Prompt</b>: frame the task editor as the dominant writing surface with a visible keyboard hint.</li><li><b>Controls</b>: group image, model, thinking, and launch action in a distinct lower deck.</li><li><b>Suggestions</b>: render three compact actionable cards with readable explanations and focus states.</li></ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>frontend/src/pages.jsx</code></td><td>touch</td><td>Add semantic header and prompt metadata without changing form hooks.</td></tr><tr><td><code>frontend/src/styles/workspace.css</code></td><td>touch</td><td>Replace the lightbox visual treatment and responsive layout.</td></tr><tr><td><code>implementation-notes/2026-08-04-sidebar-prompt-command-studio.html</code></td><td>new</td><td>Record redesign scope and constraints.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Use a dark command-studio direction with one blue accent. It creates hierarchy without returning to the rejected glow-heavy treatment.</td></tr><tr><td>D-002</td><td>Preserve all existing IDs and runtime wiring. The request is visual and must not alter agent creation.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>Structured lower control deck over one continuous row. It clarifies hierarchy at the cost of slightly more vertical space.</td></tr></table>
+<h2>Assumptions</h2>
+<ul><li>A-001 · The attached screenshot represents the shared sidebar lightbox, not the main workspace composer.</li></ul>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>npm run build</code></td><td>Passed; existing chunk-size warning remains.</td></tr><tr><td><code>node --test test/home-runtime-summary.test.js</code></td><td>Passed 20/20.</td></tr><tr><td>Playwright desktop and mobile</td><td>Opened the lightbox, filled a prompt from a suggestion, closed it with <code>Escape</code>, and captured both layouts.</td></tr><tr><td><code>git diff --check</code></td><td>Passed for touched files.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Revert the lightbox JSX and CSS; no API, data, or runtime state changes exist.</p>
+<h2>Definition of done</h2>
+<ul><li>The sidebar prompt has a stronger writing hierarchy and coherent control deck.</li><li>Existing project, image, model, thinking, suggestion, and submit hooks remain usable.</li><li>Desktop and narrow mobile browser checks pass.</li></ul>
+</body>
+</html>

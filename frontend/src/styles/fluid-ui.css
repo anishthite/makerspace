@@ -198,6 +198,20 @@
   padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
 }
 
+.spanner-sidebar-mobile-sheet[data-mobile="true"] .sidebar-new-prompt-button,
+.spanner-sidebar-mobile-sheet[data-mobile="true"] .sidebar-search-filter {
+  min-width: 38px;
+  min-height: 38px;
+}
+
+.spanner-sidebar-mobile-sheet[data-mobile="true"] .agent-search {
+  min-height: 42px;
+}
+
+.spanner-sidebar-mobile-sheet[data-mobile="true"] .sidebar-thread {
+  padding-block: 11px;
+}
+
 .spanner-sidebar-mobile-sheet[data-mobile="true"] .workspace-switcher-menu {
   right: auto;
   left: 0;

@@ -10,6 +10,7 @@ import { submitOnEnter } from './submit-on-enter.js';
 import { bindImageDropZone, clearImageInput, filesToImageAttachments, imageAttachmentSrc, imageAttachmentText, imageInputFiles, updateImageStatus } from './image-attachments.js';
 import { implementationNoteFromToolEvent, implementationNotesFromToolEvent } from './implementation-notes.js';
 import { diagramImageArtifactPaths, excalidrawArtifactPaths, htmlArtifactPaths, htmlImageArtifactPaths, normalizeDiagramImageArtifactPath, normalizeHtmlArtifactPath } from './excalidraw-artifacts.js';
+import { startGlobalSidebar } from './global-sidebar.js';
 
 const BROWSER_SESSION_KEY = 'spannerBrowserSession';
 const MODEL_REF_KEY = 'spannerModelRef';
@@ -73,6 +74,7 @@ const thinkingLevelOutput = document.querySelector('#thinking-level-value');
 const imageInput = document.querySelector('#prompt-images');
 const imageStatus = document.querySelector('#image-status');
 const sendButton = document.querySelector('#send');
+const sendButtonIcon = sendButton?.querySelector('svg')?.cloneNode(true) || null;
 const thinkingTitle = document.querySelector('#thinking-title');
 const thinkingDetail = document.querySelector('#thinking-detail');
 const diffBox = document.querySelector('#diff-box');
@@ -82,6 +84,8 @@ const diffDialogTitle = document.querySelector('#diff-dialog-title');
 const diffDialogFiles = document.querySelector('#diff-dialog-files');
 const diffDialogBody = document.querySelector('#diff-dialog-body');
 const diffDialogClose = document.querySelector('#diff-dialog-close');
+
+startGlobalSidebar({ statusNode });
 
 function syncComposerClearance() {
   if (!promptForm) return;
@@ -112,8 +116,8 @@ const seenEvents = new Set();
 const graphTools = new Map();
 const workflowRuns = new Map();
 const toolCards = new Map();
+const toolEventSnapshots = new Map();
 let currentTodoState = null;
-const thinkingCards = new Map();
 const notesByPath = new Map();
 const messageText = new WeakMap();
 const runSummaryMarkers = new Map();
@@ -738,6 +742,10 @@ function isActiveStatus(status) {
   return ['launching', 'running', 'queued', 'starting', 'reconnecting'].includes(String(status || '').toLowerCase());
 }
 
+function isTerminalStatus(status) {
+  return ['completed', 'ready', 'failed'].includes(String(status || '').toLowerCase());
+}
+
 function statusTone(status) {
   const value = String(status || '').toLowerCase();
   if (value === 'failed' || value === 'error') return 'error';
@@ -818,7 +826,11 @@ function renderComposerState(thread = currentThread) {
   if (promptInput) promptInput.placeholder = status === 'suspended' ? 'Send to resume sandbox…' : blocked ? 'Lifecycle action required…' : activeDelivery ? 'Steer the running agent…' : 'Next task…';
   if (sendButton) {
     sendButton.disabled = submitInFlight || starting || blocked;
-    sendButton.textContent = activeDelivery ? 'steer' : 'send';
+    const label = activeDelivery ? 'steer agent' : 'send message';
+    if (sendButtonIcon) sendButton.replaceChildren(sendButtonIcon.cloneNode(true));
+    else sendButton.textContent = activeDelivery ? 'steer' : 'send';
+    sendButton.setAttribute('aria-label', label);
+    sendButton.title = label;
   }
 }
 
@@ -1081,7 +1093,9 @@ function restoreInitialThreadPosition() {
   if (initialResumeScrollDone || !timeline) return;
   const userMessages = timeline.querySelectorAll('.message-item.user');
   const target = userMessages[userMessages.length - 1];
-  if (!target || (!timeline.querySelector('.message-item.assistant') && userMessages.length < 2)) return;
+  const hasAssistantTurn = Boolean(timeline.querySelector('.message-item.assistant'));
+  const hasTerminalSinglePrompt = userMessages.length === 1 && isTerminalStatus(effectiveStatus(currentThread));
+  if (!target || (!hasAssistantTurn && userMessages.length < 2 && !hasTerminalSinglePrompt)) return;
   initialResumeScrollDone = true;
   requestAnimationFrame(() => {
     const topbar = document.querySelector('.thread-main-header');
@@ -1101,12 +1115,24 @@ function followTraceLatest(enabled = true) {
 }
 
 function eventKey(event) {
+  if (event.historical) {
+    return [
+      'history',
+      event.id || '',
+      event.timestamp || '',
+      event.type || '',
+      event.runId || event.bridgeRunId || '',
+      event.toolCallId || '',
+      event.phase || '',
+    ].join(':');
+  }
   if (event.id) return `id:${event.id}`;
   fallbackEventId += 1;
   return `fallback:${fallbackEventId}`;
 }
 
 function updateLastEventId(event) {
+  if (event?.historical) return;
   const id = Number(event?.id);
   if (Number.isFinite(id) && id > lastEventId) lastEventId = id;
 }
@@ -1116,6 +1142,7 @@ function resetThreadStreamState() {
   lastEventId = 0;
   fallbackEventId = 0;
   seenEvents.clear();
+  toolEventSnapshots.clear();
 }
 
 function compactToolTarget(value) {
@@ -1992,10 +2019,264 @@ function scheduleWorkflowPolling() {
 }
 
 function toolKey(event) {
+  if (event.traceToolKey) return event.traceToolKey;
   const runId = workflowRunIdFromEvent(event);
+  const traceRunId = traceRunKey(event);
+  const toolName = String(event.toolName || event.label || 'tool').toLowerCase().split('.').pop();
+  if (toolName === 'todo') return `${traceRunId}:todo`;
   if (event.toolCallId) return event.toolCallId;
   if (runId && /workflow/i.test(`${event.toolName || ''} ${event.label || ''}`)) return `workflow:${runId}`;
-  return `${event.label || event.toolName || 'tool'}-${event.id || event.timestamp || graphTools.size}`;
+  const args = event.args && typeof event.args === 'object' ? event.args : null;
+  const argsKey = args ? JSON.stringify(Object.keys(args).sort().map((key) => [key, args[key]])) : '';
+  return `${traceRunId}:${toolName}:${argsKey || event.id || event.timestamp || graphTools.size}`;
+}
+
+function mergeToolEvent(event = {}) {
+  const key = toolKey(event);
+  const previous = toolEventSnapshots.get(key) || {};
+  const currentArgs = event.args && typeof event.args === 'object' ? event.args : {};
+  const currentDetails = event.details && typeof event.details === 'object' ? event.details : {};
+  const hasResult = Object.hasOwn(event, 'result') && event.result !== undefined && event.result !== null;
+  const hasOutput = Object.hasOwn(event, 'output') && event.output !== undefined && event.output !== null;
+  const merged = {
+    ...previous,
+    ...event,
+    traceToolKey: key,
+    args: { ...(previous.args || {}), ...currentArgs },
+    details: { ...(previous.details || {}), ...currentDetails },
+    result: hasResult ? event.result : previous.result,
+    output: hasOutput ? event.output : '',
+    delta: Object.hasOwn(event, 'delta') ? event.delta : '',
+    label: event.label || previous.label,
+    toolName: event.toolName || previous.toolName,
+    isError: typeof event.isError === 'boolean' ? event.isError : Boolean(previous.isError),
+  };
+  toolEventSnapshots.set(key, merged);
+  return merged;
+}
+
+function normalizedToolName(event = {}) {
+  return String(event.toolName || event.label || 'tool').toLowerCase().split('.').pop();
+}
+
+function toolUiKind(event = {}) {
+  const toolName = normalizedToolName(event);
+  if (toolName === 'bash') return 'bash';
+  if (toolName === 'edit' || toolName === 'write') return 'edit';
+  if (toolName === 'read') return 'read';
+  if (toolName === 'workflow') return 'workflow';
+  if (toolName === 'todo') return 'todo';
+  if (toolName === 'ask_user_question') return 'question';
+  if (toolName === 'request_approval' || toolName === 'approval') return 'approval';
+  if (toolName.includes('grep') || ['find_files', 'web_search', 'code_search', 'fetch_content'].includes(toolName)) return 'search';
+  return 'tool';
+}
+
+const TRACE_ICON_PATHS = {
+  tool: 'M226.76,69a8,8,0,0,0-12.84-2.88l-40.3,37.19-17.23-3.7-3.7-17.23,37.19-40.3A8,8,0,0,0,187,29.24,72,72,0,0,0,88,96,72.34,72.34,0,0,0,94,124.94L33.79,177c-.15.12-.29.26-.43.39a32,32,0,0,0,45.26,45.26c.13-.13.27-.28.39-.42L131.06,162A72,72,0,0,0,232,96,71.56,71.56,0,0,0,226.76,69ZM160,152a56.14,56.14,0,0,1-27.07-7,8,8,0,0,0-9.92,1.77L67.11,211.51a16,16,0,0,1-22.62-22.62L109.18,133a8,8,0,0,0,1.77-9.93,56,56,0,0,1,58.36-82.31l-31.2,33.81a8,8,0,0,0-1.94,7.1L141.83,108a8,8,0,0,0,6.14,6.14l26.35,5.66a8,8,0,0,0,7.1-1.94l33.81-31.2A56.06,56.06,0,0,1,160,152Z',
+  search: 'M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm88,104a87.62,87.62,0,0,1-6.4,32.94l-44.7-27.49a15.92,15.92,0,0,0-6.24-2.23l-22.82-3.08a16.11,16.11,0,0,0-16,7.86h-8.72l-3.8-7.86a15.91,15.91,0,0,0-11-8.67l-8-1.73L96.14,104h16.71a16.06,16.06,0,0,0,7.73-2l12.25-6.76a16.62,16.62,0,0,0,3-2.14l26.91-24.34A15.93,15.93,0,0,0,166,49.1l-.36-.65A88.11,88.11,0,0,1,216,128ZM143.31,41.34,152,56.9,125.09,81.24,112.85,88H96.14a16,16,0,0,0-13.88,8l-8.73,15.23L63.38,84.19,74.32,58.32a87.87,87.87,0,0,1,69-17ZM40,128a87.53,87.53,0,0,1,8.54-37.8l11.34,30.27a16,16,0,0,0,11.62,10l21.43,4.61L96.74,143a16.09,16.09,0,0,0,14.4,9h1.48l-7.23,16.23a16,16,0,0,0,2.86,17.37l.14.14L128,205.94l-1.94,10A88.11,88.11,0,0,1,40,128Zm102.58,86.78,1.13-5.81a16.09,16.09,0,0,0-4-13.9,1.85,1.85,0,0,1-.14-.14L120,174.74,133.7,144l22.82,3.08,45.72,28.12A88.18,88.18,0,0,1,142.58,214.78Z',
+  edit: 'M227.31,73.37,182.63,28.68a16,16,0,0,0-22.63,0L36.69,152A15.86,15.86,0,0,0,32,163.31V208a16,16,0,0,0,16,16H92.69A15.86,15.86,0,0,0,104,219.31L227.31,96a16,16,0,0,0,0-22.63ZM92.69,208H48V163.31l88-88L180.69,120ZM192,108.68,147.31,64l24-24L216,84.68Z',
+  bash: 'M128,128a8,8,0,0,1-3,6.25l-40,32a8,8,0,1,1-10-12.5L107.19,128,75,102.25a8,8,0,1,1,10-12.5l40,32A8,8,0,0,1,128,128Zm48,24H136a8,8,0,0,0,0,16h40a8,8,0,0,0,0-16Zm56-96V200a16,16,0,0,1-16,16H40a16,16,0,0,1-16-16V56A16,16,0,0,1,40,40H216A16,16,0,0,1,232,56ZM216,200V56H40V200H216Z',
+  approval: 'M208,40H48A16,16,0,0,0,32,56v56c0,52.72,25.52,84.67,46.93,102.19,23.06,18.86,46,25.26,47,25.53a8,8,0,0,0,4.2,0c1-.27,23.91-6.67,47-25.53C198.48,196.67,224,164.72,224,112V56A16,16,0,0,0,208,40Zm0,72c0,37.07-13.66,67.16-40.6,89.42A129.3,129.3,0,0,1,128,223.62a128.25,128.25,0,0,1-38.92-21.81C61.82,179.51,48,149.3,48,112l0-56,160,0ZM82.34,141.66a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35a8,8,0,0,1,11.32,11.32l-56,56a8,8,0,0,1-11.32,0Z',
+  read: 'M181.66,146.34a8,8,0,0,1,0,11.32l-24,24a8,8,0,0,1-11.32-11.32L164.69,152l-18.35-18.34a8,8,0,0,1,11.32-11.32Zm-72-24a8,8,0,0,0-11.32,0l-24,24a8,8,0,0,0,0,11.32l24,24a8,8,0,0,0,11.32-11.32L91.31,152l18.35-18.34A8,8,0,0,0,109.66,122.34ZM216,88V216a16,16,0,0,1-16,16H56a16,16,0,0,1-16-16V40A16,16,0,0,1,56,24h96a8,8,0,0,1,5.66,2.34l56,56A8,8,0,0,1,216,88Zm-56-8h28.69L160,51.31Zm40,136V96H152a8,8,0,0,1-8-8V40H56V216H200Z',
+  workflow: 'M200,48H136V16a8,8,0,0,0-16,0V48H56A32,32,0,0,0,24,80V192a32,32,0,0,0,32,32H200a32,32,0,0,0,32-32V80A32,32,0,0,0,200,48Zm16,144a16,16,0,0,1-16,16H56a16,16,0,0,1-16-16V80A16,16,0,0,1,56,64H200a16,16,0,0,1,16,16Zm-52-56H92a28,28,0,0,0,0,56h72a28,28,0,0,0,0-56Zm-24,16v24H116V152ZM80,164a12,12,0,0,1,12-12h8v24H92A12,12,0,0,1,80,164Zm84,12h-8V152h8a12,12,0,0,1,0,24ZM72,108a12,12,0,1,1,12,12A12,12,0,0,1,72,108Zm88,0a12,12,0,1,1,12,12A12,12,0,0,1,160,108Z',
+  thinking: 'M43.18,128a29.78,29.78,0,0,1,8,10.26c4.8,9.9,4.8,22,4.8,33.74,0,24.31,1,36,24,36a8,8,0,0,1,0,16c-17.48,0-29.32-6.14-35.2-18.26-4.8-9.9-4.8-22-4.8-33.74,0-24.31-1-36-24-36a8,8,0,0,1,0-16c23,0,24-11.69,24-36,0-11.72,0-23.84,4.8-33.74C50.68,38.14,62.52,32,80,32a8,8,0,0,1,0,16C57,48,56,59.69,56,84c0,11.72,0,23.84-4.8,33.74A29.78,29.78,0,0,1,43.18,128ZM240,120c-23,0-24-11.69-24-36,0-11.72,0-23.84-4.8-33.74C205.32,38.14,193.48,32,176,32a8,8,0,0,0,0,16c23,0,24,11.69,24,36,0,11.72,0,23.84,4.8,33.74a29.78,29.78,0,0,0,8,10.26,29.78,29.78,0,0,0-8,10.26c-4.8,9.9-4.8,22-4.8,33.74,0,24.31-1,36-24,36a8,8,0,0,0,0,16c17.48,0,29.32-6.14,35.2-18.26,4.8-9.9,4.8-22,4.8-33.74,0-24.31,1-36,24-36a8,8,0,0,0,0-16Z',
+  complete: 'M173.66,98.34a8,8,0,0,1,0,11.32l-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35A8,8,0,0,1,173.66,98.34ZM232,128A104,104,0,1,1,128,24,104.11,104.11,0,0,1,232,128Zm-16,0a88,88,0,1,0-88,88A88.1,88.1,0,0,0,216,128Z',
+};
+
+function traceIconHtml(kind = 'tool', className = 'trace-icon') {
+  const resolvedKind = kind === 'question' ? 'approval' : kind === 'todo' ? 'complete' : kind;
+  const path = TRACE_ICON_PATHS[resolvedKind] || TRACE_ICON_PATHS.tool;
+  return `<svg class="${className}" data-trace-icon="${escapeHtml(kind)}" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="${path}"></path></svg>`;
+}
+
+function toolKindLabel(kind, event = {}, display = toolDisplay(event)) {
+  if (kind === 'bash') return 'Bash';
+  if (kind === 'edit') return normalizedToolName(event) === 'write' ? 'Write' : 'Edit';
+  if (kind === 'read') {
+    const lineCount = Number(event.args?.limit);
+    return Number.isFinite(lineCount) && lineCount > 0 ? `Read ${lineCount} lines` : 'Read';
+  }
+  if (kind === 'search') {
+    const toolName = normalizedToolName(event);
+    if (toolName === 'web_search') return 'Web Search';
+    if (toolName === 'code_search') return 'Code Search';
+    if (toolName === 'fetch_content') return 'Fetch';
+    if (toolName.includes('grep')) return 'Search';
+    return 'Find';
+  }
+  if (kind === 'approval') return 'Approval';
+  if (kind === 'question') return 'Question';
+  if (kind === 'todo') return 'Todo';
+  return display.label || event.label || event.toolName || 'Tool';
+}
+
+function toolResultText(event = {}) {
+  const result = event.result;
+  if (typeof result === 'string') return result;
+  if (result && typeof result === 'object') {
+    if (Array.isArray(result.content)) {
+      const text = result.content
+        .map((part) => part?.type === 'text' ? String(part.text || '') : '')
+        .filter(Boolean)
+        .join('\n');
+      if (text) return text;
+    }
+    for (const key of ['output', 'text', 'summary', 'message', 'error']) {
+      if (typeof result[key] === 'string' && result[key].trim()) return result[key];
+    }
+  }
+  return String(event.output || event.resultText || '').trim();
+}
+
+function toolJson(value) {
+  if (value === undefined || value === null || value === '') return '';
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+}
+
+function basename(value = '') {
+  return String(value || '').split(/[\\/]/).filter(Boolean).pop() || String(value || '');
+}
+
+function compactToolChip(value = '', max = 56) {
+  return clamp(String(value || '').replace(/\s+/g, ' ').trim(), max);
+}
+
+function toolChipHtml(label, className = 'tool-chip', max = 180) {
+  const fullText = String(label || '').replace(/\s+/g, ' ').trim();
+  const text = compactToolChip(fullText, max);
+  return text ? `<span class="${className}" title="${escapeHtml(fullText)}">${escapeHtml(text)}</span>` : '';
+}
+
+function toolSummaryPillsHtml(event = {}, display = toolDisplay(event), kind = toolUiKind(event)) {
+  const args = event.args && typeof event.args === 'object' ? event.args : {};
+  const chips = [];
+  if (kind === 'bash' && args.command) chips.push(toolChipHtml(String(args.command).split(/\r?\n/)[0], 'tool-command-pill'));
+  if (kind === 'edit' && display.target) chips.push(toolChipHtml(display.target, 'tool-file-pill'));
+  if (kind === 'read' && display.target) chips.push(toolChipHtml(display.target, 'tool-file-pill'));
+  if (kind === 'search' && display.target) chips.push(toolChipHtml(display.target, 'tool-query-pill'));
+  if (event.result?.additions || event.result?.deletions) {
+    chips.push(`<span class="tool-diff-stat"><b>+${escapeHtml(event.result.additions || 0)}</b><em>-${escapeHtml(event.result.deletions || 0)}</em></span>`);
+  }
+  return chips.join('');
+}
+
+function toolOutputText(event = {}, accumulatedOutput = '') {
+  return String(accumulatedOutput || toolResultText(event) || '').trim();
+}
+
+function toolMetaRowsHtml(rows = []) {
+  const visible = rows.filter(([, value]) => String(value ?? '').trim());
+  if (!visible.length) return '';
+  return `<dl class="tool-meta-grid">${visible.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join('')}</dl>`;
+}
+
+function toolPreHtml(text = '', className = 'tool-output-block') {
+  return String(text || '').trim() ? `<pre class="${className}" data-tool-output>${escapeHtml(clamp(text, 8000))}</pre>` : '<pre data-tool-output hidden></pre>';
+}
+
+function toolDiffRowsHtml(text = '') {
+  const lines = String(text || '').split(/\r?\n/).filter((line) => line.trim()).slice(0, 80);
+  if (!lines.length) return '';
+  const rows = lines.map((line, index) => {
+    const type = line.startsWith('+') && !line.startsWith('+++') ? 'add' : line.startsWith('-') && !line.startsWith('---') ? 'del' : 'ctx';
+    return `<div class="tool-diff-row is-${type}"><span>${index + 1}</span><code>${escapeHtml(line)}</code></div>`;
+  }).join('');
+  return `<div class="tool-diff-viewer" aria-label="Patch preview">${rows}</div>`;
+}
+
+function toolSearchRowsHtml(event = {}, outputText = '') {
+  const args = event.args && typeof event.args === 'object' ? event.args : {};
+  const result = event.result && typeof event.result === 'object' ? event.result : {};
+  const rawSources = [
+    ...(Array.isArray(result.sources) ? result.sources : []),
+    ...(Array.isArray(result.urls) ? result.urls : []),
+    ...(Array.isArray(args.urls) ? args.urls : []),
+  ];
+  const outputRows = outputText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).slice(0, 4);
+  const rows = (rawSources.length ? rawSources : outputRows).slice(0, 6);
+  return rows.map((source) => `
+    <div class="tool-search-result-row">
+      <strong>${escapeHtml(toolKindLabel('search', event))}</strong>
+      <code>${escapeHtml(compactToolChip(source, 180))}</code>
+    </div>
+  `).join('');
+}
+
+function renderToolDetailHtml(event = {}, display = toolDisplay(event), kind = toolUiKind(event), accumulatedOutput = '') {
+  const args = event.args && typeof event.args === 'object' ? event.args : {};
+  const outputText = toolOutputText(event, accumulatedOutput);
+
+  if (kind === 'bash') {
+    const command = String(args.command || display.target || display.action || 'command');
+    return `
+      <div class="tool-terminal" aria-label="Terminal output">
+        <pre data-tool-output>&gt; ${escapeHtml(command)}
+${outputText ? `\n${escapeHtml(clamp(outputText, 8000))}` : '\nwaiting for output...'}</pre>
+      </div>
+    `;
+  }
+
+  if (kind === 'edit') {
+    const patch = String(event.details?.patch || event.details?.diff || event.result?.diff || outputText || '').trim();
+    const operation = normalizedToolName(event) === 'write' ? 'write file' : args.operation || 'edit file';
+    return `
+      ${toolMetaRowsHtml([
+        ['file', display.target || args.path || args.file_path || args.file || args.filename],
+        ['operation', operation],
+        ['changed', event.result?.changed ? `${event.result.changed} file` : ''],
+      ])}
+      ${toolDiffRowsHtml(patch)}
+      ${patch ? '' : toolPreHtml(toolJson(event.result || args), 'tool-output-block')}
+    `;
+  }
+
+  if (kind === 'search') {
+    const query = display.target || args.query || args.url || args.glob || args.constraints || outputText || 'search';
+    return `
+      <div class="tool-search-results" aria-label="Search results">
+        <div class="tool-search-result-card"><p>${escapeHtml(`${toolKindLabel(kind, event)} completed for: ${compactToolChip(query, 220)}`)}</p></div>
+        ${toolSearchRowsHtml(event, outputText)}
+      </div>
+    `;
+  }
+
+  if (kind === 'read') {
+    return `
+      <div class="tool-read-card">
+        <strong>${escapeHtml(basename(display.target || args.path || args.file || 'file'))}</strong>
+        <span>${escapeHtml(display.target || args.path || args.file || '')}</span>
+      </div>
+      ${toolPreHtml(outputText || toolJson(event.result), 'tool-output-block')}
+    `;
+  }
+
+  if (kind === 'approval' || kind === 'question') {
+    return `
+      <div class="tool-approval-panel">
+        <strong>${escapeHtml(args.action || args.question || display.action || toolKindLabel(kind, event))}</strong>
+        <div><button type="button" disabled>allow once</button><button type="button" disabled>decline</button></div>
+      </div>
+      ${toolPreHtml(toolJson(event.result || event.details || args), 'tool-output-block')}
+    `;
+  }
+
+  if (kind === 'todo') return '<pre data-tool-output hidden></pre>';
+
+  return `
+    <div class="tool-json-grid">
+      <div><span>args</span>${toolPreHtml(toolJson(args), 'tool-output-block')}</div>
+      <div><span>result</span>${toolPreHtml(outputText || toolJson(event.result || event.details), 'tool-output-block')}</div>
+    </div>
+  `;
+}
+
+function shouldOpenToolCard(kind, state, detailHtml = '') {
+  return false;
 }
 
 function updateAgentGraphForTool(event) {
@@ -2042,26 +2323,34 @@ function updateAgentGraphForWorkflowEvent(event) {
   }
 }
 
+function settleTraceRun() {
+  for (const card of toolCards.values()) card.open = false;
+}
+
 function renderTimelineToolEvent(event) {
   if (!traceTimeline) return;
   const follow = shouldFollowTrace();
   const key = toolKey(event);
   const display = toolDisplay(event);
+  const kind = toolUiKind(event);
   const state = event.isError ? 'error' : event.phase === 'end' ? 'done' : 'running';
   let node = toolCards.get(key);
+  const isNewNode = !node;
 
   if (!node) {
     const article = document.createElement('article');
     article.className = `timeline-item tool-item ${display.kind === 'workflow' ? 'workflow-item' : ''}`;
     article.innerHTML = `
       <div class="timeline-dot" aria-hidden="true"></div>
-      <details class="tool-card ${display.kind === 'workflow' ? 'workflow-card' : ''}">
+      <details class="tool-card trace-tool-card is-${escapeHtml(kind)} ${display.kind === 'workflow' ? 'workflow-card' : ''}" data-tool-kind="${escapeHtml(kind)}">
         <summary>
+          <span class="tool-kind-mark" aria-hidden="true">${traceIconHtml(kind)}</span>
           <span data-tool-label></span>
           <span class="tool-target" data-tool-action></span>
+          <span class="tool-summary-pills" data-tool-pills></span>
           <span class="badge"></span>
         </summary>
-        <pre></pre>
+        <div class="tool-detail" data-tool-detail><pre data-tool-output hidden></pre></div>
       </details>
     `;
     markTimelineEnter(article);
@@ -2072,56 +2361,70 @@ function renderTimelineToolEvent(event) {
 
   const action = display.action || node.dataset.toolAction || '';
   if (display.action) node.dataset.toolAction = display.action;
-  node.querySelector('[data-tool-label]').textContent = display.label || event.label || event.toolName || 'tool';
-  node.querySelector('[data-tool-action]').textContent = action;
-  node.querySelector('.badge').textContent = state;
+  node.querySelector('[data-tool-label]').textContent = toolKindLabel(kind, event, display);
+  node.querySelector('.tool-kind-mark').innerHTML = traceIconHtml(kind);
+  node.querySelector('[data-tool-action]').textContent = ['tool', 'workflow'].includes(kind) ? action : '';
+  node.querySelector('[data-tool-pills]').innerHTML = toolSummaryPillsHtml(event, display, kind);
+  node.querySelector('.badge').textContent = state === 'error' ? 'failed' : state;
   node.dataset.phase = event.phase || '';
   node.dataset.state = state;
-  node.open = state !== 'done' && Boolean(event.delta || event.output);
-
-  const output = event.delta || event.output || '';
-  if (output) {
-    const pre = node.querySelector('pre');
-    pre.textContent = clamp(`${pre.textContent}${output}`, 8000);
+  node.dataset.toolKind = kind;
+  const output = toolTimelineOutput(event);
+  if (event.phase === 'end' && output) {
+    node.dataset.toolOutputText = clamp(output, 8000);
+  } else if (event.phase === 'update' && output) {
+    const previous = node.dataset.toolOutputText || '';
+    node.dataset.toolOutputText = clamp(`${previous}${output}`, 8000);
   }
+  const detailHtml = renderToolDetailHtml(event, display, kind, node.dataset.toolOutputText || '');
+  node.querySelector('[data-tool-detail]').innerHTML = detailHtml;
+  if (isNewNode) node.open = shouldOpenToolCard(kind, state, detailHtml);
 
   followTraceLatest(follow);
+}
+
+function toolTimelineOutput(event = {}) {
+  if (todoToolName(event) === 'todo') return '';
+  if (event.phase === 'update') return String(event.delta || event.output || '');
+  if (event.phase === 'end') return toolResultText(event);
+  return '';
 }
 
 function traceRunKey(event = {}) {
   return String(event.runId || event.bridgeRunId || event.submittedAtMs || currentRunId(currentThread) || 'latest');
 }
 
-function thinkingTraceKey(event = {}) {
-  const messageTimestamp = String(event.messageTimestamp || '').trim();
-  if (!messageTimestamp) return traceRunKey(event);
-  return `${traceRunKey(event)}:message:${messageTimestamp}:content:${event.contentIndex ?? 'thinking'}`;
+function normalizeTraceText(value = '') {
+  return String(value || '')
+    .split(/\r?\n/)
+    .map((line) => line.trim().replace(/^\*\*(.*?)\*\*$/, '$1').replace(/\*\*([^*]+)\*\*/g, '$1'))
+    .join('\n')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function renderThinkingBody(body, text = '') {
+  if (!body) return;
+  const parts = normalizeTraceText(text).split(/\n{2,}/).map((part) => part.replace(/\s+/g, ' ').trim()).filter(Boolean);
+  body.replaceChildren();
+  for (const part of parts) {
+    const paragraph = document.createElement('p');
+    paragraph.textContent = part;
+    body.append(paragraph);
+  }
 }
 
 function renderTimelineThinkingEvent(event) {
-  if (!traceTimeline || !event.delta) return;
+  const text = normalizeTraceText(event.delta || event.text);
+  if (!traceTimeline || !text) return;
   const follow = shouldFollowTrace();
-  const key = thinkingTraceKey(event);
-  let node = thinkingCards.get(key);
-
-  if (!node) {
-    const article = document.createElement('article');
-    article.className = 'timeline-item thinking-item';
-    article.innerHTML = `
-      <div class="timeline-dot" aria-hidden="true"></div>
-      <div class="thinking-card">
-        <div class="message-head"><strong>thinking steps</strong></div>
-        <div class="thinking-body"></div>
-      </div>
-    `;
-    markTimelineEnter(article);
-    traceTimeline.append(article);
-    node = article.querySelector('.thinking-card');
-    thinkingCards.set(key, node);
-  }
-
-  const body = node.querySelector('.thinking-body');
-  body.textContent = clamp(`${body.textContent}${event.delta}`, 8000);
+  const article = document.createElement('article');
+  article.className = 'timeline-item thinking-item';
+  article.innerHTML = '<div class="thinking-card"><div class="thinking-body"></div></div>';
+  markTimelineEnter(article);
+  renderThinkingBody(article.querySelector('.thinking-body'), text);
+  traceTimeline.append(article);
   followTraceLatest(follow);
 }
 
@@ -2129,12 +2432,13 @@ function renderTimelineSummaryEvent(event) {
   const summary = String(event.summary || event.session?.finalAnswerSummary || '').replace(/\s+/g, ' ').trim();
   if (!traceTimeline || !summary) return;
   const follow = shouldFollowTrace();
+  settleTraceRun(event);
   const article = document.createElement('article');
   article.className = 'timeline-item summary-item';
   article.innerHTML = `
     <div class="timeline-dot" aria-hidden="true"></div>
     <div class="timeline-card">
-      <strong>summary</strong>
+      <strong class="trace-summary-title">${traceIconHtml('complete')}<span>summary</span></strong>
       <p>${escapeHtml(summary)}</p>
     </div>
   `;
@@ -2174,11 +2478,12 @@ function renderWorkflowEvent(event) {
 }
 
 function renderToolEvent(event) {
-  updateAgentGraphForTool(event);
-  syncTodoStateFromEvent(event);
-  renderImplementationNoteEvent(event);
-  renderTimelineToolEvent(event);
-  scheduleDiffRefresh(event.phase === 'end' ? 250 : 900);
+  const mergedEvent = mergeToolEvent(event);
+  updateAgentGraphForTool(mergedEvent);
+  syncTodoStateFromEvent(mergedEvent);
+  renderImplementationNoteEvent(mergedEvent);
+  renderTimelineToolEvent(mergedEvent);
+  scheduleDiffRefresh(mergedEvent.phase === 'end' ? 250 : 900);
 }
 
 function captureRunFinished(event = {}) {
@@ -2212,8 +2517,11 @@ function renderEvent(event, { appendTranscript = false } = {}) {
 
   if (event.chunk && event.type !== 'log') {
     setNow(event);
-    if (appendTranscript) appendAssistantChunk(event.chunk);
-    if (event.done || event.runStatus === 'completed' || event.runStatus === 'failed') captureRunFinished(event);
+    if (appendTranscript && !event.historical) appendAssistantChunk(event.chunk);
+    if (event.done || event.runStatus === 'completed' || event.runStatus === 'failed') {
+      settleTraceRun(event);
+      captureRunFinished(event);
+    }
     if (event.session) {
       renderThread(event.session);
       renderThreadHistory(event.session);
@@ -2240,6 +2548,7 @@ function renderEvent(event, { appendTranscript = false } = {}) {
   }
 
   if (event.done || event.runStatus === 'completed' || event.runStatus === 'failed') {
+    settleTraceRun(event);
     captureRunFinished(event);
     finalizeAssistantBody();
     scheduleDiffRefresh(150);
@@ -2355,6 +2664,7 @@ diffDialog?.addEventListener('click', (event) => {
 timeline?.addEventListener('click', (event) => {
   const link = event.target?.closest?.('a.rendered-link');
   if (!link || !timeline.contains(link)) return;
+  if (link.dataset.linkKind === 'local') return;
   event.preventDefault();
   void openSafeLink(link.getAttribute('href'));
 });

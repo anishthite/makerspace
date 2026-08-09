@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Spec - Global T3 sidebar shell</title>
+  <meta name="task" content="Make the T3-style sidebar global across home, workspace, and thread routes.">
+  <meta name="date-started" content="2026-07-30">
+  <meta name="status" content="shipped">
+  <style>
+    body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:920px;margin:1.5rem auto;padding:0 1rem;color:#111}
+    h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}
+    table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}
+    th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}
+  </style>
+</head>
+<body>
+  <h1>Global T3 sidebar shell</h1>
+  <h2>Summary</h2>
+  <table>
+    <tr><th>Goal</th><td>Make the sidebar global: left rail always present, center content swaps between project picker, launch composer, and open thread.</td></tr>
+    <tr><th>Source</th><td>T3Code nightly <code>SidebarV2.tsx</code>: command search row, new thread button, project scope menu, settled shelf, compact row metrics.</td></tr>
+    <tr><th>Deviation</th><td>Keep Makerspace green/yellow/red dots by user request.</td></tr>
+  </table>
+  <h2>Decisions</h2>
+  <table>
+    <tr><th>ID</th><th>Choice</th></tr>
+    <tr><td>D-001</td><td>Use <code>AgentInboxSidebar</code> on home, workspace, and thread routes.</td></tr>
+    <tr><td>D-002</td><td>Add <code>frontend/src/runtime/global-sidebar.js</code> for thread pages instead of duplicating thread-list code in <code>thread.js</code>.</td></tr>
+    <tr><td>D-003</td><td>Default sidebar scope is <code>All projects</code>; project filtering is a sidebar menu state stored in localStorage.</td></tr>
+    <tr><td>D-004</td><td>Use collapsed settled shelf by default with show-more paging when expanded.</td></tr>
+  </table>
+  <h2>Metrics</h2>
+  <table>
+    <tr><th>ID</th><th>Target</th><th>Result</th></tr>
+    <tr><td>M-001</td><td>Global presence</td><td>Pass: home, workspace, and thread mount the same left rail.</td></tr>
+    <tr><td>M-002</td><td>T3 header controls</td><td>Pass: search, compose, project scope, and new project controls.</td></tr>
+    <tr><td>M-003</td><td>All-project list</td><td>Pass: renderers use unfiltered <code>/api/threads</code> by default.</td></tr>
+    <tr><td>M-004</td><td>Row geometry</td><td>Pass: settled rows <code>36px</code>, status dots <code>8px</code>.</td></tr>
+    <tr><td>M-005</td><td>Thread current state</td><td>Pass: open thread marks one sidebar row current.</td></tr>
+  </table>
+  <h2>Verification</h2>
+  <table>
+    <tr><th>ID</th><th>Check</th><th>Result</th></tr>
+    <tr><td>V-001</td><td><code>node --check frontend/src/runtime/global-sidebar.js</code>, <code>project.js</code>, <code>app.js</code></td><td>Pass.</td></tr>
+    <tr><td>V-002</td><td><code>node --test test/home-runtime-summary.test.js</code></td><td>Pass: 16/16 tests.</td></tr>
+    <tr><td>V-003</td><td><code>git diff --check &amp;&amp; npm run build</code></td><td>Pass, with existing large-chunk warning.</td></tr>
+    <tr><td>V-004</td><td>Playwright/Chrome against <code>http://127.0.0.1:5197</code></td><td>Pass: command <code>36px</code>, scope <code>32px</code>, settled row <code>36px</code>, dot <code>8px</code>.</td></tr>
+  </table>
+</body>
+</html>

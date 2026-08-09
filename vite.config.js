@@ -103,6 +103,8 @@ export default defineConfig({
         telemetry: page('telemetry.html'),
         localTelemetry: page('local-telemetry.html'),
         traceComponents: page('trace-components.html'),
+        agentElementsDemo: page('agent-elements-demo.html'),
+        assistantUiComponents: page('assistant-ui-components.html'),
         desktop: page('desktop.html'),
         onboardingEditor: page('onboarding-editor.html'),
         excalidrawViewer: page('excalidraw-viewer.html'),
