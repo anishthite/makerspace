@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec - ponytail artifact cruft prune</title>
+<meta name="task" content="Delete tracked generated review artifacts and unwired one-off tools.">
+<meta name="date-started" content="2026-08-01">
+<meta name="date-updated" content="2026-08-01">
+<meta name="status" content="ready-for-review">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,cleanup,ponytail,artifacts,repo-hygiene">
+<meta name="related" content="2026-08-01-ponytail-ui-wrapper-prune.html,2026-08-01-code-simplifier-pass.html">
+<style>
+body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}
+h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}
+table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}
+th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}
+.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-ready-for-review{color:#b85c00}
+</style>
+</head>
+<body>
+<h1>ponytail artifact cruft prune</h1>
+<p class="meta"><code>agent-ui-components</code> · worktree <code>/Users/anishthite/conductor/workspaces/makerspace/tripoli</code> · 2026-08-01 · status <b class="status-ready-for-review">ready-for-review</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Remove tracked generated review artifacts and unwired one-off helpers from the repo.</div>
+  <b>Source</b><div>User asked to continue ponytail cleanup until the audit stops finding easy cuts.</div>
+  <b>Surface</b><div><code>artifacts/</code>, duplicate public artifact copies, one-off tools, landing-loop generator data, and <code>.gitignore</code>.</div>
+  <b>Schema</b><div>None.</div>
+  <b>Runtime</b><div>No live route imports deleted files.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+<tr><td><code>artifacts/</code></td><td>delete</td><td>Remove tracked generated review media and local report outputs.</td></tr>
+<tr><td><code>frontend/public/artifacts/remote-local-runtime.*</code></td><td>delete</td><td>Remove duplicate public copy of root artifact files.</td></tr>
+<tr><td><code>tools/*.html</code></td><td>delete</td><td>Remove standalone helpers not wired into the app.</td></tr>
+<tr><td><code>scripts/generate-remote-pi-landing-loop.mjs</code>, <code>data/remote-pi-landing-loop.json</code></td><td>delete</td><td>Remove one-off generator and checked-in generated scoring data while keeping the published static page.</td></tr>
+<tr><td><code>.gitignore</code></td><td>touch</td><td>Ignore future root <code>artifacts/</code> output.</td></tr>
+<tr><td><code>implementation-notes/2026-08-01-ponytail-artifact-cruft-prune.html</code></td><td>new</td><td>Record the deletion scope and skipped dirty file.</td></tr>
+<tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr>
+</table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr>
+<tr><td>D-001</td><td>Delete tracked generated artifacts. Generated review outputs should live in ignored output paths or external storage.</td></tr>
+<tr><td>D-002</td><td>Keep <code>frontend/public/remote-pi-landing-loop.html</code>. It remains referenced as a public static route.</td></tr>
+<tr><td>D-003</td><td>Skip <code>scripts/measure-bootup.js</code>. It had unrelated local edits before this cleanup batch.</td></tr>
+</table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+<tr><td>T-001</td><td>Delete unused files over archiving them elsewhere in-repo. An archive folder preserves the same cruft under a different name.</td></tr>
+</table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Git revert restores the deleted artifacts, tools, generator, data file, and ignore entry.</p>
+<h2>Verification</h2>
+<table><tr><th>ID</th><th>Check</th><th>Result</th></tr>
+<tr><td>V-001</td><td>Reference scan for deleted artifact/tool names in live source</td><td>Pass; no live-source stale references found.</td></tr>
+<tr><td>V-002</td><td><code>node --test test/frontend-route-manifest.test.js test/project-selector-static.test.js</code></td><td>Pass, 5/5.</td></tr>
+<tr><td>V-003</td><td><code>npm run build</code></td><td>Pass with existing large-chunk warning.</td></tr>
+<tr><td>V-004</td><td><code>git diff --check</code></td><td>Pass.</td></tr>
+</table>
+<h2>Followups</h2>
+<ul>
+  <li>L-001 · Remove <code>scripts/measure-bootup.js</code> only after its current local edits are reviewed.</li>
+  <li>L-002 · Decide whether old implementation-note history should stay required by repo policy.</li>
+</ul>
+<h2>Definition of done</h2>
+<ul>
+  <li>Tracked generated artifacts are gone from the active tree.</li>
+  <li>Build still passes.</li>
+  <li>Route-manifest tests still pass.</li>
+</ul>
+</body>
+</html>

@@ -144,7 +144,6 @@ node - "$APP_RESOURCES/package.json" <<'NODE'
 const fs = require('node:fs');
 const packagePath = process.argv[2];
 const runtimeDependencies = new Set([
-  '@cloudflare/sandbox',
   '@earendil-works/pi-coding-agent',
   'update-electron-app',
 ]);
