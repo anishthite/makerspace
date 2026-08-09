@@ -68,10 +68,11 @@ test('getConfig names the visible project from env or explicit home', () => {
     assert.equal(getConfig().projectName, 'site-ui');
   });
 
-  withEnv({ INFRA_PROVIDER: 'local', SPANNER_PROJECT: undefined, SPANNER_NAME: undefined, SPANNER_HOME: '/tmp/spanner/api', RECENT_PROJECTS_DATA_PATH: undefined }, () => {
+  withEnv({ INFRA_PROVIDER: 'local', SPANNER_PROJECT: undefined, SPANNER_NAME: undefined, SPANNER_HOME: '/tmp/spanner/api', RECENT_PROJECTS_DATA_PATH: undefined, SPANNER_TRACE_STORE_DIR: undefined, TRACE_STORE_DIR: undefined }, () => {
     const config = getConfig();
     assert.equal(config.projectName, 'api');
     assert.equal(config.recentProjectsFile, '/tmp/spanner/api/recent-projects.json');
+    assert.equal(config.traceStoreDir, '/tmp/spanner/api/traces');
   });
 });
 
@@ -92,6 +93,14 @@ test('getConfig moves default local state from .workbench to .spanner', () => {
   } finally {
     rmSync(home, { recursive: true, force: true });
   }
+});
+
+test('local defaults use localhost:8788 for GitHub OAuth callback stability', () => {
+  withEnv({ HOST: undefined, PORT: undefined, INFRA_PROVIDER: 'local', PROVIDER: undefined, SPANNER_HOME: '/tmp/spanner-test-home' }, () => {
+    const config = getConfig();
+    assert.equal(config.host, 'localhost');
+    assert.equal(config.port, 8788);
+  });
 });
 
 test('getConfig infers D1 state store for production deployments with D1 credentials', () => {

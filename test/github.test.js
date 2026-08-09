@@ -46,6 +46,37 @@ test('listGitHubRepos keeps paging past the first four pages', async () => {
   }
 });
 
+test('listGitHubRepos indexes linked pages without an extra probe request', async () => {
+  const originalFetch = globalThis.fetch;
+  const requestedPages = [];
+  globalThis.fetch = async (url) => {
+    const page = Number(new URL(url).searchParams.get('page') || '1');
+    requestedPages.push(page);
+    const repos = Array.from({ length: 100 }, (_, index) => ({
+      id: page * 1000 + index,
+      name: `repo-${page}-${index}`,
+      full_name: `acme/repo-${page}-${index}`,
+      private: false,
+      visibility: 'public',
+      clone_url: `https://github.com/acme/repo-${page}-${index}.git`,
+      default_branch: 'main',
+      owner: { login: 'acme' },
+    }));
+    const link = page === 1
+      ? '<https://api.github.com/user/repos?sort=updated&per_page=100&page=2>; rel="next", <https://api.github.com/user/repos?sort=updated&per_page=100&page=3>; rel="last"'
+      : '';
+    return new Response(JSON.stringify(repos), { status: 200, headers: { 'content-type': 'application/json', ...(link ? { link } : {}) } });
+  };
+
+  try {
+    const repos = await listGitHubRepos('token-1');
+    assert.deepEqual(requestedPages, [1, 2, 3]);
+    assert.equal(repos.length, 300);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test('GitHub App helpers build install URLs and JWTs', () => {
   const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
   const githubAppPrivateKey = privateKey.export({ type: 'pkcs1', format: 'pem' });

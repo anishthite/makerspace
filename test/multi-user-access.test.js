@@ -20,7 +20,7 @@ function httpStub() {
       return String(request.headers?.['x-api-token'] || '');
     },
     originFor() {
-      return 'http://localhost:8787';
+      return 'http://localhost:8788';
     },
     clientError(message, statusCode = 400) {
       const error = new Error(message);
@@ -49,7 +49,7 @@ test('CONTROL_API_TOKEN is optional user auth bypass when multi-user auth is on'
     http: httpStub(),
   });
   const response = {};
-  const blocked = auth.requireApiToken({ headers: {} }, response, new URL('http://localhost:8787/api/threads'));
+  const blocked = auth.requireApiToken({ headers: {} }, response, new URL('http://localhost:8788/api/threads'));
   assert.equal(blocked, false);
 });
 
@@ -59,7 +59,7 @@ test('requireUser reuses a caller-provided current user', async () => {
     http: httpStub(),
   });
   const response = {};
-  const context = await auth.requireUser({ headers: {} }, response, new URL('http://localhost:8787/api/threads'), { id: 'github-1' });
+  const context = await auth.requireUser({ headers: {} }, response, new URL('http://localhost:8788/api/threads'), { id: 'github-1' });
 
   assert.equal(response.status, undefined);
   assert.equal(context.user.id, 'github-1');
@@ -90,11 +90,11 @@ test('GitHub login rejects users outside the hosted allowlist', async () => {
       },
       http: httpStub(),
     });
-    const request = { url: '/api/auth/github/login', headers: { host: 'localhost:8787' } };
-    const login = auth.startGitHubLogin(request, 'browser-session-1234567890', { returnTo: 'http://localhost:8787/settings.html' });
+    const request = { url: '/api/auth/github/login', headers: { host: 'localhost:8788' } };
+    const login = auth.startGitHubLogin(request, 'browser-session-1234567890', { returnTo: 'http://localhost:8788/settings.html' });
     request.headers.cookie = login.headers['set-cookie'].split(';')[0];
     const state = new URL(login.loginUrl).searchParams.get('state');
-    const result = await auth.completeGitHubLogin(request, new URL(`http://localhost:8787/api/auth/github/callback?code=abc&state=${state}`));
+    const result = await auth.completeGitHubLogin(request, new URL(`http://localhost:8788/api/auth/github/callback?code=abc&state=${state}`));
 
     const redirect = new URL(result.location);
     assert.equal(redirect.searchParams.get('github'), 'denied');
@@ -130,11 +130,11 @@ test('GitHub login refuses implicit account switches', async () => {
       },
       http: httpStub(),
     });
-    const request = { url: '/api/auth/github/login', headers: { host: 'localhost:8787' } };
-    const login = auth.startGitHubLogin(request, 'browser-session-1234567890', { returnTo: 'http://localhost:8787/settings.html' }, { id: 'github-1' });
+    const request = { url: '/api/auth/github/login', headers: { host: 'localhost:8788' } };
+    const login = auth.startGitHubLogin(request, 'browser-session-1234567890', { returnTo: 'http://localhost:8788/settings.html' }, { id: 'github-1' });
     request.headers.cookie = login.headers['set-cookie'].split(';')[0];
     const state = new URL(login.loginUrl).searchParams.get('state');
-    const result = await auth.completeGitHubLogin(request, new URL(`http://localhost:8787/api/auth/github/callback?code=abc&state=${state}`));
+    const result = await auth.completeGitHubLogin(request, new URL(`http://localhost:8788/api/auth/github/callback?code=abc&state=${state}`));
 
     const redirect = new URL(result.location);
     assert.equal(redirect.searchParams.get('github'), 'denied');
@@ -160,10 +160,10 @@ test('GitHub callback requires the browser that started OAuth', async () => {
       },
       http: httpStub(),
     });
-    const request = { url: '/api/auth/github/login', headers: { host: 'localhost:8787' } };
-    const login = auth.startGitHubLogin(request, 'browser-session-1234567890', { returnTo: 'http://localhost:8787/settings.html' });
+    const request = { url: '/api/auth/github/login', headers: { host: 'localhost:8788' } };
+    const login = auth.startGitHubLogin(request, 'browser-session-1234567890', { returnTo: 'http://localhost:8788/settings.html' });
     const state = new URL(login.loginUrl).searchParams.get('state');
-    const result = await auth.completeGitHubLogin(request, new URL(`http://localhost:8787/api/auth/github/callback?code=abc&state=${state}`));
+    const result = await auth.completeGitHubLogin(request, new URL(`http://localhost:8788/api/auth/github/callback?code=abc&state=${state}`));
 
     assert.equal(result.statusCode, 400);
     assert.equal(result.text, 'GitHub login expired or failed.');
@@ -180,16 +180,16 @@ test('hosted auth mutations reject cross-site requests', () => {
   const response = {};
 
   assert.equal(auth.requireAuthMutationOrigin(
-    { headers: { origin: 'https://evil.test', host: 'localhost:8787' } },
+    { headers: { origin: 'https://evil.test', host: 'localhost:8788' } },
     response,
-    new URL('http://localhost:8787/api/auth/logout'),
+    new URL('http://localhost:8788/api/auth/logout'),
   ), true);
   assert.equal(response.status, 403);
 
   assert.equal(auth.requireAuthMutationOrigin(
-    { headers: { origin: 'http://localhost:8787', host: 'localhost:8787' } },
+    { headers: { origin: 'http://localhost:8788', host: 'localhost:8788' } },
     {},
-    new URL('http://localhost:8787/api/auth/logout'),
+    new URL('http://localhost:8788/api/auth/logout'),
   ), false);
 });
 

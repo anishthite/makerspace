@@ -5,6 +5,7 @@ import path from 'node:path';
 
 import { createDraftPullRequestForThread } from '../git-delivery.js';
 import { runLocalPiSession } from '../host-pi-runner.js';
+import { ensureLocalGitRepo } from '../local-git.js';
 import { analyzePiTraceText, summarizeThreadPerformanceList } from '../performance.js';
 import { normalizeImageAttachments, normalizeModelOptions, normalizeThreadRequest } from '../session.js';
 import { readSavedSettings } from '../settings.js';
@@ -876,7 +877,8 @@ export function createThreadService({ config, provider, http, auth, runState, br
     if (config.authRequired && normalized.localMode && !config.allowHostedLocalProvider) {
       throw clientError('Local folder workspaces are disabled for hosted multi-user runs.', 403);
     }
-    const bridgeRunId = normalized.bridgeMode ? randomUUID() : '';
+    const localGitMode = provider.kind === 'local' && normalized.repoMode === 'git' && !normalized.repoPath;
+    const bridgeRunId = normalized.bridgeMode && !localGitMode ? randomUUID() : '';
     const session = withUserThreadMessage(withFallbackThreadTitle(await enrichGitHubRepoSession({
       ...normalized,
       ...(bridgeRunId ? { bridgeRunId } : {}),
@@ -888,9 +890,14 @@ export function createThreadService({ config, provider, http, auth, runState, br
       throw new Error(`A main agent named ${session.name} already exists.`);
     }
 
-    const thread = session.repoPath
-      ? await startLocalThreadSession(session)
-      : await startThreadBridgeLaunch(session, await readSavedSettings(config.settingsFile));
+    let thread;
+    if (session.repoPath) {
+      thread = await startLocalThreadSession(session);
+    } else if (localGitMode) {
+      thread = await startLocalGitThreadSession(session);
+    } else {
+      thread = await startThreadBridgeLaunch(session, await readSavedSettings(config.settingsFile));
+    }
 
     scheduleThreadTitleGeneration(thread);
     return thread;
@@ -1050,6 +1057,20 @@ export function createThreadService({ config, provider, http, auth, runState, br
       repoPath,
       repoUrl: '',
       repoMode: 'local',
+      threadBridge: true,
+    }, session.taskPrompt, Number(session.submittedAtMs) || Date.now());
+  }
+
+  async function startLocalGitThreadSession(session) {
+    const repoPath = await ensureLocalGitRepo(session, config);
+    return startLocalThreadRun({
+      ...session,
+      repoPath,
+      repoAuthHeader: '',
+      bridgeMode: false,
+      bridgeClaimed: false,
+      bridgeRunId: '',
+      localMode: true,
       threadBridge: true,
     }, session.taskPrompt, Number(session.submittedAtMs) || Date.now());
   }

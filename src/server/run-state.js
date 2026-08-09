@@ -4,6 +4,7 @@ import { appendRetainedOutput, retainedOutputChunk } from '../resource-utils.js'
 import { appendThreadMessages, decorateSession, threadMessage } from '../session.js';
 import { getStoredSession, listStoredSessions, upsertSession } from '../store.js';
 import { fallbackThreadTitle, generateFinalAnswerSummary, generateFinalTurnStatus, generateSuggestedNextSteps, generateThreadTitle, generateWorkspaceLaunchSuggestions } from '../thread-title.js';
+import { appendStoredTraceEvent } from '../trace-store.js';
 import { sleep } from './utils.js';
 
 export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAccessSession, authStorageForSession = null }) {
@@ -69,6 +70,9 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
       run.events.shift();
     }
 
+    void appendStoredTraceEvent(config, name, payload).catch((error) => {
+      console.warn(`[trace-store] Failed to persist trace event for ${name}: ${error.message}`);
+    });
     notifyRunSubscribers(name, payload);
     return payload;
   }

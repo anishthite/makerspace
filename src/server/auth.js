@@ -36,6 +36,7 @@ const CLAUDE_CODE_AUTH_PROVIDER = 'anthropic';
 const CLAUDE_CODE_USER_SECRET_KEY = 'claude-code-auth';
 const USER_PI_AUTH_PROVIDERS = [CODEX_AUTH_PROVIDER, CLAUDE_CODE_AUTH_PROVIDER];
 const GITHUB_APP_INSTALLATIONS_KEY = 'githubAppInstallations';
+const GITHUB_REPOS_CACHE_KEY = 'githubRepos';
 const DEFAULTS_CACHE_TTL_MS = 30_000;
 const AUTH_USER_CACHE_TTL_MS = 5_000;
 const CLAUDE_CODE_CLIENT_ID = Buffer.from('OWQxYzI1MGEtZTYxYi00NGQ5LTg4ZWQtNTk0NGQxOTYyZjVl', 'base64').toString('utf8');
@@ -996,18 +997,59 @@ export function createAuthService({ config, http }) {
     };
   }
 
+  function publicGitHubRepo(repo) {
+    const fullName = String(repo?.fullName || repo?.full_name || '').trim();
+    const name = String(repo?.name || fullName.split('/').pop() || '').trim();
+    if (!fullName || !name) return null;
+    const owner = repo.owner?.login || repo.owner || fullName.split('/')[0] || null;
+    return {
+      id: repo.id,
+      name,
+      fullName,
+      private: Boolean(repo.private),
+      cloneUrl: String(repo.cloneUrl || repo.clone_url || '').trim(),
+      defaultBranch: repo.defaultBranch || repo.default_branch || null,
+      visibility: repo.private ? 'private' : repo.visibility || 'public',
+      owner: owner ? String(owner) : null,
+    };
+  }
+
+  function normalizeCachedGitHubRepos(rawRepos) {
+    if (!Array.isArray(rawRepos)) return [];
+    return rawRepos.map(publicGitHubRepo).filter(Boolean);
+  }
+
+  async function cachedGitHubReposFor(sessionOrUser, connected) {
+    if (!connected) return [];
+    if (sessionOrUser?.id) return normalizeCachedGitHubRepos(await authStore.readUserKv(sessionOrUser.id, GITHUB_REPOS_CACHE_KEY, []));
+    return normalizeCachedGitHubRepos(sessionOrUser?.githubRepos);
+  }
+
+  function gitHubRepoCachePayload(repos) {
+    return {
+      repos,
+      repoCache: {
+        cached: repos.length > 0,
+        count: repos.length,
+      },
+    };
+  }
+
   async function publicGitHubAuth(sessionOrUser) {
     const maybeUser = sessionOrUser?.id ? sessionOrUser : null;
     if (maybeUser) {
       const tokenRecord = await githubOAuthTokenRecordForUser(maybeUser);
       const missingScopes = tokenRecord?.accessToken ? missingGitHubOAuthScopes(tokenRecord, GITHUB_REMOTE_GIT_SCOPES) : [];
+      const connected = Boolean(tokenRecord?.accessToken);
+      const repos = await cachedGitHubReposFor(maybeUser, connected);
       return {
         configured: githubAuthConfigured(config),
-        connected: Boolean(tokenRecord?.accessToken),
+        connected,
         needsReconnect: Boolean(missingScopes.length),
         missingScopes,
         user: publicUser(maybeUser),
         app: await publicGitHubAppAuth(maybeUser),
+        ...gitHubRepoCachePayload(repos),
       };
     }
     if (authRequired()) {
@@ -1016,14 +1058,18 @@ export function createAuthService({ config, http }) {
         connected: false,
         user: null,
         app: await publicGitHubAppAuth(null),
+        ...gitHubRepoCachePayload([]),
       };
     }
     const session = sessionOrUser;
+    const connected = Boolean(session?.githubToken);
+    const repos = await cachedGitHubReposFor(session, connected);
     return {
       configured: githubAuthConfigured(config),
-      connected: Boolean(session?.githubToken),
+      connected,
       user: session?.githubUser || null,
       app: await publicGitHubAppAuth(null),
+      ...gitHubRepoCachePayload(repos),
     };
   }
 
@@ -1034,12 +1080,16 @@ export function createAuthService({ config, http }) {
     }
 
     const repos = await listGitHubRepos(token);
-    if (user?.id) await authStore.writeUserKv(user.id, 'githubRepos', repos);
-    else writeBrowserSession(sessionId, { githubRepos: repos });
+    if (user?.id) await authStore.writeUserKv(user.id, GITHUB_REPOS_CACHE_KEY, repos);
+    else writeBrowserSession(sessionId, { [GITHUB_REPOS_CACHE_KEY]: repos });
 
     return {
       ...(await publicGitHubAuth(user || session)),
       repos,
+      repoCache: {
+        cached: false,
+        count: repos.length,
+      },
     };
   }
 
@@ -1263,7 +1313,7 @@ export function createAuthService({ config, http }) {
         avatarUrl: githubUser.avatarUrl,
       });
       await authStore.upsertOAuthToken({ userId: user.id, provider: 'github', accessToken: token, scopes: GITHUB_OAUTH_SCOPES });
-      if (!authRequired()) writeBrowserSession(login.sessionId, { githubToken: token, githubUser, githubRepos: [] });
+      if (!authRequired()) writeBrowserSession(login.sessionId, { githubToken: token, githubUser, [GITHUB_REPOS_CACHE_KEY]: [] });
 
       const sessionToken = randomBytes(32).toString('base64url');
       const sessionHash = hashAuthSessionId(sessionToken);

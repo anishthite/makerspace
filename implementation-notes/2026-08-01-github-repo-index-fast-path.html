@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — GitHub repo index fast path</title>
+<meta name="task" content="Make GitHub repo pickers usable from cached repo metadata before a full refresh completes.">
+<meta name="date-started" content="2026-08-01">
+<meta name="date-updated" content="2026-08-01">
+<meta name="status" content="ready-for-review">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,github,repo-picker,indexing,performance">
+<meta name="related" content="2026-07-14-github-repo-picker-all-repos.html,2026-08-01-local-github-repo-additive.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code { font-family: ui-monospace, Menlo, monospace; background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  ul, ol { margin: .3rem 0 .8rem 1.2rem; padding: 0; }
+  li { margin: .15rem 0; }
+  .blast-low { color: #2a7a2a; }
+  .status-in-progress { color: #b85c00; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+</style>
+</head>
+<body>
+<h1>GitHub Repo Index Fast Path</h1>
+<p class="meta"><code>agent-ui-components</code> · worktree <code>/Users/anishthite/conductor/workspaces/makerspace/tripoli</code> · 2026-08-01 · status <b class="status-in-progress">ready-for-review</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Show cached GitHub repos immediately and refresh the full repo index in the background.</div>
+  <b>Source</b><div><code>githubRepos</code> cached in user KV or browser session after prior <code>/api/github/repos</code> calls.</div>
+  <b>Surface</b><div><code>/</code>, <code>/workspace.html</code>, <code>/api/auth/github</code>, <code>/api/bootstrap?page=project</code>, <code>/api/bootstrap?page=workspace</code>.</div>
+  <b>Schema</b><div>No persisted shape change; expose cache metadata in existing JSON responses.</div>
+  <b>Open Qs</b><div>0; treat “initial loading state quicker” as first usable repo picker after auth resolves.</div>
+</div>
+<h2>API contract</h2>
+<h3>Response fragment</h3>
+<pre>{
+  github: {
+    repos: GitHubRepo[],
+    repoCache: { count: number, cached: boolean }
+  }
+}</pre>
+<h2>Algorithm</h2>
+<ol>
+  <li>Read cached repos while computing public GitHub auth status.</li>
+  <li>Render cached repos before invoking <code>/api/github/repos</code>.</li>
+  <li>Refresh all repo pages in the background and replace the cache when complete.</li>
+</ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+<tr><td><code>src/server/auth.js</code></td><td>touch</td><td>Add cached repo metadata to public GitHub auth payloads.</td></tr>
+<tr><td><code>frontend/src/runtime/project.js</code></td><td>touch</td><td>Hydrate the project repo picker from cached repos before full refresh.</td></tr>
+<tr><td><code>frontend/src/runtime/app.js</code></td><td>touch</td><td>Hydrate the workspace repo picker from cached repos before full refresh.</td></tr>
+<tr><td><code>test/codex-user-auth.test.js</code>, <code>test/project-selector-static.test.js</code></td><td>touch</td><td>Pin cached auth metadata and frontend fast-path wiring.</td></tr>
+<tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr>
+</table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr>
+<tr><td>D-001</td><td>Expose cached repos on auth payloads. The frontend already waits for auth before repo loading.</td></tr>
+<tr><td>D-002</td><td>Keep full pagination in <code>/api/github/repos</code>. A complete index is still needed for long-tail repo search.</td></tr>
+</table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+<tr><td>T-001</td><td>Cached-first hydration over server-side partial pagination. It improves first paint without changing GitHub API semantics.</td></tr>
+</table>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr>
+<tr><td><code>node --check src/github.js src/server/auth.js frontend/src/runtime/project.js frontend/src/runtime/app.js test/github.test.js test/codex-user-auth.test.js</code></td><td>Passed.</td></tr>
+<tr><td><code>node --test test/github.test.js test/codex-user-auth.test.js test/project-selector-static.test.js test/startup-bootstrap-route.test.js</code></td><td>Passed 18/18.</td></tr>
+<tr><td><code>npm run build</code></td><td>Passed with existing large-chunk warnings.</td></tr>
+<tr><td><code>npm test</code></td><td>Failed 4 unrelated static assertions in <code>test/home-runtime-summary.test.js</code> and <code>test/todo-gutter.test.js</code>.</td></tr>
+</table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Remove repo cache fields from auth payloads and restore direct picker refresh calls.</p>
+<h2>Definition of done</h2>
+<ul>
+<li>Cached repos render before the full GitHub repo refresh finishes.</li>
+<li>Manual refresh still loads the complete repo list.</li>
+<li>Focused auth/static tests and build pass.</li>
+</ul>
+</body>
+</html>

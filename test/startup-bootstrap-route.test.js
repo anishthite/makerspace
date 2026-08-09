@@ -84,6 +84,13 @@ test('startup bootstrap returns project data in one request', async () => {
     assert.equal(fastPayload.threads[0].name, 'agent-one');
     assert.equal(fastPayload.trace.steps.some((step) => step.label === 'auth.codex'), false);
     assert.equal(fastPayload.trace.steps.some((step) => step.label === 'auth.github'), false);
+
+    await writeFile(recentProjectsFile, '{"not":"an array"}\n');
+    const brokenRecentResponse = await fetch(`${baseUrl}/api/bootstrap?page=project&fast=1`, { headers: { authorization: 'Bearer test-token', 'x-spanner-session': 'browser-session-1234567890' } });
+    const brokenRecentPayload = await brokenRecentResponse.json();
+    assert.equal(brokenRecentResponse.status, 200);
+    assert.equal(brokenRecentPayload.threads[0].name, 'agent-one');
+    assert.deepEqual(brokenRecentPayload.recentProjects, []);
   } finally {
     if (server) await stopServer(server);
     await rm(tempDir, { recursive: true, force: true });
