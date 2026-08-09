@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec - ponytail root dependency prune</title>
+<meta name="task" content="Remove root-only dependency entries that duplicate narrower package ownership.">
+<meta name="date-started" content="2026-08-01">
+<meta name="date-updated" content="2026-08-01">
+<meta name="status" content="ready-for-review">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,cleanup,ponytail,dependencies,desktop">
+<meta name="related" content="2026-08-01-ponytail-ui-wrapper-prune.html,2026-08-01-ponytail-artifact-cruft-prune.html">
+<style>
+body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}
+h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}
+table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}
+th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}
+.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-ready-for-review{color:#b85c00}
+</style>
+</head>
+<body>
+<h1>ponytail root dependency prune</h1>
+<p class="meta"><code>agent-ui-components</code> · worktree <code>/Users/anishthite/conductor/workspaces/makerspace/tripoli</code> · 2026-08-01 · status <b class="status-ready-for-review">ready-for-review</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Remove a root dependency that is owned by the Cloudflare worker subpackage instead.</div>
+  <b>Source</b><div>Follow-up ponytail package audit after UI-wrapper pruning.</div>
+  <b>Surface</b><div><code>package.json</code>, <code>package-lock.json</code>, and <code>scripts/package-desktop.sh</code>.</div>
+  <b>Schema</b><div>None.</div>
+  <b>Mobile</b><div>No browser UI behavior changed.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+<tr><td><code>package.json</code>, <code>package-lock.json</code></td><td>touch</td><td>Remove root <code>@cloudflare/sandbox</code>.</td></tr>
+<tr><td><code>scripts/package-desktop.sh</code></td><td>touch</td><td>Stop copying <code>@cloudflare/sandbox</code> into the desktop runtime dependency subset.</td></tr>
+<tr><td><code>implementation-notes/2026-08-01-ponytail-root-dependency-prune.html</code></td><td>new</td><td>Record dependency ownership and verification.</td></tr>
+</table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr>
+<tr><td>D-001</td><td>Keep <code>@cloudflare/sandbox</code> in <code>cloudflare-sandbox-worker/package.json</code>. That package imports and exports the worker broker dependency.</td></tr>
+<tr><td>D-002</td><td>Remove <code>@cloudflare/sandbox</code> from the root app. Root <code>src</code> and <code>desktop</code> do not import it.</td></tr>
+<tr><td>D-003</td><td>Remove the desktop packaging whitelist entry too. The local comment says to keep only packages imported by <code>desktop/src</code>.</td></tr>
+</table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+<tr><td>T-001</td><td>Package-owned dependency over root duplication. The worker can install its own broker dependency when developed or deployed.</td></tr>
+</table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Re-run <code>npm install @cloudflare/sandbox</code> and re-add it to the desktop whitelist if root runtime code starts importing it.</p>
+<h2>Verification</h2>
+<table><tr><th>ID</th><th>Check</th><th>Result</th></tr>
+<tr><td>V-001</td><td><code>rg -n --fixed-strings "@cloudflare/sandbox" package.json package-lock.json scripts/package-desktop.sh src desktop cloudflare-sandbox-worker README.md frontend/public/sandbox-provider-guide.html --glob '!package-lock.json'</code></td><td>Pass; remaining code import is only in <code>cloudflare-sandbox-worker</code>.</td></tr>
+<tr><td>V-002</td><td><code>node --test test/frontend-route-manifest.test.js test/project-selector-static.test.js</code></td><td>Pass, 5/5.</td></tr>
+<tr><td>V-003</td><td><code>npm run build</code></td><td>Pass with existing large-chunk warning.</td></tr>
+<tr><td>V-004</td><td><code>git diff --check</code></td><td>Pass.</td></tr>
+</table>
+<h2>Followups</h2>
+<ul>
+  <li>L-001 · Run the full desktop package script only when release packaging needs a full macOS artifact check.</li>
+</ul>
+<h2>Definition of done</h2>
+<ul>
+  <li>Root package metadata no longer declares <code>@cloudflare/sandbox</code>.</li>
+  <li>Desktop runtime dependency filter no longer whitelists a worker-only package.</li>
+  <li>Build and focused tests still pass after the dependency removal.</li>
+</ul>
+</body>
+</html>

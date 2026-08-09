@@ -9,7 +9,11 @@ test('project selector offers desktop local folders', () => {
   const project = read('frontend/src/runtime/project.js');
   const onboardingContent = read('frontend/src/onboarding-content.json');
   const settingsJs = read('frontend/src/runtime/settings.js');
-  const styles = read('frontend/src/styles/app.css');
+  const styles = [
+    read('frontend/src/styles/app.css'),
+    read('frontend/src/styles/workspace.css'),
+    read('frontend/src/styles/settings.css'),
+  ].join('\n');
   const app = read('frontend/src/runtime/app.js');
 
   assert.match(pages, /project-choose-folder/);
@@ -21,11 +25,11 @@ test('project selector offers desktop local folders', () => {
   assert.doesNotMatch(pages, /project-provider-banner/);
   assert.match(project, /const repoOptions = document\.querySelector\('#project-repo-options'\)/);
   assert.match(project, /const repoTray = document\.querySelector\('#project-repo-tray'\)/);
-  assert.match(project, /repoTray\.hidden = local && canChooseFolder/);
+  assert.match(project, /repoTray\.hidden = false/);
   assert.match(project, /spannerDesktop\?\.chooseFolder/);
   assert.match(project, /function acceptsLocalFolders\(\)/);
   assert.match(project, /looksLikeLocalPath\(rawValue\) && !acceptsLocalFolders\(\)/);
-  assert.match(project, /Choose a local folder or paste its path\./);
+  assert.match(project, /Choose a local folder, pick a GitHub repo, or paste a repo URL\./);
   assert.match(project, /Pick a GitHub repo or paste a repo URL\./);
   assert.match(project, /spannerSelectedProject/);
   assert.match(project, /\/api\/recent-projects/);
@@ -35,6 +39,9 @@ test('project selector offers desktop local folders', () => {
   assert.match(project, /function unreadFinishedCount\(project, threads = \[\]\)/);
   assert.match(styles, /\.project-unread-badge \{ color: var\(--green\); \}/);
   assert.match(project, /function filterRepos\(query/);
+  assert.match(project, /let githubRepoRefreshPromise = null/);
+  assert.match(project, /function hydrateCachedGitHubRepos\(status\)/);
+  assert.match(project, /renderRepoOptions\(githubRepos, \{ refreshing: true \}\)/);
   assert.match(project, /const INITIAL_REPO_SUGGESTIONS = 12/);
   assert.match(project, /const REPO_SUGGESTION_PAGE_SIZE = 24/);
   assert.match(project, /function showMoreRepoSuggestions\(\)/);
@@ -114,14 +121,17 @@ test('project selector offers desktop local folders', () => {
   assert.match(project, /\/api\/auth\/github\/login/);
   assert.match(project, /renderGitHubSignIn\(github\)/);
   assert.match(project, /const desktop = Boolean\(globalThis\.spannerDesktop\);[\s\S]+const showGate = !desktop && providerKind !== 'local'/);
-  assert.match(project, /button\.hidden = desktop \|\| providerKind === 'local'/);
+  assert.match(project, /button\.hidden = desktop \|\| connected \|\| !status\.configured/);
   assert.match(project, /projectGrid\.hidden = showGate/);
   assert.match(app, /function startGitHubSignIn/);
   assert.match(app, /function loadWorkspaceBootstrap\(\)/);
   assert.match(app, /\/api\/bootstrap\?page=workspace/);
   assert.match(app, /renderGitHubSignIn\(status\)/);
+  assert.match(app, /let githubRepoRefreshPromise = null/);
+  assert.match(app, /function hydrateCachedGitHubRepos\(status\)/);
+  assert.match(app, /renderRepoOptions\(githubRepos, \{ refreshing: true \}\)/);
   assert.match(app, /const desktop = Boolean\(globalThis\.spannerDesktop\);[\s\S]+const showGate = !desktop && !localProvider/);
-  assert.match(app, /button\.hidden = desktop \|\| localProvider/);
+  assert.match(app, /button\.hidden = desktop \|\| connected \|\| !status\.configured/);
   assert.match(app, /threadForm\.hidden = showGate/);
   assert.doesNotMatch(pages, /md:grid-cols-\[minmax\(0,1\.05fr\)_minmax\(280px,\.7fr\)\]/);
   assert.match(pages, /id="codex"/);

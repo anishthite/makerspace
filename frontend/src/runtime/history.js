@@ -28,7 +28,12 @@ const historyStatus = doc?.querySelector('#history-status');
 const historyStatsNode = doc?.querySelector('#history-stats');
 const historyList = doc?.querySelector('#history-list');
 const historySearch = doc?.querySelector('#history-search');
+const historyFilterTabs = doc?.querySelector('#history-filter-tabs');
+const historyFilterButtons = Array.from(doc?.querySelectorAll?.('[data-history-filter]') || []);
+const historyFilterSummary = doc?.querySelector('#history-filter-summary');
+const HISTORY_FILTERS = new Set(['all', 'active', 'threads', 'sessions', 'archived', 'failed']);
 let allRows = [];
+let activeHistoryFilter = 'all';
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -37,6 +42,14 @@ function escapeHtml(value) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
+}
+
+function classToken(value) {
+  return String(value || 'unknown')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'unknown';
 }
 
 function getBrowserSessionId() {
@@ -225,14 +238,34 @@ export function historySearchText(row = {}) {
     .toLowerCase();
 }
 
+export function historyRowMatchesFilter(row = {}, filter = 'all') {
+  switch (filter) {
+    case 'active':
+      return Boolean(row.active);
+    case 'threads':
+      return row.kind === 'thread agent';
+    case 'sessions':
+      return row.kind !== 'thread agent';
+    case 'archived':
+      return Boolean(row.archived);
+    case 'failed':
+      return Boolean(row.failed);
+    default:
+      return true;
+  }
+}
+
 export function canUnarchiveHistoryRow(row = {}) {
   return Boolean(row.archived && row.href);
 }
 
-export function filterHistoryRows(rows = [], query = '') {
+export function filterHistoryRows(rows = [], query = '', filter = 'all') {
   const needle = String(query || '').trim().toLowerCase();
-  if (!needle) return rows;
-  return rows.filter((row) => historySearchText(row).includes(needle));
+  return rows.filter((row) => {
+    if (!historyRowMatchesFilter(row, filter)) return false;
+    if (!needle) return true;
+    return historySearchText(row).includes(needle);
+  });
 }
 
 function renderProject(provider) {
@@ -254,22 +287,24 @@ function renderWorkspace(project) {
 function renderStats(stats) {
   if (!historyStatsNode) return;
   const items = [
-    ['total', stats.total],
-    ['threads', stats.threads],
-    ['sessions', stats.sessions],
-    ['active', stats.active],
-    ['archived', stats.archived],
-    ['failed', stats.failed],
+    ['total', 'total', stats.total],
+    ['threads', 'threads', stats.threads],
+    ['sessions', 'sessions', stats.sessions],
+    ['active', 'active', stats.active],
+    ['archived', 'archived', stats.archived],
+    ['failed', 'failed', stats.failed],
   ];
-  historyStatsNode.innerHTML = items.map(([label, value]) => `
-    <article class="history-stat">
+  historyStatsNode.innerHTML = items.map(([key, label, value]) => `
+    <article class="history-stat history-stat-${escapeHtml(key)}">
+      <span class="history-stat-label">${escapeHtml(label)}</span>
       <strong>${escapeHtml(value)}</strong>
-      <span>${escapeHtml(label)}</span>
     </article>
   `).join('');
 }
 
 function renderHistoryCard(row) {
+  const statusClass = classToken(row.status);
+  const kindClass = classToken(row.kind);
   const dateBits = [
     row.createdAt ? `created ${formatDate(row.createdAt)}` : '',
     row.updatedAt ? `updated ${formatDate(row.updatedAt)}` : '',
@@ -277,34 +312,51 @@ function renderHistoryCard(row) {
   ].filter(Boolean);
   const repo = `${row.repo}${row.branch ? ` · ${row.branch}` : ''}`;
   const restoreButton = canUnarchiveHistoryRow(row)
-    ? `<button class="textbtn restore-thread" type="button" data-unarchive-thread="${escapeHtml(row.name)}">restore to workspace</button>`
+    ? `<button class="textbtn restore-thread" type="button" data-unarchive-thread="${escapeHtml(row.name)}">restore</button>`
     : '';
   const title = row.href
-    ? `<a href="${escapeHtml(row.href)}">${escapeHtml(row.title)}</a>`
-    : escapeHtml(row.title);
+    ? `<a class="history-title-link" href="${escapeHtml(row.href)}">${escapeHtml(row.title)}</a>`
+    : `<span>${escapeHtml(row.title)}</span>`;
+  const openAction = row.href
+    ? `<a class="textbtn history-open" href="${escapeHtml(row.href)}">open</a>`
+    : '';
+  const prompt = firstLine(row.prompt).slice(0, 260);
   return `
-    <article class="history-card ${escapeHtml(row.status)}" data-archived="${row.archived}">
-      <span class="status-dot" aria-hidden="true"></span>
+    <article class="history-card ${statusClass}" data-archived="${row.archived}" data-status="${escapeHtml(row.status)}" data-kind="${escapeHtml(kindClass)}">
       <div class="history-card-main">
-        <div class="history-card-title">
-          <strong>${title}</strong>
-          <span class="history-badges"><span class="badge">${escapeHtml(row.kind)}</span><span class="badge ${escapeHtml(row.status)}">${escapeHtml(row.status)}</span>${row.archived ? '<span class="badge">archived</span>' : ''}${restoreButton}</span>
+        <div class="history-card-head">
+          <div class="history-title-block">
+            <h3 class="history-card-title"><span class="status-dot" aria-hidden="true"></span>${title}</h3>
+            <p class="history-overline"><span>${escapeHtml(row.kind)}</span><span>${escapeHtml(row.status)}</span>${row.archived ? '<span>archived</span>' : ''}</p>
+          </div>
+          <div class="history-card-actions">${restoreButton}${openAction}</div>
         </div>
-        <p class="history-repo">${escapeHtml(repo)}</p>
-        ${row.prompt ? `<p class="history-prompt">${escapeHtml(firstLine(row.prompt).slice(0, 220))}</p>` : ''}
-        <p class="history-meta">${escapeHtml(dateBits.join(' · ') || row.name)}</p>
+        ${prompt ? `<p class="history-prompt">${escapeHtml(prompt)}</p>` : ''}
+        <div class="history-details">
+          <span class="history-repo" title="${escapeHtml(repo)}">${escapeHtml(repo)}</span>
+          <span class="history-meta">${escapeHtml(dateBits.join(' · ') || row.name)}</span>
+        </div>
       </div>
     </article>
   `;
 }
 
 function renderRows() {
-  const filtered = filterHistoryRows(allRows, historySearch?.value || '');
+  const filtered = filterHistoryRows(allRows, historySearch?.value || '', activeHistoryFilter);
+  const filterLabel = activeHistoryFilter === 'all' ? 'all history' : activeHistoryFilter;
   if (historyStatus) historyStatus.textContent = `${filtered.length} shown · ${allRows.length} saved`;
+  if (historyFilterSummary) historyFilterSummary.textContent = `${filterLabel} · ${filtered.length} shown`;
   if (!historyList) return;
   historyList.innerHTML = filtered.length
     ? filtered.map(renderHistoryCard).join('')
     : '<p class="empty-state">No saved agents match that search.</p>';
+}
+
+function renderFilterTabs() {
+  for (const button of historyFilterButtons) {
+    const active = button.dataset.historyFilter === activeHistoryFilter;
+    button.setAttribute('aria-pressed', active ? 'true' : 'false');
+  }
 }
 
 async function restoreArchivedThread(name, button) {
@@ -346,6 +398,14 @@ async function initHistory() {
 }
 
 historySearch?.addEventListener('input', renderRows);
+historyFilterTabs?.addEventListener('click', (event) => {
+  const button = event.target?.closest?.('[data-history-filter]');
+  const filter = button?.dataset?.historyFilter || 'all';
+  if (!button || !HISTORY_FILTERS.has(filter)) return;
+  activeHistoryFilter = filter;
+  renderFilterTabs();
+  renderRows();
+});
 historyList?.addEventListener('click', (event) => {
   const button = event.target?.closest?.('[data-unarchive-thread]');
   if (!button) return;

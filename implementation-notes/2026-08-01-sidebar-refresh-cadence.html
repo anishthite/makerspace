@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec - sidebar refresh cadence</title>
+<meta name="task" content="Make global sidebar refreshes less visually noisy and avoid duplicate thread polling.">
+<meta name="date-started" content="2026-08-01">
+<meta name="date-updated" content="2026-08-01">
+<meta name="status" content="ready-for-review">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,ui,sidebar,refresh,polling">
+<meta name="related" content="2026-07-31-persistent-global-sidebar-shell.html,2026-07-30-global-t3-sidebar-shell.html,2026-07-30-explicit-sidebar-settle.html">
+<style>
+body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:920px;margin:1.5rem auto;padding:0 1rem;color:#111}
+h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}
+table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}
+th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}
+.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px}.blast-low{color:#2a7a2a}.status-in-progress{color:#b85c00}.status-ready-for-review{color:#b85c00}
+</style>
+</head>
+<body>
+<h1>sidebar refresh cadence</h1>
+<p class="meta"><code>agent-ui-components</code> - worktree <code>/Users/anishthite/conductor/workspaces/makerspace/tripoli</code> - 2026-08-01 - status <b class="status-ready-for-review">ready-for-review</b> - blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Reduce sidebar visual refreshes while preserving current agent status updates.</div>
+  <b>Source</b><div>User reported the sidebar update feels weird and refreshes too often.</div>
+  <b>Surface</b><div><code>/</code>, <code>/workspace.html</code>, <code>/thread.html</code>, <code>/history.html</code>, <code>/settings.html</code>, <code>/performance.html</code>.</div>
+  <b>Schema</b><div>No API or stored-data change.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+<h2>Algorithm</h2>
+<ol>
+  <li>Build a sidebar signature from row fields plus local search, scope, settled, seen, and current-route state.</li>
+  <li>Skip <code>innerHTML</code> replacement when the signature is unchanged.</li>
+  <li>Update active runtime labels at minute granularity on a slower timer.</li>
+  <li>Route sidebar-owned thread payloads through toast notification state instead of running a second thread poller.</li>
+</ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+<tr><td><code>frontend/src/runtime/app.js</code></td><td>touch</td><td>Skip unchanged workspace sidebar redraws and slow active label ticks.</td></tr>
+<tr><td><code>frontend/src/runtime/project.js</code></td><td>touch</td><td>Skip unchanged project sidebar redraws, slow sidebar polling, and publish payloads to toasts.</td></tr>
+<tr><td><code>frontend/src/runtime/global-sidebar.js</code></td><td>touch</td><td>Skip unchanged global sidebar redraws, slow sidebar polling, and publish payloads to toasts.</td></tr>
+<tr><td><code>frontend/src/runtime/agent-toasts.js</code></td><td>touch</td><td>Export the existing notification reducer for sidebar pollers.</td></tr>
+<tr><td><code>frontend/src/entry.jsx</code></td><td>touch</td><td>Do not start the standalone toast watcher on pages with thread-list pollers.</td></tr>
+<tr><td><code>frontend/src/styles/app.css</code></td><td>touch</td><td>Remove the leftover project-scope pseudo icon override so letter avatars render cleanly.</td></tr>
+<tr><td><code>test/home-runtime-summary.test.js</code></td><td>touch</td><td>Pin calmer sidebar cadence and shared toast payload handling.</td></tr>
+<tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr>
+</table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice - Rationale</th></tr>
+<tr><td>D-001</td><td>Skip redraws with a local signature. The current renderer owns full markup strings and can avoid DOM replacement without a component refactor.</td></tr>
+<tr><td>D-002</td><td>Keep workspace data polling at <code>10s</code>. The workspace launcher and toasts already depend on that broader refresh path.</td></tr>
+</table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected - Reason</th></tr>
+<tr><td>T-001</td><td>Signature guard over row-by-row diffing. The sidebar has small lists and needs fewer mount resets, not a virtual list.</td></tr>
+<tr><td>T-002</td><td><code>30s</code> sidebar-only polling over <code>10s</code>. Thread pages already stream their active thread, and inactive pages do not need fast sidebar refetches.</td></tr>
+</table>
+<h2>Assumptions</h2>
+<ul><li>A-001 · “Refreshing too often” means visible list churn and duplicate thread polling. If wrong: adjust only the interval constants.</li></ul>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Revert the runtime cadence guards, toast export, entry gate, test assertions, and this note row.</p>
+<h2>Verification</h2>
+<table><tr><th>ID</th><th>Check</th><th>Result</th></tr>
+<tr><td>V-001</td><td><code>node --check frontend/src/runtime/agent-toasts.js frontend/src/runtime/global-sidebar.js frontend/src/runtime/project.js frontend/src/runtime/app.js</code></td><td>Pass.</td></tr>
+<tr><td>V-002</td><td><code>node --test test/home-runtime-summary.test.js test/project-selector-static.test.js</code></td><td>Pass, 19/19.</td></tr>
+<tr><td>V-003</td><td><code>git diff --check</code></td><td>Pass.</td></tr>
+<tr><td>V-004</td><td><code>npm run build</code></td><td>Pass with existing large-chunk warning.</td></tr>
+<tr><td>V-005</td><td><code>npm test</code></td><td>Pass, 314/314.</td></tr>
+</table>
+<h2>Definition of done</h2>
+<ul>
+  <li>Sidebar list DOM is not replaced when the polled thread payload is unchanged.</li>
+  <li>Active sidebar runtime labels do not visibly tick every second.</li>
+  <li>Pages with sidebar pollers do not also start the standalone toast watcher.</li>
+  <li>Focused tests, build, and whitespace check pass.</li>
+</ul>
+</body>
+</html>

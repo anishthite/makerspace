@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Agent Elements demo</title>
+<meta name="task" content="Add a small mocked agent UI demo page using AI Elements-style components.">
+<meta name="date-started" content="2026-07-29">
+<meta name="date-updated" content="2026-07-29">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,ui,agent,ai-elements,demo,react">
+<meta name="related" content="2026-07-13-literal-trace-components-board.html,2026-07-13-agent-trace-tool-card-mockup.html,2026-07-16-todo-gutter.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code { font-family: ui-monospace, Menlo, monospace; background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  ul, ol { margin: .3rem 0 .8rem 1.2rem; padding: 0; }
+  li { margin: .15rem 0; }
+  .blast-low { color: #2a7a2a; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>Agent Elements demo</h1>
+<p class="meta"><code>agent-ui-components</code> · worktree <code>/Users/anishthite/conductor/workspaces/makerspace/tripoli</code> · 2026-07-29 · status <b>shipped</b> · blast <span class="blast-low">low</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Ship a standalone mock page that shows an agent thread close to the attached Conductor/ChatGPT dark transcript reference.</div>
+  <b>Source</b><div>Mocked local React state; no backend calls.</div>
+  <b>Surface</b><div><code>/agent-elements-demo.html</code>.</div>
+  <b>Schema</b><div>None.</div>
+  <b>Mobile</b><div>Constrain command, URL, and code pills inside the viewport; keep composer visible.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>UI layout</h2>
+<ol>
+  <li><b>Shell</b>: render a dark tab strip, scrollable transcript, and fixed bottom composer.</li>
+  <li><b>Thread</b>: open at the latest turn with final answer and verification visible.</li>
+  <li><b>Agent parts</b>: use minimal tool-call rows and inline command pills instead of cards.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>frontend/src/components/ai-elements/artifact.jsx</code></td><td>new</td><td>Add JSX port of the AI Elements artifact primitive.</td></tr>
+  <tr><td><code>frontend/src/components/ai-elements/file-tree.jsx</code></td><td>new</td><td>Add JSX port of the AI Elements file tree primitive.</td></tr>
+  <tr><td><code>frontend/src/components/ai-elements/plan.jsx</code></td><td>new</td><td>Add JSX port of the AI Elements plan primitive.</td></tr>
+  <tr><td><code>frontend/src/components/ai-elements/task.jsx</code></td><td>new</td><td>Add JSX port of the AI Elements task primitive.</td></tr>
+  <tr><td><code>frontend/src/components/ai-elements/terminal.jsx</code></td><td>new</td><td>Add JSX port of the AI Elements terminal primitive.</td></tr>
+  <tr><td><code>frontend/src/agent-elements-demo-page.jsx</code></td><td>new</td><td>Compose the mocked dark transcript with tool-call rows, URL pill, verification list, and composer.</td></tr>
+  <tr><td><code>frontend/src/styles/agent-elements-demo.css</code></td><td>new</td><td>Scope the dark Conductor/ChatGPT transcript styling and mobile pill containment.</td></tr>
+  <tr><td><code>frontend/agent-elements-demo.html</code></td><td>new</td><td>Add a Vite HTML entry for the demo route.</td></tr>
+  <tr><td><code>frontend/src/pages.jsx</code></td><td>touch</td><td>Register the demo page in the React page map.</td></tr>
+  <tr><td><code>frontend/route-manifest.json</code></td><td>touch</td><td>List the demo route in the route inventory.</td></tr>
+  <tr><td><code>vite.config.js</code></td><td>touch</td><td>Include the demo route in production builds.</td></tr>
+  <tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Add a standalone route. The current thread runtime stays untouched.</td></tr>
+  <tr><td>D-002</td><td>Use selected source primitives over the full AI SDK component set. A demo should not force a backend transport rewrite.</td></tr>
+  <tr><td>D-003</td><td>Use existing <code>@phosphor-icons/react</code> icons. The repo already standardizes shadcn output on Phosphor.</td></tr>
+  <tr><td>D-004</td><td>Scope demo CSS under <code>.chat-demo</code>. The app has broad <code>h1</code> and <code>button:not(...)</code> rules that distorted the first pass.</td></tr>
+  <tr><td>D-005</td><td>Supersedes D-002 layout use: model the page after assistant-ui <code>Thread</code> primitives. The user asked for a closer Conductor/ChatGPT approximation.</td></tr>
+  <tr><td>D-006</td><td>Supersedes D-005 visual density: use the attached dark transcript reference. The card-based plan/tool/terminal treatment remained too component-demo-like.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td>Phosphor icon adaptation over adding <code>lucide-react</code>. The demo keeps dependency churn at zero.</td></tr>
+  <tr><td>T-002</td><td>Mocked interval state over a fake SSE route. The goal is visual evaluation, not protocol testing.</td></tr>
+  <tr><td>T-003</td><td>Local mock shell over installing <code>@assistant-ui/react</code>. The library is the better full implementation target, but a demo route should not add runtime state dependencies.</td></tr>
+  <tr><td>T-004</td><td>Transcript-native tool rows over AI Elements cards. The screenshot’s quality comes from restraint and message rhythm.</td></tr>
+</table>
+
+<h2>Assumptions</h2>
+<ul>
+  <li>A-001 · “Actual components” permits local source primitives and component-accurate layout. If wrong: replace the subset with a full assistant-ui or shadcn registry install.</li>
+</ul>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Delete the route, page, and local primitives to revert.</p>
+
+<h2>Verification</h2>
+<table>
+  <tr><th>Check</th><th>Result</th></tr>
+  <tr><td><code>npm run build</code></td><td>Passed.</td></tr>
+  <tr><td>Playwright desktop smoke on <code>/agent-elements-demo.html</code></td><td>Passed; page renders with populated snapshot.</td></tr>
+  <tr><td>Playwright mobile geometry at <code>390x844</code></td><td>Passed; <code>scrollWidth === clientWidth</code> and no console errors.</td></tr>
+  <tr><td>Chrome visual polish pass after user screenshot</td><td>Passed; route now uses centered transcript, quiet conversation rail, compact header, embedded plan/tools/terminal, and bottom composer.</td></tr>
+  <tr><td>Chrome mobile pass after assistant-ui layout recut</td><td>Passed; <code>390x844</code> has no horizontal overflow and task status text is not clipped.</td></tr>
+  <tr><td>Chrome dark transcript pass after attached reference</td><td>Passed; desktop opens at the latest turn with visible composer and no horizontal overflow.</td></tr>
+  <tr><td>Chrome mobile dark transcript pass</td><td>Passed; <code>390x844</code> has no document overflow, visible composer, and contained URL/code pills.</td></tr>
+</table>
+
+<h2>Definition of done</h2>
+<ul>
+  <li><code>/agent-elements-demo.html</code> renders a mocked assistant-ui-style agent thread.</li>
+  <li><code>npm run build</code> passes.</li>
+  <li>Browser smoke confirms desktop and mobile page content is visible.</li>
+</ul>
+</body>
+</html>

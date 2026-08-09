@@ -186,6 +186,21 @@
       "mode": "react"
     },
     {
+      "route": "/trace-components.html",
+      "file": "trace-components.html",
+      "mode": "react"
+    },
+    {
+      "route": "/agent-elements-demo.html",
+      "file": "agent-elements-demo.html",
+      "mode": "react"
+    },
+    {
+      "route": "/assistant-ui-components.html",
+      "file": "assistant-ui-components.html",
+      "mode": "react"
+    },
+    {
       "route": "/workspace.html",
       "file": "workspace.html",
       "mode": "react"

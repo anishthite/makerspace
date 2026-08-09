@@ -11,7 +11,10 @@ const openuiRenderer = readFileSync(new URL('../frontend/src/runtime/openui-rend
 const artifactUtils = readFileSync(new URL('../frontend/src/runtime/excalidraw-artifacts.js', import.meta.url), 'utf8');
 const routes = readFileSync(new URL('../src/server/routes.js', import.meta.url), 'utf8');
 const threadService = readFileSync(new URL('../src/server/threads.js', import.meta.url), 'utf8');
-const css = readFileSync(new URL('../frontend/src/styles/app.css', import.meta.url), 'utf8');
+const css = [
+  readFileSync(new URL('../frontend/src/styles/app.css', import.meta.url), 'utf8'),
+  readFileSync(new URL('../frontend/src/styles/thread.css', import.meta.url), 'utf8'),
+].join('\n');
 
 test('thread tool trace is wired to the inline trace timeline', () => {
   assert.match(pages, /id="timeline"/);
@@ -62,12 +65,20 @@ test('thread page reload fetches fresh worker trace state', () => {
   assert.match(js, /cache: 'no-store'/);
 });
 
-test('workflow trace shows thinking steps and answer summaries', () => {
+test('thread output replays stored trace events without advancing stream cursor', () => {
+  assert.match(routes, /readStoredTraceEvents/);
+  assert.match(routes, /mergeTraceEvents\(storedEvents, run\.events\)/);
+  assert.match(js, /if \(event\.historical\) \{/);
+  assert.match(js, /if \(event\?\.historical\) return;/);
+  assert.match(js, /if \(appendTranscript && !event\.historical\) appendAssistantChunk\(event\.chunk\)/);
+});
+
+test('workflow trace interlaces thinking entries and answer summaries chronologically', () => {
   assert.match(pages, /<span>workflow trace<\/span><strong>events<\/strong>/);
-  assert.match(js, /const thinkingCards = new Map\(\)/);
   assert.match(js, /function renderTimelineThinkingEvent/);
-  assert.match(js, /const key = thinkingTraceKey\(event\)/);
-  assert.match(js, /thinking steps/);
+  assert.match(js, /article\.innerHTML = '<div class="thinking-card"><div class="thinking-body"><\/div><\/div>'/);
+  assert.match(js, /renderThinkingBody\(article\.querySelector\('\.thinking-body'\), text\);\n\s*traceTimeline\.append\(article\)/);
+  assert.doesNotMatch(js, /thinkingCards|thinkingTraceKey/);
   assert.match(js, /function renderTimelineSummaryEvent/);
   assert.match(js, /event\.type === 'answer_summary' && isNewEvent/);
   assert.match(js, /renderTimelineThinkingEvent\(event\)/);
@@ -76,26 +87,23 @@ test('workflow trace shows thinking steps and answer summaries', () => {
   assert.doesNotMatch(js, /data-thinking-time/);
 });
 
-test('thinking trace keys separate messages inside one run', () => {
-  const start = js.indexOf('function traceRunKey');
-  const end = js.indexOf('function renderTimelineThinkingEvent');
+test('tool stream phases preserve structured arguments through the end event', () => {
+  const start = js.indexOf('function mergeToolEvent');
+  const end = js.indexOf('function normalizedToolName');
   assert.notEqual(start, -1);
   assert.notEqual(end, -1);
   const context = {};
   runInNewContext(`
-    let currentThread = { bridgeRunId: 'run-same' };
-    function currentRunId(thread) { return String(thread?.bridgeRunId || thread?.submittedAtMs || ''); }
+    const toolEventSnapshots = new Map();
+    function toolKey(event) { return event.toolCallId; }
     ${js.slice(start, end)}
-    globalThis.result = [
-      thinkingTraceKey({ type: 'thinking', runId: 'run-same', messageTimestamp: 111, contentIndex: 0 }),
-      thinkingTraceKey({ type: 'thinking', runId: 'run-same', messageTimestamp: 222, contentIndex: 0 }),
-      thinkingTraceKey({ type: 'thinking', runId: 'run-same', messageTimestamp: 111, contentIndex: 0 }),
-      thinkingTraceKey({ type: 'thinking', runId: 'run-same' }),
-    ];
+    mergeToolEvent({ toolCallId: 'call-1', toolName: 'read', phase: 'planned', args: { path: 'src/app.js', limit: 12 } });
+    globalThis.result = mergeToolEvent({ toolCallId: 'call-1', toolName: 'read', phase: 'end', args: null, output: 'done', isError: false });
   `, context);
-  assert.notEqual(context.result[0], context.result[1]);
-  assert.equal(context.result[0], context.result[2]);
-  assert.equal(context.result[3], 'run-same');
+  assert.equal(context.result.args.path, 'src/app.js');
+  assert.equal(context.result.args.limit, 12);
+  assert.equal(context.result.output, 'done');
+  assert.equal(context.result.phase, 'end');
 });
 
 test('workflow rail renders workflow agents, not generic tool calls', () => {
@@ -123,14 +131,20 @@ test('workflow rail renders workflow agents, not generic tool calls', () => {
   assert.doesNotMatch(js, /workflow trace · click to expand/);
 });
 
-test('thread main header spans above the sidebar', () => {
+test('thread main header spans above the right workflow rail', () => {
   const headerIndex = pages.indexOf('className="thread-main-header"');
   const sidebarIndex = pages.indexOf('<aside className="agent-column"');
   const workspaceIndex = pages.indexOf('<section className="flow-wrap thread-workspace"');
   assert.ok(headerIndex > -1 && headerIndex < sidebarIndex);
   assert.ok(sidebarIndex < workspaceIndex);
-  assert.match(pages, /<div className="thread-main-row[^"]*">[\s\S]+href="\/workspace\.html"[\s\S]+id="thinking-title"[\s\S]+id="archive-thread"[\s\S]+<\/div>/);
+  assert.match(pages, /<div className="thread-main-row[^"]*">[\s\S]+href="\/"[\s\S]+id="thinking-title"[\s\S]+id="archive-thread"[\s\S]+<\/div>/);
   assert.match(css, /\.thread-main-header \{ position: sticky; top: 0; z-index: 20; grid-column: 1 \/ -1; [^}]*display: grid/);
+  assert.match(css, /\.thread-stage \{[^}]*grid-template-columns: minmax\(0, 1fr\) minmax\(190px, 250px\)/);
+  assert.match(css, /\.flow-wrap \{[^}]*grid-column: 1;[^}]*grid-row: 2/);
+  assert.match(css, /\.agent-column \{[^}]*grid-column: 2;[^}]*grid-row: 2/);
+  assert.match(css, /body\.thread-page \.thread-stage \{[^}]*grid-template-rows: auto minmax\(0, 1fr\);[^}]*align-content: start/);
+  assert.match(css, /body\.thread-page \.flow-wrap\.thread-workspace \{[^}]*display: flex;[^}]*flex-direction: column;[^}]*min-height: 100%/);
+  assert.match(css, /body\.thread-page \.flow-composer \{[^}]*margin-top: auto/);
   assert.match(css, /\.thread-main-row \{ display: flex; align-items: center/);
   assert.match(css, /\.thread-main-row h1 \{[^}]*font-size: clamp\(20px, 2\.2vw, 28px\)/);
   assert.doesNotMatch(components, /now-card flow-card/);
@@ -167,16 +181,60 @@ test('changes summary counts edited files and changed lines', () => {
   assert.equal(context.result, '2 files edited · 3 lines');
 });
 
-test('tool rows show one-line action copy with the target path or search scope', () => {
+test('tool rows preserve generic action copy and use typed chips for known tools', () => {
   assert.match(js, /function toolTarget/);
   assert.match(js, /function toolAction/);
   assert.match(js, /\['path', 'file_path', 'file', 'filename'\]/);
   assert.match(js, /toolName\?\.includes\('grep'\)/);
   assert.match(js, /data-tool-action/);
   assert.match(js, /display\.action \|\| node\.dataset\.toolAction/);
-  assert.match(js, /node\.querySelector\('\[data-tool-action\]'\)\.textContent = action/);
+  assert.match(js, /node\.querySelector\('\[data-tool-action\]'\)\.textContent = \['tool', 'workflow'\]\.includes\(kind\) \? action : ''/);
+  assert.match(js, /function toolSummaryPillsHtml/);
   assert.match(js, /return \['Working', action\]/);
   assert.match(css, /\.tool-target/);
+});
+
+test('thread trace tools render assistant-ui style typed bodies', () => {
+  assert.match(js, /function toolUiKind/);
+  assert.match(js, /function renderToolDetailHtml/);
+  assert.match(js, /data-tool-kind/);
+  assert.match(js, /const TRACE_ICON_PATHS =/);
+  assert.match(js, /function traceIconHtml/);
+  assert.match(js, /node\.querySelector\('\.tool-kind-mark'\)\.innerHTML = traceIconHtml\(kind\)/);
+  assert.match(js, /traceIconHtml\('complete'\)/);
+  assert.match(js, /tool-summary-pills/);
+  assert.match(js, /tool-diff-viewer/);
+  assert.match(js, /tool-terminal/);
+  assert.match(js, /tool-search-results/);
+  assert.match(js, /tool-json-grid/);
+  assert.match(js, /shouldOpenToolCard\(kind, state, detailHtml\)/);
+  assert.match(js, /const toolEventSnapshots = new Map\(\)/);
+  assert.match(js, /function mergeToolEvent/);
+  assert.match(js, /traceTimeline\.append\(article\)/);
+  assert.match(js, /if \(event\.phase === 'update'\)/);
+  assert.match(js, /if \(event\.phase === 'end'\)/);
+  assert.doesNotMatch(js, /function ensureTraceToolGroup/);
+  assert.match(js, /function settleTraceRun/);
+  assert.match(js, /event\.done \|\| event\.runStatus === 'completed' \|\| event\.runStatus === 'failed'\) \{\n\s*settleTraceRun\(event\)/);
+  assert.match(css, /body\.thread-page \.trace-tool-card/);
+  assert.match(css, /\.tool-kind-mark/);
+  assert.match(css, /\.trace-tool-card\[data-tool-kind="search"\] \.tool-kind-mark/);
+  assert.match(css, /\.trace-tool-card\[data-tool-kind\] \.tool-kind-mark::before \{[\s\S]*content: none/);
+  assert.doesNotMatch(css, /body\.thread-page \.trace-tool-card \.tool-kind-mark \{\s*display: none/);
+  assert.match(css, /The live trace is a chronological transcript/);
+  assert.match(css, /\.tool-diff-viewer/);
+  assert.match(css, /\.tool-terminal/);
+  assert.match(css, /\.tool-search-result-card/);
+  assert.match(css, /\.tool-json-grid/);
+});
+
+test('thread opens as an edge-to-edge assistant surface with an on-demand inbox', () => {
+  assert.match(pages, /function GlobalAppShell\(\{ children, sidebarWorkspaceSwitcher = true, sidebarDefaultOpen = true/);
+  assert.match(pages, /<GlobalAppShell sidebarWorkspaceSwitcher=\{false\} sidebarDefaultOpen=\{false\} insetClassName="global-app-center">/);
+  assert.match(css, /body\.thread-page \.thread-stage \{[\s\S]*grid-template-columns: minmax\(0, 1fr\) 382px/);
+  assert.match(css, /body\.thread-page \.conversation-main > \.timeline-flow,[\s\S]*width: min\(100%, 1060px\)/);
+  assert.match(css, /body\.thread-page \.agent-column \{[\s\S]*max-height: 100svh/);
+  assert.match(css, /@media \(max-width: 1040px\)/);
 });
 
 test('assistant card waits for output instead of showing a working placeholder', () => {
@@ -211,6 +269,8 @@ test('running thread composer labels steer and follow-up delivery', () => {
   assert.match(js, /nextSubmitDelivery = 'followUp'/);
   assert.match(js, /const delivery = nextSubmitDelivery === 'followUp' \? 'followUp' : canSendActiveDelivery\(\) \? 'steer' : 'auto'/);
   assert.match(js, /delivery,\s*submittedAtMs/);
+  assert.match(js, /const sendButtonIcon = sendButton\?\.querySelector\('svg'\)\?\.cloneNode\(true\) \|\| null/);
+  assert.match(js, /sendButton\.setAttribute\('aria-label', label\)/);
   assert.match(js, /if \(!activeDelivery\) activeRunSummaryMarker = appendRunSummaryMarker/);
   assert.match(js, /event\.type === 'queue'\) updateQueueState\(event\)/);
 });
@@ -288,8 +348,10 @@ test('assistant text links render and OpenUI URL actions open externally', () =>
   assert.match(js, /import \{ openSafeLink, renderLinkedText \} from '\.\/link-rendering\.js'/);
   assert.match(js, /renderLinkedText\(node, displayText\)/);
   assert.match(js, /a\.rendered-link/);
+  assert.match(js, /link\.dataset\.linkKind === 'local'/);
   assert.match(js, /void openSafeLink\(link\.getAttribute\('href'\)\)/);
   assert.match(css, /\.message-body a\.rendered-link/);
+  assert.match(css, /\.message-body a\.rendered-link\[data-link-kind="local"\]/);
   assert.match(openuiRenderer, /event\?\.type === 'open_url'/);
   assert.match(openuiRenderer, /void openSafeLink\(event\.params\?\.url\)/);
 });
@@ -310,9 +372,12 @@ test('openui fenced blocks render after assistant message text without extra chr
 
 test('opening a populated thread scrolls back to the latest user turn', () => {
   assert.match(js, /let initialResumeScrollDone = false/);
+  assert.match(js, /function isTerminalStatus\(status\)/);
   assert.match(js, /function restoreInitialThreadPosition\(\)/);
   assert.match(js, /timeline\.querySelectorAll\('\.message-item\.user'\)/);
-  assert.match(js, /timeline\.querySelector\('\.message-item\.assistant'\)/);
+  assert.match(js, /const hasAssistantTurn = Boolean\(timeline\.querySelector\('\.message-item\.assistant'\)\)/);
+  assert.match(js, /const hasTerminalSinglePrompt = userMessages\.length === 1 && isTerminalStatus\(effectiveStatus\(currentThread\)\)/);
+  assert.match(js, /!hasAssistantTurn && userMessages\.length < 2 && !hasTerminalSinglePrompt/);
   assert.match(js, /target\.getBoundingClientRect\(\)\.top \+ window\.scrollY - offset/);
   assert.match(js, /const \{ thread, output \} = await loadThreadBootstrap\(\);\n\s*restoreInitialThreadPosition\(\);/);
   assert.match(js, /if \(output\.deferred\) \{\n\s*void loadOutput\(\)\n\s*\.then\(\(\) => restoreInitialThreadPosition\(\)\)/);

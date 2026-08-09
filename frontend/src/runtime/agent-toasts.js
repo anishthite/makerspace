@@ -118,9 +118,13 @@ function notifyFinishedThreads(threads) {
   loadedThreadSnapshot = true;
 }
 
+export function notifyAgentThreads(threads) {
+  notifyFinishedThreads(Array.isArray(threads) ? threads : []);
+}
+
 async function loadThreadsForToasts() {
   const payload = await fetchJson('/api/threads');
-  notifyFinishedThreads(payload.threads || []);
+  notifyAgentThreads(payload.threads || []);
 }
 
 export function startAgentToastWatcher() {

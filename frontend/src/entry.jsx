@@ -6,8 +6,6 @@ import { pages } from './pages.jsx';
 import { initSpannerAnalytics } from './lib/posthog.js';
 import { applyAppearance } from './runtime/appearance.js';
 import { startAgentToastWatcher } from './runtime/agent-toasts.js';
-import './styles/app.css';
-import './styles/fluid-ui.css';
 
 const MAIN_PAGE_PATH = '/workspace.html';
 
@@ -21,6 +19,40 @@ const runtimeLoaders = {
   desktop: () => import('./runtime/desktop.js'),
 };
 
+function loadStyles(...loaders) {
+  return loaders.reduce((ready, loadStyle) => ready.then(loadStyle), Promise.resolve());
+}
+
+const appBaseStyles = () => import('./styles/app.css');
+const appCompatStyles = () => import('./styles/app-compat.css');
+const fluidUiStyles = () => import('./styles/fluid-ui.css');
+const workspaceStyles = () => import('./styles/workspace.css');
+
+function loadCoreStyles(...routeStyles) {
+  return loadStyles(appBaseStyles, ...routeStyles, appCompatStyles, fluidUiStyles);
+}
+
+function loadDemoStyles(routeStyles) {
+  return loadStyles(appBaseStyles, appCompatStyles, fluidUiStyles, routeStyles);
+}
+
+const routeStyleLoaders = {
+  project: () => loadCoreStyles(workspaceStyles),
+  workspace: () => loadCoreStyles(workspaceStyles),
+  thread: () => loadCoreStyles(workspaceStyles, () => import('./styles/thread.css')),
+  traceComponents: () => loadCoreStyles(workspaceStyles, () => import('./styles/thread.css')),
+  settings: () => loadCoreStyles(workspaceStyles, () => import('./styles/settings.css')),
+  history: () => loadCoreStyles(workspaceStyles, () => import('./styles/history.css')),
+  performance: () => loadCoreStyles(workspaceStyles, () => import('./styles/performance.css')),
+  desktop: () => loadCoreStyles(workspaceStyles),
+  onboardingEditor: () => loadCoreStyles(workspaceStyles),
+  agentElementsDemo: () => loadDemoStyles(() => import('./styles/agent-elements-demo.css')),
+  assistantUiComponents: () => loadDemoStyles(() => import('./styles/assistant-ui-components.css')),
+};
+
+const sidebarRuntimePages = new Set(['settings', 'history', 'performance']);
+const threadPollingRuntimePages = new Set(['project', 'workspace', 'thread', ...sidebarRuntimePages]);
+
 function App({ page }) {
   const Page = pages[page] || pages.project;
 
@@ -31,6 +63,21 @@ function App({ page }) {
     loadRuntime().catch((error) => {
       if (!cancelled) console.error(`Could not load ${page} behavior.`, error);
     });
+    return () => {
+      cancelled = true;
+    };
+  }, [page]);
+
+  useEffect(() => {
+    if (!sidebarRuntimePages.has(page)) return undefined;
+    let cancelled = false;
+    import('./runtime/global-sidebar.js')
+      .then(({ startGlobalSidebar }) => {
+        if (!cancelled) startGlobalSidebar();
+      })
+      .catch((error) => {
+        if (!cancelled) console.error('Could not load global sidebar behavior.', error);
+      });
     return () => {
       cancelled = true;
     };
@@ -71,11 +118,16 @@ function openMainPageFromToastKey(event) {
 applyAppearance();
 const root = document.querySelector('#root');
 const page = document.body?.dataset?.reactPage || 'project';
+const routeStylesReady = (routeStyleLoaders[page] || routeStyleLoaders.project)().catch((error) => {
+  console.error(`Could not load ${page} route styles.`, error);
+});
 void initSpannerAnalytics({ page });
 document.addEventListener('click', openMainPageFromToast);
 document.addEventListener('keydown', openMainPageFromToastKey);
-if (page !== 'workspace') startAgentToastWatcher();
+if (!threadPollingRuntimePages.has(page)) startAgentToastWatcher();
 const reactRoot = root.__spannerRoot || createRoot(root);
 root.__spannerRoot = reactRoot;
 
-reactRoot.render(<App page={page} />);
+routeStylesReady.finally(() => {
+  reactRoot.render(<App page={page} />);
+});

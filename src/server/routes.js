@@ -5,6 +5,7 @@ import { listRecentProjects, saveRecentProject } from '../recent-projects.js';
 import { report } from '../report.js';
 import { readAppSettings, saveAppSettings } from '../settings.js';
 import { getStoredSession, upsertSession } from '../store.js';
+import { mergeTraceEvents, readStoredTraceEvents } from '../trace-store.js';
 
 export function createRequestHandler({ config, provider, http, auth, runState, threads, sessions }) {
   const { corsHeadersFor, bindCorsRequest, sendJson, sendText, readJsonBody, serveStatic } = http;
@@ -96,6 +97,15 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
         return enabled ? { ...payload, trace: { totalMs: Math.round((performance.now() - started) * 10) / 10, steps } } : payload;
       },
     };
+  }
+
+  async function storedTraceEvents(name) {
+    try {
+      return await readStoredTraceEvents(config, name);
+    } catch (error) {
+      console.warn(`[trace-store] Failed to read trace events for ${name}: ${error.message}`);
+      return [];
+    }
   }
 
   function wantsInteractiveHtmlArtifact(url) {
@@ -221,6 +231,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
 
           const offset = Number(url.searchParams.get('offset'));
           const run = await trace.step('thread.syncOutput', () => syncRunOutput(thread));
+          const storedEvents = await trace.step('trace.readEvents', () => storedTraceEvents(name));
           const output = retainedOutputChunk(run, Number.isFinite(offset) && offset > 0 ? offset : 0);
           const session = decorateLiveSession({
             ...thread,
@@ -237,7 +248,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
               ...output,
               runStatus: run.runStatus,
               warning: run.warning,
-              events: run.events,
+              events: mergeTraceEvents(storedEvents, run.events),
             },
           }));
           return;
@@ -255,7 +266,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
           const [authStatus, threadPayload, recentProjects] = await Promise.all([
             authStatusPromise,
             trace.step('threads.payload', () => listThreadsPayload(viewerSessionId, trusted, user, { traceStep: trace.step })),
-            trace.step('projects.recent', () => listRecentProjects(config.recentProjectsFile, user?.id || '')),
+            trace.step('projects.recent', () => listRecentProjects(config.recentProjectsFile, user?.id || '')).catch(() => []),
           ]);
           const basePayload = { provider: provider.info(), me: publicMe(user, trusted), ...authStatus, defaults: {}, threads: [] };
           sendJson(response, 200, trace.wrap({ ...basePayload, ...threadPayload, recentProjects }));
@@ -787,6 +798,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
         if (requireSessionAccess(request, response, session, url, user)) return;
 
         const run = await syncRunOutput(session);
+        const storedEvents = await storedTraceEvents(name);
         const offset = Number(url.searchParams.get('offset'));
         const output = retainedOutputChunk(run, Number.isFinite(offset) && offset > 0 ? offset : 0);
         const decorated = decorateLiveSession({
@@ -800,7 +812,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
           ...output,
           runStatus: run.runStatus,
           warning: run.warning,
-          events: run.events,
+          events: mergeTraceEvents(storedEvents, run.events),
         });
         return;
       }

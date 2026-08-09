@@ -89,6 +89,32 @@ test('hosted GitHub status ignores stale browser session auth', async () => {
   }
 });
 
+test('GitHub status includes cached repos for faster picker hydration', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-github-repo-cache-'));
+  try {
+    const auth = createAuthService({ config: config(root), http: testHttp() });
+    const user = await auth.authStore.upsertUser({ githubId: '1', login: 'octo' });
+    await auth.authStore.upsertOAuthToken({ userId: user.id, provider: 'github', accessToken: 'github-token', scopes: ['repo', 'workflow'] });
+    await auth.authStore.writeUserKv(user.id, 'githubRepos', [{
+      id: 42,
+      name: 'private',
+      fullName: 'acme/private',
+      private: true,
+      cloneUrl: 'https://github.com/acme/private.git',
+      defaultBranch: 'main',
+      owner: 'acme',
+    }]);
+
+    const status = await auth.publicGitHubAuth(user);
+    assert.equal(status.connected, true);
+    assert.deepEqual(status.repoCache, { cached: true, count: 1 });
+    assert.equal(status.repos[0].fullName, 'acme/private');
+    assert.equal(status.repos[0].cloneUrl, 'https://github.com/acme/private.git');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('hosted Claude Code login uses copy-paste code flow without binding fixed callback port', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-claude-manual-auth-'));
   const blocker = await occupyClaudeCallbackPort();

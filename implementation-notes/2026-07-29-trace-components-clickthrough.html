@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Trace components clickthrough</title>
+<meta name="task" content="Make the trace component mock route clickable enough to review full states.">
+<meta name="date-started" content="2026-07-29">
+<meta name="date-updated" content="2026-07-29">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,ui,trace,tools,components,clickthrough">
+<meta name="related" content="2026-07-29-trace-components-gallery.html,2026-07-13-literal-trace-components-board.html,2026-06-25-clickable-run-summary-trace.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-ready{color:#b85c00}</style>
+</head>
+<body>
+<h1>Trace components clickthrough</h1>
+<p class="meta"><code>agent-ui-components</code> · worktree <code>/Users/anishthite/conductor/workspaces/makerspace/tripoli</code> · 2026-07-29 · status <b class="status-ready">shipped</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div><code>/trace-components.html</code> and <code>#trace-library</code> support interactive review of the current trace surfaces.</div><b>Source</b><div>Follow-up request for clickiness and full-state mockups.</div><b>Surface</b><div>React mock route only.</div><b>Schema</b><div>None.</div><b>Mobile</b><div>Reuse existing responsive gallery and trace-library layouts.</div><b>Open Qs</b><div>0.</div></div>
+<h2>UI layout</h2>
+<ol><li><b>Gallery toolbar</b>: filter tool calls by <code>all</code>, <code>running</code>, <code>errors</code>, or <code>open</code>; expand/collapse every tool card.</li><li><b>Trace summary</b>: toggle the full trace groups from the run summary and header control.</li><li><b>Diffs</b>: click the diff rail to open a full diff preview overlay.</li><li><b>Artifacts</b>: toggle HTML artifact trusted/interact mode and show copy feedback.</li><li><b>Workflow</b>: select workflow nodes and reflect the selected agent in the rail header.</li><li><b>Reference library</b>: collapse call groups, shorten code output, copy the summary, select rows, and select changed files.</li></ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>frontend/src/trace-components-page.jsx</code></td><td>touch</td><td>Add local React state and click handlers for trace review interactions.</td></tr><tr><td><code>frontend/src/styles/app.css</code></td><td>touch</td><td>Style active filters, selected rows/files/workflow nodes, and the diff preview overlay.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Keep interactivity local to the mock route. Live thread behavior should not change during review.</td></tr><tr><td>D-002</td><td>Use native <code>details</code> for tool-card expansion. It mirrors the runtime trace card surface.</td></tr><tr><td>D-003</td><td>Use a React-rendered overlay for the diff preview. The mock route has no live diff API payload.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>Mocked state over wired backend actions. The request is for reviewable clickthrough, not live thread control.</td></tr></table>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>npm run build</code></td><td>Passed with existing large chunk warnings.</td></tr><tr><td><code>node --test test/frontend-route-manifest.test.js</code></td><td>Passed 4/4.</td></tr><tr><td><code>npm test</code></td><td>Passed 310/310.</td></tr><tr><td><code>git diff --check</code></td><td>Passed.</td></tr><tr><td><code>Playwright gallery click smoke</code></td><td>Passed: expand/collapse, filter, trace toggle, diff overlay, artifact trust, workflow selection.</td></tr><tr><td><code>Playwright library click smoke</code></td><td>Passed: group collapse, code shortening, row selection, file selection, copy feedback, <code>overflow = 0</code>.</td></tr><tr><td><code>Playwright screenshots</code></td><td>Captured <code>output/playwright/trace-components-gallery-clickthrough.png</code>, <code>trace-components-library-clickthrough.png</code>, and <code>trace-components-library-clickthrough-mobile.png</code>.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Revert the trace page state handlers, scoped styles, and note/index row; runtime trace rendering remains unchanged.</p>
+<h2>Definition of done</h2>
+<ul><li>Build passes.</li><li>Browser click smoke covers gallery interactions.</li><li>Browser click smoke covers trace-library interactions.</li><li>No console errors beyond standard dev notices.</li></ul>
+</body>
+</html>

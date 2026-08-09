@@ -11,7 +11,10 @@ import { getStoredSession, upsertSession } from '../src/store.js';
 
 const pages = readFileSync(new URL('../frontend/src/pages.jsx', import.meta.url), 'utf8');
 const js = readFileSync(new URL('../frontend/src/runtime/thread.js', import.meta.url), 'utf8');
-const css = readFileSync(new URL('../frontend/src/styles/app.css', import.meta.url), 'utf8');
+const css = [
+  readFileSync(new URL('../frontend/src/styles/app.css', import.meta.url), 'utf8'),
+  readFileSync(new URL('../frontend/src/styles/thread.css', import.meta.url), 'utf8'),
+].join('\n');
 
 function todoRunState(sessionFile) {
   return createRunState({
@@ -32,7 +35,7 @@ async function eventually(fn) {
   return fn();
 }
 
-test('thread page wires a todo rail into the left gutter', () => {
+test('thread page wires a todo rail into the workflow sidecar', () => {
   const agentIndex = pages.indexOf('id="agent-rail"');
   const todoIndex = pages.indexOf('id="todo-rail"');
   const diffIndex = pages.indexOf('id="diff-box"');
@@ -42,10 +45,10 @@ test('thread page wires a todo rail into the left gutter', () => {
   assert.match(js, /const todoRail = document\.querySelector\('#todo-rail'\)/);
   assert.match(js, /function todoStateFromEvent/);
   assert.match(js, /syncTodoStateFromThread\(thread\)/);
-  assert.match(js, /syncTodoStateFromEvent\(event\)/);
+  assert.match(js, /syncTodoStateFromEvent\(mergedEvent\)/);
   assert.match(css, /\.todo-rail \{/);
   assert.match(css, /\.todo-item\.in_progress \.todo-dot/);
-  assert.doesNotMatch(css, /\.todo-item \{[^}]*border:/);
+  assert.match(css, /body\.thread-page \.agent-node,\s*body\.thread-page \.todo-item \{[^}]*border: 1px solid var\(--thread-rule\)/);
   assert.doesNotMatch(js, /todoStatusLabel/);
 });
 

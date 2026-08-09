@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec - full CSS split visual parity</title>
+<meta name="task" content="Split remaining route-owned CSS from app.css and verify every route with screenshots and interactions.">
+<meta name="date-started" content="2026-08-01">
+<meta name="date-updated" content="2026-08-01">
+<meta name="status" content="ready-for-review">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,ui,css,tailwind,visual-parity,playwright">
+<meta name="related" content="2026-08-01-route-css-tailwind-split.html,2026-07-12-tailwind-css-standardization.html,2026-07-12-live-tailwind-utility-rewrite.html,2026-07-16-mobile-ui-support.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code { font-family: ui-monospace, Menlo, monospace; background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+  .blast-low { color: #2a7a2a; }
+  .status-in-progress { color: #b85c00; }
+  .status-ready-for-review { color: #2a7a2a; }
+</style>
+</head>
+<body>
+<h1>full CSS split visual parity</h1>
+<p class="meta"><code>agent-ui-components</code> · worktree <code>/Users/anishthite/conductor/workspaces/makerspace/tripoli</code> · 2026-08-01 · status <b class="status-ready-for-review">ready-for-review</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Move all obvious route-owned stylesheet blocks behind route style loaders without changing rendered UI.</div>
+  <b>Source</b><div>User requested the full CSS/Tailwind cleanup plus screenshots/interactions for every app.</div>
+  <b>Surface</b><div>Every route in <code>frontend/route-manifest.json</code>; route style loading in <code>entry.jsx</code>.</div>
+  <b>Schema</b><div>None.</div>
+  <b>Mobile</b><div>Captured desktop and mobile screenshots for each route.</div>
+  <b>Result</b><div><code>app.css</code> is 475 lines; route chunks carry the extracted CSS.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+<h2>Algorithm</h2>
+<ol>
+  <li>Build and serve the current worktree as the baseline.</li>
+  <li>Capture screenshots, console errors, DOM dimensions, and route-specific interactions for each manifest route.</li>
+  <li>Move route-owned CSS blocks to route stylesheets; keep shared tokens and runtime-generated selectors in <code>app.css</code>.</li>
+  <li>Rebuild, recapture the same audit, and compare image bytes plus page metrics.</li>
+</ol>
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>.context/visual-parity-audit.mjs</code></td><td>new</td><td>Capture and compare route screenshots, console errors, metrics, and interactions.</td></tr>
+  <tr><td><code>.context/visual-parity-compare.py</code></td><td>new</td><td>Compare before/after PNG dimensions, changed-pixel ratios, and route metrics.</td></tr>
+  <tr><td><code>frontend/src/styles/app.css</code></td><td>touch</td><td>Keep shared tokens, primitives, desktop compatibility, and animation utilities.</td></tr>
+  <tr><td><code>frontend/src/styles/*.css</code></td><td>new/touch</td><td>Own route-specific CSS chunks loaded from <code>entry.jsx</code>.</td></tr>
+  <tr><td><code>frontend/src/entry.jsx</code></td><td>touch</td><td>Load the expanded route stylesheet set before rendering each route.</td></tr>
+  <tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr>
+</table>
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Use CSS extraction over selector-to-Tailwind rewrites for runtime DOM. Visual parity is the stated acceptance gate.</td></tr>
+  <tr><td>D-002</td><td>Audit all manifest routes. The request says every app, including copied design pages.</td></tr>
+  <tr><td>D-003</td><td>Use current worktree as baseline. Prior route CSS split is already applied and should not be reverted.</td></tr>
+  <tr><td>D-004</td><td>Load <code>workspace.css</code> on <code>/desktop.html</code>. The shared GitHub sign-in lightbox styles live in that chunk.</td></tr>
+</table>
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td>Route ownership split over full CSS-to-Tailwind churn. Moving selectors preserves exact cascade while reducing global load.</td></tr>
+  <tr><td>T-002</td><td>Dynamic CSS loader over static imports. It keeps route CSS off unrelated pages while rendering waits for the needed chunks.</td></tr>
+</table>
+<h2>Assumptions</h2>
+<ul>
+  <li>A-001 · Backend API failures in local Vite screenshots are acceptable only if they match before and after.</li>
+  <li>A-002 · Existing dirty worktree files are user work; preserve them and touch only CSS loading/split files.</li>
+</ul>
+<h2>Verification</h2>
+<table>
+  <tr><th>Check</th><th>Result</th></tr>
+  <tr><td><code>npm run build</code></td><td>Passed with existing large chunk warnings.</td></tr>
+  <tr><td><code>node --test test/frontend-route-manifest.test.js</code></td><td>Passed 4/4.</td></tr>
+  <tr><td><code>git diff --check</code></td><td>Passed for touched tracked files.</td></tr>
+  <tr><td>Baseline capture</td><td>Captured 41 routes × 2 viewports; 160 PNGs in <code>output/playwright/css-parity/baseline</code>.</td></tr>
+  <tr><td>After capture</td><td>Captured 41 routes × 2 viewports; 160 PNGs in <code>output/playwright/css-parity/after</code>.</td></tr>
+  <tr><td>Image compare</td><td>160 pairs, 0 missing, 0 size changes, largest changed-pixel ratio <code>0.000439</code>.</td></tr>
+  <tr><td>Metric compare</td><td>Remaining deltas are live timer text; dimensions and action counts match.</td></tr>
+  <tr><td>Known baseline</td><td><code>/trace-components.html</code> desktop overflow remains unchanged at <code>1452/1440</code>.</td></tr>
+</table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Reinsert extracted blocks into <code>app.css</code> and remove expanded route style loaders.</p>
+<h2>Definition of done</h2>
+<ul>
+  <li>Every route has before/after screenshot artifacts.</li>
+  <li>Route interactions produce matching before/after state where applicable.</li>
+  <li><code>npm run build</code>, focused tests, and visual parity comparison pass or differences are explained.</li>
+</ul>
+</body>
+</html>

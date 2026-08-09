@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec - ponytail UI wrapper prune</title>
+<meta name="task" content="Delete unreachable generated shadcn UI wrappers and remove their direct dependencies.">
+<meta name="date-started" content="2026-08-01">
+<meta name="date-updated" content="2026-08-01">
+<meta name="status" content="ready-for-review">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,cleanup,ponytail,shadcn,dependencies">
+<meta name="related" content="2026-07-02-small-radius-pass.html,2026-07-12-tailwind-css-standardization.html,2026-07-16-mobile-ui-support.html,2026-08-01-code-simplifier-pass.html">
+<style>
+body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}
+h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}
+table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}
+th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}
+.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-ready-for-review{color:#b85c00}
+</style>
+</head>
+<body>
+<h1>ponytail UI wrapper prune</h1>
+<p class="meta"><code>agent-ui-components</code> · worktree <code>/Users/anishthite/conductor/workspaces/makerspace/tripoli</code> · 2026-08-01 · status <b class="status-ready-for-review">ready-for-review</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Apply the first ponytail cut: delete unreachable generated UI wrappers and unused direct package entries.</div>
+  <b>Source</b><div>User accepted the ponytail audit reduction pass.</div>
+  <b>Surface</b><div><code>frontend/src/components/ui</code>, <code>package.json</code>, and <code>package-lock.json</code>.</div>
+  <b>Schema</b><div>None.</div>
+  <b>Mobile</b><div>Keep the live sidebar/sheet wrappers.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+<tr><td><code>frontend/src/components/ui/*.jsx</code></td><td>delete</td><td>Remove wrappers unreachable from current frontend import graph.</td></tr>
+<tr><td><code>frontend/src/components/ui/sonner.jsx</code></td><td>touch</td><td>Remove unused <code>next-themes</code> hook; caller already passes the toast theme.</td></tr>
+<tr><td><code>frontend/src/components/ui/button.jsx</code>, <code>badge.jsx</code>, <code>tabs.jsx</code>, <code>sidebar.jsx</code></td><td>touch</td><td>Replace <code>class-variance-authority</code> calls with direct class maps.</td></tr>
+<tr><td><code>frontend/src/components/ui/badge.jsx</code>, <code>button.jsx</code>, <code>card.jsx</code>, <code>input.jsx</code>, <code>separator.jsx</code>, <code>sheet.jsx</code>, <code>switch.jsx</code>, <code>tabs.jsx</code>, <code>tooltip.jsx</code></td><td>touch</td><td>Remove unused <code>React</code> namespace imports from JSX-only wrappers.</td></tr>
+<tr><td><code>frontend/src/lib/utils.js</code></td><td>touch</td><td>Remove direct <code>clsx</code> use; current callers pass strings and boolean conditionals.</td></tr>
+<tr><td><code>package.json</code>, <code>package-lock.json</code></td><td>touch</td><td>Remove direct dependencies kept only by deleted wrappers or duplicated by <code>radix-ui</code>.</td></tr>
+<tr><td><code>implementation-notes/2026-08-01-ponytail-ui-wrapper-prune.html</code></td><td>new</td><td>Record the scope and skipped higher-risk cuts.</td></tr>
+<tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr>
+</table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr>
+<tr><td>D-001</td><td>Delete wrappers with zero reachability from non-UI frontend roots. Keeping scaffold for later violates ponytail YAGNI.</td></tr>
+<tr><td>D-002</td><td>Keep live wrappers only. <code>sidebar</code>, <code>sheet</code>, form controls, and toast surfaces are still imported.</td></tr>
+<tr><td>D-003</td><td>Keep demo-route and build-asset dependency cuts out of this patch. Those affect route availability and CSS build inputs.</td></tr>
+<tr><td>D-004</td><td>Remove <code>next-themes</code> from the toast wrapper. <code>entry.jsx</code> passes <code>theme="dark"</code> and <code>appearance.js</code> owns document theme data.</td></tr>
+<tr><td>D-005</td><td>Remove <code>class-variance-authority</code>. The live wrappers only need static base classes plus simple variant/size maps.</td></tr>
+<tr><td>D-006</td><td>Remove direct <code>clsx</code>. Current <code>cn</code> callers pass strings and falsey conditionals; <code>tailwind-merge</code> remains for class conflict cleanup.</td></tr>
+<tr><td>D-007</td><td>Remove dead JSX-only <code>React</code> namespace imports. Vite's React plugin handles the automatic JSX runtime.</td></tr>
+</table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+<tr><td>T-001</td><td>Import-graph deletion over manual taste cleanup. The graph gives one clear yes/no test.</td></tr>
+</table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Revert deleted wrappers and package metadata if a route starts importing one.</p>
+<h2>Verification</h2>
+<table><tr><th>ID</th><th>Check</th><th>Result</th></tr>
+<tr><td>V-001</td><td>Frontend import-graph check for modeled JS imports</td><td>Pass; no missing modeled JS imports after deletions.</td></tr>
+<tr><td>V-002</td><td><code>node --test test/frontend-route-manifest.test.js test/project-selector-static.test.js</code></td><td>Pass, 5/5.</td></tr>
+<tr><td>V-003</td><td><code>npm run build</code></td><td>Pass with existing large-chunk warning.</td></tr>
+<tr><td>V-004</td><td><code>git diff --check</code></td><td>Pass.</td></tr>
+<tr><td>V-005</td><td><code>npm ls --depth=0</code></td><td>Exit 0; local <code>node_modules</code> still reports extraneous wasm helpers after <code>npm prune</code>.</td></tr>
+<tr><td>V-006</td><td><code>node --test test/home-runtime-summary.test.js</code></td><td>Fail 1/20 on concurrent <code>HistoryPage</code> static assertion; not a deleted wrapper/import failure.</td></tr>
+<tr><td>V-007</td><td><code>rg -n "next-themes|useTheme" frontend src desktop scripts test package.json package-lock.json</code></td><td>Pass; no matches.</td></tr>
+<tr><td>V-008</td><td><code>node --test --test-name-pattern "global toasts load outside the workspace screen|workspace toasts when running agents finish" test/home-runtime-summary.test.js</code></td><td>Pass, 2/2.</td></tr>
+<tr><td>V-009</td><td><code>npm run build</code></td><td>Pass after removing <code>next-themes</code>, with existing large-chunk warning.</td></tr>
+<tr><td>V-010</td><td><code>git diff --check</code></td><td>Pass.</td></tr>
+<tr><td>V-011</td><td><code>rg -n "class-variance-authority|\bcva\(|from ['\"]clsx['\"]|\"clsx\"" frontend src desktop scripts test package.json</code></td><td>Pass; no direct references.</td></tr>
+<tr><td>V-012</td><td><code>node --test test/frontend-route-manifest.test.js test/project-selector-static.test.js</code></td><td>Pass, 5/5 after removing <code>class-variance-authority</code> and direct <code>clsx</code>.</td></tr>
+<tr><td>V-013</td><td><code>node --test --test-name-pattern "global toasts load outside the workspace screen|workspace toasts when running agents finish" test/home-runtime-summary.test.js</code></td><td>Pass, 2/2 after the wrapper utility changes.</td></tr>
+<tr><td>V-014</td><td><code>npm run build</code></td><td>Pass after removing <code>class-variance-authority</code> and direct <code>clsx</code>, with existing large-chunk warning.</td></tr>
+<tr><td>V-015</td><td><code>git diff --check</code></td><td>Pass.</td></tr>
+<tr><td>V-016</td><td>Scan JSX wrapper files for unused <code>import * as React</code> lines without <code>React.</code> references</td><td>Pass; no matches after cleanup.</td></tr>
+<tr><td>V-017</td><td><code>node --test test/frontend-route-manifest.test.js test/project-selector-static.test.js</code></td><td>Pass, 5/5 after JSX-only import cleanup.</td></tr>
+<tr><td>V-018</td><td><code>npm run build</code></td><td>Pass after JSX-only import cleanup, with existing large-chunk warning.</td></tr>
+<tr><td>V-019</td><td><code>git diff --check</code></td><td>Pass.</td></tr>
+</table>
+<h2>Followups</h2>
+<ul>
+  <li>L-001 · Delete or move demo routes after deciding whether <code>trace-components</code> and <code>assistant-ui-components</code> are product surfaces.</li>
+  <li>L-002 · Extract duplicated sidebar runtime once concurrent sidebar/CSS work settles.</li>
+  <li>L-003 · Investigate extraneous wasm helper packages in local <code>node_modules</code> if package hygiene needs a clean tree.</li>
+</ul>
+<h2>Definition of done</h2>
+<ul>
+  <li>Import graph reports deleted wrappers are unreachable.</li>
+  <li><code>npm uninstall</code> refreshes package metadata for removed direct dependencies.</li>
+  <li>Build and focused package/import tests pass.</li>
+</ul>
+</body>
+</html>

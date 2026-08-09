@@ -87,6 +87,8 @@ npm run build # emits the React/Vite static frontend into dist/
 npm start
 ```
 
+The default local backend URL is `http://localhost:8788`; register GitHub OAuth callbacks as `http://localhost:8788/api/auth/github/callback`.
+
 `frontend/` is the normal Vite app. Root `src/` is the Node backend/API runtime for Cloudflare, local provider, sessions, SSE, and settings. Build `dist/` before starting the backend.
 
 For local-folder mode, run Pi directly on a folder:
@@ -99,8 +101,8 @@ npm run desktop:dev
 Run multiple local projects by giving each process its own port and state folder:
 
 ```bash
-INFRA_PROVIDER=local SPANNER_PROJECT=site SPANNER_HOME=~/.spanner/site PORT=8787 npm start
-INFRA_PROVIDER=local SPANNER_PROJECT=api  SPANNER_HOME=~/.spanner/api  PORT=8788 npm start
+INFRA_PROVIDER=local SPANNER_PROJECT=site SPANNER_HOME=~/.spanner/site PORT=8788 npm start
+INFRA_PROVIDER=local SPANNER_PROJECT=api  SPANNER_HOME=~/.spanner/api  PORT=8789 npm start
 ```
 
 Desktop dev accepts a folder argument and uses that folder name in the header:
@@ -113,7 +115,7 @@ npm run desktop:dev -- ~/code/api
 ## Optional env vars
 
 ```bash
-PORT=8787
+PORT=8788
 INFRA_PROVIDER=cloudflare # or local
 SPANNER_PROJECT=site
 SPANNER_HOME=~/.spanner/site

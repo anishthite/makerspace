@@ -1,11 +1,14 @@
 node_modules/
 dist/
+artifacts/
 data/sessions.json
 data/settings.json
 data/recent-projects.json
+data/recent-projects.json.*.json
 data/pi-profile.json
 data/auth.json
 data/pi-sessions/
+data/traces/
 .DS_Store
 .env
 .env.local

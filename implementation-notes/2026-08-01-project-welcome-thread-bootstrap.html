@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec - project welcome thread bootstrap</title>
+<meta name="task" content="Load welcome-page agent threads without requiring a project click.">
+<meta name="date-started" content="2026-08-01">
+<meta name="date-updated" content="2026-08-01">
+<meta name="status" content="ready-for-review">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,ui,project,welcome,threads,bootstrap,sidebar">
+<meta name="related" content="2026-08-01-global-sidebar-cache-hydration.html,2026-08-01-sidebar-refresh-cadence.html,2026-07-31-persistent-global-sidebar-shell.html">
+<style>
+body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:920px;margin:1.5rem auto;padding:0 1rem;color:#111}
+h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}
+table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}
+th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}
+.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px}.blast-low{color:#2a7a2a}.status-ready-for-review{color:#b85c00}
+</style>
+</head>
+<body>
+<h1>project welcome thread bootstrap</h1>
+<p class="meta"><code>agent-ui-components</code> - worktree <code>/Users/anishthite/conductor/workspaces/makerspace/tripoli</code> - 2026-08-01 - status <b class="status-ready-for-review">ready-for-review</b> - blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Show welcome-page agent threads on first load without entering a project first.</div>
+  <b>Source</b><div>User reported thread loading only after clicking a project from <code>/</code>.</div>
+  <b>Surface</b><div><code>GET /api/bootstrap?page=project</code> and the project-page global sidebar.</div>
+  <b>Schema</b><div>No API field or durable data change.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+<h2>Algorithm</h2>
+<ol>
+  <li>Fetch project bootstrap threads even when recent-project lookup fails.</li>
+  <li>Return <code>recentProjects: []</code> for a bad recent-project store.</li>
+  <li>Re-render the project sidebar when <code>#threads-list</code> appears or remounts.</li>
+</ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+<tr><td><code>src/server/routes.js</code></td><td>touch</td><td>Decouple project bootstrap thread payloads from recent-project read failures.</td></tr>
+<tr><td><code>frontend/src/runtime/project.js</code></td><td>touch</td><td>Re-sync sidebar rendering when the project page thread list mounts after an earlier render attempt.</td></tr>
+<tr><td><code>test/startup-bootstrap-route.test.js</code></td><td>touch</td><td>Cover project bootstrap preserving threads when recent projects are invalid.</td></tr>
+<tr><td><code>test/home-runtime-summary.test.js</code></td><td>touch</td><td>Pin project-page sidebar mount resync wiring.</td></tr>
+<tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr>
+</table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice - Rationale</th></tr>
+<tr><td>D-001</td><td>Make <code>recentProjects</code> optional for project bootstrap success. Threads are the primary agent inbox payload.</td></tr>
+<tr><td>D-002</td><td>Mirror the workspace sidebar mount sync in <code>project.js</code>. The welcome page owns a forked sidebar runtime.</td></tr>
+</table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected - Reason</th></tr>
+<tr><td>T-001</td><td>Fallback <code>[]</code> over returning a bootstrap error. A damaged recent-project list should not hide running agents.</td></tr>
+</table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Revert the route fallback, project runtime mount sync, focused tests, and index row; no migration exists.</p>
+<h2>Verification</h2>
+<table><tr><th>ID</th><th>Check</th><th>Result</th></tr>
+<tr><td>V-001</td><td><code>node --check src/server/routes.js &amp;&amp; node --check frontend/src/runtime/project.js</code></td><td>Pass.</td></tr>
+<tr><td>V-002</td><td><code>node --test test/startup-bootstrap-route.test.js</code></td><td>Pass, 1/1.</td></tr>
+<tr><td>V-003</td><td><code>node --test test/home-runtime-summary.test.js</code></td><td>Pass, 19/19.</td></tr>
+<tr><td>V-004</td><td><code>git diff --check -- src/server/routes.js frontend/src/runtime/project.js test/startup-bootstrap-route.test.js test/home-runtime-summary.test.js implementation-notes/2026-08-01-project-welcome-thread-bootstrap.html implementation-notes/INDEX.html</code></td><td>Pass.</td></tr>
+<tr><td>V-005</td><td><code>npm run build</code></td><td>Pass with existing large-chunk warning.</td></tr>
+</table>
+<h2>Definition of done</h2>
+<ul>
+  <li>Project bootstrap returns threads even when recent-project storage is invalid.</li>
+  <li>The welcome-page sidebar rerenders if its thread-list node is remounted.</li>
+  <li>Focused server and static tests pass.</li>
+</ul>
+</body>
+</html>

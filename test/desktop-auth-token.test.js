@@ -14,7 +14,12 @@ const packageScript = readFileSync(new URL('../scripts/package-desktop.sh', impo
 
 test('desktop sends local API token as a request header', () => {
   assert.match(desktopMain, /onBeforeSendHeaders/);
-  assert.match(desktopMain, /127\.0\.0\.1:\$\{port\}\/api\/\*/);
+  assert.match(desktopMain, /LOCAL_BACKEND_HOST = 'localhost'/);
+  assert.match(desktopMain, /LOCAL_BACKEND_PORT = 8788/);
+  assert.match(desktopMain, /function localBackendUrl\(port, pathname = ''\)/);
+  assert.match(desktopMain, /dialog\.showErrorBox\('Spanner could not start'/);
+  assert.match(desktopMain, /localBackendUrl\(port, '\/api\/\*'\)/);
+  assert.match(desktopMain, /loadURL\(localBackendUrl\(port, '\/'\)\)/);
   assert.match(desktopMain, /'x-api-token': token/);
   assert.doesNotMatch(desktopMain, /loadURL\([^\n]+\?token=/);
 });

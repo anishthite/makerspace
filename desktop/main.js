@@ -21,6 +21,8 @@ let serverProcess = null;
 let mainWindow = null;
 let userDataMigrated = false;
 const EXTERNAL_PROTOCOLS = new Set(['http:', 'https:', 'vscode:', 'vscode-insiders:', 'cursor:', 'zed:', 'jetbrains:']);
+const LOCAL_BACKEND_HOST = 'localhost';
+const LOCAL_BACKEND_PORT = 8788;
 
 function sendUpdateStatus(message) {
   BrowserWindow.getAllWindows().forEach((window) => {
@@ -62,14 +64,19 @@ function projectHomeDir() {
   return name ? path.join(userDataDir(), 'projects', slugify(name)) : '';
 }
 
-function getFreePort() {
+function assertLocalBackendPortAvailable() {
   return new Promise((resolve, reject) => {
     const server = net.createServer();
     server.unref();
-    server.on('error', reject);
-    server.listen(0, '127.0.0.1', () => {
-      const port = server.address().port;
-      server.close(() => resolve(port));
+    server.on('error', (error) => {
+      if (error?.code === 'EADDRINUSE') {
+        reject(new Error(`Local backend port ${LOCAL_BACKEND_HOST}:${LOCAL_BACKEND_PORT} is already in use.`));
+        return;
+      }
+      reject(error);
+    });
+    server.listen(LOCAL_BACKEND_PORT, LOCAL_BACKEND_HOST, () => {
+      server.close(() => resolve());
     });
   });
 }
@@ -78,12 +85,16 @@ async function waitForServer(port) {
   const startedAt = Date.now();
   while (Date.now() - startedAt < 15_000) {
     try {
-      const response = await fetch(`http://127.0.0.1:${port}/healthz`);
+      const response = await fetch(localBackendUrl(port, '/healthz'));
       if (response.ok) return;
     } catch {}
     await new Promise((resolve) => setTimeout(resolve, 200));
   }
   throw new Error('Local backend did not start.');
+}
+
+function localBackendUrl(port, pathname = '') {
+  return `http://${LOCAL_BACKEND_HOST}:${port}${pathname}`;
 }
 
 function backendCommand() {
@@ -93,7 +104,8 @@ function backendCommand() {
 }
 
 async function startBackend() {
-  const port = await getFreePort();
+  await assertLocalBackendPortAvailable();
+  const port = LOCAL_BACKEND_PORT;
   const token = randomBytes(24).toString('hex');
   const name = projectName();
   const homeDir = projectHomeDir();
@@ -103,7 +115,7 @@ async function startBackend() {
     env: {
       ...process.env,
       ...backend.env,
-      HOST: '127.0.0.1',
+      HOST: LOCAL_BACKEND_HOST,
       PORT: String(port),
       CONTROL_API_TOKEN: token,
       INFRA_PROVIDER: 'local',
@@ -135,14 +147,14 @@ function createWindow(port, token) {
     },
   });
   mainWindow.webContents.session.webRequest.onBeforeSendHeaders(
-    { urls: [`http://127.0.0.1:${port}/api/*`] },
+    { urls: [localBackendUrl(port, '/api/*')] },
     (details, callback) => callback({ requestHeaders: { ...details.requestHeaders, 'x-api-token': token } }),
   );
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     openExternalUrl(url).catch(() => {});
     return { action: 'deny' };
   });
-  mainWindow.loadURL(`http://127.0.0.1:${port}/`);
+  mainWindow.loadURL(localBackendUrl(port, '/'));
 }
 
 function moveLegacyDir(legacyDir, nextDir) {
@@ -220,8 +232,13 @@ if (app.isPackaged) {
 }
 
 app.whenReady().then(async () => {
-  const { port, token } = await startBackend();
-  createWindow(port, token);
+  try {
+    const { port, token } = await startBackend();
+    createWindow(port, token);
+  } catch (error) {
+    dialog.showErrorBox('Spanner could not start', error?.message || 'Local backend did not start.');
+    app.quit();
+  }
 });
 
 app.on('before-quit', () => {

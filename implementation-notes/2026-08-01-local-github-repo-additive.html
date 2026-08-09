@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Local GitHub repo additive</title>
+<meta name="task" content="Let local provider mode also launch selected GitHub repos.">
+<meta name="date-started" content="2026-08-01">
+<meta name="date-updated" content="2026-08-01">
+<meta name="status" content="ready-for-review">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="spanner,local,github,repo-picker,auth,git">
+<meta name="related" content="2026-08-01-local-oauth-origin.html,2026-07-14-github-repo-picker-all-repos.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code { font-family: ui-monospace, Menlo, monospace; background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  ul, ol { margin: .3rem 0 .8rem 1.2rem; padding: 0; }
+  li { margin: .15rem 0; }
+  .blast-med { color: #b85c00; }
+  .status-in-progress { color: #b85c00; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+</style>
+</head>
+<body>
+<h1>Local GitHub Repo Additive</h1>
+<p class="meta"><code>agent-ui-components</code> · worktree <code>/Users/anishthite/conductor/workspaces/makerspace/tripoli</code> · 2026-08-01 · status <b class="status-in-progress">ready-for-review</b> · blast <span class="blast-med">medium</span></p>
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Local provider mode accepts local folders and selected GitHub repos.</div>
+  <b>Source</b><div><code>/api/github/repos</code> supplies repo choices; <code>git clone</code> materializes them under local state.</div>
+  <b>Surface</b><div><code>/</code>, <code>/workspace.html</code>, <code>POST /api/threads</code>.</div>
+  <b>Schema</b><div>No persisted schema change; sessions keep <code>repoUrl</code> plus local <code>repoPath</code>.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+<h2>Algorithm</h2>
+<ol>
+  <li>When <code>provider.kind === "local"</code> and <code>repoMode === "git"</code>, clone or fetch into <code>&lt;localDataDir&gt;/repos/github/&lt;owner&gt;/&lt;repo&gt;</code>.</li>
+  <li>Pass <code>repoAuthHeader</code> only through <code>git -c http.extraHeader=...</code>; persist sessions with <code>repoAuthHeader: ""</code>.</li>
+  <li>Run the existing local Pi path with <code>localMode: true</code>, <code>repoPath</code>, and preserved <code>repoUrl</code>.</li>
+</ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+<tr><td><code>src/local-git.js</code></td><td>new</td><td>Clone or fetch selected GitHub repos into app-managed local state.</td></tr>
+<tr><td><code>src/server/threads.js</code></td><td>touch</td><td>Route local git sessions through local clone then local Pi.</td></tr>
+<tr><td><code>frontend/src/runtime/project.js</code></td><td>touch</td><td>Keep GitHub sign-in and repo suggestions visible in local provider mode.</td></tr>
+<tr><td><code>frontend/src/runtime/app.js</code></td><td>touch</td><td>Submit selected GitHub repos as <code>repoUrl</code> even when the provider is local.</td></tr>
+<tr><td><code>test/local-git.test.js</code>, <code>test/project-selector-static.test.js</code></td><td>touch</td><td>Pin local git cloning and additive local GitHub UI.</td></tr>
+<tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr>
+</table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr>
+<tr><td>D-001</td><td>Clone GitHub repos locally in local provider mode. The local provider has no remote sandbox APIs.</td></tr>
+<tr><td>D-002</td><td>Preserve <code>repoUrl</code> on local git sessions. Workspace filtering for GitHub projects keys off the canonical repo URL.</td></tr>
+</table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+<tr><td>T-001</td><td>Shared per-repo local clone over per-thread clone. Local folder mode already operates on durable working trees.</td></tr>
+</table>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr>
+<tr><td><code>node --check src/local-git.js src/server/threads.js frontend/src/runtime/project.js frontend/src/runtime/app.js test/local-git.test.js test/project-selector-static.test.js</code></td><td>Passed.</td></tr>
+<tr><td><code>node --test test/local-git.test.js test/project-selector-static.test.js test/private-repo-auth.test.js test/session.test.js</code></td><td>Passed 16/16.</td></tr>
+<tr><td><code>npm run build</code></td><td>Passed.</td></tr>
+</table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Remove the local git branch in <code>createThreadSession</code> and restore local-provider UI guards.</p>
+<h2>Definition of done</h2>
+<ul>
+<li>Local mode still accepts local folders.</li>
+<li>Local mode shows GitHub sign-in and repo suggestions.</li>
+<li>Selected GitHub repos clone locally and launch through local Pi.</li>
+<li>Focused tests pass.</li>
+</ul>
+</body>
+</html>
