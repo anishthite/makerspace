@@ -16,6 +16,7 @@ data/traces/
 .pi/
 .playwright-cli/
 .wrangler/
+.worktrees/
 output/
 test-results/
 implementation-notes/artifacts/
