@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Sidebar prompt mobile layout</title>
+<meta name="task" content="Tighten the sidebar prompt project picker and mobile control strip.">
+<meta name="date-started" content="2026-08-10">
+<meta name="date-updated" content="2026-08-10">
+<meta name="status" content="ready-for-review">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,ui,sidebar,prompt,mobile,project-picker">
+<meta name="related" content="2026-08-10-sidebar-prompt-chrome-reduction.html,2026-08-03-sidebar-prompt-lightbox-polish.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Sidebar prompt mobile layout</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-08-10 · status <b class="status-shipped">ready-for-review</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Place the project caret beside the selected project and compact mobile controls.</div><b>Source</b><div>User feedback on the sidebar prompt reference screenshot.</div><b>Surface</b><div><code>#sidebar-prompt-lightbox</code> at desktop and <code>max-width: 640px</code>.</div><b>Schema</b><div>None.</div><b>Mobile</b><div>Keep attachment and model selection on one row; stack thinking and submission below.</div><b>Open Qs</b><div>0.</div></div>
+<h2>UI layout</h2>
+<ol><li><b>Project picker</b>: size the header select to its selected value so its caret follows the project name.</li><li><b>Mobile controls</b>: pair the attachment action with the model trigger; preserve full-width thinking and primary action rows.</li></ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>frontend/src/styles/workspace.css</code></td><td>touch</td><td>Use intrinsic project-picker sizing and compact mobile control placement.</td></tr><tr><td><code>test/home-runtime-summary.test.js</code></td><td>touch</td><td>Pin intrinsic caret placement and the compact mobile control row.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Use CSS grid sizing rather than a measurement script. The native select has intrinsic content width.</td></tr><tr><td>D-002</td><td>Pair existing attachment and model controls on mobile. It removes an otherwise empty control row without changing behavior.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>Intrinsic picker width over a fixed header field. Short project names keep the caret adjacent; the existing max width contains long names.</td></tr></table>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>node --test test/home-runtime-summary.test.js</code></td><td>Passed 21/21.</td></tr><tr><td><code>git diff --check</code> and <code>npm run build</code></td><td>Passed; build retains existing large-chunk warnings.</td></tr><tr><td>Playwright desktop and <code>390×780</code> mobile checks</td><td>Passed; the project caret follows <code>makerspace</code>, attachment and model share a row, and the dialog has no horizontal overflow.</td></tr><tr><td>Artifacts</td><td><code>output/playwright/sidebar-prompt-mobile-layout/desktop.png</code> and <code>output/playwright/sidebar-prompt-mobile-layout/mobile.png</code>.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Revert the CSS and note/index row; no stored state changes.</p>
+<h2>Definition of done</h2>
+<ul><li>The project caret follows the selected project label.</li><li>Mobile attachment and model controls share one row without overflow.</li><li>Focused tests, build, and desktop/mobile browser checks pass.</li></ul>
+</body>
+</html>

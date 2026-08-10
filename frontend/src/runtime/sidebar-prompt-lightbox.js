@@ -1,4 +1,5 @@
 import { bindImageDropZone, clearImageInput, filesToImageAttachments, imageInputFiles, updateImageStatus } from './image-attachments.js';
+import { submitOnEnter } from './submit-on-enter.js';
 
 const PROJECT_KEY = 'spannerSelectedProject';
 const RECENT_PROJECTS_KEY = 'spannerRecentProjects';
@@ -78,6 +79,11 @@ function readCachedRecentProjects() {
   }
 }
 
+function writeSelectedProject(project) {
+  if (!project?.value) return;
+  localStorage.setItem(PROJECT_KEY, JSON.stringify(project));
+}
+
 function sidebarProjectKey(project) {
   const value = cleanProjectValue(project?.value);
   if (!value) return '';
@@ -85,8 +91,12 @@ function sidebarProjectKey(project) {
   return `${kind}:${kind === 'git' ? value.replace(/\.git$/i, '').toLowerCase() : value}`;
 }
 
+function promptProjectCandidate(projects = sidebarProjects) {
+  return selectedPromptProject || readSelectedProject() || projects.find((project) => project?.value) || null;
+}
+
 function normalizedSidebarProjects(projects = []) {
-  const current = selectedPromptProject || readSelectedProject();
+  const current = promptProjectCandidate(projects);
   const seen = new Set();
   return [current, ...projects].filter((project) => {
     const key = sidebarProjectKey(project);
@@ -134,7 +144,6 @@ function elements() {
     imageTrigger: document.querySelector('#sidebar-prompt-images-trigger'),
     images: document.querySelector('#sidebar-prompt-images'),
     imageStatus: document.querySelector('#sidebar-prompt-image-status'),
-    suggestions: document.querySelector('#sidebar-prompt-suggestions'),
     triggers: [...document.querySelectorAll('[data-sidebar-new-thread]')],
   };
 }
@@ -168,22 +177,12 @@ function setSidebarThinkingLevel(value) {
   renderSidebarThinkingLevel();
 }
 
-function ensureSidebarModelOption(value) {
-  const { model } = elements();
-  const text = String(value || '').trim();
-  if (!model || !text || Array.from(model.options).some((option) => option.value === text)) return;
-  const option = document.createElement('option');
-  option.value = text;
-  option.textContent = text;
-  model.append(option);
-}
-
 function setSidebarModelRef(value) {
   const { model } = elements();
   if (!model) return;
   const text = String(value || '').trim();
-  ensureSidebarModelOption(text);
   model.value = text;
+  model.dispatchEvent(new CustomEvent('spanner:model-picker-value', { detail: text }));
 }
 
 function saveSidebarRunControls() {
@@ -216,11 +215,13 @@ function renderSidebarModelOptions(defaults = {}) {
     values.push(text);
   }
 
-  modelInput.innerHTML = `<option value="">${escapeHtml(modelLabel)}</option>${values.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join('')}`;
-  setSidebarModelRef(selectedValue);
-  modelInput.title = values.length
+  const title = values.length
     ? `Model: ${modelLabel}\nOptions: ${values.join(', ')}`
     : `Model: ${modelLabel}`;
+  modelInput.dispatchEvent(new CustomEvent('spanner:model-picker-options', {
+    detail: { label: modelLabel, options: values, title, value: selectedValue },
+  }));
+  modelInput.title = title;
 }
 
 function renderSidebarPiDefaults(defaults = {}) {
@@ -248,7 +249,7 @@ function ensureSidebarDefaults() {
 
 function renderProjectState() {
   const { project, projectSelect, submit, status } = elements();
-  const selected = selectedPromptProject || readSelectedProject();
+  const selected = promptProjectCandidate();
   if (project) {
     project.textContent = selected?.value
       ? `Project: ${selectedProjectLabel(selected)}`
@@ -331,7 +332,7 @@ export function bindSidebarPromptLightbox({ fetchJson, makeThreadUrl = threadUrl
   runtimeFetchJson = fetchJson || runtimeFetchJson;
   if (bound) return;
 
-  const { dialog, form, close, prompt, projectSelect, model, thinking, imageTrigger, images, imageStatus, suggestions } = elements();
+  const { dialog, form, close, prompt, projectSelect, model, thinking, imageTrigger, images, imageStatus, submit } = elements();
   if (!dialog || !form) return;
   bound = true;
   loadSidebarRunControls();
@@ -346,6 +347,7 @@ export function bindSidebarPromptLightbox({ fetchJson, makeThreadUrl = threadUrl
   projectSelect?.addEventListener('change', () => {
     const index = projectSelect.value === '' ? -1 : Number(projectSelect.value);
     selectedPromptProject = Number.isInteger(index) && index >= 0 ? sidebarProjects[index] || null : null;
+    writeSelectedProject(selectedPromptProject);
     renderProjectState();
     elements().prompt?.focus();
   });
@@ -367,22 +369,7 @@ export function bindSidebarPromptLightbox({ fetchJson, makeThreadUrl = threadUrl
   imageTrigger?.addEventListener('click', () => images?.click());
   images?.addEventListener('change', () => updateImageStatus(images, imageStatus));
   bindImageDropZone(form, images, imageStatus);
-
-  suggestions?.addEventListener('click', (event) => {
-    const button = event.target?.closest?.('[data-sidebar-suggested-prompt]');
-    const { prompt } = elements();
-    if (!button || !prompt) return;
-    prompt.value = button.dataset.sidebarSuggestedPrompt || '';
-    prompt.focus();
-  });
-
-  form.addEventListener('keydown', (event) => {
-    if (event.defaultPrevented || event.isComposing || event.key !== 'Enter' || (!event.metaKey && !event.ctrlKey)) return;
-    const { submit } = elements();
-    if (submit?.disabled) return;
-    event.preventDefault();
-    form.requestSubmit();
-  });
+  submitOnEnter(prompt, form, submit);
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -407,6 +394,7 @@ export function bindSidebarPromptLightbox({ fetchJson, makeThreadUrl = threadUrl
       return;
     }
     saveSidebarRunControls();
+    writeSelectedProject(selected);
     if (submit) submit.disabled = true;
     if (status) status.textContent = 'Starting...';
     try {

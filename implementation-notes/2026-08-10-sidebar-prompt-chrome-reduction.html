@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Sidebar prompt chrome reduction</title>
+<meta name="task" content="Remove sidebar prompt suggestions and secondary control fills.">
+<meta name="date-started" content="2026-08-10">
+<meta name="date-updated" content="2026-08-10">
+<meta name="status" content="ready-for-review">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,ui,sidebar,prompt,lightbox,controls">
+<meta name="related" content="2026-08-03-sidebar-prompt-lightbox-polish.html,2026-08-01-sidebar-plus-composer-lightbox.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Sidebar prompt chrome reduction</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-08-10 · status <b class="status-shipped">ready-for-review</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Remove suggested starts and secondary control backgrounds from <code>#sidebar-prompt-lightbox</code>.</div><b>Source</b><div>User-provided sidebar prompt screenshot.</div><b>Surface</b><div><code>/workspace.html</code> sidebar new-agent dialog.</div><b>Schema</b><div>None.</div><b>Mobile</b><div>Preserve compact stacked controls without suggestion spacing.</div><b>Open Qs</b><div>0.</div></div>
+<h2>UI layout</h2>
+<ol><li><b>Header</b>: replace the visible project label with <code>FolderOpenIcon</code> and retain the select's accessible name.</li><li><b>Control strip</b>: make attachment, model, and thinking controls transparent; retain the filled <code>start agent</code> action.</li><li><b>Suggestions</b>: remove the suggested-start markup, event binding, and route-owned styles.</li></ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>frontend/src/pages.jsx</code></td><td>touch</td><td>Remove labels and suggested-start markup.</td></tr><tr><td><code>frontend/src/runtime/sidebar-prompt-lightbox.js</code></td><td>touch</td><td>Remove the unused suggestion event binding.</td></tr><tr><td><code>frontend/src/styles/workspace.css</code></td><td>touch</td><td>Flatten secondary controls and delete suggestion rules.</td></tr><tr><td><code>test/home-runtime-summary.test.js</code></td><td>touch</td><td>Assert the reduced lightbox contract.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Use the existing <code>FolderOpenIcon</code> for project selection. It preserves the control's meaning without visible text.</td></tr><tr><td>D-002</td><td>Delete suggestions rather than hide them in CSS. Removed UI needs no inactive markup or listener.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>Focus rings over focus fills. Keyboard focus remains visible while secondary surfaces stay transparent.</td></tr></table>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>node --test test/home-runtime-summary.test.js</code></td><td>Passed 21/21.</td></tr><tr><td><code>npm test</code></td><td>Passed 334/334.</td></tr><tr><td><code>node --check frontend/src/runtime/sidebar-prompt-lightbox.js</code> and <code>git diff --check</code></td><td>Passed.</td></tr><tr><td><code>npm run build</code></td><td>Passed with existing large-chunk warnings.</td></tr><tr><td>Playwright desktop and <code>390×780</code> mobile visual checks</td><td>Passed; suggestions are absent, project uses <code>FolderOpenIcon</code>, only <code>start agent</code> has a fill.</td></tr><tr><td>Computed control fills</td><td>Secondary project, attachment, model, and thinking controls resolve to transparent.</td></tr><tr><td>Artifacts</td><td><code>output/playwright/sidebar-prompt-chrome-reduction/desktop.png</code> and <code>output/playwright/sidebar-prompt-chrome-reduction/mobile.png</code>.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Revert the JSX, runtime, CSS, test, and note/index row; no stored state changes.</p>
+<h2>Definition of done</h2>
+<ul><li>Suggested starts are absent from the sidebar prompt lightbox.</li><li>Only <code>start agent</code> retains a filled background.</li><li>Project uses an icon and model has no visible label.</li><li>Focused tests, build, and desktop/mobile browser checks pass.</li></ul>
+</body>
+</html>

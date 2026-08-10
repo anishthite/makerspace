@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Typography standardization</title>
+<meta name="task" content="Standardize active Spanner font families and document the type usage rules.">
+<meta name="date-started" content="2026-08-10">
+<meta name="date-updated" content="2026-08-10">
+<meta name="status" content="ready-for-review">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,ui,typography,css,design-system">
+<meta name="related" content="2026-07-30-assistant-ui-standardization.html,2026-08-03-sidebar-prompt-lightbox-polish.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code, pre { font-family: ui-monospace, Menlo, monospace; }
+  code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  ul { margin: .3rem 0 .8rem 1.2rem; padding: 0; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+  .blast-low { color: #2a7a2a; } .status-in-progress { color: #b85c00; } .status-shipped { color: #2a7a2a; }
+</style>
+</head>
+<body>
+<h1>Typography standardization</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-08-10 · status <b class="status-in-progress">ready-for-review</b> · blast <span class="blast-low">low</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Make active app typography point at one Inter stack and publish the usage rules.</div>
+  <b>Source</b><div>User asked to standardize fonts, weights, and explain when to use each.</div>
+  <b>Surface</b><div><code>frontend/src/styles/app.css</code>, <code>frontend/src/styles/fluid-ui.css</code>, <code>frontend/src</code> inline previews, <code>DESIGN.md</code>, focused static test.</div>
+  <b>Schema</b><div>None.</div>
+  <b>Mobile</b><div>Token-only; no layout change.</div>
+  <b>Open Qs</b><div>0; keep design-sample files untouched.</div>
+  <b>Verification</b><div><code>node --test test/typography-standard.test.js</code>; <code>npm run build</code>.</div>
+</div>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>frontend/src/styles/app.css</code></td><td>touch</td><td>Add canonical font-family, weight, and shorthand variables.</td></tr>
+  <tr><td><code>frontend/src/styles/fluid-ui.css</code></td><td>touch</td><td>Point Tailwind font tokens at the same Inter stack.</td></tr>
+  <tr><td><code>frontend/src/pages.jsx</code></td><td>touch</td><td>Remove standalone monospace stacks from the active landing CSS.</td></tr>
+  <tr><td><code>frontend/src/runtime/html-preview.js</code></td><td>touch</td><td>Use the canonical Inter stack in generated HTML preview CSS.</td></tr>
+  <tr><td><code>frontend/src/trace-components-page.jsx</code></td><td>touch</td><td>Use the canonical Inter stack in inline iframe samples.</td></tr>
+  <tr><td><code>DESIGN.md</code></td><td>touch</td><td>Document the type usage rules.</td></tr>
+  <tr><td><code>test/typography-standard.test.js</code></td><td>new</td><td>Reject new hard-coded serif or monospace stacks in active frontend source.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Use <code>Inter Variable</code> for both <code>--sans</code> and <code>--mono</code>. The product wants fewer faces, not a new code font.</td></tr>
+  <tr><td>D-002</td><td>Keep <code>frontend/public</code> design samples untouched. Those files intentionally compare type directions.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td>Central tokens over mass selector rewrites. Lower risk in a dirty UI branch.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Revert the token/doc/test edits to restore previous font behavior.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>Active app source uses the canonical Inter stack for user-visible UI.</li>
+  <li><code>DESIGN.md</code> states which family and weight to use by role.</li>
+  <li><code>node --test test/typography-standard.test.js</code> passes.</li>
+</ul>
+</body>
+</html>

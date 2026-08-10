@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Badge as ShadBadge } from './ui/badge.jsx';
 import { Button as ShadButton } from './ui/button.jsx';
 import { Slider as ShadSlider } from './ui/slider.jsx';
+import { Select as ShadSelect, SelectContent as ShadSelectContent, SelectItem as ShadSelectItem, SelectTrigger as ShadSelectTrigger, SelectValue as ShadSelectValue } from './ui/select.jsx';
 import { Switch as ShadSwitch } from './ui/switch.jsx';
 import { Tabs as ShadTabs, TabsList as ShadTabsList, TabsTrigger as ShadTabsTrigger } from './ui/tabs.jsx';
 import { cn } from '#lib/utils';
@@ -88,6 +89,131 @@ export function InputGroup({ as, label, className, children, ...props }) {
 
 export function Select({ className, children, ...props }) {
   return <select className={className} {...props}>{children}</select>;
+}
+
+const MODEL_PICKER_DEFAULT = '__spanner_default_model__';
+const PROJECT_PICKER_EMPTY = '__spanner_project_empty__';
+
+function readSelectPicker(select, initialLabel) {
+  const options = [...select.options].map((option) => ({
+    value: option.value || PROJECT_PICKER_EMPTY,
+    nativeValue: option.value,
+    label: option.textContent || option.label || initialLabel,
+    disabled: option.disabled,
+  }));
+  const current = options.find((option) => option.nativeValue === select.value) || options[0];
+  return {
+    disabled: select.disabled || !options.length,
+    options: options.length ? options : [{ value: PROJECT_PICKER_EMPTY, nativeValue: '', label: initialLabel, disabled: true }],
+    title: select.title || current?.label || initialLabel,
+    value: current?.value || PROJECT_PICKER_EMPTY,
+  };
+}
+
+export function ModelPicker({ id, name, className, ariaLabel = 'model', initialLabel = 'loading model…' }) {
+  const inputRef = useRef(null);
+  const [picker, setPicker] = useState({ label: initialLabel, options: [], title: initialLabel, value: '' });
+  const [portalContainer, setPortalContainer] = useState(null);
+
+  useEffect(() => {
+    const input = inputRef.current;
+    if (!input) return undefined;
+    setPortalContainer(input.closest('dialog'));
+
+    const setValue = (event) => {
+      const value = String(event.detail || '').trim();
+      input.value = value;
+      setPicker((current) => ({
+        ...current,
+        options: value && !current.options.includes(value) ? [...current.options, value] : current.options,
+        value,
+      }));
+    };
+    const setOptions = (event) => {
+      const detail = event.detail || {};
+      const value = detail.value == null ? input.value : String(detail.value).trim();
+      const options = Array.isArray(detail.options) ? detail.options.map((option) => String(option).trim()).filter(Boolean) : [];
+      input.value = value;
+      setPicker({
+        label: detail.label || initialLabel,
+        options: value && !options.includes(value) ? [...options, value] : options,
+        title: detail.title || detail.label || initialLabel,
+        value,
+      });
+    };
+
+    input.addEventListener('spanner:model-picker-value', setValue);
+    input.addEventListener('spanner:model-picker-options', setOptions);
+    return () => {
+      input.removeEventListener('spanner:model-picker-value', setValue);
+      input.removeEventListener('spanner:model-picker-options', setOptions);
+    };
+  }, [initialLabel]);
+
+  const chooseValue = (nextValue) => {
+    const value = nextValue === MODEL_PICKER_DEFAULT ? '' : nextValue;
+    const input = inputRef.current;
+    if (!input) return;
+    input.value = value;
+    setPicker((current) => ({ ...current, value }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+
+  return <div className={cn('min-w-0', className)}>
+    <input ref={inputRef} id={id} name={name} type="hidden" defaultValue="" />
+    <ShadSelect value={picker.value || MODEL_PICKER_DEFAULT} onValueChange={chooseValue}>
+      <ShadSelectTrigger className="h-auto min-h-0 border-0 bg-transparent px-0 py-2 text-[14px] font-semibold text-[var(--ink-2)] shadow-none hover:bg-transparent focus-visible:border-0 focus-visible:ring-0" aria-label={ariaLabel} title={picker.title}>
+        <ShadSelectValue />
+      </ShadSelectTrigger>
+      <ShadSelectContent container={portalContainer} className="z-[100] border-[var(--rule)] bg-[var(--paper)] text-[var(--ink)]">
+        <ShadSelectItem value={MODEL_PICKER_DEFAULT}>{picker.label}</ShadSelectItem>
+        {picker.options.map((option) => <ShadSelectItem key={option} value={option}>{option}</ShadSelectItem>)}
+      </ShadSelectContent>
+    </ShadSelect>
+  </div>;
+}
+
+export function ProjectPicker({ id, className, ariaLabel = 'Project for new agent', initialLabel = 'loading projects...' }) {
+  const selectRef = useRef(null);
+  const [picker, setPicker] = useState({ disabled: true, options: [{ value: PROJECT_PICKER_EMPTY, nativeValue: '', label: initialLabel, disabled: true }], title: initialLabel, value: PROJECT_PICKER_EMPTY });
+  const [portalContainer, setPortalContainer] = useState(null);
+
+  useEffect(() => {
+    const select = selectRef.current;
+    if (!select) return undefined;
+    setPortalContainer(select.closest('dialog'));
+    const sync = () => setPicker(readSelectPicker(select, initialLabel));
+    sync();
+    const frame = requestAnimationFrame(sync);
+    const observer = new MutationObserver(sync);
+    observer.observe(select, { attributes: true, attributeFilter: ['disabled', 'title'], childList: true, subtree: true });
+    select.addEventListener('change', sync);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+      select.removeEventListener('change', sync);
+    };
+  }, [initialLabel]);
+
+  const chooseValue = (nextValue) => {
+    const select = selectRef.current;
+    if (!select) return;
+    select.value = nextValue === PROJECT_PICKER_EMPTY ? '' : nextValue;
+    setPicker(readSelectPicker(select, initialLabel));
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+
+  return <div className={cn('min-w-0', className)}>
+    <select ref={selectRef} id={id} className="sr-only" tabIndex="-1" aria-hidden="true" />
+    <ShadSelect value={picker.value} onValueChange={chooseValue} disabled={picker.disabled}>
+      <ShadSelectTrigger className="h-auto min-h-0 border-0 bg-transparent px-0 py-2 text-[12px] font-semibold text-[#f0f0f0] shadow-none hover:bg-transparent focus-visible:border-0 focus-visible:ring-0 [&_svg]:size-3 [&_svg]:text-[rgba(255,255,255,.48)]" aria-label={ariaLabel} title={picker.title}>
+        <ShadSelectValue placeholder={initialLabel} />
+      </ShadSelectTrigger>
+      <ShadSelectContent container={portalContainer} className="z-[100] border-[var(--rule)] bg-[var(--paper)] text-[var(--ink)]">
+        {picker.options.map((option) => <ShadSelectItem key={`${option.value}:${option.label}`} value={option.value} disabled={option.disabled}>{option.label}</ShadSelectItem>)}
+      </ShadSelectContent>
+    </ShadSelect>
+  </div>;
 }
 
 export function Slider({ className, defaultValue = 0, min = 0, max = 100, step = 1, ...props }) {

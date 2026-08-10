@@ -1842,7 +1842,7 @@ launchSuggestions?.addEventListener('click', (event) => {
   if (!button) return;
   promptInput.value = button.dataset.suggestedPrompt || '';
   promptInput.focus();
-  threadStatus.textContent = 'tweak the suggestion, then start agent';
+  threadStatus.textContent = 'tweak the suggestion, then send';
 });
 
 for (const button of githubSigninButtons) button.addEventListener('click', () => startGitHubSignIn());

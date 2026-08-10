@@ -2368,7 +2368,7 @@ button.trace-ref-row { cursor: pointer; }
 .interactive-control input[type="range"] { width: 100%; accent-color: var(--blue); }
 .interactive-control select,
 .interactive-control input[type="text"],
-.interactive-control textarea { width: 100%; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper); color: var(--ink-1); padding: 8px 9px; font: inherit; }
+.interactive-control textarea { width: 100%; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper); color: var(--ink); padding: 8px 9px; font: inherit; }
 .interactive-control textarea { min-height: 72px; resize: vertical; }
 .interactive-choice-list { display: flex; flex-wrap: wrap; gap: 7px; }
 .interactive-choice { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--rule); border-radius: 999px; background: color-mix(in srgb, var(--paper) 90%, var(--bg)); padding: 6px 9px; color: var(--ink-2); font-size: 12px; }
@@ -3412,26 +3412,37 @@ body.thread-page .flow-composer textarea {
 
 /* Live thread composition follows the assistant-ui review surface. */
 body.thread-page {
-  --bg: #151110;
-  --paper: #1f1c1a;
-  --paper-2: #282421;
-  --ink: #ede9e5;
-  --ink-2: #d8d2ce;
-  --ink-3: #a59d99;
-  --ink-4: #8f8783;
-  --blue: #7aa7d9;
-  --blue-soft: #232c35;
-  --green: #7fc989;
-  --yellow: #e2b85f;
-  --red: #e07464;
-  --thread-rule: #302b29;
-  --thread-rule-strong: #3a3532;
-  --thread-surface: #1f1c1a;
-  --thread-surface-2: #282421;
-  --thread-surface-3: #1d1a18;
+  --bg: #171717;
+  --paper: #1f1f1f;
+  --paper-2: #262626;
+  --ink: #f5f5f5;
+  --ink-2: #e5e5e5;
+  --ink-3: #a3a3a3;
+  --ink-4: #737373;
+  --blue: #d4d4d4;
+  --blue-soft: #262626;
+  --green: #86efac;
+  --yellow: #facc15;
+  --red: #fca5a5;
+  --thread-rule: #303030;
+  --thread-rule-strong: #3a3a3a;
+  --thread-surface: #1f1f1f;
+  --thread-surface-2: #262626;
+  --thread-surface-3: #1a1a1a;
   color-scheme: dark;
   background: var(--bg);
   color: var(--ink);
+}
+
+body.thread-page .workspace-agents-sidebar {
+  --t3-sidebar: var(--bg);
+  --t3-sidebar-fg: var(--ink-2);
+  --t3-sidebar-muted: var(--ink-4);
+  --t3-sidebar-border: color-mix(in srgb, var(--ink) 10%, transparent);
+  --t3-sidebar-control: color-mix(in srgb, var(--ink) 5%, transparent);
+  --t3-sidebar-hover: color-mix(in srgb, var(--ink) 8%, transparent);
+  --t3-sidebar-active: color-mix(in srgb, var(--ink) 11%, transparent);
+  --t3-sidebar-selected: color-mix(in srgb, var(--ink) 7%, transparent);
 }
 
 body.thread-page :is(.global-sidebar-shell, .global-app-inset) {
@@ -3592,7 +3603,7 @@ body.thread-page .agent-column {
   border-left: 0;
   padding: 12px;
   background: var(--bg);
-  scrollbar-color: #4b4542 transparent;
+  scrollbar-color: var(--ink-4) transparent;
 }
 
 body.thread-page :is(.agent-rail, .todo-rail, .notes-rail, .notes-main) {
@@ -3630,7 +3641,7 @@ body.thread-page .todo-item {
   height: auto;
   border: 1px solid var(--thread-rule);
   border-radius: 6px;
-  background: #1b1918;
+  background: var(--thread-surface-3);
   padding: 8px;
 }
 
@@ -3653,31 +3664,31 @@ body.thread-page .agent-graph > .rail-empty {
 body.thread-page .agent-node:is(.pi.working, .tool.running, .subagent.running, .workflow.running),
 body.thread-page .agent-node:is(.pi.done, .tool.done, .subagent.done, .workflow.done),
 body.thread-page .agent-node:is(.pi.failed, .tool.error, .subagent.error, .workflow.error) {
-  background: #1b1918;
+  background: var(--thread-surface-3);
 }
 
 body.thread-page .diff-box {
   min-height: 40px;
   border-color: var(--thread-rule);
-  background: #1b1918;
+  background: var(--thread-surface-3);
 }
 
 body.thread-page .diff-box strong {
-  border-color: #4a4542;
+  border-color: var(--thread-rule-strong);
   background: transparent;
   color: var(--ink-2);
 }
 
 body.thread-page .message-item.user .message-card {
   max-width: min(820px, 80%);
-  border: 1px solid #3e4c5b;
+  border: 1px solid var(--thread-rule-strong);
   border-radius: 13px;
-  background: #232c35;
+  background: var(--thread-surface-2);
 }
 
 body.thread-page .message-item.user .message-body {
   padding: 13px 15px;
-  color: #e9e6e2;
+  color: var(--ink);
   font-size: 16px;
 }
 
@@ -3696,12 +3707,13 @@ body.thread-page .message-item.assistant .message-body[data-render-mode="text"] 
 
 body.thread-page .run-summary-card {
   max-width: 940px;
+  padding-left: 22px;
 }
 
 body.thread-page .run-summary {
-  height: 24px;
+  min-height: 24px;
   color: var(--ink-4);
-  font-size: 13px;
+  font: 15px/1.55 var(--mono);
 }
 
 body.thread-page .thinking-card,
@@ -3891,7 +3903,7 @@ body.thread-page .trace-tool-card[data-tool-kind="edit"] .tool-kind-mark {
 
 body.thread-page .trace-tool-card[data-tool-kind="approval"] .tool-kind-mark,
 body.thread-page .trace-tool-card[data-tool-kind="question"] .tool-kind-mark {
-  color: #d6a8ff;
+  color: var(--ink-3);
 }
 
 body.thread-page .trace-tool-card[data-state="error"] .tool-kind-mark {
@@ -3911,9 +3923,9 @@ body.thread-page .tool-summary-pills:empty {
 body.thread-page .tool-target,
 body.thread-page :is(.tool-chip, .tool-file-pill, .tool-command-pill, .tool-query-pill, .tool-diff-stat) {
   max-width: min(620px, 60vw);
-  border-color: #2d2927;
+  border-color: var(--thread-rule);
   border-radius: 6px;
-  background: #211e1c;
+  background: var(--thread-surface);
   padding: 3px 7px;
   color: var(--ink-3);
   font: 700 12px/1.1 var(--mono);
@@ -3984,9 +3996,9 @@ body.thread-page .tool-terminal,
 body.thread-page .tool-search-result-card,
 body.thread-page .tool-read-card,
 body.thread-page .tool-approval-panel {
-  border-color: #403a37;
+  border-color: var(--thread-rule-strong);
   border-radius: 8px;
-  background: #1c1918;
+  background: var(--thread-surface-3);
 }
 
 body.thread-page .tool-diff-viewer,
@@ -4013,17 +4025,17 @@ body.thread-page .tool-diff-row.is-del {
 
 body.thread-page .tool-diff-row code {
   padding-inline: 16px;
-  color: #76b8ff;
+  color: var(--ink-2);
 }
 
 body.thread-page .tool-terminal {
-  background: #27231f;
+  background: var(--thread-surface-2);
 }
 
 body.thread-page .tool-terminal pre,
 body.thread-page .tool-card .tool-output-block {
   padding: 16px 20px;
-  color: #e5ddd8;
+  color: var(--ink-2);
   font: 14px/1.55 var(--mono);
 }
 
@@ -4052,7 +4064,7 @@ body.thread-page .tool-search-result-row strong {
 }
 
 body.thread-page .tool-search-result-row code {
-  background: #25211f;
+  background: var(--thread-surface-2);
   color: var(--ink-3);
   font: 700 12px/1 var(--mono);
 }
@@ -4094,9 +4106,9 @@ body.thread-page .flow-composer > .primary-btn {
   min-height: 36px;
   align-self: end;
   margin: 8px 0 0;
-  border-color: #3b3532;
+  border-color: var(--thread-rule-strong);
   border-radius: 8px;
-  background: #2a2623;
+  background: var(--thread-surface-2);
   padding: 0;
   color: var(--ink-2);
   font-size: 0;
@@ -4124,7 +4136,7 @@ body.thread-page :is(button, [role="button"], summary):active {
   body.thread-page .agent-activity-head > button:hover,
   body.thread-page .flow-composer > .primary-btn:hover {
     border-color: var(--thread-rule-strong);
-    background: #25211f;
+    background: var(--thread-surface-2);
     color: var(--ink);
   }
 
@@ -4133,8 +4145,8 @@ body.thread-page :is(button, [role="button"], summary):active {
   }
 
   body.thread-page :is(.agent-node, .todo-item, .diff-box):hover {
-    border-color: #4a4542;
-    background: #211e1c;
+    border-color: var(--thread-rule-strong);
+    background: var(--thread-surface);
   }
 }
 
@@ -4206,6 +4218,14 @@ body.thread-page :is(button, [role="button"], summary):active {
 
   body.thread-page .message-item.assistant .message-body[data-render-mode="text"] {
     padding: 14px 16px;
+    font-size: 14px;
+  }
+
+  body.thread-page .run-summary-card {
+    padding-left: 16px;
+  }
+
+  body.thread-page .run-summary {
     font-size: 14px;
   }
 
@@ -4308,7 +4328,7 @@ body.thread-page .agent-activity .thinking-body {
 
 body.thread-page .agent-activity .thinking-body p {
   margin: 0;
-  color: #b7b0ac;
+  color: var(--ink-3);
   font: 400 15px/1.58 var(--sans);
 }
 
@@ -4336,7 +4356,7 @@ body.thread-page .agent-activity .trace-tool-card > summary {
 body.thread-page .agent-activity .trace-tool-card .tool-kind-mark {
   width: 18px;
   height: 18px;
-  color: #99918d;
+  color: var(--ink-3);
 }
 
 body.thread-page .agent-activity .tool-kind-mark .trace-icon {
@@ -4345,16 +4365,16 @@ body.thread-page .agent-activity .tool-kind-mark .trace-icon {
 }
 
 body.thread-page .agent-activity .trace-tool-card[data-tool-kind] .tool-kind-mark {
-  color: #99918d;
+  color: var(--ink-3);
 }
 
 body.thread-page .agent-activity .trace-tool-card[data-state="error"] .tool-kind-mark,
 body.thread-page .agent-activity .trace-tool-card[data-state="error"] .badge {
-  color: #e48779;
+  color: var(--red);
 }
 
 body.thread-page .agent-activity .trace-tool-card [data-tool-label] {
-  color: #eeeae6;
+  color: var(--ink-2);
   font: 500 15px/1.2 var(--sans);
 }
 
@@ -4371,11 +4391,11 @@ body.thread-page .agent-activity :is(.tool-chip, .tool-file-pill, .tool-command-
   min-width: 0;
   max-width: min(650px, 64vw);
   overflow: hidden;
-  border: 1px solid #342f2c;
+  border: 1px solid var(--thread-rule);
   border-radius: 5px;
-  background: #211e1c;
+  background: var(--thread-surface);
   padding: 3px 7px;
-  color: #aaa39f;
+  color: var(--ink-3);
   font: 500 13px/1.2 var(--mono);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -4383,7 +4403,7 @@ body.thread-page .agent-activity :is(.tool-chip, .tool-file-pill, .tool-command-
 
 body.thread-page .agent-activity .tool-card summary .badge {
   flex: none;
-  color: #a29a96;
+  color: var(--ink-4);
   font: 500 11px/1 var(--sans);
 }
 
@@ -4405,9 +4425,9 @@ body.thread-page .agent-activity :is(.tool-terminal, .tool-diff-viewer, .tool-se
 }
 
 body.thread-page .agent-activity :is(.tool-terminal, .tool-diff-viewer, .tool-search-result-card, .tool-read-card, .tool-approval-panel) {
-  border-color: #393330;
+  border-color: var(--thread-rule-strong);
   border-radius: 6px;
-  background: #1b1817;
+  background: var(--thread-surface-3);
 }
 
 body.thread-page .agent-activity .tool-terminal pre,
@@ -4415,7 +4435,7 @@ body.thread-page .agent-activity .tool-card .tool-output-block {
   min-width: 0;
   max-height: min(220px, 32vh);
   padding: 12px 14px;
-  color: #c9c2be;
+  color: var(--ink-2);
   font: 12.5px/1.5 var(--mono);
 }
 

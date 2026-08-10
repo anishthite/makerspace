@@ -23,8 +23,9 @@ function fragmentStyle(theme = 'dark') {
   return `<style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
   ${FRAGMENT_THEMES[theme === 'dark' ? 'dark' : 'light']}
+  :root { --font-family-ui: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
   html, body { background: transparent; }
-  body { color: var(--ink); font: 15px/1.6 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  body { color: var(--ink); font: 400 15px/1.6 var(--font-family-ui); }
   main, section, article { display: block; max-width: 100%; }
   h1, h2, h3 { margin: 0 0 .5em; line-height: 1.15; letter-spacing: -.025em; }
   h1 { color: var(--blue); font-size: 28px; }

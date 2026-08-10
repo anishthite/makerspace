@@ -94,6 +94,13 @@
 .model-picker { grid-template-columns: 56px minmax(0, 1fr) auto; position: relative; }
 .model-picker::after { content: '⌄'; pointer-events: none; color: var(--blue); font: 700 13px/1 var(--mono); }
 .model-picker select { appearance: none; cursor: pointer; color: var(--ink-2); font-weight: 600; }
+:is(.repo-suggestions, .workspace-switcher-menu, .workspace-agents-sidebar .sidebar-scope-menu, .sidebar-thread-menu) {
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--paper);
+  box-shadow: var(--shadow);
+  padding: 4px;
+}
 .thinking-slider { grid-template-columns: 56px minmax(0, 1fr) 48px; min-width: 0; }
 .thinking-slider > span:not(:first-child) { width: 100%; min-width: 0; }
 .thinking-slider input[type="range"] { cursor: pointer; accent-color: var(--blue); padding: 0; }
@@ -257,8 +264,6 @@ button.workspace-project-lightbox-project:not(.primary-btn):not(.textbtn):not(.r
 }
 .sidebar-prompt-lightbox-shell {
   --sidebar-prompt-panel: #191919;
-  --sidebar-prompt-control: rgba(255, 255, 255, .04);
-  --sidebar-prompt-control-strong: rgba(255, 255, 255, .08);
   --sidebar-prompt-stroke: rgba(255, 255, 255, .08);
   --sidebar-prompt-stroke-strong: rgba(255, 255, 255, .18);
   display: grid;
@@ -280,23 +285,24 @@ button.workspace-project-lightbox-project:not(.primary-btn):not(.textbtn):not(.r
 }
 .sidebar-prompt-project-picker {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, max-content) auto;
   align-items: center;
   gap: 8px;
-  width: min(390px, calc(100% - 46px));
+  width: fit-content;
+  max-width: calc(100% - 46px);
   min-width: 0;
   min-height: 36px;
   border: 0;
   border-radius: 10px;
-  background: var(--sidebar-prompt-control);
+  background: transparent;
   padding: 0 12px;
   color: rgba(255, 255, 255, .74);
 }
-.sidebar-prompt-project-picker > span { color: rgba(255, 255, 255, .48); font: 600 12px/1 var(--sans); letter-spacing: 0; text-transform: lowercase; }
-.sidebar-prompt-project-picker select {
+.sidebar-prompt-project-picker select:not(.sr-only) {
   appearance: none;
   min-width: 0;
-  width: 100%;
+  width: auto;
+  max-width: 100%;
   border: 0;
   background: transparent;
   color: #f0f0f0;
@@ -307,7 +313,8 @@ button.workspace-project-lightbox-project:not(.primary-btn):not(.textbtn):not(.r
   cursor: pointer;
 }
 .sidebar-prompt-project-picker > svg { pointer-events: none; color: rgba(255, 255, 255, .48); }
-.sidebar-prompt-project-picker:focus-within { background: var(--sidebar-prompt-control-strong); box-shadow: 0 0 0 2px rgba(255, 255, 255, .08); }
+.sidebar-prompt-project-picker > .sidebar-prompt-project-icon { color: rgba(255, 255, 255, .78); }
+.sidebar-prompt-project-picker:focus-within { background: transparent; box-shadow: 0 0 0 2px rgba(255, 255, 255, .08); }
 .sidebar-prompt-close,
 .sidebar-prompt-close.textbtn {
   position: static;
@@ -323,7 +330,7 @@ button.workspace-project-lightbox-project:not(.primary-btn):not(.textbtn):not(.r
 .sidebar-prompt-close:focus-visible {
   outline: 0;
   border-color: transparent;
-  background: var(--sidebar-prompt-control);
+  background: transparent;
   color: #f2f2f2;
   box-shadow: 0 0 0 2px rgba(255, 255, 255, .08);
 }
@@ -364,7 +371,7 @@ button.workspace-project-lightbox-project:not(.primary-btn):not(.textbtn):not(.r
   height: 40px;
   border-color: transparent;
   border-radius: 10px;
-  background: var(--sidebar-prompt-control);
+  background: transparent;
   color: rgba(255, 255, 255, .62);
   box-shadow: none;
 }
@@ -373,15 +380,19 @@ button.workspace-project-lightbox-project:not(.primary-btn):not(.textbtn):not(.r
   min-height: 40px;
   border-color: transparent;
   border-radius: 10px;
-  background: var(--sidebar-prompt-control);
+  background: transparent;
   color: #ececec;
   padding-inline: 12px;
   box-shadow: none;
 }
+.sidebar-prompt-model { grid-template-columns: minmax(0, 1fr); gap: 0; }
+.sidebar-prompt-model::after { content: none; }
+.sidebar-prompt-model [data-slot="select-trigger"],
+.sidebar-prompt-model [data-slot="select-trigger"]:focus-visible { border-color: transparent !important; background: transparent !important; box-shadow: none !important; }
 .sidebar-prompt-model:focus-within,
 .sidebar-prompt-thinking:focus-within {
   border-color: transparent;
-  background: var(--sidebar-prompt-control-strong);
+  background: transparent;
   box-shadow: 0 0 0 2px rgba(255, 255, 255, .08);
 }
 .sidebar-prompt-model > span:first-child,
@@ -399,7 +410,7 @@ button.sidebar-prompt-start.primary-btn:active { transform: scale(.97); }
 .sidebar-prompt-control-strip .attach-btn:focus-visible {
   outline: 0;
   border-color: transparent;
-  background: var(--sidebar-prompt-control-strong);
+  background: transparent;
   box-shadow: 0 0 0 2px rgba(255, 255, 255, .08);
 }
 .sidebar-prompt-start.primary-btn,
@@ -435,7 +446,7 @@ button.sidebar-prompt-start.primary-btn:disabled {
   height: 34px;
   border-color: transparent;
   border-radius: 8px;
-  background: var(--sidebar-prompt-control);
+  background: transparent;
   box-shadow: none;
 }
 .sidebar-prompt-status {
@@ -452,73 +463,11 @@ button.sidebar-prompt-start.primary-btn:disabled {
   padding: 0 14px 12px;
   border-bottom: 0;
 }
-#sidebar-prompt-suggestions.sidebar-prompt-suggestions {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0;
-  padding: 4px 14px 14px;
-  background: transparent;
-}
-#sidebar-prompt-suggestions.launch-suggestions::before {
-  padding: 0 0 6px;
-  color: rgba(255, 255, 255, .44);
-  font: 600 12px/1.2 var(--sans);
-  letter-spacing: 0;
-  text-transform: none;
-}
-#sidebar-prompt-suggestions button:not(.primary-btn):not(.textbtn):not(.run-summary):not(.copy-button) {
-  appearance: none;
-  display: grid;
-  grid-template-columns: 24px minmax(0, 1fr);
-  grid-template-rows: auto;
-  gap: 8px;
-  align-items: center;
-  width: 100%;
-  min-height: 34px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: rgba(255, 255, 255, .52);
-  padding: 4px 2px;
-  text-align: left;
-  letter-spacing: 0;
-  text-transform: none;
-  cursor: pointer;
-  box-shadow: none;
-}
-#sidebar-prompt-suggestions button::before {
-  content: '+';
-  display: grid;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  border: 0;
-  border-radius: 7px;
-  background: transparent;
-  color: rgba(255, 255, 255, .42);
-  font: 400 18px/1 var(--sans);
-}
-#sidebar-prompt-suggestions strong {
-  min-width: 0;
-  overflow: hidden;
-  color: rgba(255, 255, 255, .70);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font: 600 13px/1.25 var(--sans);
-  letter-spacing: 0;
-}
-#sidebar-prompt-suggestions span { display: none; }
-#sidebar-prompt-suggestions button:focus-visible {
-  outline: 0;
-  background: var(--sidebar-prompt-control);
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, .08);
-}
 @media (hover: hover) and (pointer: fine) {
-  .sidebar-prompt-close:hover { background: var(--sidebar-prompt-control); color: #f2f2f2; }
-  .sidebar-prompt-control-strip .attach-btn:hover { background: var(--sidebar-prompt-control-strong); }
+  .sidebar-prompt-close:hover { background: transparent; color: #f2f2f2; }
+  .sidebar-prompt-control-strip .attach-btn:hover { background: transparent; }
   .sidebar-prompt-start.primary-btn:hover,
   button.sidebar-prompt-start.primary-btn:hover { background: #f8f8f8; color: #111; }
-  #sidebar-prompt-suggestions button:hover { background: var(--sidebar-prompt-control); }
 }
 @media (max-width: 640px) {
   .sidebar-prompt-lightbox {
@@ -527,7 +476,7 @@ button.sidebar-prompt-start.primary-btn:disabled {
   }
   .sidebar-prompt-lightbox-shell { border-radius: 16px; }
   .sidebar-prompt-topbar { gap: 10px; min-height: 52px; padding: 8px 10px; }
-  .sidebar-prompt-project-picker { width: calc(100% - 42px); }
+  .sidebar-prompt-project-picker { width: fit-content; max-width: calc(100% - 42px); }
   .sidebar-prompt-lightbox textarea {
     min-height: 140px;
     padding: 18px;
@@ -543,19 +492,11 @@ button.sidebar-prompt-start.primary-btn:disabled {
   .sidebar-prompt-thinking,
   .sidebar-prompt-start.primary-btn,
   button.sidebar-prompt-start.primary-btn { grid-column: 1 / -1; }
+  .sidebar-prompt-model { grid-column: auto; }
   .sidebar-prompt-start.primary-btn,
   button.sidebar-prompt-start.primary-btn { width: 100%; }
   .sidebar-prompt-lightbox .attachment-status.has-images { max-width: calc(100vw - 100px); }
   .sidebar-prompt-status:not(:empty) { padding: 0 12px 10px; }
-  #sidebar-prompt-suggestions.launch-suggestions {
-    grid-template-columns: 1fr;
-    gap: 0;
-    padding: 2px 12px 12px;
-  }
-  #sidebar-prompt-suggestions button:not(.primary-btn):not(.textbtn):not(.run-summary):not(.copy-button) {
-    min-height: 34px;
-    padding: 4px 2px;
-  }
 }
 .launch-card,
 .flow-composer { transition: border-color 120ms ease, box-shadow 120ms ease, background 120ms ease; }
@@ -563,6 +504,20 @@ button.sidebar-prompt-start.primary-btn:disabled {
 .launch-controls { grid-column: 1; flex-wrap: nowrap; padding: 0 8px 10px 10px; }
 .workspace-run-row { grid-column: 2; display: flex; justify-content: flex-end; align-self: stretch; padding: 0 10px 10px 0; border-top: 0; background: transparent; }
 .run-btn { min-width: 112px; min-height: 34px; padding: 8px 12px; }
+.submit-enter-hint {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 18px;
+  padding: 0 5px;
+  border: 1px solid color-mix(in srgb, currentColor 28%, transparent);
+  border-radius: 5px;
+  font: 700 10px/1 var(--mono);
+  letter-spacing: 0;
+  text-transform: lowercase;
+  opacity: .72;
+}
 .repo-tray {
   display: grid;
   grid-template-columns: minmax(210px, 1fr) auto minmax(0, 1.4fr) auto;
@@ -1157,13 +1112,6 @@ button.sidebar-prompt-start.primary-btn:disabled {
   width: min(250px, 100%);
   max-height: min(310px, calc(100svh - 118px));
   overflow: auto;
-  border: 0;
-  border-radius: 7px;
-  padding: 3px;
-  background: #202020;
-  box-shadow:
-    0 18px 42px rgba(0, 0, 0, .42),
-    inset 0 0 0 1px rgba(255, 255, 255, .06);
 }
 
 .workspace-agents-sidebar .sidebar-scope-option {
@@ -1174,29 +1122,27 @@ button.sidebar-prompt-start.primary-btn:disabled {
   align-items: center;
   gap: 9px;
   border: 0 !important;
-  border-radius: 5px;
+  border-radius: 6px;
   padding: 0 9px 0 8px !important;
   background: transparent !important;
-  color: rgba(231, 231, 231, .86) !important;
+  color: var(--ink-2) !important;
   letter-spacing: 0 !important;
   text-align: left;
   text-transform: none !important;
   font: 500 13px/32px var(--sans);
 }
 
-.workspace-agents-sidebar .sidebar-scope-option:hover,
-.workspace-agents-sidebar .sidebar-scope-option:focus-visible,
 .workspace-agents-sidebar .sidebar-scope-option[aria-checked="true"] {
-  background: rgba(255, 255, 255, .055) !important;
-  color: var(--t3-sidebar-fg) !important;
-  outline: 0;
+  background: var(--blue-soft) !important;
+  color: var(--ink) !important;
 }
 
 .workspace-agents-sidebar .sidebar-scope-option:hover,
 .workspace-agents-sidebar .sidebar-scope-option:focus-visible {
   border-color: transparent !important;
-  background: rgba(255, 255, 255, .075) !important;
-  color: var(--t3-sidebar-fg) !important;
+  background: var(--blue-soft) !important;
+  color: var(--ink) !important;
+  outline: 0;
 }
 
 .workspace-agents-sidebar .sidebar-scope-option .sidebar-thread-favicon {
@@ -1458,8 +1404,10 @@ button.sidebar-prompt-start.primary-btn:disabled {
   width: 14px;
   height: 14px;
   border: 1px solid rgba(142, 142, 142, .52);
-  border-radius: 4px;
+  border-radius: 5px;
   background: rgba(255, 255, 255, .03);
+  box-shadow: none;
+  transition: background 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
 }
 
 .workspace-agents-sidebar .sidebar-thread-select span::after {
@@ -1476,11 +1424,21 @@ button.sidebar-prompt-start.primary-btn:disabled {
 }
 
 .workspace-agents-sidebar .sidebar-thread-select:hover,
-.workspace-agents-sidebar .sidebar-thread-select:focus-visible,
 .workspace-agents-sidebar .sidebar-thread-select[aria-pressed="true"] {
   background: rgba(255, 255, 255, .08);
   color: var(--t3-sidebar-fg);
   opacity: 1;
+}
+
+.workspace-agents-sidebar .sidebar-thread-select:focus-visible {
+  outline: 0;
+  opacity: 1;
+}
+
+.workspace-agents-sidebar .sidebar-thread-select:focus-visible span {
+  border-color: rgba(125, 211, 252, .9);
+  background: rgba(125, 211, 252, .1);
+  box-shadow: 0 0 0 3px rgba(125, 211, 252, .16);
 }
 
 .workspace-agents-sidebar .sidebar-thread-select[aria-pressed="true"] span {
@@ -1629,8 +1587,11 @@ body.sidebar-jump-hints .workspace-agents-sidebar .sidebar-thread[data-jump-inde
 
 .workspace-agents-sidebar .running .runtime-label,
 .workspace-agents-sidebar .starting .runtime-label,
-.workspace-agents-sidebar .launching .runtime-label {
-  color: var(--t3-sky);
+.workspace-agents-sidebar .launching .runtime-label,
+.workspace-agents-sidebar .running .thread-activity,
+.workspace-agents-sidebar .starting .thread-activity,
+.workspace-agents-sidebar .launching .thread-activity {
+  color: var(--t3-amber);
 }
 
 .workspace-agents-sidebar .running .runtime-label::before,
@@ -1911,12 +1872,7 @@ body.sidebar-jump-hints .workspace-agents-sidebar .sidebar-thread[data-jump-inde
   position: fixed;
   z-index: 80;
   min-width: 188px;
-  border: 1px solid rgba(255, 255, 255, .1);
-  border-radius: 8px;
-  padding: 4px;
-  background: #1f1f1f;
-  color: var(--t3-sidebar-fg);
-  box-shadow: 0 16px 44px rgba(0, 0, 0, .42);
+  color: var(--ink);
 }
 
 .sidebar-thread-menu button {
@@ -1931,20 +1887,20 @@ body.sidebar-jump-hints .workspace-agents-sidebar .sidebar-thread[data-jump-inde
   border-radius: 6px;
   padding: 0 8px;
   background: transparent;
-  color: rgba(231, 231, 231, .9);
+  color: var(--ink-2);
   text-align: left;
   font: 500 13px/30px var(--sans);
 }
 
 .sidebar-thread-menu button:hover,
 .sidebar-thread-menu button:focus-visible {
-  background: var(--t3-sidebar-hover);
-  color: var(--t3-sidebar-fg);
+  background: var(--blue-soft);
+  color: var(--ink);
   outline: 0;
 }
 
 .sidebar-thread-menu button[data-danger="true"] {
-  color: var(--t3-red);
+  color: var(--red);
 }
 
 .sidebar-thread-menu kbd {
@@ -2030,11 +1986,6 @@ body[data-home-ui="ops"] .inbox-item { padding: 18px 14px; }
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
-  border: 1px solid color-mix(in srgb, var(--rule) 76%, transparent);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--paper) 90%, var(--bg));
-  box-shadow: 0 18px 48px rgba(0, 0, 0, .34), inset 0 1px 0 color-mix(in srgb, var(--inset-highlight) 76%, transparent);
-  padding: 4px;
   scrollbar-color: color-mix(in srgb, var(--ink-4) 58%, transparent) transparent;
   scrollbar-width: thin;
 }
@@ -2081,14 +2032,14 @@ body[data-home-ui="ops"] .inbox-item { padding: 18px 14px; }
   border-radius: 999px;
   background: color-mix(in srgb, var(--ink-4) 70%, transparent);
 }
-#project-repo-options > button.repo-suggestion.is-active { background: color-mix(in srgb, var(--blue-soft) 50%, transparent); color: var(--ink); }
+#project-repo-options > button.repo-suggestion.is-active { background: var(--blue-soft); color: var(--ink); }
 #project-repo-options > button.repo-suggestion:focus-visible {
-  outline: 1px solid color-mix(in srgb, var(--blue) 56%, transparent);
+  outline: 1px solid var(--blue);
   outline-offset: -1px;
 }
 .repo-suggestion-empty { padding: 14px 12px; color: var(--ink-3); font-size: 13px; line-height: 1.35; }
 @media (hover: hover) and (pointer: fine) {
-  #project-repo-options > button.repo-suggestion:hover { background: color-mix(in srgb, var(--blue-soft) 42%, transparent); color: var(--ink); }
+  #project-repo-options > button.repo-suggestion:hover { background: var(--blue-soft); color: var(--ink); }
 }
 @media (max-width: 560px) {
   #project-repo-options > button.repo-suggestion {
@@ -2292,12 +2243,7 @@ button.project-choice:not(.primary-btn):not(.textbtn):not(.run-summary):not(.cop
   z-index: 50;
   display: grid;
   width: min(312px, calc(100vw - 24px));
-  gap: 7px;
-  padding: 8px;
-  border: 0;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--paper-2) 72%, var(--paper));
-  box-shadow: var(--shadow-md);
+  gap: 1px;
 }
 .workspace-switcher-home,
 .workspace-switcher-project,
@@ -2307,7 +2253,7 @@ button.workspace-switcher-project:not(.primary-btn):not(.textbtn):not(.run-summa
   gap: 3px;
   padding: 8px 9px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 6px;
   background: transparent;
   color: var(--ink-2);
   text-align: left;
@@ -2333,7 +2279,7 @@ button.workspace-switcher-project:not(.primary-btn):not(.textbtn):not(.run-summa
 .workspace-switcher-project strong { min-width: 0; overflow: hidden; color: var(--ink); text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
 .workspace-switcher-project small { overflow: hidden; color: var(--ink-3); text-overflow: ellipsis; white-space: nowrap; font: 10.5px/1.3 var(--mono); }
 .workspace-switcher-project[aria-current="page"],
-button.workspace-switcher-project[aria-current="page"]:not(.primary-btn):not(.textbtn):not(.run-summary):not(.copy-button):not([data-close-button]):not([data-button]):not([data-cancel]) { background: color-mix(in srgb, var(--blue-soft) 42%, var(--paper)); }
+button.workspace-switcher-project[aria-current="page"]:not(.primary-btn):not(.textbtn):not(.run-summary):not(.copy-button):not([data-close-button]):not([data-button]):not([data-cancel]) { background: var(--blue-soft); }
 .workspace-switcher-project[aria-current="page"] strong { color: var(--blue); }
 .workspace-switcher-home { gap: 2px; padding: 9px; color: var(--ink-2); font: 700 12px/1.2 var(--sans); text-decoration: none; }
 .workspace-switcher-home strong { color: var(--ink); font-size: 12px; }
@@ -2348,6 +2294,6 @@ button.workspace-switcher-project[aria-current="page"]:not(.primary-btn):not(.te
   .workspace-switcher-toggle:hover,
   .workspace-switcher-home:hover,
   .workspace-switcher-project:hover,
-  button.workspace-switcher-project:not(.primary-btn):not(.textbtn):not(.run-summary):not(.copy-button):not([data-close-button]):not([data-button]):not([data-cancel]):hover { border: 0; background: color-mix(in srgb, var(--blue-soft) 54%, transparent); color: var(--ink); }
+  button.workspace-switcher-project:not(.primary-btn):not(.textbtn):not(.run-summary):not(.copy-button):not([data-close-button]):not([data-button]):not([data-cancel]):hover { border: 0; background: var(--blue-soft); color: var(--ink); }
   .inbox-item:hover { background: color-mix(in srgb, var(--blue-soft) 42%, transparent); }
 }

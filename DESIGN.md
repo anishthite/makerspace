@@ -34,11 +34,17 @@ Use these names in CSS as `--ds-*` variables.
 
 ## Type
 
-- Font: `Inter`, then `ui-sans-serif`, `system-ui`, `sans-serif`.
-- Hero: `clamp(54px, 9vw, 104px)`, line-height `.86`, letter-spacing `-.095em`, weight `800`.
-- Body: `16px/1.5`.
-- Lede: `clamp(19px, 2.4vw, 24px)`, line-height `1.35`.
-- Labels: `11px`, lowercase, letter-spacing `.12em`, weight `700`.
+One family ships: `Inter Variable`, then `Inter`, `ui-sans-serif`, `system-ui`, `sans-serif`. `--mono` is only a semantic alias for chrome/code-like UI; it still resolves to Inter.
+
+| Role | Token / style | Use |
+|---|---|---|
+| Body | `400 16px/1.55 var(--sans)` | Paragraphs, message text, descriptions, long reading. |
+| UI | `500 13px/1.25 var(--sans)` | Menu rows, helper text, secondary dense UI. |
+| Strong UI | `700 13px/1.2 var(--sans)` | Card titles, selected rows, important status text. |
+| Labels/chrome | `700 11px/1 var(--mono)` | Eyebrows, pills, tiny metadata, control labels. |
+| Display | `800`, tight line-height, negative tracking | Brand, page heroes, large section headings only. |
+
+Avoid new font families. Avoid weights outside `400`, `500`, `700`, `800` unless a one-off marketing hero needs it.
 
 ## Spacing
 

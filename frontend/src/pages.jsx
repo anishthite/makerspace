@@ -34,6 +34,8 @@ import {
   Button,
   InputGroup,
   InputMessage,
+  ModelPicker,
+  ProjectPicker,
   ScrollArea,
   Select,
   Slider,
@@ -386,37 +388,31 @@ function SidebarPromptLightbox() {
   return <dialog id="sidebar-prompt-lightbox" className="sidebar-prompt-lightbox" aria-label="Start a main agent" aria-describedby="sidebar-prompt-status">
     <form id="sidebar-prompt-form" className="sidebar-prompt-lightbox-shell" noValidate>
       <header className="sidebar-prompt-topbar">
-        <label className="sidebar-prompt-project-picker" htmlFor="sidebar-prompt-project-select">
-          <span>project</span>
-          <Select id="sidebar-prompt-project-select" aria-label="Project for new agent"><option value="">loading projects...</option></Select>
-          <CaretDownIcon className="size-3" weight="bold" aria-hidden="true" />
-        </label>
+        <div className="sidebar-prompt-project-picker">
+          <FolderOpenIcon className="sidebar-prompt-project-icon size-4" weight="duotone" aria-hidden="true" />
+          <ProjectPicker id="sidebar-prompt-project-select" ariaLabel="Project for new agent" initialLabel="loading projects..." />
+        </div>
         <Button id="sidebar-prompt-lightbox-close" variant="ghost" size="icon" className="sidebar-prompt-close" type="button" aria-label="close prompt"><XIcon className="size-4" aria-hidden="true" /></Button>
       </header>
       <label className="sr-only" htmlFor="sidebar-prompt">Prompt</label>
-      <textarea id="sidebar-prompt" name="prompt" rows="4" placeholder="Tell the main agent what to do..." aria-keyshortcuts="Meta+Enter Control+Enter" required></textarea>
+      <textarea id="sidebar-prompt" name="prompt" rows="4" placeholder="Tell the main agent what to do..." aria-keyshortcuts="Enter" required></textarea>
       <div className="sidebar-prompt-control-strip" aria-label="main agent run controls">
         <div className="attachment-row composer-attachment-row">
           <Button id="sidebar-prompt-images-trigger" variant="ghost" size="sm" className="attach-btn" type="button" aria-label="add images" aria-controls="sidebar-prompt-images" title="add images"><PlusIcon {...buttonIconProps} /></Button>
           <input id="sidebar-prompt-images" className="image-input" name="images" type="file" accept="image/png,image/jpeg,image/gif,image/webp" multiple tabIndex="-1" aria-hidden="true" />
           <span id="sidebar-prompt-image-status" className="attachment-status muted" role="status" aria-live="polite"></span>
         </div>
-        <InputGroup label="model" className="model-picker sidebar-prompt-model max-sm:flex-[1_1_100%]">
-          <Select id="sidebar-model-ref" name="modelRef"><option value="">loading model...</option></Select>
+        <InputGroup className="model-picker sidebar-prompt-model max-sm:flex-[1_1_100%]">
+          <ModelPicker id="sidebar-model-ref" name="modelRef" ariaLabel="Model for new agent" initialLabel="loading model…" />
         </InputGroup>
         <InputGroup label="thinking" className="thinking-slider sidebar-prompt-thinking max-sm:flex-[1_1_100%]">
           <Slider id="sidebar-thinking-level" min="0" max="5" step="1" defaultValue="5" />
           <output id="sidebar-thinking-level-value" htmlFor="sidebar-thinking-level">xhigh</output>
         </InputGroup>
-        <Button id="sidebar-prompt-submit" variant="primary" className="sidebar-prompt-start" type="submit">start agent</Button>
+        <Button id="sidebar-prompt-submit" variant="primary" className="sidebar-prompt-start" type="submit">send<kbd className="submit-enter-hint" aria-hidden="true">enter ↵</kbd></Button>
       </div>
       <p id="sidebar-prompt-project" className="sr-only" aria-live="polite">Choose a project first.</p>
       <p id="sidebar-prompt-status" className="sidebar-prompt-status" role="status" aria-live="polite"></p>
-      <section id="sidebar-prompt-suggestions" className="sidebar-prompt-suggestions launch-suggestions" aria-label="Suggested starter prompts">
-        <button type="button" data-sidebar-suggested-prompt="Audit the workspace for any incomplete, unverified, or stale changes and report the highest-risk follow-ups."><strong>Full workspace audit</strong><span>Audit the workspace for any incomplete, unverified, or stale changes and report the highest-risk follow-ups</span></button>
-        <button type="button" data-sidebar-suggested-prompt="Run the project's key regression checks and verify the main user flows still work end to end."><strong>Run regression checks</strong><span>Run the project's key regression checks and verify the main user flows still work end to end</span></button>
-        <button type="button" data-sidebar-suggested-prompt="Summarize the current state, completed work, and any remaining issues for a clean handoff."><strong>Prepare handoff notes</strong><span>Summarize the current state, completed work, and any remaining issues for a clean handoff</span></button>
-      </section>
     </form>
   </dialog>;
 }
@@ -515,9 +511,9 @@ export function WorkspacePage() {
         <input name="repoSource" type="hidden" value="" readOnly />
         <label className="sr-only" htmlFor="prompt">Task</label>
         <div className="launch-input-panel">
-          <textarea id="prompt" name="prompt" rows="4" placeholder="Tell the main agent what to do…" required></textarea>
+          <textarea id="prompt" name="prompt" rows="4" placeholder="Tell the main agent what to do…" aria-keyshortcuts="Enter" required></textarea>
           <RunControls launch />
-          <div className="target-row workspace-run-row"><Button id="thread-submit" variant="primary" className="run-btn" type="submit">start agent</Button></div>
+          <div className="target-row workspace-run-row"><Button id="thread-submit" variant="primary" className="run-btn" type="submit">send<kbd className="submit-enter-hint" aria-hidden="true">enter ↵</kbd></Button></div>
         </div>
         <WorkspaceProjectLightbox />
         <div className="repo-tray" hidden>
@@ -538,7 +534,7 @@ export function WorkspacePage() {
 }
 
 export function ThreadPage() {
-  return <GlobalAppShell sidebarWorkspaceSwitcher={false} sidebarDefaultOpen={false} insetClassName="global-app-center">
+  return <GlobalAppShell sidebarWorkspaceSwitcher={false} insetClassName="global-app-center">
       <main className="thread-flow-shell">
         <section className="thread-stage" aria-label="Main agent workspace">
           <header className="thread-main-header">
@@ -704,7 +700,7 @@ Keep screenshots, diffs, logs, and comments attached to the run.`;
   return <>
     <style>{`
       /* Design source: roughdraft.md + DESIGN.md */
-      .landing-page { --ds-bg:var(--bg,#050607); --ds-surface:var(--paper,#1D2530); --ds-surface-2:var(--paper-2,#263142); --ds-text:var(--ink,#F1F5FA); --ds-muted:var(--ink-2,#D3DAE7); --ds-quiet:var(--ink-3,#9BA8BA); --ds-line:var(--rule,rgba(140,189,253,.18)); --ds-line-strong:var(--rule-2,rgba(140,189,253,.32)); --ds-accent:var(--blue,#8CBDFD); --ds-green:#64da70; --ds-yellow:#d99a18; --ds-red:var(--red,#F1A1B6); --landing-font:'Inter Variable', Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; position:relative; min-height:100svh; overflow:hidden; background:var(--ds-bg); color:var(--ds-text); font:16px/1.5 var(--landing-font); font-optical-sizing:auto; }
+      .landing-page { --ds-bg:var(--bg,#050607); --ds-surface:var(--paper,#1D2530); --ds-surface-2:var(--paper-2,#263142); --ds-text:var(--ink,#F1F5FA); --ds-muted:var(--ink-2,#D3DAE7); --ds-quiet:var(--ink-3,#9BA8BA); --ds-line:var(--rule,rgba(140,189,253,.18)); --ds-line-strong:var(--rule-2,rgba(140,189,253,.32)); --ds-accent:var(--blue,#8CBDFD); --ds-green:#64da70; --ds-yellow:#d99a18; --ds-red:var(--red,#F1A1B6); --landing-font:var(--sans,'Inter Variable', Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif); position:relative; min-height:100svh; overflow:hidden; background:var(--ds-bg); color:var(--ds-text); font:16px/1.5 var(--landing-font); font-optical-sizing:auto; }
       .landing-page::before { content:''; position:absolute; inset:0; z-index:1; pointer-events:none; opacity:.16; background-image:radial-gradient(rgba(245,242,234,.22) .55px, transparent .7px),radial-gradient(rgba(245,242,234,.12) .45px, transparent .7px); background-position:0 0,2px 2px; background-size:4px 4px; }
       .landing-shell { position:relative; z-index:2; display:grid; grid-template-rows:auto 1fr; width:min(1500px, calc(100% - 48px)); min-height:100svh; margin:0 auto; padding:32px 0; }
       .landing-nav, .landing-links, .landing-actions, .landing-shot-menu, .landing-window-title, .landing-step-head, .landing-footer, .landing-result-toolbar, .landing-agent-head { display:flex; align-items:center; }
@@ -722,7 +718,7 @@ Keep screenshots, diffs, logs, and comments attached to the run.`;
       .landing-button { display:inline-flex; min-height:56px; align-items:center; justify-content:center; border:1px solid #fff; border-radius:10px; padding:0 22px; background:#fff; color:#000; font-family:inherit; font-size:clamp(18px,1rem + .45vw,20px); font-weight:950; text-decoration:none; text-transform:none; letter-spacing:normal; cursor:pointer; }
       .landing-github-link { display:inline-flex; min-height:56px; align-items:center; color:color-mix(in srgb,var(--ds-text) 58%,transparent); }
       .landing-agent-loop { position:relative; min-height:520px; border-left:1px solid rgba(255,255,255,.08); padding-left:30px; }
-      .landing-agent-head { position:relative; z-index:1; margin-bottom:18px; color:color-mix(in srgb,var(--ds-text) 58%,transparent); font:900 12px/1 ui-monospace,SFMono-Regular,Menlo,monospace; text-transform:lowercase; }
+      .landing-agent-head { position:relative; z-index:1; margin-bottom:18px; color:color-mix(in srgb,var(--ds-text) 58%,transparent); font:800 12px/1 var(--landing-font); text-transform:lowercase; }
       .landing-agent-stack { position:relative; z-index:1; height:352px; overflow:hidden; mask-image:linear-gradient(transparent 0,#000 9%,#000 88%,transparent 100%); }
       .landing-agent { position:absolute; left:0; right:0; display:grid; grid-template-columns:34px minmax(0,1fr) auto; gap:14px; align-items:center; min-height:74px; border:1px solid rgba(255,255,255,.07); border-radius:15px; background:linear-gradient(90deg,rgba(255,255,255,.035),rgba(255,255,255,.012)); padding:14px 16px; transform:translateY(calc(var(--slot) * 86px)); transition:transform .72s cubic-bezier(.2,.8,.2,1),opacity .45s ease,border-color .3s ease,background .3s ease; }
       .landing-agent.is-leaving { transform:translateY(-88px); opacity:0; }
@@ -736,8 +732,8 @@ Keep screenshots, diffs, logs, and comments attached to the run.`;
       .landing-agent.is-done .landing-agent-dot::after { display:none; }
       .landing-agent strong { display:block; overflow:hidden; color:var(--ds-text); font-size:18px; line-height:1.1; white-space:nowrap; text-overflow:ellipsis; letter-spacing:-.035em; }
       .landing-agent small { display:block; margin-top:4px; color:var(--ds-quiet); font-size:14px; }
-      .landing-agent-time { color:color-mix(in srgb,var(--ds-text) 45%,transparent); font:800 12px/1 ui-monospace,SFMono-Regular,Menlo,monospace; }
-      .landing-agent-composer { position:relative; z-index:1; display:grid; grid-template-columns:22px minmax(0,1fr) auto; gap:12px; align-items:center; min-height:54px; margin-top:14px; border:1px solid rgba(255,255,255,.09); border-radius:15px; background:rgba(255,255,255,.018); padding:0 14px; color:color-mix(in srgb,var(--ds-text) 66%,transparent); font:800 13px/1 ui-monospace,SFMono-Regular,Menlo,monospace; transition:border-color .2s ease,box-shadow .2s ease; }
+      .landing-agent-time { color:color-mix(in srgb,var(--ds-text) 45%,transparent); font:800 12px/1 var(--landing-font); }
+      .landing-agent-composer { position:relative; z-index:1; display:grid; grid-template-columns:22px minmax(0,1fr) auto; gap:12px; align-items:center; min-height:54px; margin-top:14px; border:1px solid rgba(255,255,255,.09); border-radius:15px; background:rgba(255,255,255,.018); padding:0 14px; color:color-mix(in srgb,var(--ds-text) 66%,transparent); font:800 13px/1 var(--landing-font); transition:border-color .2s ease,box-shadow .2s ease; }
       .landing-agent-composer.is-submitting { border-color:rgba(217,154,24,.26); box-shadow:0 0 34px rgba(217,154,24,.08); }
       .landing-agent-plus, .landing-agent-return { color:color-mix(in srgb,var(--ds-text) 42%,transparent); }
       .landing-agent-prompt { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }

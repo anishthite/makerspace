@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Dropdown standardization</title>
+<meta name="task" content="Standardize active app dropdown, select, and menu chrome.">
+<meta name="date-started" content="2026-08-10">
+<meta name="date-updated" content="2026-08-10">
+<meta name="status" content="ready-for-review">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,ui,dropdown,select,menu,css,design-system">
+<meta name="related" content="2026-08-10-shadcn-model-picker.html,2026-08-02-project-repo-dropdown-polish.html,2026-07-30-assistant-ui-tool-dropdown-polish.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-in-progress{color:#b85c00}.status-ready{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Dropdown standardization</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-08-10 · status <b class="status-ready">ready-for-review</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Make active dropdown, select, listbox, and menu surfaces use the main model-picker chrome.</div>
+  <b>Source</b><div>Audit of <code>pages.jsx</code>, <code>runtime/*.js</code>, <code>workspace.css</code>, <code>thread.css</code>, and the Shadcn select wrapper.</div>
+  <b>Surface</b><div><code>#model-ref</code>, <code>#sidebar-model-ref</code>, <code>#sidebar-prompt-project-select</code>, <code>#project-repo-options</code>, <code>#workspace-switcher-menu</code>, <code>#sidebar-project-scope-menu</code>, <code>#sidebar-thread-menu</code>, and interactive artifact selects.</div>
+  <b>Schema</b><div>No API or stored data change.</div>
+  <b>Mobile</b><div>Keep existing wrapping and max-height rules; only border, surface, and hover chrome change.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+<h2>Audit findings</h2>
+<table><tr><th>ID</th><th>Need</th><th>Evidence</th></tr>
+<tr><td>A-001</td><td>One model-picker surface rule.</td><td>Repo suggestions, workspace switcher, scope menu, context menu, and Radix select each hard-code radius, background, border, padding, and shadow.</td></tr>
+<tr><td>A-002</td><td>One model-picker item fill.</td><td>Rows use different hover fills and focus outlines, while active rows use separate blue-soft or white overlays.</td></tr>
+<tr><td>A-003</td><td>Keep native selects where behavior is already wired.</td><td>Main composer native selects depend on existing DOM mutation code.</td></tr>
+<tr><td>A-004</td><td>Replace the sidebar project native popup.</td><td>The screenshot shows the OS <code>select</code> popup, which ignores app dropdown CSS.</td></tr>
+</table>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+<tr><td><code>frontend/src/styles/app.css</code></td><td>touch</td><td>Keep the theme contract free of dropdown-only token sprawl.</td></tr>
+<tr><td><code>frontend/src/components/ui/select.jsx</code></td><td>touch</td><td>Use direct <code>paper/rule/blue-soft</code> chrome for Radix select.</td></tr>
+<tr><td><code>frontend/src/components/ui.jsx</code></td><td>touch</td><td>Add <code>ProjectPicker</code>, a Radix trigger backed by the existing hidden project select.</td></tr>
+<tr><td><code>frontend/src/pages.jsx</code></td><td>touch</td><td>Use <code>ProjectPicker</code> in the sidebar prompt topbar.</td></tr>
+<tr><td><code>frontend/src/styles/workspace.css</code></td><td>touch</td><td>Use one grouped panel rule and direct model-picker colors for custom dropdowns and menus.</td></tr>
+<tr><td><code>frontend/src/styles/thread.css</code></td><td>touch</td><td>Use direct <code>paper/rule</code> chrome for interactive artifact selects.</td></tr>
+<tr><td><code>test/dropdown-standardization.test.js</code></td><td>new</td><td>Guard against reintroducing dropdown-only tokens.</td></tr>
+<tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr>
+</table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr>
+<tr><td>D-001</td><td>Use CSS over a new dropdown component. Existing dropdown behavior is fragmented but works.</td></tr>
+<tr><td>D-002</td><td>Style active surfaces in place. This avoids rewriting DOM event bridges and native select mutation code.</td></tr>
+<tr><td>D-003</td><td>Use direct <code>paper/rule/blue-soft</code> styling instead of dropdown-only tokens. Supersedes the first token pass after user feedback.</td></tr>
+<tr><td>D-004</td><td>Wrap the sidebar project select with Radix and keep the hidden <code>#sidebar-prompt-project-select</code>. Runtime project selection code keeps its existing DOM contract.</td></tr>
+</table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected</th><th>Reason</th></tr>
+<tr><td>T-001</td><td>CSS pass over full Radix conversion.</td><td>Native selects and custom menus keep keyboard and submission behavior without extra React state.</td></tr>
+<tr><td>T-002</td><td>Grouped selector over token taxonomy.</td><td>The model picker already defines the useful primitives: <code>paper</code>, <code>rule</code>, and <code>blue-soft</code>.</td></tr>
+<tr><td>T-003</td><td><code>MutationObserver</code> bridge over runtime rewrite.</td><td>Runtime can continue setting project <code>option</code> nodes and <code>value</code>.</td></tr>
+</table>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr>
+<tr><td><code>node --test test/dropdown-standardization.test.js</code></td><td>Passed.</td></tr>
+<tr><td><code>npm run build</code></td><td>Passed with existing large-chunk warnings.</td></tr>
+</table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Revert the grouped selector, direct color substitutions, and Radix select class changes; no data or behavior contracts change.</p>
+<h2>Definition of done</h2>
+<ul><li>Dropdown surfaces match the main model picker’s paper, rule, radius, and low-shadow chrome.</li><li>Dropdown items use the same blue-soft hover and active fill.</li><li>The sidebar project picker no longer opens the OS native select popup.</li><li>Focused static test and build pass.</li></ul>
+</body>
+</html>

@@ -871,7 +871,7 @@ function DiffAndNotesBoard({ onOpenDiff, activeFile = '' }) {
           title="implementation note preview"
           sandbox="allow-same-origin"
           scrolling="no"
-          srcDoc="<html><body style='margin:0;padding:12px;background:#fff;color:#111;font:13px Inter,ui-sans-serif,system-ui,sans-serif'><strong>Trace component gallery</strong><p>Files · Decisions · Verification</p></body></html>"
+          srcDoc="<html><body style='margin:0;padding:12px;background:#fff;color:#111;font:400 13px Inter,ui-sans-serif,system-ui,sans-serif'><strong>Trace component gallery</strong><p>Files · Decisions · Verification</p></body></html>"
         />
       </article>
     </div>
@@ -894,7 +894,7 @@ function ArtifactBoard({ trusted = false, copied = false, onTrust, onCopy }) {
               className="excalidraw-inline-viewer"
               title="Excalidraw artifact preview"
               sandbox="allow-same-origin"
-              srcDoc="<html><body style='margin:0;display:grid;place-items:center;height:100%;background:#151923;color:#8CBDFD;font:12px Inter,ui-sans-serif,system-ui,sans-serif'>excalidraw viewer</body></html>"
+              srcDoc="<html><body style='margin:0;display:grid;place-items:center;height:100%;background:#151923;color:#8CBDFD;font:400 12px Inter,ui-sans-serif,system-ui,sans-serif'>excalidraw viewer</body></html>"
             />
             <div className="excalidraw-card-actions"><button type="button">simplify</button><button type="button">relayout</button><button type="button">edit diagram</button></div>
           </article>
@@ -907,7 +907,7 @@ function ArtifactBoard({ trusted = false, copied = false, onTrust, onCopy }) {
               className={cn('html-artifact-frame', trusted && 'is-interactive')}
               title="HTML artifact preview"
               sandbox={trusted ? 'allow-scripts allow-forms allow-pointer-lock allow-popups allow-modals' : ''}
-              srcDoc="<html><body style='margin:0;padding:18px;background:#0E1118;color:#E6EDF3;font:13px Inter,ui-sans-serif,system-ui,sans-serif'><strong>artifact preview</strong><p>trusted iframe state</p></body></html>"
+              srcDoc="<html><body style='margin:0;padding:18px;background:#0E1118;color:#E6EDF3;font:400 13px Inter,ui-sans-serif,system-ui,sans-serif'><strong>artifact preview</strong><p>trusted iframe state</p></body></html>"
             />
           </article>
         </section>
