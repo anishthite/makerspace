@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec - Pi-style trace sidecar</title>
+<meta name="task" content="Persist Spanner trace events in a Pi-style JSONL sidecar and replay them on thread reloads.">
+<meta name="date-started" content="2026-08-01">
+<meta name="date-updated" content="2026-08-01">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="spanner,desktop,thread,trace,persistence,jsonl,pi">
+<meta name="related" content="2026-06-26-durable-agent-traces.html,2026-06-25-pi-session-traces.html,2026-07-16-local-reconnect-cursor.html,2026-07-07-remote-bridge-event-relay.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-med{color:#b85c00}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Pi-style trace sidecar</h1>
+<p class="meta"><code>agent-ui-components</code> - worktree <code>/Users/anishthite/conductor/workspaces/makerspace/tripoli</code> - 2026-08-01 - status <b class="status-shipped">shipped</b> - blast <span class="blast-med">medium</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Make reopened desktop threads show prior tool/thinking/workflow trace cards even after the server lost <code>activeRuns</code>.</div><b>Source</b><div>Pi stores append-only JSONL session files with a header line plus typed entries; Spanner currently stores trace events only in memory.</div><b>Surface</b><div><code>recordRunEvent()</code>, <code>GET /api/sessions/:name/output</code>, thread bootstrap output, and <code>frontend/src/runtime/thread.js</code>.</div><b>Schema</b><div>Add <code>traceStoreDir</code> config. Local storage writes <code>&lt;traceStoreDir&gt;/&lt;encoded-session-name&gt;.jsonl</code>; D1 stores a capped JSON value keyed by <code>trace:&lt;session-name&gt;</code>.</div><b>Open Qs</b><div>0.</div></div>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>src/trace-store.js</code></td><td>new</td><td>Pi-style trace JSONL read/write, D1 KV fallback, sanitization, and replay merge helpers.</td></tr><tr><td><code>src/config.js</code></td><td>touch</td><td>Add trace store directory config with env override.</td></tr><tr><td><code>src/server/run-state.js</code></td><td>touch</td><td>Persist every normalized run event asynchronously without blocking SSE.</td></tr><tr><td><code>src/server/routes.js</code></td><td>touch</td><td>Merge historical trace events into output/bootstrap payloads.</td></tr><tr><td><code>frontend/src/runtime/thread.js</code></td><td>touch</td><td>Render historical replay events without advancing the live SSE cursor.</td></tr><tr><td><code>test/trace-store.test.js</code></td><td>new</td><td>Cover JSONL persistence, malformed-line tolerance, sanitization, and merge semantics.</td></tr><tr><td><code>test/config.test.js</code>, <code>test/thread-trace-tray.test.js</code></td><td>touch</td><td>Pin config and integration wiring.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice - Rationale</th></tr><tr><td>D-001</td><td>Use a sidecar trace store over writing into Pi session files. The UI events are Spanner projections, not Pi's canonical conversation tree.</td></tr><tr><td>D-002</td><td>Keep live run IDs reset per run and mark replayed events as historical. This preserves the desktop stale-EventSource fix from 2026-07-16.</td></tr><tr><td>D-003</td><td>Append asynchronously and warn on failure. A slow disk or D1 write should not stall the visible run stream.</td></tr><tr><td>D-004</td><td>Cap replay events at the same <code>2000</code> event window as <code>activeRuns.events</code>. Assistant transcript text remains in existing message/output storage.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected - Reason</th></tr><tr><td>T-001</td><td>JSONL sidecar over stuffing <code>sessions.json</code>. High-frequency trace events would make the session index large and contention-prone.</td></tr><tr><td>T-002</td><td>D1 KV whole-document writes over a new trace table. It matches existing state-store primitives and is enough for a capped window.</td></tr></table>
+<h2>Assumptions</h2>
+<ul><li>A-001 - Session names are stable IDs for trace history. If rename semantics are added later, move or alias the sidecar file.</li><li>A-002 - Historical events should restore trace cards, not assistant transcript chunks. The transcript is already persisted as messages.</li></ul>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>node --check src/trace-store.js src/server/run-state.js src/server/routes.js frontend/src/runtime/thread.js</code></td><td>Passed.</td></tr><tr><td><code>node --test test/trace-store.test.js test/config.test.js test/thread-trace-tray.test.js test/thread-stream-cursor.test.js</code></td><td>Passed 46/46.</td></tr><tr><td><code>npm test</code></td><td>Passed 327/327.</td></tr><tr><td><code>npm run build</code></td><td>Passed with existing large chunk warnings.</td></tr><tr><td><code>git diff --check</code></td><td>Passed.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 - <span class="blast-med">medium</span>. Revert the store, route hydration, and client cursor guard; existing sessions remain readable and sidecar files can be ignored.</p>
+<h2>Definition of done</h2>
+<ul><li>New run events are appended to per-session JSONL.</li><li>Thread output/bootstrap payloads include de-duplicated historical trace events.</li><li>Historical replay does not advance <code>lastEventId</code> or break active SSE reconnects.</li><li>Focused tests and syntax checks pass.</li></ul>
+</body>
+</html>

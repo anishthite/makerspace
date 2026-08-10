@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Mobile polish pass</title>
+<meta name="task" content="Improve small-screen layout polish across Spanner core pages.">
+<meta name="date-started" content="2026-08-02">
+<meta name="date-updated" content="2026-08-02">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,ui,mobile,responsive,workspace,thread">
+<meta name="related" content="2026-07-16-mobile-ui-support.html,2026-07-18-mobile-sidebar-polish.html,2026-08-01-full-css-split-visual-parity.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code { font-family: ui-monospace, Menlo, monospace; background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+  .blast-low { color: #2a7a2a; }
+  .status-in-progress { color: #b85c00; }
+  .status-shipped { color: #2a7a2a; }
+</style>
+</head>
+<body>
+<h1>Mobile polish pass</h1>
+<p class="meta"><code>agent-ui-components</code> · worktree <code>/Users/anishthite/conductor/workspaces/makerspace/tripoli</code> · 2026-08-02 · status <b class="status-shipped">shipped</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Make phone layouts feel deliberate after the existing mobile smoke checks pass.</div>
+  <b>Surface</b><div><code>/</code>, <code>/workspace.html</code>, <code>/thread.html</code>, <code>/settings.html</code>, <code>/telemetry.html</code>.</div>
+  <b>Schema</b><div>No API or stored data change.</div>
+  <b>Mobile</b><div>Header wrapping, composer controls, launch spacing, and oversized route headings.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+<h2>UI layout</h2>
+<ol>
+  <li><b>Topbars</b>: stack small-screen nav/action clusters into a compact two-column action grid.</li>
+  <li><b>Workspace composer</b>: reduce empty textarea height and align controls as full-width touch rows.</li>
+  <li><b>Thread composer</b>: make model/thinking controls readable in the fixed bottom composer without horizontal scrolling.</li>
+  <li><b>Utility pages</b>: cap mobile headings so settings and telemetry do not consume the first viewport.</li>
+</ol>
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>frontend/src/pages.jsx</code></td><td>touch</td><td>Add stable topbar and page-head class hooks for mobile CSS.</td></tr>
+  <tr><td><code>frontend/src/styles/app-compat.css</code></td><td>touch</td><td>Add shared phone-scale topbar, launch composer, thread composer, and utility heading rules.</td></tr>
+  <tr><td><code>frontend/src/styles/fluid-ui.css</code></td><td>touch</td><td>Increase mobile drawer touch target density in the final shared CSS layer.</td></tr>
+  <tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this mobile pass.</td></tr>
+</table>
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Keep the dark utilitarian app language. The task is mobile refinement, not a new visual direction.</td></tr>
+  <tr><td>D-002</td><td>Use CSS-only route polish. Existing markup already exposes enough hooks and runtime behavior stays unchanged.</td></tr>
+</table>
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td>Shared responsive rules over per-page JSX changes. The same composer controls appear on project, workspace, and thread surfaces.</td></tr>
+</table>
+<h2>Verification</h2>
+<table>
+  <tr><th>Check</th><th>Result</th></tr>
+  <tr><td><code>MOBILE_SMOKE_WIDTH=360 MOBILE_SMOKE_HEIGHT=780 npm run mobile:smoke</code></td><td>Passed for project, workspace, thread, settings, history, and telemetry.</td></tr>
+  <tr><td><code>MOBILE_SMOKE_WIDTH=390 MOBILE_SMOKE_HEIGHT=844 npm run mobile:smoke</code></td><td>Passed for project, workspace, thread, settings, history, and telemetry.</td></tr>
+  <tr><td><code>MOBILE_SMOKE_WIDTH=430 MOBILE_SMOKE_HEIGHT=932 npm run mobile:smoke</code></td><td>Passed for project, workspace, thread, settings, history, and telemetry.</td></tr>
+  <tr><td><code>MOBILE_SMOKE_SCREENSHOTS=1 npm run mobile:smoke</code></td><td>Passed; refreshed screenshots under <code>output/mobile-smoke/</code>.</td></tr>
+  <tr><td><code>npm run build</code></td><td>Passed with existing Vite large-chunk warnings.</td></tr>
+  <tr><td><code>git diff --check -- frontend/src/pages.jsx frontend/src/styles/app-compat.css frontend/src/styles/fluid-ui.css implementation-notes/2026-08-02-mobile-polish-pass.html implementation-notes/INDEX.html</code></td><td>Passed.</td></tr>
+</table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Revert the scoped CSS edits and this note/index row; no runtime state changes exist.</p>
+<h2>Definition of done</h2>
+<ul>
+  <li><code>npm run mobile:smoke</code> passes at multiple mobile widths.</li>
+  <li>Refreshed screenshots show cleaner mobile header and composer density.</li>
+  <li><code>npm run build</code> passes.</li>
+</ul>
+</body>
+</html>

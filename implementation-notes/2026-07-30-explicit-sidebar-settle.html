@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec - explicit sidebar settle</title>
+<meta name="task" content="Make the global sidebar move threads into Settled only after the user presses settle.">
+<meta name="date-started" content="2026-07-30">
+<meta name="date-updated" content="2026-07-30">
+<meta name="status" content="ready-for-review">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,ui,sidebar,t3code,settle,local-state">
+<meta name="related" content="2026-07-30-global-t3-sidebar-shell.html,2026-07-30-t3-sidebar-interactions.html">
+<style>
+body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:920px;margin:1.5rem auto;padding:0 1rem;color:#111}
+h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}
+table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}
+th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}
+.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px}.blast-low{color:#2a7a2a}.status-ready-for-review{color:#b85c00}
+</style>
+</head>
+<body>
+<h1>explicit sidebar settle</h1>
+<p class="meta"><code>agent-ui-components</code> - worktree <code>/Users/anishthite/conductor/workspaces/makerspace/tripoli</code> - 2026-07-30 - status <b class="status-ready-for-review">ready-for-review</b> - blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Finished threads must remain in the main global sidebar until the user explicitly presses <code>settle</code>.</div>
+  <b>Surface</b><div><code>app.js</code>, <code>project.js</code>, <code>global-sidebar.js</code>, sidebar CSS, runtime summary tests.</div>
+  <b>State</b><div>Client-local <code>spannerSidebarSettledThreads</code> stores thread names because there is no backend settle field.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice - Rationale</th></tr>
+<tr><td>D-001</td><td>Replace automatic non-active bucketing with <code>isSettledThread</code>. User explicitly asked that rows not move until pressing settle.</td></tr>
+<tr><td>D-002</td><td>Make settle/unsettle local sidebar state, not archive. Archive hides history-facing data and was too strong for T3-style settle.</td></tr>
+<tr><td>D-003</td><td>Remove the sidebar clear button. It was bulk archive-backed and conflicts with explicit settle semantics.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected - Reason</th></tr>
+<tr><td>T-001</td><td>LocalStorage over backend migration - fastest way to match the requested UX without inventing server API/storage in this pass.</td></tr>
+<tr><td>T-002</td><td>Keep unread/recent-project completion badges status-based - those indicate finished work, not settled shelf membership.</td></tr></table>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Delta</th></tr>
+<tr><td><code>frontend/src/runtime/app.js</code></td><td>Workspace sidebar explicit settle/unsettle behavior.</td></tr>
+<tr><td><code>frontend/src/runtime/project.js</code></td><td>Home sidebar explicit settle/unsettle behavior.</td></tr>
+<tr><td><code>frontend/src/runtime/global-sidebar.js</code></td><td>Thread page sidebar explicit settle/unsettle behavior.</td></tr>
+<tr><td><code>frontend/src/styles/app.css</code></td><td>Status colors for completed/ready/failed unsettled cards.</td></tr>
+<tr><td><code>test/home-runtime-summary.test.js</code></td><td>Assertions updated from archive-backed settle to explicit local settle.</td></tr></table>
+<h2>Verification</h2>
+<table><tr><th>ID</th><th>Check</th><th>Result</th></tr>
+<tr><td>V-001</td><td><code>node --check frontend/src/runtime/global-sidebar.js frontend/src/runtime/app.js frontend/src/runtime/project.js</code></td><td>Pass.</td></tr>
+<tr><td>V-002</td><td><code>node --test test/home-runtime-summary.test.js</code></td><td>Pass: 16/16.</td></tr>
+<tr><td>V-003</td><td>Playwright mocked sidebar settle/unsettle smoke</td><td>Pass: finished rows stay active initially; settle moves one row to Settled and writes <code>spannerSidebarSettledThreads</code>; un-settle moves it back. Screenshot: <code>output/playwright/sidebar-v2/explicit-settle-workspace.png</code>.</td></tr>
+<tr><td>V-004</td><td><code>git diff --check</code></td><td>Pass.</td></tr>
+<tr><td>V-005</td><td><code>npm run build</code></td><td>Pass with existing chunk-size warnings.</td></tr>
+<tr><td>V-006</td><td><code>npm test</code></td><td>Known unrelated failure: <code>test/project-selector-static.test.js</code> still expects an old width class in <code>frontend/src/pages.jsx</code>. This task did not change that file.</td></tr>
+</table>
+<h2>Reversibility</h2>
+<p>R-001 - <span class="blast-low">low</span>. Revert three runtime modules, CSS, test assertions, and remove the localStorage key if needed.</p>
+</body>
+</html>

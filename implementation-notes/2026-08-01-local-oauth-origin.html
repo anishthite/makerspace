@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Local OAuth origin</title>
+<meta name="task" content="Pin local Spanner startup to localhost:8788 for GitHub OAuth.">
+<meta name="date-started" content="2026-08-01">
+<meta name="date-updated" content="2026-08-01">
+<meta name="status" content="ready-for-review">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="spanner,auth,github,oauth,local,desktop,port">
+<meta name="related" content="2026-07-14-github-signin-lightbox.html,2026-07-02-desktop-api-base-drift.html,2026-06-30-desktop-api-token-header.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code { font-family: ui-monospace, Menlo, monospace; background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  ul { margin: .3rem 0 .8rem 1.2rem; padding: 0; }
+  li { margin: .15rem 0; }
+  .blast-med { color: #b85c00; }
+  .status-in-progress { color: #b85c00; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>Local OAuth Origin</h1>
+<p class="meta"><code>agent-ui-components</code> · worktree <code>/Users/anishthite/conductor/workspaces/makerspace/tripoli</code> · 2026-08-01 · status <b class="status-in-progress">ready-for-review</b> · blast <span class="blast-med">medium</span></p>
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Make normal local and desktop launches use <code>http://localhost:8788</code> for GitHub OAuth callbacks.</div>
+  <b>Source</b><div>GitHub OAuth compares the requested <code>redirect_uri</code> against the configured localhost callback.</div>
+  <b>Surface</b><div><code>getConfig()</code>, Electron backend launch, bootup measurement default, README local setup.</div>
+  <b>Schema</b><div>None.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+<tr><td><code>src/config.js</code></td><td>touch</td><td>Default local host to <code>localhost</code> and default port to <code>8788</code>.</td></tr>
+<tr><td><code>desktop/main.js</code></td><td>touch</td><td>Launch the Electron backend at fixed <code>localhost:8788</code> and inject the API token on that origin.</td></tr>
+<tr><td><code>scripts/measure-bootup.js</code></td><td>touch</td><td>Measure the canonical local URL by default.</td></tr>
+<tr><td><code>README.md</code></td><td>touch</td><td>Document the GitHub callback URL and move the second local-project example to <code>8789</code>.</td></tr>
+<tr><td><code>test/config.test.js</code>, <code>test/desktop-auth-token.test.js</code>, <code>test/multi-user-access.test.js</code></td><td>touch</td><td>Pin the local OAuth origin and desktop token injection.</td></tr>
+<tr><td><code>implementation-notes/2026-08-01-local-oauth-origin.html</code></td><td>new</td><td>Track the local OAuth origin decision.</td></tr>
+<tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr>
+</table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr>
+<tr><td>D-001</td><td>Use <code>localhost</code> over <code>127.0.0.1</code>. GitHub OAuth app callbacks are configured with the hostname string.</td></tr>
+<tr><td>D-002</td><td>Use fixed Electron port <code>8788</code> over a random free port. OAuth callback registration cannot follow per-launch ports.</td></tr>
+<tr><td>D-003</td><td>Keep hosted deployment ports env-driven. Production containers and droplets already set <code>PORT</code>.</td></tr>
+</table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+<tr><td>T-001</td><td>Fail on occupied desktop port over fallback to another port. Fallback would recreate the OAuth redirect mismatch.</td></tr>
+</table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Restore <code>8787</code>, <code>127.0.0.1</code>, and random Electron ports if GitHub OAuth supports those registered callbacks.</p>
+<h2>Definition of done</h2>
+<ul>
+<li>Default backend config reports port <code>8788</code>.</li>
+<li>Local-provider config reports host <code>localhost</code>.</li>
+<li>Desktop loads and protects <code>http://localhost:8788</code>.</li>
+<li>Desktop reports an occupied local port before quitting.</li>
+<li>Focused auth/startup tests pass.</li>
+</ul>
+</body>
+</html>

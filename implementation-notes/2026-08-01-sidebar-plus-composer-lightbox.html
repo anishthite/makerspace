@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec - Sidebar plus composer lightbox</title>
+<meta name="task" content="Make the sidebar plus button open the full launch composer as a lightbox.">
+<meta name="date-started" content="2026-08-01">
+<meta name="date-updated" content="2026-08-01">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,ui,sidebar,composer,lightbox,prompt">
+<meta name="related" content="2026-08-01-spanner-sidebar-prompt-lightbox.html,2026-08-01-workspace-plus-project-lightbox.html">
+<style>
+body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:900px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}
+</style>
+</head>
+<body>
+<h1>Sidebar plus composer lightbox</h1>
+<p class="meta"><code>agent-ui-components</code> · worktree <code>/Users/anishthite/conductor/workspaces/makerspace/tripoli</code> · 2026-08-01 · status <b class="status-shipped">shipped</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Sidebar plus opens a wide launch-style composer lightbox instead of the small prompt dialog.</div>
+  <b>Source</b><div>Attached reference image of the main agent launch component.</div>
+  <b>Surface</b><div>Global sidebar prompt creation across workspace, project, thread, history, settings, and performance routes.</div>
+  <b>Schema</b><div>No server API or stored data shape change.</div>
+  <b>Mobile</b><div>Dialog clamps to viewport and stacks controls before suggestions.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+<h2>UI layout</h2>
+<ol>
+  <li><b>Prompt area</b>: first row is a large textarea with <code>Tell the main agent what to do...</code>.</li>
+  <li><b>Control strip</b>: use plus, model select, thinking slider, and <code>start agent</code> action in one row.</li>
+  <li><b>Suggestions</b>: keep three suggested start rows inside the dialog below the control strip.</li>
+</ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+<tr><td><code>frontend/src/pages.jsx</code></td><td>touch</td><td>Replace mini sidebar prompt markup with the full composer lightbox structure.</td></tr>
+<tr><td><code>frontend/src/runtime/sidebar-prompt-lightbox.js</code></td><td>touch</td><td>Bind sidebar-scoped model, thinking, image, suggestion, and submit controls.</td></tr>
+<tr><td><code>frontend/src/styles/app.css</code></td><td>touch</td><td>Style the sidebar prompt as a wide graphite lightbox matching the launch component.</td></tr>
+<tr><td><code>frontend/src/styles/workspace.css</code></td><td>touch</td><td>Own the compact dialog scale, top-bar project picker, responsive controls, and reduced suggestion rows after the stylesheet split.</td></tr>
+<tr><td><code>test/home-runtime-summary.test.js</code></td><td>touch</td><td>Assert the sidebar plus opens full composer controls.</td></tr>
+<tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr>
+</table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr>
+<tr><td>D-001</td><td>Use sidebar-scoped control IDs. The global dialog can coexist with workspace and thread composers.</td></tr>
+<tr><td>D-002</td><td>Load model defaults lazily from <code>/api/bootstrap?page=workspace&amp;fast=1</code>. The dialog appears on routes that do not fetch workspace bootstrap.</td></tr>
+<tr><td>D-003</td><td>Keep sidebar prompt submission on <code>/api/threads</code>. The existing endpoint already accepts prompt, model, thinking, project, and images.</td></tr>
+<tr><td>D-004</td><td>Remove shell and section separator strokes; retain one neutral outline strength for interactive controls. The reference uses surface contrast to establish depth.</td></tr>
+<tr><td>D-005</td><td>Keep image previews in the control strip and let its first grid track size to content. Absolute positioning can overlap suggestions.</td></tr>
+<tr><td>D-006</td><td>Submit with <code>Cmd/Ctrl+Enter</code> when the selected project enables the action. Multiline <code>Enter</code> behavior remains unchanged.</td></tr>
+<tr><td>D-007</td><td>Render the image trigger as a real button and click the hidden file input from runtime code. Keyboard navigation must reach the attachment action.</td></tr>
+<tr><td>D-008</td><td>Supersedes the original wide launch scale: cap the dialog at <code>720px</code> and compress prompt, controls, and suggestions into a utility composer. The sidebar action is frequent and should not dominate the viewport.</td></tr>
+<tr><td>D-009</td><td>Keep project choice prompt-scoped in <code>selectedPromptProject</code>. Changing a run target must not silently switch the surrounding workspace.</td></tr>
+<tr><td>D-010</td><td>Populate the header project select from <code>/api/recent-projects</code> with <code>spannerRecentProjects</code> fallback. Existing project records already contain the request fields.</td></tr>
+</table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+<tr><td>T-001</td><td>Duplicate sidebar-scoped controls over reusing <code>RunControls</code>. Reusing fixed IDs would create duplicate form control IDs on workspace and thread pages.</td></tr>
+<tr><td>T-002</td><td>Surface contrast over stacked one-pixel separators. Fewer strokes match the reference and avoid doubled edges while the control outlines remain scannable.</td></tr>
+<tr><td>T-003</td><td>Native header select over a nested project modal. Eight recent projects fit the compact interaction and retain keyboard behavior.</td></tr>
+</table>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr>
+<tr><td><code>node --check frontend/src/runtime/sidebar-prompt-lightbox.js</code></td><td>Passed.</td></tr>
+<tr><td><code>node --test test/home-runtime-summary.test.js</code></td><td>Passed 20/20.</td></tr>
+<tr><td><code>npm run build</code></td><td>Passed with existing large-chunk warnings.</td></tr>
+<tr><td><code>git diff --check</code></td><td>Passed.</td></tr>
+<tr><td>Playwright smoke at <code>http://localhost:5197/workspace.html</code></td><td>Passed desktop/mobile overflow checks and suggestion-fill check.</td></tr>
+<tr><td>Artifacts</td><td><code>output/playwright/sidebar-plus-composer/desktop.png</code>, <code>output/playwright/sidebar-plus-composer/mobile.png</code>.</td></tr>
+<tr><td>Border and attachment polish</td><td>Pending focused browser verification.</td></tr>
+<tr><td>Final border and attachment polish</td><td>Passed desktop and <code>390x780</code> mobile bounds, zero horizontal overflow, keyboard attachment activation, image preview placement, <code>Cmd+Enter</code> request/error recovery, and <code>Escape</code> dismissal.</td></tr>
+<tr><td>Polished artifacts</td><td><code>output/playwright/sidebar-plus-composer/desktop-polished.png</code>, <code>output/playwright/sidebar-plus-composer/mobile-polished.png</code>, <code>output/playwright/sidebar-plus-composer/mobile-attachment-dialog.png</code>.</td></tr>
+<tr><td>Compact project-picker pass</td><td>Passed at <code>720x447</code> desktop and <code>352x561</code> mobile dialog dimensions with zero horizontal overflow. The selected project reached the <code>/api/threads</code> payload without changing the stored workspace project.</td></tr>
+<tr><td>Compact artifacts</td><td><code>output/playwright/sidebar-plus-composer/compact-desktop.png</code>, <code>output/playwright/sidebar-plus-composer/compact-mobile.png</code>.</td></tr>
+</table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Revert the JSX, runtime, CSS, tests, and note/index row; no persisted schema changes exist.</p>
+<h2>Definition of done</h2>
+<ul>
+  <li>Sidebar plus opens a wide composer lightbox matching the attached component.</li>
+  <li>Model, thinking, image attachment, suggestion fill, and submit controls work inside the lightbox.</li>
+  <li>Focused static checks and build pass.</li>
+  <li>Dialog edges use surface contrast without doubled borders; attachments stay inside the control strip.</li>
+  <li><code>Cmd/Ctrl+Enter</code> submits without changing plain <code>Enter</code> behavior.</li>
+  <li>The attachment trigger is keyboard-focusable and opens the same multi-image picker.</li>
+</ul>
+</body>
+</html>

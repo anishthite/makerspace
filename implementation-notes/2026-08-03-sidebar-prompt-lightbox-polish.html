@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec - Sidebar prompt lightbox polish</title>
+<meta name="task" content="Make the sidebar prompt lightbox look more polished and verify it with a screenshot.">
+<meta name="date-started" content="2026-08-03">
+<meta name="date-updated" content="2026-08-06">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,ui,sidebar,prompt,lightbox,polish,screenshot">
+<meta name="related" content="2026-08-01-sidebar-plus-composer-lightbox.html,2026-08-01-spanner-sidebar-prompt-lightbox.html">
+<style>
+body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:900px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}
+</style>
+</head>
+<body>
+<h1>Sidebar prompt lightbox polish</h1>
+<p class="meta"><code>agent-ui-components</code> · worktree <code>/Users/anishthite/conductor/workspaces/makerspace/tripoli</code> · 2026-08-03 · status <b class="status-shipped">shipped</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Make <code>#sidebar-prompt-lightbox</code> minimal, clean, and quieter than the attached dark draft.</div>
+  <b>Source</b><div>User screenshot of the current sidebar composer modal.</div>
+  <b>Surface</b><div>Sidebar prompt modal visuals, empty-prompt feedback, and screenshot artifact.</div>
+  <b>Schema</b><div>No API, persisted state, or endpoint changes.</div>
+  <b>Mobile</b><div>Keep controls stacked and suggestion rows inside viewport width.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+<h2>UI layout</h2>
+<ol>
+  <li><b>Shell</b>: render one flat dark sheet with a soft shadow and no decorative glow.</li>
+  <li><b>Composer</b>: make the prompt area the visual center and show empty-prompt feedback in the modal status row.</li>
+  <li><b>Controls</b>: keep existing project, images, model, thinking, and submit controls with transparent low-contrast fields.</li>
+  <li><b>Suggestions</b>: show quiet text rows without cards, descriptions, or row borders.</li>
+</ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+<tr><td><code>frontend/src/pages.jsx</code></td><td>touch</td><td>Add <code>noValidate</code> so empty prompts use custom modal feedback.</td></tr>
+<tr><td><code>frontend/src/runtime/sidebar-prompt-lightbox.js</code></td><td>touch</td><td>Set and clear empty-prompt status and <code>aria-invalid</code>.</td></tr>
+<tr><td><code>frontend/src/styles/workspace.css</code></td><td>touch</td><td>Polish the modal shell, prompt field, controls, status row, and suggestion rows.</td></tr>
+<tr><td><code>test/home-runtime-summary.test.js</code></td><td>touch</td><td>Pin custom validation wiring and current global shell props.</td></tr>
+<tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr>
+</table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr>
+<tr><td>D-001</td><td><s>Use a CSS-first graphite command-sheet treatment.</s> Superseded by <code>D-003</code>.</td></tr>
+<tr><td>D-002</td><td>Replace browser validation chrome with modal status text. The native bubble is visually inconsistent with the app.</td></tr>
+<tr><td>D-003</td><td>Use a flat minimal sheet. User asked for less border, background, and visual noise.</td></tr>
+<tr><td>D-004</td><td>Use one sans type scale for modal labels, controls, suggestions, and prompt text. User said the fonts looked all over the place.</td></tr>
+</table>
+<h2>Deviations</h2>
+<table><tr><th>ID</th><th>From spec · Did · Reason</th></tr>
+<tr><td>X-001</td><td>First shipped pass used green glow and suggestion cards; replaced with a flatter monochrome modal. User rejected the busy direction.</td></tr>
+<tr><td>X-002</td><td>Later command-studio pass added headings, hint text, blue accents, mono labels, and card-like suggestions; removed them from the modal surface. They created simultaneous visual systems.</td></tr>
+</table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+<tr><td>T-001</td><td>Focused modal polish over a new composer component. Duplicate component work would widen the dirty branch.</td></tr>
+</table>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr>
+<tr><td><code>node --check frontend/src/runtime/sidebar-prompt-lightbox.js</code></td><td>Passed.</td></tr>
+<tr><td><code>node --test test/home-runtime-summary.test.js</code></td><td>Passed 20/20 after refreshing stale global shell expectations.</td></tr>
+<tr><td><code>npm run build</code></td><td>Passed with existing large-chunk warning.</td></tr>
+<tr><td><code>git diff --check -- ...</code></td><td>Passed for touched files.</td></tr>
+<tr><td>Playwright desktop screenshot</td><td><code>output/playwright/sidebar-prompt-lightbox/desktop-minimal.png</code> and latest alias <code>output/playwright/sidebar-prompt-lightbox/desktop.png</code>.</td></tr>
+<tr><td>Playwright type-unified screenshot</td><td><code>output/playwright/sidebar-prompt-lightbox/desktop-type-unified.png</code> and latest alias <code>output/playwright/sidebar-prompt-lightbox/desktop.png</code>.</td></tr>
+<tr><td>Playwright empty-submit check</td><td>Modal shows <code>Tell the main agent what to do before starting.</code> and no native validation tooltip.</td></tr>
+<tr><td>Minimal revision</td><td>Passed screenshot review after removing glow, cards, extra strokes, mixed fonts, extra text, and accent-heavy controls.</td></tr>
+</table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Revert the JSX, runtime, CSS, test, note, and index row; no stored data changes exist.</p>
+<h2>Definition of done</h2>
+<ul>
+  <li>Sidebar prompt modal has cleaner hierarchy, controls, typography, and suggestions.</li>
+  <li>Empty submit uses modal-local status instead of native validation bubble.</li>
+  <li>Focused test or static check passes.</li>
+  <li>Screenshot artifact exists under <code>output/playwright/</code>.</li>
+</ul>
+</body>
+</html>

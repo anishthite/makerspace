@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec - persistent global sidebar shell</title>
+<meta name="task" content="Keep the global agent sidebar mounted as the left app shell across core routes.">
+<meta name="date-started" content="2026-07-31">
+<meta name="date-updated" content="2026-07-31">
+<meta name="status" content="ready-for-review">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,ui,sidebar,global-shell,layout">
+<meta name="related" content="2026-07-30-global-t3-sidebar-shell.html,2026-07-30-explicit-sidebar-settle.html">
+<style>
+body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:920px;margin:1.5rem auto;padding:0 1rem;color:#111}
+h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}
+table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}
+th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}
+.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px}.blast-low{color:#2a7a2a}.status-ready-for-review{color:#b85c00}
+</style>
+</head>
+<body>
+<h1>persistent global sidebar shell</h1>
+<p class="meta"><code>agent-ui-components</code> - worktree <code>/Users/anishthite/conductor/workspaces/makerspace/tripoli</code> - 2026-07-31 - status <b class="status-ready-for-review">ready-for-review</b> - blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Make the agent inbox sidebar always occupy the left app shell and render page content to its right.</div>
+  <b>Routes</b><div><code>/</code>, <code>/workspace.html</code>, <code>/thread.html</code>, <code>/history.html</code>, <code>/settings.html</code>, telemetry routes.</div>
+  <b>Collapse</b><div>Desktop uses <code>collapsible="icon"</code>; mobile keeps the sheet drawer.</div>
+  <b>Runtime</b><div>Utility routes load <code>global-sidebar.js</code> from <code>entry.jsx</code>.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+<h2>UI layout</h2>
+<ol>
+  <li><b>Shell</b>: <code>GlobalAppShell</code> owns <code>SidebarProvider</code>, <code>Sidebar</code>, <code>SidebarRail</code>, and <code>SidebarInset</code>.</li>
+  <li><b>Desktop collapse</b>: collapsed state keeps a narrow icon rail with toggle, search icon, new thread, project scope, and compact thread marks.</li>
+  <li><b>Right content</b>: project, workspace, thread, settings, history, and performance pages render inside the shared inset.</li>
+</ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+<tr><td><code>frontend/src/pages.jsx</code></td><td>touch</td><td>Add <code>GlobalAppShell</code>, in-sidebar toggle, icon collapse, and wrap core pages.</td></tr>
+<tr><td><code>frontend/src/entry.jsx</code></td><td>touch</td><td>Start global sidebar runtime on utility routes that do not already own sidebar loading.</td></tr>
+<tr><td><code>frontend/src/styles/app.css</code></td><td>touch</td><td>Add icon-rail collapsed styles and remove thread-only sidebar hiding.</td></tr>
+<tr><td><code>test/home-runtime-summary.test.js</code></td><td>touch</td><td>Pin shared shell, utility-route sidebar runtime, and icon collapse.</td></tr>
+<tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr>
+</table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice - Rationale</th></tr>
+<tr><td>D-001</td><td>Use one React shell component over repeated route wrappers. This makes the left sidebar a layout invariant.</td></tr>
+<tr><td>D-002</td><td>Use <code>collapsible="icon"</code> over <code>offcanvas</code> on desktop. User asked the sidebar to always be there, not slide away.</td></tr>
+<tr><td>D-003</td><td>Keep mobile as a drawer. A permanent narrow rail would crowd phone layouts.</td></tr>
+</table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected - Reason</th></tr>
+<tr><td>T-001</td><td>Utility-route sidebar runtime in <code>entry.jsx</code> over duplicating code in settings/history/performance runtimes. The shared sidebar already has the correct behavior.</td></tr>
+</table>
+<h2>Verification</h2>
+<table><tr><th>ID</th><th>Command / check</th><th>Result</th></tr>
+<tr><td>V-001</td><td><code>npm run build</code></td><td>Pass. Vite build completed with existing large chunk warnings.</td></tr>
+<tr><td>V-002</td><td><code>node --test test/home-runtime-summary.test.js test/project-selector-static.test.js</code></td><td>Pass, 17/17.</td></tr>
+<tr><td>V-003</td><td><code>npm test</code></td><td>Pass, 312/312.</td></tr>
+<tr><td>V-004</td><td><code>git diff --check</code></td><td>Pass.</td></tr>
+<tr><td>V-005</td><td>Playwright smoke on <code>http://127.0.0.1:5197</code></td><td>Pass. Sidebar visible on project, thread, and settings; collapse leaves 48px icon rail; settings loaded thread rows; screenshot <code>output/playwright/sidebar-v2/persistent-global-shell-settings.png</code>.</td></tr>
+</table>
+<h2>Reversibility</h2>
+<p>R-001 - <span class="blast-low">low</span>. Revert <code>GlobalAppShell</code>, restore route wrappers to per-page providers, and remove the utility-route sidebar import.</p>
+<h2>Definition of done</h2>
+<ul>
+  <li>Desktop sidebar never disappears from core app routes.</li>
+  <li>Collapse leaves an icon rail.</li>
+  <li>Thread page no longer hides the sidebar via CSS.</li>
+  <li>Focused tests, build, browser smoke, and whitespace check pass or list unrelated failures.</li>
+</ul>
+</body>
+</html>

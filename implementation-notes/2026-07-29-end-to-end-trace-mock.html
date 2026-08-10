@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — End-to-end trace mock</title>
+<meta name="task" content="Render a full mocked agent trace from prompt through final diff.">
+<meta name="date-started" content="2026-07-29">
+<meta name="date-updated" content="2026-07-29">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,ui,trace,tools,components,mock,end-to-end">
+<meta name="related" content="2026-07-29-trace-components-gallery.html,2026-07-29-trace-components-clickthrough.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-shipped{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>End-to-end trace mock</h1>
+<p class="meta"><code>agent-ui-components</code> · worktree <code>/Users/anishthite/conductor/workspaces/makerspace/tripoli</code> · 2026-07-29 · status <b class="status-shipped">shipped</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Show a complete mocked agent run on <code>/trace-components.html#trace-full</code>.</div><b>Source</b><div>Existing trace-library primitives and screenshot-derived visual language.</div><b>Surface</b><div>React mock route only.</div><b>Schema</b><div>None.</div><b>Mobile</b><div>Full trace stacks with the same narrow-row treatment as the library.</div><b>Open Qs</b><div>0.</div></div>
+<h2>UI layout</h2>
+<ol><li><b>Full run</b>: prompt bubble, assistant intent, research/error rows, implementation code, verification rows, final answer, and diff footer.</li><li><b>Primitives</b>: make user, code, final summary, and diff components accept content props for reuse in the full run.</li><li><b>Routing</b>: treat <code>#trace-full</code> as a trace-library view and scroll directly to the full mock.</li></ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>frontend/src/trace-components-page.jsx</code></td><td>touch</td><td>Add full-run mock data, reusable primitive props, and <code>TraceFullRunMock</code>.</td></tr><tr><td><code>frontend/src/styles/app.css</code></td><td>touch</td><td>Add scoped full-run transcript layout and mobile treatment.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Compose the full run from the same primitives. The mock should test component rhythm, not create a second design language.</td></tr><tr><td>D-002</td><td>Keep the atomic reference specimens below the full run. The page now supports both narrative review and component inspection.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>Static realistic mock data over API-backed trace replay. The user asked for a visual end-to-end render, and live replay would widen runtime blast radius.</td></tr></table>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>npm run build</code></td><td>Passed with existing large chunk warnings.</td></tr><tr><td><code>node --test test/frontend-route-manifest.test.js</code></td><td>Passed 4/4.</td></tr><tr><td><code>git diff --check</code></td><td>Passed.</td></tr><tr><td><code>Chrome desktop/mobile smoke</code></td><td>Passed for <code>#trace-full</code>; no console errors or horizontal overflow.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Revert the full-run JSX/CSS additions and index row; live thread runtime remains untouched.</p>
+<h2>Definition of done</h2>
+<ul><li><code>#trace-full</code> opens the full mocked trace.</li><li>Full run includes prompt, tool rows, failure, recovery, code output, verification, final summary, and diff footer.</li><li>Build and browser smoke pass.</li></ul>
+</body>
+</html>

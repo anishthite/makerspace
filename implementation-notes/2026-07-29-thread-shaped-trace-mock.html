@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Thread-shaped trace mock</title>
+<meta name="task" content="Make the full trace mock look like the actual thread page.">
+<meta name="date-started" content="2026-07-29">
+<meta name="date-updated" content="2026-07-29">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,ui,thread,trace,tools,mock">
+<meta name="related" content="2026-07-29-end-to-end-trace-mock.html,2026-07-29-trace-components-clickthrough.html,2026-07-29-trace-components-gallery.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-shipped{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Thread-shaped trace mock</h1>
+<p class="meta"><code>agent-ui-components</code> · worktree <code>/Users/anishthite/conductor/workspaces/makerspace/tripoli</code> · 2026-07-29 · status <b class="status-shipped">shipped</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div><code>/trace-components.html#trace-full</code> renders like the real <code>/thread.html</code> page while using the mocked trace component primitives.</div><b>Source</b><div><code>ThreadPage</code> markup in <code>frontend/src/pages.jsx</code> and trace primitives in <code>frontend/src/trace-components-page.jsx</code>.</div><b>Surface</b><div>React mock route only.</div><b>Schema</b><div>None.</div><b>Mobile</b><div>Use existing thread responsive breakpoints; scoped component compact mode prevents overflow.</div><b>Open Qs</b><div>0.</div></div>
+<h2>UI layout</h2>
+<ol><li><b>Tab shell</b>: render product-like open-thread tabs as the visible chrome and keep the larger mock title/status row screen-reader-only.</li><li><b>Conversation</b>: render <code>TraceUserBubble</code>, <code>TraceGroupSummary</code>, <code>TraceReferenceRow</code>, and <code>TraceFinalSummary</code> inside thread timeline wrappers.</li><li><b>Review pane</b>: render a Conductor-style right panel with <code>All files</code>, <code>Changes 19</code>, <code>Checks</code>, <code>Review</code>, changed-file rows, and the <code>Setup / Run / Terminal</code> run-script panel.</li><li><b>Trace drawer</b>: render the mocked trace rows and verification block inside visible <code>agent-activity</code>.</li></ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>frontend/src/trace-components-page.jsx</code></td><td>touch</td><td>Route <code>#trace-full</code> to <code>ThreadLikeTraceMockPage</code> and embed mocked trace primitives in timeline, trace drawer, final answer, and diff rail.</td></tr><tr><td><code>frontend/src/styles/app.css</code></td><td>touch</td><td>Add scoped compact mode for trace primitives inside <code>.trace-thread-mock</code>.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note and supersede the prior showcase-style full mock row.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Use the thread page shell over the dark library shell. The requested target is exact product context, not a component specimen.</td></tr><tr><td>D-002</td><td>Keep trace-library at <code>#trace-library</code>. Component inspection remains separate from thread-screen review.</td></tr><tr><td>D-003</td><td>Embed mocked trace primitives in the thread mock. User asked to replace the plain thread components with the new mocked components.</td></tr><tr><td>D-004</td><td>Flatten component chrome inside <code>.trace-thread-mock</code>. Clean thread review needs transcript rhythm over nested dashboard cards.</td></tr><tr><td>D-005</td><td>Make main trace rows inline-width transcript content. Screenshots show direct rows and chips, not stretched file pills or bordered groups.</td></tr><tr><td>D-006</td><td>Use the latest Conductor screenshots as the decisive target and show a right-side review/run pane. The real thread view is split between transcript and review state, not a three-card demo board.</td></tr><tr><td>D-007</td><td>Treat DOM parity as insufficient. The retry rubric scores visible rhythm: first-viewport density, cardlessness, attachment restraint, pane quietness, composer obstruction, and screenshot resemblance.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>Static thread DOM over live <code>thread.js</code> replay. Mock data avoids API/session coupling while matching the rendered page structure.</td></tr><tr><td>T-002</td><td>Scoped compact trace styling over changing library defaults. The standalone library still needs large screenshot-reference scale.</td></tr><tr><td>T-003</td><td>Slim composer over default thread composer height. The preview page must leave trace content visible in the first viewport.</td></tr><tr><td>T-004</td><td>Main timeline rows over inline code preview. The code block belongs in the lower activity trace, not the first viewport.</td></tr><tr><td>T-005</td><td>Screen-reader-only title/status row over visible mock header. Product screenshots prioritize tabs and split workspace, so visible demo chrome lowers fidelity.</td></tr></table>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>npm run build</code></td><td>Passed with existing large chunk warnings.</td></tr><tr><td><code>node --test test/frontend-route-manifest.test.js</code></td><td>Passed 4/4.</td></tr><tr><td><code>git diff --check</code></td><td>Passed.</td></tr><tr><td><code>Chrome desktop/mobile smoke</code></td><td>Passed for <code>#trace-full</code>; thread shell, rail, timeline, trace activity, notes, composer, and no overflow.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Revert the mock route component, scoped mock CSS, and note/index rows; live thread runtime remains unchanged.</p>
+<h2>Definition of done</h2>
+<ul><li><code>#trace-full</code> opens a thread-shaped mock, not the dark library.</li><li>Mock includes real thread shell, rails, conversation timeline, trace activity, notes, diff, and composer surfaces.</li><li>Build and browser smoke pass.</li></ul>
+</body>
+</html>

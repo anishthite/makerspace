@@ -8,6 +8,8 @@ export function missingGitHubOAuthScopes(record, requiredScopes = GITHUB_REMOTE_
   return requiredScopes.filter((scope) => !granted.has(String(scope).toLowerCase()));
 }
 
+const GITHUB_REPO_PAGE_CONCURRENCY = 4;
+
 function githubHeaders(token, extra = {}) {
   return {
     accept: 'application/vnd.github+json',
@@ -17,7 +19,7 @@ function githubHeaders(token, extra = {}) {
   };
 }
 
-async function fetchGitHubJson(url, options = {}) {
+async function fetchGitHubJsonResponse(url, options = {}) {
   const response = await fetch(url, {
     ...options,
     headers: githubHeaders(options.token, options.headers || {}),
@@ -28,7 +30,36 @@ async function fetchGitHubJson(url, options = {}) {
     throw new Error(payload?.error_description || payload?.message || `GitHub request failed: ${response.status}`);
   }
 
-  return payload;
+  return { payload, response };
+}
+
+async function fetchGitHubJson(url, options = {}) {
+  return (await fetchGitHubJsonResponse(url, options)).payload;
+}
+
+function lastPageFromLinkHeader(header) {
+  const match = String(header || '').split(',').find((part) => /rel="last"/i.test(part))?.match(/<([^>]+)>/);
+  if (!match) return 0;
+  try {
+    const page = Number(new URL(match[1]).searchParams.get('page'));
+    return Number.isFinite(page) && page > 1 ? Math.floor(page) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function githubReposUrl(page) {
+  return `https://api.github.com/user/repos?sort=updated&per_page=100&page=${page}`;
+}
+
+async function fetchGitHubRepoPages(token, pages) {
+  const repos = [];
+  for (let index = 0; index < pages.length; index += GITHUB_REPO_PAGE_CONCURRENCY) {
+    const batchPages = pages.slice(index, index + GITHUB_REPO_PAGE_CONCURRENCY);
+    const batches = await Promise.all(batchPages.map((page) => fetchGitHubJson(githubReposUrl(page), { token })));
+    repos.push(...batches.flat().map(normalizeGitHubRepo));
+  }
+  return repos;
 }
 
 export function githubAuthConfigured(config) {
@@ -85,14 +116,20 @@ export function normalizeGitHubRepo(repo) {
 }
 
 export async function listGitHubRepos(token) {
-  const repos = [];
-  let page = 1;
+  const first = await fetchGitHubJsonResponse(githubReposUrl(1), { token });
+  const repos = first.payload.map(normalizeGitHubRepo);
+  const lastPage = lastPageFromLinkHeader(first.response.headers?.get?.('link'));
 
-  while (true) {
-    const batch = await fetchGitHubJson(`https://api.github.com/user/repos?sort=updated&per_page=100&page=${page}`, { token });
-    repos.push(...batch.map(normalizeGitHubRepo));
-    if (batch.length < 100) break;
-    page += 1;
+  if (lastPage > 1) {
+    repos.push(...await fetchGitHubRepoPages(token, Array.from({ length: lastPage - 1 }, (_, index) => index + 2)));
+  } else {
+    let page = 2;
+    while (first.payload.length >= 100) {
+      const batch = await fetchGitHubJson(githubReposUrl(page), { token });
+      repos.push(...batch.map(normalizeGitHubRepo));
+      if (batch.length < 100) break;
+      page += 1;
+    }
   }
 
   repos.sort((left, right) => left.fullName.localeCompare(right.fullName));

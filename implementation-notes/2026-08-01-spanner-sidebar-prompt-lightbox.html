@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec - Spanner sidebar prompt lightbox</title>
+<meta name="task" content="Remove the global sidebar icon rail and route sidebar creation through a prompt lightbox.">
+<meta name="date-started" content="2026-08-01">
+<meta name="date-updated" content="2026-08-01">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,ui,sidebar,prompt,lightbox,search,filter">
+<meta name="related" content="2026-07-31-persistent-global-sidebar-shell.html,2026-07-30-global-t3-sidebar-shell.html,2026-08-01-workspace-plus-project-lightbox.html">
+<style>
+body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:920px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px}.blast-low{color:#2a7a2a}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}
+</style>
+</head>
+<body>
+<h1>Spanner sidebar prompt lightbox</h1>
+<p class="meta"><code>agent-ui-components</code> - worktree <code>/Users/anishthite/conductor/workspaces/makerspace/tripoli</code> - 2026-08-01 - status <b class="status-shipped">shipped</b> - blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Apply the dense Spanner sidebar direction without the left icon rail.</div>
+  <b>Surface</b><div>Global app sidebar across project, workspace, thread, history, settings, and performance routes.</div>
+  <b>Creation</b><div><code>data-sidebar-new-thread</code> opens <code>#sidebar-prompt-lightbox</code> and posts to <code>/api/threads</code>.</div>
+  <b>Filter</b><div><code>#sidebar-project-scope</code> moves into the search row as an icon-only filter menu.</div>
+  <b>Schema</b><div>No server API or stored data shape change.</div>
+  <b>Mobile</b><div>Keep the existing drawer trigger; remove only the rail/collapse design.</div>
+</div>
+<h2>UI layout</h2>
+<ol>
+  <li><b>Header</b>: show <code>Spanner</code> plus one icon button for new prompt.</li>
+  <li><b>Search</b>: keep <code>#agent-search</code> and place the filter dropdown trigger inside the search field.</li>
+  <li><b>Lightbox</b>: show selected project, prompt textarea, cancel, and run action.</li>
+</ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+<tr><td><code>frontend/src/pages.jsx</code></td><td>touch</td><td>Remove <code>SidebarRail</code>, add Spanner header, search filter button, and prompt dialog markup.</td></tr>
+<tr><td><code>frontend/src/runtime/sidebar-prompt-lightbox.js</code></td><td>new</td><td>Bind prompt dialog open, submit, selected project lookup, and thread redirect.</td></tr>
+<tr><td><code>frontend/src/runtime/global-sidebar.js</code></td><td>touch</td><td>Open the prompt dialog from sidebar creation and bind the shared dialog runtime.</td></tr>
+<tr><td><code>frontend/src/runtime/project.js</code></td><td>touch</td><td>Open the prompt dialog from project-page sidebar creation and bind the shared dialog runtime.</td></tr>
+<tr><td><code>frontend/src/runtime/app.js</code></td><td>touch</td><td>Open the prompt dialog from workspace sidebar creation and bind the shared dialog runtime.</td></tr>
+<tr><td><code>frontend/src/styles/app.css</code></td><td>touch</td><td>Style the Spanner header, embedded filter menu, and prompt lightbox; remove icon-rail styling.</td></tr>
+<tr><td><code>test/home-runtime-summary.test.js</code></td><td>touch</td><td>Update static expectations from icon rail to prompt-lightbox sidebar.</td></tr>
+<tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr>
+</table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice - Rationale</th></tr>
+<tr><td>D-001</td><td>Use <code>collapsible="offcanvas"</code> without <code>SidebarRail</code>. Desktop no longer exposes an icon-only rail.</td></tr>
+<tr><td>D-002</td><td>Reuse the existing project-scope menu as the search filter dropdown. Current filtering logic and storage stay intact.</td></tr>
+<tr><td>D-003</td><td>Post the sidebar prompt with the selected project from <code>localStorage.spannerSelectedProject</code>. The existing API already accepts this request shape.</td></tr>
+</table>
+<h2>Assumptions</h2>
+<ul><li>A-001 - Sidebar prompt creation uses the current selected or sidebar-scoped project; no project picker is added inside this prompt dialog.</li></ul>
+<h2>Reversibility</h2>
+<p>R-001 - <span class="blast-low">low</span>. Revert the markup, CSS, shared runtime module, imports, tests, and index row; no migration exists.</p>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr>
+<tr><td><code>node --check frontend/src/runtime/global-sidebar.js frontend/src/runtime/project.js frontend/src/runtime/app.js frontend/src/runtime/sidebar-prompt-lightbox.js</code></td><td>Pass.</td></tr>
+<tr><td><code>node --test test/home-runtime-summary.test.js</code></td><td>Pass, 19/19.</td></tr>
+<tr><td><code>npm run build</code></td><td>Pass with existing large-chunk warnings.</td></tr>
+<tr><td>Playwright desktop and mobile smoke at <code>http://127.0.0.1:5197/</code></td><td>Pass; artifacts in <code>output/playwright/spanner-sidebar/</code>.</td></tr>
+</table>
+<h2>Definition of done</h2>
+<ul>
+  <li>Sidebar has no visible left rail or collapse button on desktop.</li>
+  <li>Sidebar header says <code>Spanner</code>.</li>
+  <li>Search contains the filter dropdown trigger.</li>
+  <li>Plus opens a prompt lightbox and submits a new thread for the selected project.</li>
+  <li>Focused static checks and build pass.</li>
+</ul>
+</body>
+</html>

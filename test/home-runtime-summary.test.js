@@ -6,12 +6,19 @@ const pages = readFileSync(new URL('../frontend/src/pages.jsx', import.meta.url)
 const entry = readFileSync(new URL('../frontend/src/entry.jsx', import.meta.url), 'utf8');
 const authRedirect = readFileSync(new URL('../frontend/src/runtime/auth-redirect.js', import.meta.url), 'utf8');
 const js = readFileSync(new URL('../frontend/src/runtime/app.js', import.meta.url), 'utf8');
+const projectRuntime = readFileSync(new URL('../frontend/src/runtime/project.js', import.meta.url), 'utf8');
+const threadRuntime = readFileSync(new URL('../frontend/src/runtime/thread.js', import.meta.url), 'utf8');
+const globalSidebarRuntime = readFileSync(new URL('../frontend/src/runtime/global-sidebar.js', import.meta.url), 'utf8');
+const sidebarPromptRuntime = readFileSync(new URL('../frontend/src/runtime/sidebar-prompt-lightbox.js', import.meta.url), 'utf8');
 const agentToasts = readFileSync(new URL('../frontend/src/runtime/agent-toasts.js', import.meta.url), 'utf8');
 const completionChimes = readFileSync(new URL('../frontend/src/runtime/completion-chimes.js', import.meta.url), 'utf8');
 const chimePreview = readFileSync(new URL('../frontend/src/runtime/chime-preview.js', import.meta.url), 'utf8');
 const chimeHtml = readFileSync(new URL('../frontend/chimes.html', import.meta.url), 'utf8');
 const sidebar = readFileSync(new URL('../frontend/src/components/ui/sidebar.jsx', import.meta.url), 'utf8');
-const appCss = readFileSync(new URL('../frontend/src/styles/app.css', import.meta.url), 'utf8');
+const appCss = [
+  readFileSync(new URL('../frontend/src/styles/app.css', import.meta.url), 'utf8'),
+  readFileSync(new URL('../frontend/src/styles/workspace.css', import.meta.url), 'utf8'),
+].join('\n');
 const fluidCss = readFileSync(new URL('../frontend/src/styles/fluid-ui.css', import.meta.url), 'utf8');
 const runState = readFileSync(new URL('../src/server/run-state.js', import.meta.url), 'utf8');
 const routes = readFileSync(new URL('../src/server/routes.js', import.meta.url), 'utf8');
@@ -57,22 +64,28 @@ test('home running lane only uses active thread statuses', () => {
 
 test('home rows avoid workspace folder details', () => {
   assert.match(js, /function runningActivity\(thread, rawStatus = effectiveThreadStatus\(thread\)\)/);
-  assert.match(js, /const detail = active \? runningActivity\(thread, rawStatus\) : '';/);
-  assert.match(js, /\$\{detail \? `<small>\$\{escapeHtml\(detail\)\}<\/small>` : ''\}/);
+  assert.match(js, /const detail = running \? runningActivity\(thread, rawStatus\) : '';/);
+  assert.match(js, /const activeMeta = thread\.branch \|\| detail \|\| outcome;/);
+  assert.match(js, /\$\{activeMeta \? `<small class="thread-activity">\$\{escapeHtml\(activeMeta\)\}<\/small>` : '<small><\/small>'\}/);
   assert.doesNotMatch(js, /repoLabel\(thread\)/);
   assert.match(runState, /function latestRunActivity\(run\)/);
   assert.match(runState, /latestActivity: latestActivity \|\| undefined/);
 });
 
 test('workspace agents use shadcn sidebar beside launch composer', () => {
-  const providerIndex = pages.indexOf('<SidebarProvider className="min-h-svh bg-[var(--bg)]"');
-  const agentsIndex = pages.indexOf('id="agents-section"');
-  const formIndex = pages.indexOf('id="thread-form"');
-  const suggestionsIndex = pages.indexOf('id="launch-suggestions"');
-  assert.ok(providerIndex > -1 && providerIndex < agentsIndex && agentsIndex < formIndex && formIndex < suggestionsIndex);
+  const workspaceStart = pages.indexOf('export function WorkspacePage()');
+  const workspaceEnd = pages.indexOf('export function ThreadPage()', workspaceStart);
+  const workspaceBlock = pages.slice(workspaceStart, workspaceEnd);
+  const shellIndex = workspaceBlock.indexOf('<GlobalAppShell');
+  const formIndex = workspaceBlock.indexOf('id="thread-form"');
+  const suggestionsIndex = workspaceBlock.indexOf('id="launch-suggestions"');
+  assert.ok(shellIndex > -1 && shellIndex < formIndex && formIndex < suggestionsIndex);
   assert.match(pages, /SidebarProvider[\s\S]+from '\.\/components\/ui\/sidebar\.jsx';/);
-  assert.match(pages, /<Sidebar className="border-r border-\[var\(--rule\)\]" collapsible="offcanvas">/);
-  assert.match(pages, /<SidebarInset className="min-w-0 bg-\[var\(--bg\)\]/);
+  assert.match(pages, /function GlobalAppShell\(\{ children, sidebarWorkspaceSwitcher = true, sidebarDefaultOpen = true, insetClassName = '' \}\)/);
+  assert.match(pages, /<Sidebar className="workspace-global-sidebar border-r border-\[var\(--rule\)\]" collapsible="offcanvas">/);
+  assert.doesNotMatch(pages, /SidebarRail/);
+  assert.match(pages, /<SidebarInset className=\{cn\('global-app-inset min-w-0 bg-\[var\(--bg\)\]', insetClassName\)\}>/);
+  assert.doesNotMatch(pages, /sidebar-collapse-button/);
   assert.match(pages, /workspace-mobile-sidebar-launcher/);
   assert.match(pages, /<SidebarTrigger className="workspace-sidebar-trigger" aria-label="open agents"/);
   assert.match(sidebar, /const SIDEBAR_WIDTH_MOBILE = "min\(28rem, calc\(100vw - 0\.75rem\)\)"/);
@@ -82,18 +95,65 @@ test('workspace agents use shadcn sidebar beside launch composer', () => {
   assert.match(fluidCss, /\.spanner-sidebar-desktop-shell,\n\.spanner-sidebar-desktop-container \{\n  display: none;/);
   assert.match(fluidCss, /@media \(min-width: 768px\) \{[\s\S]+\.spanner-sidebar-desktop-shell \{\n    display: block;/);
   assert.match(fluidCss, /\.workspace-mobile-sidebar-launcher \{\n    display: none;/);
+  assert.doesNotMatch(appCss, /\.spanner-sidebar-desktop-shell\[data-collapsible="icon"\] \.workspace-agents-sidebar/);
   assert.match(pages, /data-suggested-prompt="Read the README, package files/);
   assert.match(pages, /<strong[^>]*>Make repo diagram<\/strong>/);
   assert.match(pages, /<strong[^>]*>Run health check<\/strong>/);
   assert.match(pages, /<strong[^>]*>Find first task<\/strong>/);
   assert.doesNotMatch(pages, /Find paper cuts/);
   assert.match(js, /const launchSuggestions = document\.querySelector\('#launch-suggestions'\);/);
+  assert.match(pages, /aria-label="Agent inbox"/);
   assert.match(pages, /MagnifyingGlassIcon/);
+  assert.match(pages, /className="sidebar-title-row"/);
+  assert.match(pages, /className="sidebar-spanner-title"/);
+  assert.match(pages, />Spanner<\/a>/);
+  assert.match(pages, /className="sidebar-command-row"/);
+  assert.doesNotMatch(pages, /className="sidebar-scope-row"/);
+  assert.match(pages, /id="sidebar-project-scope"/);
+  assert.match(pages, /<FunnelIcon className="size-4 shrink-0" aria-hidden="true" \/>/);
+  assert.doesNotMatch(pages, /<WrenchIcon className="size-4 shrink-0" aria-hidden="true" \/>/);
+  assert.match(pages, /className="sidebar-project-scope sidebar-search-filter"/);
+  assert.match(pages, /id="sidebar-project-scope-menu"/);
+  assert.match(pages, /aria-label="New prompt"/);
+  assert.doesNotMatch(pages, /aria-label="New project"/);
   assert.match(pages, /className="agent-search border-0 bg-transparent px-0 shadow-none \[&_input\]:min-w-0 \[&_input\]:py-1\.5"/);
-  assert.match(pages, /<input id="agent-search" type="search" placeholder="search all agents"/);
+  assert.match(pages, /<input id="agent-search" type="search" placeholder="Search agents"/);
+  assert.match(pages, /id="sidebar-prompt-lightbox" className="sidebar-prompt-lightbox"/);
+  assert.match(pages, /id="sidebar-prompt-form" className="sidebar-prompt-lightbox-shell" noValidate/);
+  assert.match(pages, /className="sidebar-prompt-topbar"/);
+  assert.match(pages, /id="sidebar-prompt-project-select" aria-label="Project for new agent"/);
+  assert.match(pages, /placeholder="Tell the main agent what to do\.\.\."/);
+  assert.match(pages, /aria-keyshortcuts="Meta\+Enter Control\+Enter"/);
+  assert.match(pages, /id="sidebar-prompt-images-trigger" variant="ghost" size="sm" className="attach-btn" type="button"/);
+  assert.match(pages, /id="sidebar-prompt-images" className="image-input"/);
+  assert.match(pages, /id="sidebar-model-ref" name="modelRef"/);
+  assert.match(pages, /id="sidebar-thinking-level" min="0" max="5" step="1" defaultValue="5"/);
+  assert.match(pages, /id="sidebar-prompt-submit" variant="primary" className="sidebar-prompt-start" type="submit">start agent<\/Button>/);
+  assert.match(pages, /id="sidebar-prompt-suggestions" className="sidebar-prompt-suggestions launch-suggestions"/);
+  assert.match(pages, /<strong>Full workspace audit<\/strong>/);
   assert.match(js, /const agentSearchInput = document\.querySelector\('#agent-search'\);/);
+  assert.match(js, /bindSidebarPromptLightbox\(\{ fetchJson, makeThreadUrl: threadUrl \}\);/);
+  assert.match(sidebarPromptRuntime, /export function openSidebarPromptLightbox\(\)/);
+  assert.match(sidebarPromptRuntime, /runtimeFetchJson\('\/api\/threads'/);
+  assert.match(sidebarPromptRuntime, /runtimeFetchJson\('\/api\/bootstrap\?page=workspace&fast=1'\)/);
+  assert.match(sidebarPromptRuntime, /runtimeFetchJson\('\/api\/recent-projects'\)/);
+  assert.match(sidebarPromptRuntime, /let selectedPromptProject = null;/);
+  assert.match(sidebarPromptRuntime, /function renderSidebarProjectOptions\(projects = sidebarProjects\)/);
+  assert.match(sidebarPromptRuntime, /selectedPromptProject = Number\.isInteger\(index\) && index >= 0 \? sidebarProjects\[index\] \|\| null : null;/);
+  assert.match(sidebarPromptRuntime, /filesToImageAttachments\(imageInputFiles\(imageInput\)\)/);
+  assert.match(sidebarPromptRuntime, /bindImageDropZone\(form, images, imageStatus\)/);
+  assert.match(sidebarPromptRuntime, /imageTrigger\?\.addEventListener\('click', \(\) => images\?\.click\(\)\)/);
+  assert.match(sidebarPromptRuntime, /data-sidebar-suggested-prompt/);
+  assert.match(sidebarPromptRuntime, /event\.key !== 'Enter' \|\| \(!event\.metaKey && !event\.ctrlKey\)/);
+  assert.match(sidebarPromptRuntime, /form\.requestSubmit\(\)/);
+  assert.match(sidebarPromptRuntime, /status\.dataset\.reason = 'empty-prompt'/);
+  assert.match(sidebarPromptRuntime, /prompt\?\.setAttribute\('aria-invalid', 'true'\)/);
+  assert.match(sidebarPromptRuntime, /localStorage\.getItem\(PROJECT_KEY\)/);
+  assert.match(sidebarPromptRuntime, /localStorage\.getItem\(MODEL_REF_KEY\)/);
+  assert.match(appCss, /\.sidebar-prompt-control-strip \{/);
+  assert.match(appCss, /#sidebar-prompt-suggestions button:not\(\.primary-btn\):not\(\.textbtn\):not\(\.run-summary\):not\(\.copy-button\)/);
   assert.match(js, /function filterAgentThreads\(threads\)/);
-  assert.ok(js.includes("document.addEventListener('input', (event) => {\n  if (event.target?.matches?.('#agent-search')) renderThreads(currentWorkspaceThreads, { suggestions: false });\n});"));
+  assert.match(js, /if \(event\.target\?\.matches\?\.\('#agent-search'\)\) \{\s*setSettledVisibleCount\(INITIAL_SETTLED_VISIBLE_COUNT\);\s*renderThreads\(currentWorkspaceThreads, \{ suggestions: false \}\);/);
   assert.match(js, /async function loadWorkspaceLaunchSuggestions\(threads\)/);
   assert.match(js, /function workspaceSuggestionThreadContext\(thread\)/);
   assert.match(js, /fetchJson\('\/api\/workspace-suggestions'/);
@@ -102,23 +162,80 @@ test('workspace agents use shadcn sidebar beside launch composer', () => {
   assert.match(runState, /generateWorkspaceLaunchSuggestionsForThreads/);
   assert.doesNotMatch(js, /thread\?\.suggestedNextSteps/);
   assert.match(js, /promptInput\.value = button\.dataset\.suggestedPrompt \|\| '';/);
+  assert.match(pages, /id="workspace-project-lightbox-trigger"/);
+  assert.match(pages, /function WorkspaceProjectLightbox\(\)/);
+  assert.match(pages, /id="workspace-project-lightbox" className="workspace-project-lightbox"/);
+  assert.match(pages, /id="workspace-project-lightbox-list" className="workspace-project-lightbox-list"/);
+  assert.match(pages, /id="workspace-project-lightbox-images" variant="ghost" type="button"><PlusIcon/);
+  assert.match(js, /const workspaceProjectLightboxTrigger = document\.querySelector\('#workspace-project-lightbox-trigger'\);/);
+  assert.match(js, /const workspaceProjectLightboxImages = document\.querySelector\('#workspace-project-lightbox-images'\);/);
+  assert.match(js, /function renderWorkspaceProjectLightbox\(message = ''\)/);
+  assert.match(js, /function selectWorkspaceProject\(project\)/);
+  assert.match(js, /data-workspace-lightbox-project-index/);
+  assert.match(js, /workspaceProjectLightboxTrigger\?\.addEventListener\('click', \(\) => setWorkspaceProjectLightboxOpen\(true\)\);/);
+  assert.match(js, /workspaceProjectLightboxImages\?\.addEventListener\('click', \(\) => imageInput\?\.click\(\)\);/);
+  assert.match(appCss, /\.workspace-project-lightbox \{/);
+  assert.match(appCss, /\.workspace-project-lightbox-project\[aria-current="page"\]/);
 });
 
-test('workspace agents header has project quick switcher, not a layout review surface', () => {
+test('project home uses the shared global agent inbox sidebar', () => {
+  assert.match(pages, /function AgentInboxSidebar\(\{ workspaceSwitcher = true \}\)/);
+  assert.match(pages, /<AgentInboxSidebar workspaceSwitcher=\{sidebarWorkspaceSwitcher\} \/>/);
+  assert.match(pages, /return <GlobalAppShell sidebarWorkspaceSwitcher=\{false\}/);
+  assert.match(pages, /return <GlobalAppShell insetClassName=/);
+  assert.match(pages, /export function HistoryPage\(\) \{[\s\S]+return <GlobalAppShell sidebarWorkspaceSwitcher=\{false\}/);
+  assert.match(pages, /export function SettingsPage\(\) \{\s*return <GlobalAppShell sidebarWorkspaceSwitcher=\{false\}/);
+  assert.match(entry, /const sidebarRuntimePages = new Set\(\['settings', 'history', 'performance'\]\);/);
+  assert.match(entry, /import\('\.\/runtime\/global-sidebar\.js'\)/);
+  assert.match(pages, /<SidebarTrigger className="workspace-sidebar-trigger" aria-label="open agents"/);
+  assert.match(projectRuntime, /const agentSearchInput = document\.querySelector\('#agent-search'\);/);
+  assert.match(projectRuntime, /bindSidebarPromptLightbox\(\{ fetchJson, makeThreadUrl: threadUrl \}\);/);
+  assert.match(projectRuntime, /let threadsList = document\.querySelector\('#threads-list'\);/);
+  assert.ok(projectRuntime.includes("const SIDEBAR_SETTLED_EXPANDED_KEY = 'spannerSidebarSettledExpanded';"));
+  assert.ok(projectRuntime.includes("const SIDEBAR_SETTLED_THREADS_KEY = 'spannerSidebarSettledThreads';"));
+  assert.ok(projectRuntime.includes("const SIDEBAR_PROJECT_SCOPE_KEY = 'spannerSidebarProjectScope';"));
+  assert.match(projectRuntime, /function renderGlobalSidebar\(threads = globalSidebarThreads\)/);
+  assert.match(projectRuntime, /function updateProjectScopeMenu\(threads\)/);
+  assert.match(projectRuntime, /const scopedThreads = scopedAgentThreads\(globalSidebarThreads\);/);
+  assert.match(projectRuntime, /const activeThreads = inboxThreads\.filter\(\(thread\) => !isSettledThread\(thread\)\);/);
+  assert.match(projectRuntime, /const settledThreads = inboxThreads\.filter\(isSettledThread\);/);
+  assert.match(projectRuntime, /data-settled-show-more/);
+  assert.match(projectRuntime, /data-settled-shelf-toggle aria-expanded="\$\{settledShelfExpanded \? 'true' : 'false'\}"/);
+  assert.match(projectRuntime, /fetchJson\(`\/api\/threads\/\$\{encodeURIComponent\(stopButton\.dataset\.stopThread\)\}\/stop`, \{ method: 'POST' \}\)/);
+  assert.match(projectRuntime, /data-settle-thread="\$\{escapeHtml\(thread\.name\)\}"/);
+  assert.match(projectRuntime, /data-unsettle-thread="\$\{escapeHtml\(thread\.name\)\}"/);
+  assert.doesNotMatch(projectRuntime, /dataset\.archiveThread/);
+  assert.match(projectRuntime, /const SIDEBAR_POLL_INTERVAL_MS = 30000;/);
+  assert.match(projectRuntime, /setInterval\(\(\) => \{\s*if \(document\.visibilityState !== 'visible'\) return;\s*refreshProjectThreads\(\)\.catch\(\(\) => \{\}\);\s*\}, SIDEBAR_POLL_INTERVAL_MS\);/);
+  assert.match(projectRuntime, /let syncedThreadsList = threadsList;/);
+  assert.match(projectRuntime, /function syncThreadsListMount\(\)/);
+  assert.match(projectRuntime, /renderGlobalSidebar\(globalSidebarThreads\.length \? globalSidebarThreads : cachedGlobalSidebarThreads\(\)\);/);
+  assert.match(projectRuntime, /new MutationObserver\(scheduleSyncThreadsListMount\)\.observe\(document\.body, \{ childList: true, subtree: true \}\);/);
+});
+
+test('workspace agents header uses Spanner search filter, not a layout review surface', () => {
+  const filterButtonStart = pages.indexOf('<button id="sidebar-project-scope"');
+  const filterButtonEnd = pages.indexOf('</button>', filterButtonStart);
+  const filterButton = pages.slice(filterButtonStart, filterButtonEnd);
+
   assert.match(pages, /CaretUpIcon/);
   assert.match(pages, /CaretDownIcon/);
-  assert.match(pages, /id="workspace-switcher-toggle"/);
-  assert.match(pages, /id="workspace-switcher-search"/);
-  assert.match(pages, /id="workspace-switcher-recents"/);
-  assert.match(pages, />Browse all projects<\/strong>/);
+  assert.ok(filterButtonStart > -1 && filterButtonEnd > filterButtonStart);
+  assert.doesNotMatch(filterButton, /CaretDownIcon/);
   assert.doesNotMatch(pages, />return home<\/a>/);
-  assert.match(pages, /<WorkspaceManager className="min-w-0 flex-1 justify-between" prominent quickSwitch \/>/);
+  assert.match(pages, /<span id="sidebar-project-scope-label" className="sr-only">All projects<\/span>/);
+  assert.match(pages, /data-sidebar-scope-toggle/);
+  assert.match(pages, /aria-label="Filter agents"/);
+  assert.match(js, /data-sidebar-scope-option/);
   assert.match(js, /const RECENT_PROJECTS_KEY = 'spannerRecentProjects';/);
   assert.match(js, /const workspaceSwitcherSearch = document\.querySelector\('#workspace-switcher-search'\);/);
   assert.match(js, /function switcherProjectMatches\(project, query\)/);
   assert.match(js, /workspaceSwitcherSearch\?\.addEventListener\('input'/);
   assert.match(js, /fetchJson\('\/api\/recent-projects'\)/);
   assert.match(js, /data-workspace-project-index/);
+  assert.ok(js.includes("const SIDEBAR_PROJECT_SCOPE_KEY = 'spannerSidebarProjectScope';"));
+  assert.match(js, /function updateProjectScopeMenu\(threads\)/);
+  assert.match(js, /const scopedThreads = scopedAgentThreads\(currentWorkspaceThreads\);/);
   assert.match(js, /aria-current="page"/);
   assert.doesNotMatch(js, /<em>current<\/em>/);
   assert.match(js, /localStorage\.setItem\(PROJECT_KEY, JSON\.stringify\(project\)\)/);
@@ -131,30 +248,169 @@ test('workspace agents header has project quick switcher, not a layout review su
   assert.doesNotMatch(appCss, /workspace-layout-picker|data-workspace-sidebar-layout/);
 });
 
-test('home history and finished clear controls live in the finished lane', () => {
+test('home settled section only moves threads after explicit settle', () => {
   assert.doesNotMatch(pages, /main-screen-variations|>concepts<\/a>|id="refresh-threads"/);
-  assert.match(js, /const visibleLanes = grouped\.running\.length \? lanes : lanes\.filter\(\(lane\) => lane\.key !== 'running'\);/);
-  assert.match(js, /const historyLink = lane\.key === 'done' \? '<a class="textbtn lane-history" href="\/history\.html">history<\/a>' : '';/);
-  assert.match(js, /id="clear-finished-threads" class="textbtn lane-clear" type="button">clear<\/button>/);
+  assert.ok(js.includes("const SIDEBAR_SETTLED_EXPANDED_KEY = 'spannerSidebarSettledExpanded';"));
+  assert.ok(js.includes("const SIDEBAR_SETTLED_VISIBLE_KEY = 'spannerSidebarSettledVisible';"));
+  assert.ok(js.includes("const SIDEBAR_SETTLED_THREADS_KEY = 'spannerSidebarSettledThreads';"));
+  assert.match(js, /function readSettledShelfExpanded\(\)/);
+  assert.match(js, /function setSettledShelfExpanded\(expanded\)/);
+  assert.match(js, /function setSettledVisibleCount\(value\)/);
+  assert.match(js, /function markThreadSettled\(name\)/);
+  assert.match(js, /function markThreadUnsettled\(name\)/);
+  assert.match(js, /function isSettledThread\(thread\)/);
+  assert.match(js, /const activeThreads = inboxThreads\.filter\(\(thread\) => !isSettledThread\(thread\)\);/);
+  assert.match(js, /const settledThreads = inboxThreads\.filter\(isSettledThread\);/);
+  assert.match(js, /settledThreads\.slice\(0, settledVisibleCount\)/);
+  assert.match(js, /const hiddenSettledCount = Math\.max\(0, settledThreads\.length - renderedSettledThreads\.length\);/);
+  assert.match(js, /<section class="action-lane sidebar-inbox-section sidebar-inbox-active" aria-label="Active work">/);
+  assert.match(js, /<section class="action-lane sidebar-inbox-section sidebar-inbox-settled" aria-label="Settled agents">/);
+  assert.match(js, /data-settled-shelf-toggle aria-expanded="\$\{settledShelfExpanded \? 'true' : 'false'\}"/);
+  assert.match(js, /data-settled-show-more/);
+  assert.match(js, /data-sidebar-thread-row/);
+  assert.match(js, /data-thread-menu-action="new-thread-project"/);
+  assert.match(js, /data-thread-menu-action="settle"/);
+  assert.match(js, /data-thread-menu-action="unsettle"/);
+  assert.match(js, /data-thread-menu-action="delete"/);
+  assert.match(js, /data-jump-index/);
+  assert.match(js, /sidebar-jump-hints/);
+  assert.match(js, /isCommand && event\.key\.toLowerCase\(\) === 'k'/);
+  assert.match(js, /isCommand && event\.key\.toLowerCase\(\) === 'n'/);
+  assert.match(js, /isCommand && \/\^\[1-9\]\$\/\.test\(event\.key\)/);
+  assert.match(js, /event\.key === '\]'/);
+  assert.match(js, /event\.key === '\['/);
+  assert.match(js, /function runThreadMenuAction\(action, thread\)/);
+  assert.match(js, /\/api\/threads\/\$\{encodeURIComponent\(thread\.name\)\}\/delete/);
+  assert.match(js, /const historyLink = '<a class="textbtn lane-history" href="\/history\.html">history<\/a>';/);
+  assert.doesNotMatch(js, /id="clear-finished-threads"/);
+  assert.match(js, /data-stop-thread="\$\{escapeHtml\(thread\.name\)\}"/);
+  assert.match(js, /data-settle-thread="\$\{escapeHtml\(thread\.name\)\}"/);
+  assert.match(js, /data-unsettle-thread="\$\{escapeHtml\(thread\.name\)\}"/);
+  assert.match(js, /fetchJson\(`\/api\/threads\/\$\{encodeURIComponent\(stopButton\.dataset\.stopThread\)\}\/stop`, \{ method: 'POST' \}\)/);
   assert.doesNotMatch(js, /clear all/);
-  assert.match(js, /for \(const name of names\) \{\s*await fetchJson\(`\/api\/threads\/\$\{encodeURIComponent\(name\)\}\/archive`/);
+  assert.doesNotMatch(js, /dataset\.archiveThread/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.active-work/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.settled-work/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.settled-shelf-toggle/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.active-work:hover \.sidebar-thread-status/);
   assert.match(js, /cache: 'no-store'/);
 });
 
-test('recently finished rows show title, run meta, then summary', () => {
+test('sidebar batch selection can settle selected agents', () => {
+  for (const runtime of [js, projectRuntime, globalSidebarRuntime]) {
+    assert.match(runtime, /let selectedSidebarThreadNames = new Set\(\);/);
+    assert.match(runtime, /function toggleSidebarThreadSelection\(name, options = \{\}\)/);
+    assert.match(runtime, /function selectVisibleSettleableThreads\(threads\)/);
+    assert.match(runtime, /function settleSelectedSidebarThreads\(\)/);
+    assert.match(runtime, /function renderSidebarBatchBar\(\)/);
+    assert.match(runtime, /data-sidebar-thread-select="\$\{escapeHtml\(thread\.name\)\}"/);
+    assert.match(runtime, /aria-selected="\$\{selected \? 'true' : 'false'\}"/);
+    assert.match(runtime, /data-sidebar-select-visible/);
+    assert.match(runtime, /data-sidebar-batch-settle/);
+    assert.match(runtime, /data-sidebar-selection-clear/);
+    assert.match(runtime, /event\.metaKey \|\| event\.ctrlKey \|\| event\.shiftKey/);
+    assert.match(runtime, /setSettledShelfExpanded\(true\);/);
+  }
+  assert.match(appCss, /\.workspace-agents-sidebar \.sidebar-batch-bar \{/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.sidebar-thread-select \{/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.sidebar-thread\.is-selected \{/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.action-lanes\.has-sidebar-selection \.active-work \.inbox-side/);
+});
+
+test('thread page boots the same global sidebar shell', () => {
+  const threadStart = pages.indexOf('export function ThreadPage()');
+  const threadEnd = pages.indexOf('export function SettingsPage()', threadStart);
+  const threadBlock = pages.slice(threadStart, threadEnd);
+  assert.match(threadBlock, /<GlobalAppShell sidebarWorkspaceSwitcher=\{false\} sidebarDefaultOpen=\{false\} insetClassName="global-app-center">/);
+  assert.doesNotMatch(appCss, /body\.thread-page \[data-slot="sidebar-wrapper"\] > \[data-slot="sidebar"\] \{\s*display: none;/);
+  assert.match(threadRuntime, /import \{ startGlobalSidebar \} from '\.\/global-sidebar\.js';/);
+  assert.match(threadRuntime, /startGlobalSidebar\(\{ statusNode \}\);/);
+  assert.match(globalSidebarRuntime, /export function startGlobalSidebar\(options = \{\}\)/);
+  assert.match(globalSidebarRuntime, /fetchJson\('\/api\/threads'\)/);
+  assert.match(globalSidebarRuntime, /function updateProjectScopeMenu\(threads\)/);
+  assert.match(globalSidebarRuntime, /aria-current="page"/);
+});
+
+test('sidebar refresh avoids unnecessary redraws', () => {
+  for (const runtime of [js, projectRuntime, globalSidebarRuntime]) {
+    assert.match(runtime, /const SIDEBAR_RUNTIME_TICK_MS = 30000;/);
+    assert.match(runtime, /let lastSidebarRenderSignature = '';/);
+    assert.match(runtime, /let lastSidebarRenderList = null;/);
+    assert.match(runtime, /function sidebarRenderSignature\(threads\)/);
+    assert.match(runtime, /threads: threads\.map\(sidebarThreadRenderSignature\)/);
+    assert.match(runtime, /const renderSignature = sidebarRenderSignature\(/);
+    assert.match(runtime, /list === lastSidebarRenderList && renderSignature === lastSidebarRenderSignature/);
+    assert.match(runtime, /setInterval\(updateRuntimeLabels, SIDEBAR_RUNTIME_TICK_MS\)/);
+    assert.match(runtime, /formatElapsed\(label\.dataset\.runtimeStart, Date\.now\(\)\)/);
+    assert.doesNotMatch(runtime, /formatElapsed\(label\.dataset\.runtimeStart, Date\.now\(\), true\)/);
+  }
+  assert.match(globalSidebarRuntime, /const SIDEBAR_POLL_INTERVAL_MS = 30000;/);
+  assert.match(globalSidebarRuntime, /setInterval\(\(\) => \{\s*if \(document\.visibilityState !== 'visible'\) return;\s*refreshGlobalSidebar\(\)\.catch\(\(\) => \{\}\);\s*\}, SIDEBAR_POLL_INTERVAL_MS\);/);
+});
+
+test('global sidebar hydrates from the cached thread snapshot before refetching', () => {
+  for (const runtime of [projectRuntime, globalSidebarRuntime]) {
+    assert.ok(runtime.includes("const GLOBAL_SIDEBAR_THREADS_CACHE_KEY = 'spannerGlobalSidebarThreadsCache';"));
+    assert.match(runtime, /function cachedGlobalSidebarThreads\(\)/);
+    assert.match(runtime, /function cacheableGlobalSidebarThread\(thread = \{\}\)/);
+    assert.match(runtime, /function cacheGlobalSidebarThreads\(threads\)/);
+    assert.match(runtime, /function renderCachedGlobalSidebar\(\)/);
+    assert.match(runtime, /localStorage\.setItem\(GLOBAL_SIDEBAR_THREADS_CACHE_KEY, JSON\.stringify\(\{ savedAt: Date\.now\(\), threads: safeThreads \}\)\)/);
+    assert.match(runtime, /if \(!renderCachedGlobalSidebar\(\)\) renderGlobalSidebar\(\);/);
+    assert.match(runtime, /cacheGlobalSidebarThreads\(threads\);\s*render/);
+  }
+  assert.ok(js.includes("const GLOBAL_SIDEBAR_THREADS_CACHE_KEY = 'spannerGlobalSidebarThreadsCache';"));
+  assert.match(js, /function cacheGlobalSidebarThreads\(threads\)/);
+  assert.match(js, /branch: thread\.branch/);
+  assert.match(js, /startedAt: thread\.startedAt/);
+  assert.equal((js.match(/cacheGlobalSidebarThreads\(workspaceSwitcherThreads\);/g) || []).length, 2);
+});
+
+test('sidebar project icons fall back to repo or folder initials', () => {
+  const expectedInitial = "return String(label || '').trim().match(/[A-Za-z0-9]/)?.[0]?.toUpperCase() || '#';";
+  const expectedIcon = 'return `<span class="sidebar-thread-favicon" aria-hidden="true">${escapeHtml(sidebarProjectInitial(label))}</span>`;';
+  for (const runtime of [js, projectRuntime, globalSidebarRuntime]) {
+    assert.ok(runtime.includes('function sidebarProjectInitial(label) {'));
+    assert.ok(runtime.includes(expectedInitial));
+    assert.ok(runtime.includes(expectedIcon));
+    assert.match(runtime, /\$\{sidebarProjectIcon\(project\.label\)\}/);
+    assert.match(runtime, /\$\{sidebarProjectIcon\(projectLabelText\)\}/);
+  }
+  assert.match(appCss, /\.workspace-agents-sidebar \.sidebar-thread-favicon \{\s+display: grid;/);
+  assert.doesNotMatch(appCss, /\.sidebar-thread-favicon::after/);
+});
+
+test('recently finished rows use compact T3-style settled rows', () => {
   assert.match(js, /function finalAnswerSummary\(thread, maxLength = 160\)/);
   assert.match(js, /function finishedOutcome\(thread, rawStatus\)/);
   assert.match(js, /thread\?\.finalAnswerSummary/);
-  assert.match(js, /const outcome = active \? '' : finishedOutcome\(thread, rawStatus\);/);
+  assert.match(js, /const outcome = running \? '' : finishedOutcome\(thread, rawStatus\);/);
   assert.match(js, /function finishedAt\(thread\) \{/);
   assert.match(js, /function finishedAtMs\(thread\) \{/);
+  assert.match(js, /function sidebarStatusLabel\(rawStatus\) \{/);
+  assert.match(js, /return compact\.replace\(\/\\b\(\\d\+m\)\\s\+\\d\+s\\b\/g, '\$1'\);/);
+  assert.match(js, /if \(status === 'running' \|\| status === 'starting' \|\| status === 'launching'\) return 'Working';/);
   assert.match(js, /const finishedValue = finishedAt\(thread\);/);
-  assert.match(js, /const inactiveTimes = !active \? \[finished, runtime \? `ran \$\{runtime\}` : ''\]\.filter\(Boolean\) : \[\];/);
+  assert.match(js, /const finished = running \? '' : sidebarDurationLabel\(formatFinishedAgo\(finishedValue\)\);/);
+  assert.match(js, /const inactiveTimes = !running \? \[finished\]\.filter\(Boolean\) : \[\];/);
   assert.match(js, /<span class="finished-meta">\$\{inactiveTimes\.map\(\(text\) => `<time>\$\{escapeHtml\(text\)\}<\/time>`\)\.join\(''\)\}<\/span>/);
-  assert.match(js, /\$\{detail \? `<small>\$\{escapeHtml\(detail\)\}<\/small>` : ''\}\s+\$\{inactiveMeta\}/);
-  assert.match(js, /\$\{archiveButton\}\s+\$\{activeRuntime\}/);
+  assert.match(js, /<span class="sidebar-thread-project-row">/);
+  assert.match(js, /<span class="sidebar-thread-meta-row">/);
+  assert.match(js, /\$\{sidebarProjectIcon\(projectLabelText\)\}/);
+  assert.match(js, /data-runtime-status="\$\{escapeHtml\(statusLabel\)\}"/);
+  assert.match(js, /label\.textContent = `\$\{status\} \$\{sidebarDurationLabel\(formatElapsed\(label\.dataset\.runtimeStart, Date\.now\(\)\)\)\}`;/);
   assert.match(js, /class="answer-preview">\$\{escapeHtml\(outcome\)\}/);
-  assert.match(js, /grouped\.done\.sort\(\(left, right\) => finishedAtMs\(right\) - finishedAtMs\(left\)\);/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.active-work \{\s+display: block;\s+height: 78px;/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.settled-work \{\s+display: grid;\s+grid-template-columns: 24px minmax\(0, 1fr\) auto;\s+gap: 0;\s+align-items: center;\s+height: 36px;/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.runtime-label::before \{\s+content: "";\s+width: 8px;\s+height: 8px;[\s\S]+background: var\(--runtime-dot, currentColor\);/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.running \.runtime-label::before,[\s\S]+\.workspace-agents-sidebar \.queued \.runtime-label::before \{\s+--runtime-dot: var\(--t3-amber\);\s+animation: status-pulse/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.completed \.runtime-label::before,[\s\S]+--runtime-dot: var\(--t3-emerald\);/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.settled-work > \.status-dot \{\s+position: static;\s+width: 8px;\s+height: 8px;/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.settled-work > \.status-dot \{[\s\S]+box-shadow: none !important;/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.settled-work\.failed > \.status-dot/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.settled-work \.answer-preview \{\s+display: none;/);
+  assert.match(js, /function sortThreadInbox\(left, right\) \{/);
+  assert.match(js, /return threadInboxTimeMs\(right\) - threadInboxTimeMs\(left\);/);
   assert.match(runState, /scheduleFinalAnswerSummaryGeneration\(updated, text, runId\);/);
   assert.match(runState, /scheduleFinalTurnStatusClassification\(updated, \{ text \}, runId\);/);
   assert.match(runState, /scheduleSuggestedNextStepsGeneration\(updated, text, runId\);/);
@@ -164,7 +420,8 @@ test('recently finished success indicators can be dismissed locally', () => {
   assert.ok(js.includes("const SEEN_FINISHED_THREADS_KEY = 'spannerSeenFinishedThreads';"));
   assert.ok(js.includes("return !active && ['completed', 'ready'].includes(rawStatus);"));
   assert.match(js, /function hasFreshFinishedIndicator\(thread\) \{/);
-  assert.match(js, /const freshFinishedCount = grouped\.done\.filter\(hasFreshFinishedIndicator\)\.length;/);
+  assert.match(js, /return isSettledThread\(thread\) && canDismissFinishedIndicator/);
+  assert.match(js, /const freshFinishedCount = settledThreads\.filter\(hasFreshFinishedIndicator\)\.length;/);
   assert.ok(js.includes('data-finished-indicator-count'));
   assert.match(js, /list\.querySelectorAll\('\[data-finished-indicator\]'\)\.length/);
   assert.ok(js.includes('data-finished-indicator="${escapeHtml(indicatorKey)}"'));
@@ -199,11 +456,17 @@ test('workspace toasts when running agents finish', () => {
 
 test('global toasts load outside the workspace screen', () => {
   assert.match(entry, /import \{ startAgentToastWatcher \} from '\.\/runtime\/agent-toasts\.js';/);
-  assert.match(entry, /if \(page !== 'workspace'\) startAgentToastWatcher\(\);/);
+  assert.match(entry, /const threadPollingRuntimePages = new Set\(\['project', 'workspace', 'thread', \.\.\.sidebarRuntimePages\]\);/);
+  assert.match(entry, /if \(!threadPollingRuntimePages\.has\(page\)\) startAgentToastWatcher\(\);/);
   assert.match(agentToasts, /import \{ toast \} from 'sonner';/);
   assert.match(agentToasts, /import \{ playCompletionChime \} from '\.\/completion-chimes\.js';/);
+  assert.match(agentToasts, /export function notifyAgentThreads\(threads\)/);
   assert.match(agentToasts, /export function startAgentToastWatcher\(\) \{/);
   assert.match(agentToasts, /function notifyFinishedThreads\(threads\)/);
+  assert.match(projectRuntime, /import \{ notifyAgentThreads \} from '\.\/agent-toasts\.js';/);
+  assert.match(globalSidebarRuntime, /import \{ notifyAgentThreads \} from '\.\/agent-toasts\.js';/);
+  assert.match(projectRuntime, /notifyAgentThreads\(threads\);/);
+  assert.match(globalSidebarRuntime, /notifyAgentThreads\(threads\);/);
   assert.match(agentToasts, /for \(const thread of threads\) \{/);
   assert.doesNotMatch(agentToasts, /sameSelectedProject|spannerSelectedProject|PROJECT_KEY/);
   assert.match(agentToasts, /const wasActive = isActiveThread\(\{ runStatus: knownThreadStatuses\.get\(name\) \}\);/);

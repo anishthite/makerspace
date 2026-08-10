@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec - route CSS Tailwind split</title>
+<meta name="task" content="Reduce global app CSS by moving route-owned demo styles behind conditional route imports.">
+<meta name="date-started" content="2026-08-01">
+<meta name="date-updated" content="2026-08-01">
+<meta name="status" content="ready-for-review">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,ui,css,tailwind,routes,assistant-ui">
+<meta name="related" content="2026-07-12-tailwind-css-standardization.html,2026-07-12-live-tailwind-utility-rewrite.html,2026-07-29-assistant-ui-components-view.html,2026-07-30-assistant-ui-standardization.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code { font-family: ui-monospace, Menlo, monospace; background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+  .blast-low { color: #2a7a2a; }
+  .status-in-progress { color: #b85c00; }
+  .status-shipped { color: #2a7a2a; }
+</style>
+</head>
+<body>
+<h1>route CSS Tailwind split</h1>
+<p class="meta"><code>agent-ui-components</code> · worktree <code>/Users/anishthite/conductor/workspaces/makerspace/tripoli</code> · 2026-08-01 · status <b class="status-in-progress">ready-for-review</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Move assistant-ui and demo route CSS out of the shared <code>app.css</code> load path.</div>
+  <b>Source</b><div>User asked whether to switch to Tailwind and approved the cleanup.</div>
+  <b>Surface</b><div><code>/assistant-ui-components.html</code>, <code>/agent-elements-demo.html</code>, shared <code>entry.jsx</code> stylesheet loading.</div>
+  <b>Schema</b><div>None.</div>
+  <b>Mobile</b><div>Preserve existing route media queries.</div>
+  <b>Open Qs</b><div>0.</div>
+  <b>Result</b><div><code>app.css</code> drops route-owned assistant-ui selectors; Vite emits separate route CSS chunks.</div>
+</div>
+<h2>UI layout</h2>
+<ol>
+  <li><b>Core app</b>: keep <code>app.css</code> for tokens, resets, runtime-generated selectors, and shared product surfaces.</li>
+  <li><b>Assistant-ui route</b>: load route-specific CSS only when <code>data-react-page="assistantUiComponents"</code>.</li>
+  <li><b>Agent-elements route</b>: load its existing demo stylesheet only when <code>data-react-page="agentElementsDemo"</code>.</li>
+</ol>
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>frontend/src/styles/app.css</code></td><td>touch</td><td>Remove assistant-ui route block from the global stylesheet.</td></tr>
+  <tr><td><code>frontend/src/styles/assistant-ui-components.css</code></td><td>new</td><td>Own the extracted assistant-ui route styles and <code>aui-spin</code> keyframes.</td></tr>
+  <tr><td><code>frontend/src/entry.jsx</code></td><td>touch</td><td>Load route-only styles through conditional dynamic imports.</td></tr>
+  <tr><td><code>frontend/src/agent-elements-demo-page.jsx</code></td><td>touch</td><td>Remove static CSS import so the demo CSS stops joining the shared route graph.</td></tr>
+  <tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr>
+</table>
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Split route CSS before converting selectors to utilities. It reduces global blast radius without visual churn.</td></tr>
+  <tr><td>D-002</td><td>Use conditional imports in <code>entry.jsx</code>. Static page imports flow through the shared page registry.</td></tr>
+  <tr><td>D-003</td><td>Keep runtime-generated thread/sidebar selectors in <code>app.css</code>. Prior Tailwind notes exclude runtime DOM from utility rewrites.</td></tr>
+</table>
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td>Route isolation over immediate Tailwind conversion. The mock route has dense state selectors and already uses route-scoped variables.</td></tr>
+</table>
+<h2>Assumptions</h2>
+<ul>
+  <li>A-001 · Existing dirty UI changes are intentional. Preserve them and move only route-owned CSS.</li>
+</ul>
+<h2>Verification</h2>
+<table>
+  <tr><th>Check</th><th>Result</th></tr>
+  <tr><td><code>npm run build</code></td><td>Passed; emitted <code>assistant-ui-components-*.css</code> and <code>agent-elements-demo-*.css</code> separately from <code>entry-*.css</code>.</td></tr>
+  <tr><td><code>node --test test/frontend-route-manifest.test.js</code></td><td>Passed 4/4.</td></tr>
+  <tr><td><code>git diff --check</code></td><td>Passed for touched files.</td></tr>
+  <tr><td><code>rg "assistant-ui-components-page|\\.aui-" frontend/src/styles/app.css</code></td><td>No matches.</td></tr>
+</table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Reinsert the extracted CSS block into <code>app.css</code>, remove route style loaders, and restore the static demo CSS import.</p>
+<h2>Followups</h2>
+<ul>
+  <li>L-001 · Convert assistant-ui route leaves to Tailwind utilities when editing that page's JSX structure.</li>
+  <li>L-002 · Split trace gallery styles after separating gallery-only selectors from live thread runtime selectors.</li>
+</ul>
+<h2>Definition of done</h2>
+<ul>
+  <li><code>app.css</code> no longer contains <code>.assistant-ui-components-page</code> or <code>.aui-*</code> selectors.</li>
+  <li>Assistant-ui and agent-elements styles load from route-only imports.</li>
+  <li><code>npm run build</code> passes.</li>
+</ul>
+</body>
+</html>

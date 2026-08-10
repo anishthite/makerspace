@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Spec - T3 sidebar interactions</title>
+  <meta name="task" content="Copy T3Code Sidebar V2 interactions that Makerspace can truthfully support.">
+  <meta name="date-started" content="2026-07-30">
+  <meta name="status" content="shipped">
+  <meta name="related" content="2026-07-30-global-t3-sidebar-shell.html">
+  <style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:920px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}</style>
+</head>
+<body>
+  <h1>T3 sidebar interactions</h1>
+  <h2>Summary</h2>
+  <table>
+    <tr><th>Goal</th><td>Copy Sidebar V2 keyboard, scope, navigation, and row-menu interactions.</td></tr>
+    <tr><th>Source</th><td><code>.context/t3code-nightly/apps/web/src/components/SidebarV2.tsx</code>.</td></tr>
+    <tr><th>Surface</th><td><code>AgentInboxSidebar</code>, <code>app.js</code>, <code>project.js</code>, <code>global-sidebar.js</code>, CSS, tests.</td></tr>
+    <tr><th>Unsupported</th><td><code>snooze</code>, explicit <code>settleOverride</code>, rename, unread, PR auto-settle, and multi-select need backend state/API.</td></tr>
+  </table>
+  <h2>Decisions</h2>
+  <table>
+    <tr><th>ID</th><th>Choice</th></tr>
+    <tr><td>D-001</td><td>Implement command/search focus, thread jump, previous/next traversal, project-scope menu keyboarding, and context menu with existing APIs.</td></tr>
+    <tr><td>D-002</td><td>Map T3 <code>Settle thread</code> to Makerspace archive for finished threads because archive removes a completed agent from the live inbox.</td></tr>
+    <tr><td>D-003</td><td>Use <code>New thread</code> to persist the current project scope before navigating to <code>/workspace.html</code>.</td></tr>
+  </table>
+  <h2>Definition of done</h2>
+  <ul>
+    <li><code>Cmd/Ctrl+K</code>, <code>Cmd/Ctrl+N</code>, <code>Cmd/Ctrl+1..9</code>, <code>Cmd/Ctrl+[</code>, <code>Cmd/Ctrl+]</code> work in the sidebar.</li>
+    <li>Scope menu supports click, escape, arrows, enter, and focus return.</li>
+    <li>Right-click row menu exposes truthful actions only.</li>
+    <li>Tests, build, and browser smoke pass.</li>
+  </ul>
+  <h2>Verification</h2>
+  <table>
+    <tr><th>ID</th><th>Check</th><th>Result</th></tr>
+    <tr><td>V-001</td><td><code>node --check frontend/src/runtime/global-sidebar.js</code>, <code>app.js</code>, <code>project.js</code></td><td>Pass.</td></tr>
+    <tr><td>V-002</td><td><code>node --test test/home-runtime-summary.test.js</code></td><td>Pass: 16/16 tests.</td></tr>
+    <tr><td>V-003</td><td><code>git diff --check &amp;&amp; npm run build</code></td><td>Pass, with existing large-chunk warning.</td></tr>
+    <tr><td>V-004</td><td>Chrome smoke on <code>http://127.0.0.1:5197/workspace.html</code></td><td>Pass: <code>Cmd+K</code> focus, scope keyboard open/escape, jump hints visible, row menu actions present.</td></tr>
+  </table>
+</body>
+</html>

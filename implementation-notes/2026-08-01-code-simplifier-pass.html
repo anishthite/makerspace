@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec - code simplifier pass</title>
+<meta name="task" content="Simplify low-risk readability issues in the current dirty diff.">
+<meta name="date-started" content="2026-08-01">
+<meta name="date-updated" content="2026-08-01">
+<meta name="status" content="ready-for-review">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,cleanup,simplification,readability">
+<meta name="related" content="2026-08-01-diff-cleanup.html,2026-08-01-local-thread-link-rendering.html,2026-08-01-pi-style-trace-sidecar.html">
+<style>
+body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}
+h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}
+table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}
+th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}
+.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-ready-for-review{color:#b85c00}
+</style>
+</head>
+<body>
+<h1>code simplifier pass</h1>
+<p class="meta"><code>agent-ui-components</code> · worktree <code>/Users/anishthite/conductor/workspaces/makerspace/tripoli</code> · 2026-08-01 · status <b class="status-ready-for-review">ready-for-review</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Run a behavior-preserving readability pass over the current dirty diff.</div>
+  <b>Source</b><div>User asked to run <code>code-simplifier</code> and identify simplifications.</div>
+  <b>Surface</b><div>Frontend/runtime helpers, desktop local URL strings, trace storage tests, route bootstrap readability, trace component helpers, and AI element button classes.</div>
+  <b>Schema</b><div>None.</div>
+  <b>Mobile</b><div>Untouched.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+<tr><td><code>desktop/main.js</code></td><td>touch</td><td>Route repeated desktop backend URLs through <code>localBackendUrl()</code>.</td></tr>
+<tr><td><code>frontend/src/components/ai-elements/file-tree.jsx</code></td><td>touch</td><td>Remove unused folder/file context providers.</td></tr>
+<tr><td><code>frontend/src/components/ai-elements/artifact.jsx</code></td><td>touch</td><td>Share the repeated artifact icon-button class through a local constant.</td></tr>
+<tr><td><code>frontend/src/components/ai-elements/terminal.jsx</code></td><td>touch</td><td>Share the repeated terminal action-button class through a local constant.</td></tr>
+<tr><td><code>frontend/src/runtime/app.js</code>, <code>frontend/src/runtime/project.js</code>, <code>frontend/src/runtime/global-sidebar.js</code></td><td>touch</td><td>Reset finished-indicator attributes through one ordered attribute list per runtime.</td></tr>
+<tr><td><code>frontend/src/runtime/link-rendering.js</code></td><td>touch</td><td>Extract repeated bare-link range insertion and name the loopback start pattern.</td></tr>
+<tr><td><code>frontend/src/runtime/sidebar-prompt-lightbox.js</code></td><td>touch</td><td>Reuse the selected project returned by <code>renderProjectState()</code>.</td></tr>
+<tr><td><code>frontend/src/trace-components-page.jsx</code></td><td>touch</td><td>Replace repeated trace icon/key construction with local lookup maps and key helpers.</td></tr>
+<tr><td><code>src/server/routes.js</code></td><td>touch</td><td>Inline the one-use recent-projects bootstrap promise.</td></tr>
+<tr><td><code>src/trace-store.js</code></td><td>touch</td><td>Replace nested trace-entry normalization ternary with an explicit branch.</td></tr>
+<tr><td><code>test/desktop-auth-token.test.js</code>, <code>test/link-rendering.test.js</code>, <code>test/trace-store.test.js</code></td><td>touch</td><td>Keep assertions aligned with the helper cleanup and collapse repeated setup.</td></tr>
+<tr><td><code>implementation-notes/2026-08-01-code-simplifier-pass.html</code></td><td>new</td><td>Record the simplifier scope and followups.</td></tr>
+<tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr>
+</table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr>
+<tr><td>D-001</td><td>Patch only focused helper cleanup. The dirty worktree spans unrelated active work streams.</td></tr>
+<tr><td>D-002</td><td>Leave sidebar helper extraction as a followup. Shared project/sidebar helpers would touch multiple active UI files.</td></tr>
+<tr><td>D-003</td><td>Keep repeated finished-indicator attribute resets local to each runtime. The files are still independently loaded entry points.</td></tr>
+<tr><td>D-004</td><td>Use local maps for trace demo icons instead of a broader component registry. The mock page does not need another abstraction layer.</td></tr>
+</table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+<tr><td>T-001</td><td>Small behavior-preserving edits over broad refactor. Existing string-based tests make large movement risky.</td></tr>
+</table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Revert the helper extraction, local constants/maps, trace normalization branch, note, and index row.</p>
+<h2>Verification</h2>
+<table><tr><th>ID</th><th>Check</th><th>Result</th></tr>
+<tr><td>V-001</td><td><code>node --check desktop/main.js frontend/src/runtime/sidebar-prompt-lightbox.js src/server/routes.js</code></td><td>Pass.</td></tr>
+<tr><td>V-002</td><td><code>node --test test/link-rendering.test.js test/trace-store.test.js test/desktop-auth-token.test.js test/startup-bootstrap-route.test.js</code></td><td>Pass, 20/20 after the second pass.</td></tr>
+<tr><td>V-003</td><td><code>git diff --check</code></td><td>Pass.</td></tr>
+<tr><td>V-004</td><td><code>npm run build</code></td><td>Pass after the second pass with existing large-chunk warning.</td></tr>
+<tr><td>V-005</td><td><code>node --check</code> on touched plain JS files</td><td>Pass for desktop, runtime, server, and trace-store files.</td></tr>
+<tr><td>V-006</td><td><code>node --test test/home-runtime-summary.test.js</code></td><td>Fail in CSS selector-location assertions after concurrent route CSS split moved selectors out of <code>frontend/src/styles/app.css</code>. No simplifier edits touched CSS.</td></tr>
+</table>
+<h2>Followups</h2>
+<ul>
+  <li>L-001 · Extract duplicated sidebar project helpers across <code>project.js</code>, <code>global-sidebar.js</code>, and <code>sidebar-prompt-lightbox.js</code> once sidebar work settles.</li>
+  <li>L-002 · Rebaseline CSS selector-location tests after the route stylesheet split is accepted.</li>
+</ul>
+<h2>Definition of done</h2>
+<ul>
+  <li>Focused simplifier edits preserve behavior.</li>
+  <li>Syntax checks pass for touched runtime files.</li>
+  <li><code>git diff --check</code> passes.</li>
+  <li>Build passes; CSS selector-location test drift is recorded separately.</li>
+</ul>
+</body>
+</html>

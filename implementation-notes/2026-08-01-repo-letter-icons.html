@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec - Repo letter icons</title>
+<meta name="task" content="Use the starting letter of the repo or folder when no repo icon exists.">
+<meta name="date-started" content="2026-08-01">
+<meta name="date-updated" content="2026-08-01">
+<meta name="status" content="ready-for-review">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,ui,sidebar,repo-icons,workspace">
+<meta name="related" content="2026-07-30-global-t3-sidebar-shell.html,2026-07-31-persistent-global-sidebar-shell.html">
+<style>
+body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}
+h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}
+table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}
+th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}
+.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-in-progress{color:#b85c00}.status-ready-for-review{color:#b85c00}
+</style>
+</head>
+<body>
+<h1>Repo letter icons</h1>
+<p class="meta"><code>agent-ui-components</code> · worktree <code>/Users/anishthite/conductor/workspaces/makerspace/tripoli</code> · 2026-08-01 · status <b class="status-ready-for-review">ready-for-review</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Render a letter avatar from the repo or folder label wherever the sidebar lacks a real project icon.</div>
+  <b>Source</b><div><code>repoPath</code>, <code>repoUrl</code>, or selected project value through existing <code>folderLabel</code> helpers.</div>
+  <b>Surface</b><div>Global agent sidebar project menu and active thread project rows.</div>
+  <b>Schema</b><div>None.</div>
+  <b>Mobile</b><div>Same fixed 16px icon box as desktop.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+<h2>UI layout</h2>
+<ol>
+  <li><b>Letter icon</b>: replace the empty repo placeholder with a one-character uppercase fallback inside <code>.sidebar-thread-favicon</code>.</li>
+  <li><b>Rows</b>: keep current active-row and project-menu geometry unchanged.</li>
+</ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+<tr><td><code>frontend/src/runtime/global-sidebar.js</code></td><td>touch</td><td>Add shared fallback initial rendering for utility and thread-side sidebar rows.</td></tr>
+<tr><td><code>frontend/src/runtime/app.js</code></td><td>touch</td><td>Add the same fallback initial rendering for workspace sidebar rows.</td></tr>
+<tr><td><code>frontend/src/runtime/project.js</code></td><td>touch</td><td>Add the same fallback initial rendering for home sidebar rows.</td></tr>
+<tr><td><code>frontend/src/styles/app.css</code></td><td>touch</td><td>Style <code>.sidebar-thread-favicon</code> as a fixed letter avatar instead of a folder outline.</td></tr>
+<tr><td><code>test/home-runtime-summary.test.js</code></td><td>touch</td><td>Pin the fallback helper and rendered initials in all sidebar runtimes.</td></tr>
+<tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr>
+</table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr>
+<tr><td>D-001</td><td>Derive initials from <code>folderLabel</code> output. The existing label logic already handles local folders and GitHub URLs.</td></tr>
+<tr><td>D-002</td><td>Use the first ASCII alphanumeric character with <code>#</code> fallback. It keeps one stable glyph for labels that start with punctuation.</td></tr>
+</table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+<tr><td>T-001</td><td>Runtime letter avatars over adding repo icon fetching. No repo icon URL exists in the current API payloads.</td></tr>
+</table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Revert the runtime span content, CSS avatar styling, and focused static assertions; no persisted data changes exist.</p>
+<h2>Verification</h2>
+<table><tr><th>ID</th><th>Check</th><th>Result</th></tr>
+<tr><td>V-001</td><td><code>node --check frontend/src/runtime/app.js frontend/src/runtime/project.js frontend/src/runtime/global-sidebar.js</code></td><td>Pass.</td></tr>
+<tr><td>V-002</td><td><code>node --test test/home-runtime-summary.test.js</code></td><td>Pass, 17/17.</td></tr>
+<tr><td>V-003</td><td><code>git diff --check</code></td><td>Pass.</td></tr>
+<tr><td>V-004</td><td><code>npm run build</code></td><td>Pass with existing large-chunk warning.</td></tr>
+</table>
+<h2>Definition of done</h2>
+<ul>
+  <li>Project scope menu shows <code>A</code> for <code>All projects</code> and repo initials for concrete projects.</li>
+  <li>Active thread project rows show the repo/folder initial.</li>
+  <li>Focused static tests and syntax checks pass.</li>
+</ul>
+</body>
+</html>

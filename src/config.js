@@ -56,6 +56,8 @@ const ALLOWED_ORIGIN_ENV_KEYS = [
   'PUBLIC_APP_ORIGINS',
   'PUBLIC_APP_ORIGIN',
 ];
+const DEFAULT_LOCAL_HOST = 'localhost';
+const DEFAULT_PORT = 8788;
 
 export function allowedOriginsFromEnv(env = process.env) {
   const value = ALLOWED_ORIGIN_ENV_KEYS.map((key) => env[key]).find((item) => String(item || '').trim());
@@ -99,8 +101,8 @@ export function getConfig() {
     provider,
     projectName: projectNameFromEnv(localDataDir),
     localDataDir,
-    host: process.env.HOST || (provider === 'local' ? '127.0.0.1' : ''),
-    port: Number(process.env.PORT || 8787),
+    host: process.env.HOST || (provider === 'local' ? DEFAULT_LOCAL_HOST : ''),
+    port: Number(process.env.PORT || DEFAULT_PORT),
     controlApiToken: process.env.CONTROL_API_TOKEN || '',
     authRequired: process.env.SPANNER_AUTH_REQUIRED || process.env.SPANNER_MULTI_USER
       ? truthy(process.env.SPANNER_AUTH_REQUIRED || process.env.SPANNER_MULTI_USER)
@@ -175,6 +177,8 @@ export function getConfig() {
     workspaceLaunchSuggestionsTimeoutMs: Number(process.env.WORKSPACE_LAUNCH_SUGGESTIONS_TIMEOUT_MS || process.env.THREAD_NEXT_STEPS_TIMEOUT_MS || 15000),
     sessionFile:
       process.env.SESSION_DATA_PATH || path.join(defaultDataDir, 'sessions.json'),
+    traceStoreDir:
+      process.env.SPANNER_TRACE_STORE_DIR || process.env.TRACE_STORE_DIR || path.join(defaultDataDir, 'traces'),
     piSessionTraceDir:
       process.env.PI_SESSION_TRACE_DIR || path.join(defaultDataDir, 'pi-sessions'),
     forwardEnvKeys: splitList(
