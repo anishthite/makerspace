@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — thread terminal status refresh</title>
+<meta name="task" content="Refresh a terminal thread page when the same thread starts working again elsewhere.">
+<meta name="date-started" content="2026-08-10">
+<meta name="date-updated" content="2026-08-10">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,ui,thread,status,sse,polling">
+<meta name="related" content="2026-07-16-local-reconnect-cursor.html,2026-08-01-terminal-thread-scroll-restore.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Thread terminal status refresh</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-08-10 · status <b class="status-shipped">shipped</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Make an open terminal <code>/thread.html</code> page notice when its thread becomes active again.</div><b>Source</b><div>User reports <code>completed</code> to <code>working</code> does not update automatically.</div><b>Surface</b><div><code>/thread.html</code> runtime status pill, controls, history, and SSE attach.</div><b>Schema</b><div>No API or stored data change.</div><b>Open Qs</b><div>0.</div></div>
+<h2>Algorithm</h2>
+<ol><li>Every <code>THREAD_STATUS_POLL_MS</code>, skip when hidden, already streaming, or current thread is not terminal.</li><li>Fetch <code>GET /api/threads/:name</code> and render the returned thread.</li><li>If the refreshed status is active, reset the stale SSE cursor and reopen the stream with <code>streamRun()</code>.</li></ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>frontend/src/runtime/thread.js</code></td><td>touch</td><td>Poll terminal thread pages and restart live streaming when status turns active.</td></tr><tr><td><code>test/thread-stream-cursor.test.js</code></td><td>touch</td><td>Pin the terminal refresh guard and stream restart wiring.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Poll only terminal states. Active states already use SSE.</td></tr><tr><td>D-002</td><td>Reset <code>lastEventId</code> before polling attaches to a new active run. Server event ids restart per run.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td><code>/api/threads/:name</code> polling over a new push channel. The existing endpoint already syncs bridge status.</td></tr></table>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>node --test test/thread-stream-cursor.test.js</code></td><td>Passed 3/3.</td></tr><tr><td><code>node --check frontend/src/runtime/thread.js</code></td><td>Passed.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Remove the terminal poll helper, interval, focused test, and index row.</p>
+<h2>Definition of done</h2>
+<ul><li>Completed or ready open thread pages refresh into working without reload.</li><li>Active streams are not double-opened.</li><li>Focused thread stream test passes.</li></ul>
+</body>
+</html>

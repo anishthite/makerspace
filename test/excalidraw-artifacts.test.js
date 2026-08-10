@@ -5,7 +5,9 @@ import {
   artifactMediaOpenUISource,
   diagramImageArtifactPaths,
   excalidrawArtifactPaths,
+  htmlArtifactPaths,
   htmlImageArtifactPaths,
+  isRenderableHtmlArtifactPath,
   normalizeDiagramImageArtifactPath,
   normalizeExcalidrawArtifactPath,
 } from '../frontend/src/runtime/excalidraw-artifacts.js';
@@ -79,6 +81,16 @@ test('htmlImageArtifactPaths finds embedded relative image sources for duplicate
     htmlImageArtifactPaths('<section><img src="output/playwright/demo.png"><img src="https://example.com/demo.png"><img src="../secret.png"><img src="output/playwright/demo.png"></section>'),
     ['output/playwright/demo.png'],
   );
+});
+
+test('htmlArtifactPaths includes generated pages and implementation notes', () => {
+  assert.deepEqual(
+    htmlArtifactPaths('See output/playwright/demo.html and implementation-notes/2026-08-10-typography-standardization.html, not implementation-notes/INDEX.html.'),
+    ['output/playwright/demo.html', 'implementation-notes/2026-08-10-typography-standardization.html'],
+  );
+  assert.equal(isRenderableHtmlArtifactPath('implementation-notes/2026-08-10-demo.html'), true);
+  assert.equal(isRenderableHtmlArtifactPath('implementation-notes/INDEX.html'), false);
+  assert.equal(isRenderableHtmlArtifactPath('frontend/public/demo.html'), false);
 });
 
 test('artifactMediaOpenUISource turns media paths into Spanner OpenUI', () => {

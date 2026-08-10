@@ -74,3 +74,12 @@ test('thread page clears the SSE cursor before streaming a fresh run', async () 
   assert.ok(helper < call);
   assert.ok(call < stream);
 });
+
+test('thread page polls terminal status and reconnects when active again', async () => {
+  const source = await readFile(new URL('../frontend/src/runtime/thread.js', import.meta.url), 'utf8');
+  assert.match(source, /const THREAD_STATUS_POLL_MS = 5000;/);
+  assert.match(source, /if \(!name \|\| activeStream \|\| document\.visibilityState !== 'visible' \|\| !isTerminalStatus\(effectiveStatus\(currentThread\)\)\) return;/);
+  assert.match(source, /const \{ thread \} = await fetchJson\(`\/api\/threads\/\$\{encodeURIComponent\(name\)\}`\);/);
+  assert.match(source, /if \(isActiveStatus\(effectiveStatus\(thread\)\)\) \{\n\s*resetThreadStreamState\(\);\n\s*streamRun\(\);\n\s*\}/);
+  assert.match(source, /setInterval\(\(\) => \{ void refreshTerminalThreadStatus\(\)\.catch\(\(\) => \{\}\); \}, THREAD_STATUS_POLL_MS\);/);
+});

@@ -4,6 +4,7 @@ const HTML_ARTIFACT_TOKEN_RE = /(?:^|[\s([`'"])([^\s`'"<>]+\.html)\b/gi;
 const EXCALIDRAW_IGNORE_CONTEXT_RE = /\b(?:could not load|does not exist|failed to load|fake|missing|placeholder|sample|unreferenced|unrelated|unstaged|untracked|left\s+unstaged|left\s+unpushed|do\s+not\s+(?:open|push|render|view)|don't\s+(?:open|push|render|view)|example\s+paths?|not\s+automatically)\b/i;
 const DIAGRAM_IMAGE_CONTEXT_RE = /\b(?:architecture|artifact|chart|diagram|excalidraw|figure|flow|inline|mockup|preview|rendered?|saved|screenshot|tour|wireframe)\b|<img\b/i;
 const GENERATED_MEDIA_PATH_RE = /^(?:artifacts\/|output\/playwright\/|test-results\/)/i;
+const HTML_ARTIFACT_PATH_RE = /^(?:artifacts\/|output\/playwright\/|test-results\/|implementation-notes\/(?!INDEX\.html\b))/i;
 const IMAGE_EXT_RE = /\.(?:gif|jpe?g|png|svg|webp)$/i;
 const IMG_TAG_RE = /<img\b[^>]*>/gi;
 const SRC_ATTR_RE = /\ssrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/i;
@@ -46,6 +47,10 @@ function diagramImageContext(value, start, end) {
 
 function generatedMediaPath(path) {
   return GENERATED_MEDIA_PATH_RE.test(path);
+}
+
+export function isRenderableHtmlArtifactPath(path) {
+  return HTML_ARTIFACT_PATH_RE.test(String(path || ''));
 }
 
 export function excalidrawArtifactPaths(value) {
@@ -100,7 +105,7 @@ export function htmlArtifactPaths(value) {
     const rawPath = match[1];
     const start = match.index + match[0].length - rawPath.length;
     const path = normalizeHtmlArtifactPath(rawPath);
-    if (!path || seen.has(path) || ignoredArtifactContext(text, start, start + rawPath.length) || !generatedMediaPath(path)) continue;
+    if (!path || seen.has(path) || ignoredArtifactContext(text, start, start + rawPath.length) || !isRenderableHtmlArtifactPath(path)) continue;
     seen.add(path);
     paths.push(path);
   }

@@ -9,7 +9,7 @@ import { extractOpenUIArtifacts, stripOpenUIArtifactBlocks } from './openui-arti
 import { submitOnEnter } from './submit-on-enter.js';
 import { bindImageDropZone, clearImageInput, filesToImageAttachments, imageAttachmentSrc, imageAttachmentText, imageInputFiles, updateImageStatus } from './image-attachments.js';
 import { implementationNoteFromToolEvent, implementationNotesFromToolEvent } from './implementation-notes.js';
-import { diagramImageArtifactPaths, excalidrawArtifactPaths, htmlArtifactPaths, htmlImageArtifactPaths, normalizeDiagramImageArtifactPath, normalizeHtmlArtifactPath } from './excalidraw-artifacts.js';
+import { diagramImageArtifactPaths, excalidrawArtifactPaths, htmlArtifactPaths, htmlImageArtifactPaths, isRenderableHtmlArtifactPath, normalizeDiagramImageArtifactPath, normalizeHtmlArtifactPath } from './excalidraw-artifacts.js';
 import { startGlobalSidebar } from './global-sidebar.js';
 
 const BROWSER_SESSION_KEY = 'spannerBrowserSession';
@@ -22,6 +22,7 @@ const PHOSPHOR_COPY_ICON = '<svg viewBox="0 0 256 256" aria-hidden="true" focusa
 const MAX_INLINE_EXCALIDRAW_ARTIFACTS = 3;
 const MAX_INLINE_DIAGRAM_IMAGE_ARTIFACTS = 4;
 const MAX_INLINE_HTML_ARTIFACTS = 2;
+const THREAD_STATUS_POLL_MS = 5000;
 
 const API_BASE = String(import.meta.env?.VITE_SPANNER_API_BASE || '').trim().replace(/\/+$/, '');
 
@@ -397,6 +398,13 @@ function htmlArtifactStateUrl(artifactPath, stateKey = 'default') {
   url.searchParams.set('key', stateKey || 'default');
   url.searchParams.set('browserSession', getBrowserSessionId());
   return `${url.pathname}${url.search}`;
+}
+
+function localHtmlArtifactPathFromHref(href) {
+  const raw = String(href || '').trim();
+  const sameOrigin = raw.startsWith(location.origin) ? raw.slice(location.origin.length) : raw;
+  const path = normalizeHtmlArtifactPath(sameOrigin.replace(/^\/+/, ''));
+  return path && isRenderableHtmlArtifactPath(path) ? path : '';
 }
 
 function resolveHtmlPreviewImageSrc(src) {
@@ -1609,8 +1617,7 @@ function renderNotesRail() {
   const notes = [...notesByPath.values()].reverse();
   notesCount.textContent = String(notes.length);
   notesList.replaceChildren();
-  // ponytail: temporary kill switch; remove this line when the notes pane comes back.
-  notesList.closest('.notes-main')?.setAttribute('hidden', '');
+  notesList.closest('.notes-main')?.toggleAttribute('hidden', !notes.length);
 
   if (!notes.length) return;
 
@@ -2591,6 +2598,18 @@ async function loadOutput() {
   return renderOutputPayload(await fetchJson(`/api/sessions/${encodeURIComponent(name)}/output`));
 }
 
+async function refreshTerminalThreadStatus() {
+  if (!name || activeStream || document.visibilityState !== 'visible' || !isTerminalStatus(effectiveStatus(currentThread))) return;
+  const { thread } = await fetchJson(`/api/threads/${encodeURIComponent(name)}`);
+  if (!thread) return;
+  renderThread(thread);
+  renderThreadHistory(thread);
+  if (isActiveStatus(effectiveStatus(thread))) {
+    resetThreadStreamState();
+    streamRun();
+  }
+}
+
 async function loadThreadBootstrap() {
   if (!name) throw new Error('Missing main agent name.');
   const payload = await fetchJson(`/api/bootstrap?page=thread&fast=1&name=${encodeURIComponent(name)}`);
@@ -2664,7 +2683,13 @@ diffDialog?.addEventListener('click', (event) => {
 timeline?.addEventListener('click', (event) => {
   const link = event.target?.closest?.('a.rendered-link');
   if (!link || !timeline.contains(link)) return;
-  if (link.dataset.linkKind === 'local') return;
+  if (link.dataset.linkKind === 'local') {
+    const artifactPath = name ? localHtmlArtifactPathFromHref(link.getAttribute('href')) : '';
+    if (!artifactPath) return;
+    event.preventDefault();
+    location.assign(htmlArtifactUrl(artifactPath, { interactive: true }));
+    return;
+  }
   event.preventDefault();
   void openSafeLink(link.getAttribute('href'));
 });
@@ -2815,6 +2840,9 @@ promptForm.addEventListener('submit', async (event) => {
     renderComposerState();
   }
 });
+
+// ponytail: terminal-only poll avoids a second push channel; active runs still use SSE.
+setInterval(() => { void refreshTerminalThreadStatus().catch(() => {}); }, THREAD_STATUS_POLL_MS);
 
 try {
   const { thread, output } = await loadThreadBootstrap();

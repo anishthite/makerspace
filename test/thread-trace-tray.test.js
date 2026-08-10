@@ -228,9 +228,10 @@ test('thread trace tools render assistant-ui style typed bodies', () => {
   assert.match(css, /\.tool-json-grid/);
 });
 
-test('thread opens as an edge-to-edge assistant surface with an on-demand inbox', () => {
+test('thread keeps the global inbox open', () => {
   assert.match(pages, /function GlobalAppShell\(\{ children, sidebarWorkspaceSwitcher = true, sidebarDefaultOpen = true/);
-  assert.match(pages, /<GlobalAppShell sidebarWorkspaceSwitcher=\{false\} sidebarDefaultOpen=\{false\} insetClassName="global-app-center">/);
+  assert.match(pages, /<GlobalAppShell sidebarWorkspaceSwitcher=\{false\} insetClassName="global-app-center">/);
+  assert.doesNotMatch(pages, /<GlobalAppShell sidebarWorkspaceSwitcher=\{false\} sidebarDefaultOpen=\{false\} insetClassName="global-app-center">/);
   assert.match(css, /body\.thread-page \.thread-stage \{[\s\S]*grid-template-columns: minmax\(0, 1fr\) 382px/);
   assert.match(css, /body\.thread-page \.conversation-main > \.timeline-flow,[\s\S]*width: min\(100%, 1060px\)/);
   assert.match(css, /body\.thread-page \.agent-column \{[\s\S]*max-height: 100svh/);
@@ -304,7 +305,9 @@ test('generated html artifacts render in opt-in trusted iframes', () => {
   const block = js.slice(js.indexOf('const HTML_ARTIFACT_PASSIVE_SANDBOX'), js.indexOf('function renderHtmlArtifacts'));
   assert.notEqual(block, '');
   assert.match(artifactUtils, /HTML_ARTIFACT_TOKEN_RE/);
+  assert.match(artifactUtils, /implementation-notes\\\//);
   assert.match(artifactUtils, /export function htmlArtifactPaths/);
+  assert.match(artifactUtils, /export function isRenderableHtmlArtifactPath/);
   assert.match(js, /htmlArtifactPaths/);
   assert.match(js, /function htmlArtifactUrl\(artifactPath, options = \{\}\)/);
   assert.match(js, /function htmlArtifactStateUrl\(artifactPath, stateKey = 'default'\)/);
@@ -348,12 +351,19 @@ test('assistant text links render and OpenUI URL actions open externally', () =>
   assert.match(js, /import \{ openSafeLink, renderLinkedText \} from '\.\/link-rendering\.js'/);
   assert.match(js, /renderLinkedText\(node, displayText\)/);
   assert.match(js, /a\.rendered-link/);
+  assert.match(js, /function localHtmlArtifactPathFromHref/);
   assert.match(js, /link\.dataset\.linkKind === 'local'/);
+  assert.match(js, /location\.assign\(htmlArtifactUrl\(artifactPath, \{ interactive: true \}\)\)/);
   assert.match(js, /void openSafeLink\(link\.getAttribute\('href'\)\)/);
   assert.match(css, /\.message-body a\.rendered-link/);
   assert.match(css, /\.message-body a\.rendered-link\[data-link-kind="local"\]/);
   assert.match(openuiRenderer, /event\?\.type === 'open_url'/);
   assert.match(openuiRenderer, /void openSafeLink\(event\.params\?\.url\)/);
+});
+
+test('implementation note rail is shown when notes exist', () => {
+  assert.match(js, /notesList\.closest\('\.notes-main'\)\?\.toggleAttribute\('hidden', !notes\.length\)/);
+  assert.doesNotMatch(js, /temporary kill switch/);
 });
 
 test('openui fenced blocks render after assistant message text without extra chrome', () => {
