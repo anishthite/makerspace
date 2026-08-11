@@ -28,32 +28,38 @@
 <table><tr><th>ID</th><th>Need</th><th>Evidence</th></tr>
 <tr><td>A-001</td><td>One model-picker surface rule.</td><td>Repo suggestions, workspace switcher, scope menu, context menu, and Radix select each hard-code radius, background, border, padding, and shadow.</td></tr>
 <tr><td>A-002</td><td>One model-picker item fill.</td><td>Rows use different hover fills and focus outlines, while active rows use separate blue-soft or white overlays.</td></tr>
-<tr><td>A-003</td><td>Keep native selects where behavior is already wired.</td><td>Main composer native selects depend on existing DOM mutation code.</td></tr>
-<tr><td>A-004</td><td>Replace the sidebar project native popup.</td><td>The screenshot shows the OS <code>select</code> popup, which ignores app dropdown CSS.</td></tr>
+<tr><td>A-003</td><td>Keep hidden native selects where behavior is already wired.</td><td>Main composer and sidebar runtime code mutate <code>option</code> nodes and <code>value</code>.</td></tr>
+<tr><td>A-004</td><td>Replace visible native popups.</td><td>The screenshot shows the OS <code>select</code> popup, which ignores app dropdown CSS.</td></tr>
 </table>
 <h2>Files</h2>
 <table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
 <tr><td><code>frontend/src/styles/app.css</code></td><td>touch</td><td>Keep the theme contract free of dropdown-only token sprawl.</td></tr>
 <tr><td><code>frontend/src/components/ui/select.jsx</code></td><td>touch</td><td>Use direct <code>paper/rule/blue-soft</code> chrome for Radix select.</td></tr>
-<tr><td><code>frontend/src/components/ui.jsx</code></td><td>touch</td><td>Add <code>ProjectPicker</code>, a Radix trigger backed by the existing hidden project select.</td></tr>
-<tr><td><code>frontend/src/pages.jsx</code></td><td>touch</td><td>Use <code>ProjectPicker</code> in the sidebar prompt topbar.</td></tr>
+<tr><td><code>frontend/src/components/ui.jsx</code></td><td>touch</td><td>Make exported <code>Select</code> a Radix trigger backed by a hidden native select bridge.</td></tr>
+<tr><td><code>frontend/src/pages.jsx</code></td><td>touch</td><td>Use <code>Select</code> variants for main model, sidebar project, sidebar model, and repo picker controls.</td></tr>
+<tr><td><code>frontend/src/runtime/sidebar-prompt-lightbox.js</code></td><td>touch</td><td>Mutate sidebar model <code>option</code> nodes directly instead of custom picker events.</td></tr>
+<tr><td><code>frontend/src/runtime/app.js</code></td><td>touch</td><td>Dispatch <code>change</code> when runtime model values are assigned.</td></tr>
+<tr><td><code>frontend/src/runtime/thread.js</code></td><td>touch</td><td>Dispatch <code>change</code> when thread composer model values are assigned.</td></tr>
+<tr><td><code>frontend/src/runtime/interactive-artifacts.js</code></td><td>touch</td><td>Render spanner-ui select controls as app-styled listboxes instead of native selects.</td></tr>
+<tr><td><code>frontend/src/trace-components-page.jsx</code></td><td>touch</td><td>Use <code>Select</code> for demo dropdowns.</td></tr>
 <tr><td><code>frontend/src/styles/workspace.css</code></td><td>touch</td><td>Use one grouped panel rule and direct model-picker colors for custom dropdowns and menus.</td></tr>
-<tr><td><code>frontend/src/styles/thread.css</code></td><td>touch</td><td>Use direct <code>paper/rule</code> chrome for interactive artifact selects.</td></tr>
+<tr><td><code>frontend/src/styles/thread.css</code></td><td>touch</td><td>Use direct <code>paper/rule</code> chrome for interactive artifact select listboxes.</td></tr>
 <tr><td><code>test/dropdown-standardization.test.js</code></td><td>new</td><td>Guard against reintroducing dropdown-only tokens.</td></tr>
 <tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr>
 </table>
 <h2>Decisions</h2>
 <table><tr><th>ID</th><th>Choice · Rationale</th></tr>
-<tr><td>D-001</td><td>Use CSS over a new dropdown component. Existing dropdown behavior is fragmented but works.</td></tr>
+<tr><td>D-001</td><td>Use one app <code>Select</code> wrapper over raw native selects. It centralizes visible dropdown behavior while preserving DOM contracts.</td></tr>
 <tr><td>D-002</td><td>Style active surfaces in place. This avoids rewriting DOM event bridges and native select mutation code.</td></tr>
 <tr><td>D-003</td><td>Use direct <code>paper/rule/blue-soft</code> styling instead of dropdown-only tokens. Supersedes the first token pass after user feedback.</td></tr>
-<tr><td>D-004</td><td>Wrap the sidebar project select with Radix and keep the hidden <code>#sidebar-prompt-project-select</code>. Runtime project selection code keeps its existing DOM contract.</td></tr>
+<tr><td>D-004</td><td>Wrap visible selects with Radix and keep hidden native <code>select</code> nodes. Runtime project and model code keeps existing DOM contracts.</td></tr>
+<tr><td>D-005</td><td>Override prompt trigger chrome in route CSS. Tailwind utility order can leave the base Shadcn border visible.</td></tr>
 </table>
 <h2>Tradeoffs</h2>
 <table><tr><th>ID</th><th>Picked over Rejected</th><th>Reason</th></tr>
-<tr><td>T-001</td><td>CSS pass over full Radix conversion.</td><td>Native selects and custom menus keep keyboard and submission behavior without extra React state.</td></tr>
+<tr><td>T-001</td><td>Hidden native bridge over runtime rewrite.</td><td>Existing submit and option mutation code stays small.</td></tr>
 <tr><td>T-002</td><td>Grouped selector over token taxonomy.</td><td>The model picker already defines the useful primitives: <code>paper</code>, <code>rule</code>, and <code>blue-soft</code>.</td></tr>
-<tr><td>T-003</td><td><code>MutationObserver</code> bridge over runtime rewrite.</td><td>Runtime can continue setting project <code>option</code> nodes and <code>value</code>.</td></tr>
+<tr><td>T-003</td><td><code>MutationObserver</code> bridge over runtime rewrite.</td><td>Runtime can continue setting <code>option</code> nodes and <code>value</code>.</td></tr>
 </table>
 <h2>Verification</h2>
 <table><tr><th>Check</th><th>Result</th></tr>
@@ -61,8 +67,8 @@
 <tr><td><code>npm run build</code></td><td>Passed with existing large-chunk warnings.</td></tr>
 </table>
 <h2>Reversibility</h2>
-<p>R-001 · <span class="blast-low">low</span>. Revert the grouped selector, direct color substitutions, and Radix select class changes; no data or behavior contracts change.</p>
+<p>R-001 · <span class="blast-low">low</span>. Revert the app <code>Select</code> wrapper, listbox renderer, grouped selector, and direct color substitutions; no data or behavior contracts change.</p>
 <h2>Definition of done</h2>
-<ul><li>Dropdown surfaces match the main model picker’s paper, rule, radius, and low-shadow chrome.</li><li>Dropdown items use the same blue-soft hover and active fill.</li><li>The sidebar project picker no longer opens the OS native select popup.</li><li>Focused static test and build pass.</li></ul>
+<ul><li>Dropdown surfaces match the main model picker’s paper, rule, radius, and low-shadow chrome.</li><li>Dropdown items use the same blue-soft hover and active fill.</li><li>Visible active UI no longer opens OS native select popups.</li><li>Focused static test and build pass.</li></ul>
 </body>
 </html>

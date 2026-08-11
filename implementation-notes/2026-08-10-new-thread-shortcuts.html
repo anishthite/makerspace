@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — New thread shortcuts</title>
+<meta name="task" content="Add desktop and web keyboard shortcuts for starting a new Spanner thread.">
+<meta name="date-started" content="2026-08-10">
+<meta name="date-updated" content="2026-08-10">
+<meta name="status" content="ready-for-review">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,desktop,shortcuts,sidebar,keyboard">
+<meta name="related" content="2026-08-01-sidebar-plus-composer-lightbox.html,2026-08-01-spanner-sidebar-prompt-lightbox.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code, pre { font-family: ui-monospace, Menlo, monospace; }
+  code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  ul { margin: .3rem 0 .8rem 1.2rem; padding: 0; }
+  li { margin: .15rem 0; }
+  .blast-low { color: #2a7a2a; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>New thread shortcuts</h1>
+<p class="meta"><code>main</code> · worktree <code>makerspace</code> · 2026-08-10 · status <b>ready-for-review</b> · blast <span class="blast-low">low</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div><code>Cmd/Ctrl+T</code> in Electron and <code>N</code> on the website open the existing new-thread lightbox.</div>
+  <b>Source</b><div>Electron <code>before-input-event</code> plus browser <code>keydown</code>.</div>
+  <b>Surface</b><div><code>desktop/main.js</code>, <code>desktop/preload.cjs</code>, <code>frontend/src/runtime/sidebar-prompt-lightbox.js</code>.</div>
+  <b>Schema</b><div>None.</div>
+  <b>Mobile</b><div>Untouched.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>desktop/main.js</code></td><td>touch</td><td>Catch desktop <code>Cmd/Ctrl+T</code> before the renderer sees it.</td></tr>
+  <tr><td><code>desktop/preload.cjs</code></td><td>touch</td><td>Expose a renderer listener for the desktop shortcut event.</td></tr>
+  <tr><td><code>frontend/src/runtime/sidebar-prompt-lightbox.js</code></td><td>touch</td><td>Open the existing lightbox from desktop IPC and website <code>N</code>.</td></tr>
+  <tr><td><code>frontend/src/pages.jsx</code></td><td>touch</td><td>Advertise the shortcut on the new-thread button.</td></tr>
+  <tr><td><code>test/desktop-auth-token.test.js</code></td><td>touch</td><td>Assert the desktop shortcut bridge stays wired.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Use <code>Cmd/Ctrl+T</code> only in Electron. Browsers reserve that chord for tabs.</td></tr>
+  <tr><td>D-002</td><td>Use plain <code>N</code> on the website. It is mnemonic and avoid reserved browser chords.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td><code>before-input-event</code> over an Electron menu rebuild. No app-menu surface changes.</td></tr>
+</table>
+
+<h2>Assumptions</h2>
+<ul>
+  <li>A-001 · “New one” means the existing sidebar new-thread lightbox. If wrong: retarget the same event to the desired creator.</li>
+</ul>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Remove the IPC event and browser keydown listener.</p>
+
+<h2>Definition of done</h2>
+<ul>
+  <li><code>Cmd/Ctrl+T</code> in Electron requests the sidebar prompt lightbox.</li>
+  <li><code>N</code> on web opens the same lightbox unless focus is in an editable field.</li>
+  <li><code>node --test test/desktop-auth-token.test.js</code> passes.</li>
+  <li><code>npm run build</code> passes.</li>
+</ul>
+</body>
+</html>

@@ -31,6 +31,7 @@ import { resolvePiSdkPackageDir } from '../pi-sdk-package.js';
 import { pruneBrowserSessions } from '../resource-utils.js';
 
 const CODEX_AUTH_PROVIDER = 'openai-codex';
+const SPANNER_DEFAULT_MODEL_REF = `${CODEX_AUTH_PROVIDER}/gpt-5.6-terra`;
 const CODEX_USER_SECRET_KEY = 'openai-codex-auth';
 const CLAUDE_CODE_AUTH_PROVIDER = 'anthropic';
 const CLAUDE_CODE_USER_SECRET_KEY = 'claude-code-auth';
@@ -598,15 +599,17 @@ export function createAuthService({ config, http }) {
     const modelId = String(settings.defaultModel || '').trim();
     const configuredThinking = String(settings.defaultThinkingLevel || '').trim();
     const availableModels = await availablePiModels(user);
+    const configuredModels = configuredModelRefs(settings, availableModels);
     if (provider && modelId) model = `${provider}/${modelId}`;
     else if (modelId) model = modelId;
+    else if (configuredModels.includes(SPANNER_DEFAULT_MODEL_REF)) model = SPANNER_DEFAULT_MODEL_REF;
     if (configuredThinking) thinking = configuredThinking;
 
     return {
       model,
       agent: model,
       thinking,
-      models: uniqueModelRefs([model, ...configuredModelRefs(settings, availableModels)]),
+      models: uniqueModelRefs([model, ...configuredModels]),
     };
   }
 

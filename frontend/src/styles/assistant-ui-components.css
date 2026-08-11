@@ -1149,7 +1149,7 @@
   padding: 0;
   color: #d8d2ce;
   cursor: pointer;
-  font: 600 17px/1 var(--sans);
+  font: 700 17px/1 var(--sans);
 }
 
 .aui-right-thread-list > button,
@@ -1733,7 +1733,7 @@
 .aui-tool-group-trigger em {
   color: var(--aui-muted);
   font-style: normal;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .aui-tool-group-loader {

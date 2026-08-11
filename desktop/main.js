@@ -23,6 +23,7 @@ let userDataMigrated = false;
 const EXTERNAL_PROTOCOLS = new Set(['http:', 'https:', 'vscode:', 'vscode-insiders:', 'cursor:', 'zed:', 'jetbrains:']);
 const LOCAL_BACKEND_HOST = 'localhost';
 const LOCAL_BACKEND_PORT = 8788;
+const NEW_THREAD_SHORTCUT_CHANNEL = 'spanner:new-thread-shortcut';
 
 function sendUpdateStatus(message) {
   BrowserWindow.getAllWindows().forEach((window) => {
@@ -97,6 +98,20 @@ function localBackendUrl(port, pathname = '') {
   return `http://${LOCAL_BACKEND_HOST}:${port}${pathname}`;
 }
 
+function isNewThreadShortcutInput(input) {
+  return input?.type === 'keyDown'
+    && !input.isAutoRepeat
+    && String(input.key || '').toLowerCase() === 't'
+    && (input.meta || input.control)
+    && !input.alt
+    && !input.shift;
+}
+
+function sendNewThreadShortcut(window) {
+  if (!window || window.isDestroyed()) return;
+  window.webContents.send(NEW_THREAD_SHORTCUT_CHANNEL);
+}
+
 function backendCommand() {
   if (process.env.SPANNER_NODE) return { command: process.env.SPANNER_NODE, args: ['src/server.js'], env: {} };
   if (app.isPackaged) return { command: process.execPath, args: ['src/server.js'], env: { ELECTRON_RUN_AS_NODE: '1' } };
@@ -153,6 +168,11 @@ function createWindow(port, token) {
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     openExternalUrl(url).catch(() => {});
     return { action: 'deny' };
+  });
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (!isNewThreadShortcutInput(input)) return;
+    event.preventDefault();
+    sendNewThreadShortcut(mainWindow);
   });
   mainWindow.loadURL(localBackendUrl(port, '/'));
 }

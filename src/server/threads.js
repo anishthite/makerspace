@@ -5,12 +5,17 @@ import path from 'node:path';
 
 import { createDraftPullRequestForThread } from '../git-delivery.js';
 import { runLocalPiSession } from '../host-pi-runner.js';
-import { ensureLocalGitRepo } from '../local-git.js';
+import { ensureLocalGitRepo, ensureLocalGitWorktree } from '../local-git.js';
 import { analyzePiTraceText, summarizeThreadPerformanceList } from '../performance.js';
 import { normalizeImageAttachments, normalizeModelOptions, normalizeThreadRequest } from '../session.js';
 import { readSavedSettings } from '../settings.js';
 import { archiveStoredSession, getStoredSession, listStoredSessions, unarchiveStoredSession, upsertSession } from '../store.js';
 import { normalizeSubmittedAtMs, trimTrailingSlash } from './utils.js';
+
+function threadListItem(session = {}) {
+  const { name, title, status, runStatus, warning, latestActivity, finalAnswerSummary, repoPath, repoUrl, provider, localMode, branch, createdAt, updatedAt, startedAt, endedAt, completedAt, runEndedAtMs } = session;
+  return { name, title, status, runStatus, warning, latestActivity, finalAnswerSummary, repoPath, repoUrl, provider, localMode, branch, createdAt, updatedAt, startedAt, endedAt, completedAt, runEndedAtMs };
+}
 
 export function createThreadService({ config, provider, http, auth, runState, bridge }) {
   const { clientError } = http;
@@ -446,7 +451,7 @@ export function createThreadService({ config, provider, http, auth, runState, br
       .filter((session) => session.threadBridge && !session.archivedAt && canAccessSession(session, viewerSessionId, trusted, user));
     const threads = await traceStep(options, 'threads.decorate', () => Promise.all(visibleSessions.map(async (session) => {
       await reattachBridgeRun?.(session);
-      return decorateLiveSession(session);
+      return threadListItem(decorateLiveSession(session));
     })));
     return {
       provider: provider.info(),
@@ -1090,26 +1095,32 @@ export function createThreadService({ config, provider, http, auth, runState, br
   }
 
   async function startLocalThreadSession(session) {
-    const repoPath = await resolveLocalRepoPath(session.repoPath);
+    const sourceRepoPath = await resolveLocalRepoPath(session.repoPath);
+    const worktree = await ensureLocalGitWorktree({ ...session, repoPath: sourceRepoPath }, config);
     return startLocalThreadRun({
       ...session,
-      repoPath,
+      ...worktree,
+      repoPath: worktree.worktreePath,
       repoUrl: '',
       repoMode: 'local',
+      branch: session.branch || 'main',
       threadBridge: true,
     }, session.taskPrompt, Number(session.submittedAtMs) || Date.now());
   }
 
   async function startLocalGitThreadSession(session) {
-    const repoPath = await ensureLocalGitRepo(session, config);
+    const sourceRepoPath = await ensureLocalGitRepo(session, config);
+    const worktree = await ensureLocalGitWorktree({ ...session, repoPath: sourceRepoPath, sourceRepoPath }, config);
     return startLocalThreadRun({
       ...session,
-      repoPath,
+      ...worktree,
+      repoPath: worktree.worktreePath,
       repoAuthHeader: '',
       bridgeMode: false,
       bridgeClaimed: false,
       bridgeRunId: '',
       localMode: true,
+      branch: session.branch || 'main',
       threadBridge: true,
     }, session.taskPrompt, Number(session.submittedAtMs) || Date.now());
   }

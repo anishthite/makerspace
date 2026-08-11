@@ -3,6 +3,7 @@ import './appearance.js?v=palette-2';
 import { captureSpannerEvent } from '../lib/posthog.js';
 import { redirectIfAuthRequired } from './auth-redirect.js';
 import { notifyAgentThreads } from './agent-toasts.js';
+import { projectIconSvg } from './project-icons.js';
 import { bindSidebarPromptLightbox, openSidebarPromptLightbox } from './sidebar-prompt-lightbox.js';
 
 const BROWSER_SESSION_KEY = 'spannerBrowserSession';
@@ -299,12 +300,8 @@ function folderLabel(value) {
   return text.split(/[\\/]+/).filter(Boolean).pop() || text || 'workspace';
 }
 
-function sidebarProjectInitial(label) {
-  return String(label || '').trim().match(/[A-Za-z0-9]/)?.[0]?.toUpperCase() || '#';
-}
-
 function sidebarProjectIcon(label) {
-  return `<span class="sidebar-thread-favicon" aria-hidden="true">${escapeHtml(sidebarProjectInitial(label))}</span>`;
+  return projectIconSvg(label, 'sidebar-thread-favicon project-line-icon');
 }
 
 function projectLabel(value) {
@@ -452,13 +449,13 @@ function projectFromInput() {
   if (matchedRepo) {
     selectedRepo = matchedRepo;
     repoSourceInput.value = 'github';
-    branchInput.value = matchedRepo.defaultBranch || '';
+    branchInput.value = matchedRepo.defaultBranch || branchInput.value || 'main';
     return {
       kind: 'git',
       value: matchedRepo.cloneUrl || normalizeRepoUrl(repoFullName(matchedRepo)),
       label: repoFullName(matchedRepo),
       repoSource: 'github',
-      branch: matchedRepo.defaultBranch || '',
+      branch: branchInput.value || 'main',
     };
   }
 
@@ -469,7 +466,7 @@ function projectFromInput() {
       value: rawValue,
       label: folderLabel(rawValue),
       repoSource: '',
-      branch: '',
+      branch: branchInput.value || 'main',
     };
   }
 
@@ -481,7 +478,7 @@ function projectFromInput() {
     value,
     label: projectLabel(value),
     repoSource: repoSourceInput.value,
-    branch: branchInput.value,
+    branch: branchInput.value || 'main',
   };
 }
 
@@ -704,7 +701,7 @@ function projectFromScopeValue(value, label = folderLabel(value)) {
     value: cleanValue,
     label: label || folderLabel(cleanValue),
     repoSource: local ? '' : 'github',
-    branch: '',
+    branch: 'main',
   };
 }
 
@@ -851,7 +848,7 @@ function renderSidebarBatchBar() {
   const selectedThreads = selectedVisibleThreads();
   if (!selectedThreads.length) return '';
   const settleableCount = selectedThreads.filter((thread) => canSettleThread(thread) && !isSettledThread(thread)).length;
-  const settleLabel = settleableCount > 0 ? `Settle ${settleableCount}` : 'Settle';
+  const settleLabel = settleableCount > 0 ? `Archive ${settleableCount}` : 'Archive';
   return `
     <div class="sidebar-batch-bar" role="toolbar" aria-label="Selected agents">
       <span>${selectedThreads.length} selected</span>
@@ -946,10 +943,10 @@ function renderThreadCard(thread, jumpLabel = '') {
   const projectLabelText = sidebarThreadProjectLabel(thread);
   const projectKeyText = sidebarThreadProjectKey(thread);
   const settleButton = canSettleThread(thread) && !settled
-    ? `<button class="textbtn archive-thread" type="button" data-settle-thread="${escapeHtml(thread.name)}" aria-label="Settle thread">settle</button>`
+    ? `<button class="textbtn archive-thread" type="button" data-settle-thread="${escapeHtml(thread.name)}" aria-label="Archive thread">archive</button>`
     : '';
   const unsettleButton = settled
-    ? `<button class="textbtn archive-thread" type="button" data-unsettle-thread="${escapeHtml(thread.name)}" aria-label="Un-settle thread">unsettle</button>`
+    ? `<button class="textbtn archive-thread" type="button" data-unsettle-thread="${escapeHtml(thread.name)}" aria-label="Unarchive thread">unarchive</button>`
     : '';
   const stopButton = running
     ? `<button class="textbtn stop-thread" type="button" data-stop-thread="${escapeHtml(thread.name)}">stop</button>`
@@ -1095,19 +1092,18 @@ function renderGlobalSidebar(threads = globalSidebarThreads) {
   const settledEmpty = searchActive && !filteredThreads.length
     ? 'No agents match that search.'
     : searchActive
-      ? 'No matching settled agents.'
+      ? 'No matching archived agents.'
       : sidebarProjectScope !== 'all' && !scopedThreads.length
         ? 'No agents in this project yet.'
       : activeThreads.length
-        ? 'No settled agents yet.'
+        ? 'No archived agents yet.'
         : 'No agents yet.';
-  const settledLabel = settledShelfExpanded ? 'Settled' : `Settled (${settledThreads.length})`;
+  const settledLabel = settledShelfExpanded ? 'Archived' : `Archived (${settledThreads.length})`;
   const settledSection = `
-    <section class="action-lane sidebar-inbox-section sidebar-inbox-settled" aria-label="Settled agents">
+    <section class="action-lane sidebar-inbox-section sidebar-inbox-settled" aria-label="Archived agents">
       <div class="action-lane-head">
         <button class="settled-shelf-toggle" type="button" data-settled-shelf-toggle aria-expanded="${settledShelfExpanded ? 'true' : 'false'}">
           <span>${escapeHtml(settledLabel)}</span>
-          <span class="settled-shelf-rule" aria-hidden="true"></span>
           <span class="settled-shelf-chevron" aria-hidden="true">⌄</span>
         </button>
         <span class="action-lane-tools">
@@ -1175,6 +1171,7 @@ function renderRecentProjects(threads = []) {
     return `
       <button class="project-choice" type="button" data-project-index="${index}">
         <span class="project-choice-title">
+          ${projectIconSvg(project, 'project-line-icon project-choice-icon')}
           <strong>${escapeHtml(project.kind === 'local' || looksLikeLocalPath(project.value) ? folderLabel(project.value) : project.label || projectLabel(project.value))}</strong>
           ${badges ? `<span class="project-activity-badges">${badges}</span>` : ''}
         </span>
@@ -1289,7 +1286,7 @@ function hideRepoSuggestions() {
 function resetRepoSelection(message) {
   selectedRepo = null;
   repoSourceInput.value = '';
-  branchInput.value = '';
+  branchInput.value = 'main';
   if (message !== undefined) repoHint.textContent = message;
 }
 
@@ -1297,7 +1294,7 @@ function selectRepo(repo) {
   if (!repo) return;
   selectedRepo = repo;
   repoSourceInput.value = 'github';
-  branchInput.value = repo.defaultBranch || '';
+  branchInput.value = repo.defaultBranch || 'main';
   repoInput.value = repoFullName(repo);
   repoHint.textContent = repoSelectionLabel(repo);
   hideRepoSuggestions();
@@ -1370,6 +1367,7 @@ async function loadLastFolder() {
     const folder = await globalThis.spannerDesktop.getLastFolder();
     if (!folder || repoInput.value.trim()) return;
     repoInput.value = folder;
+    if (!branchInput.value) branchInput.value = 'main';
     repoHint.textContent = 'Last local folder loaded.';
   } catch {}
 }
@@ -1743,8 +1741,8 @@ function showThreadMenu(thread, position) {
     `<button type="button" role="menuitem" data-thread-menu-action="open">Open<kbd>↵</kbd></button>`,
     `<button type="button" role="menuitem" data-thread-menu-action="new-thread-project">New thread in project</button>`,
     active ? `<button type="button" role="menuitem" data-thread-menu-action="stop">Stop thread</button>` : '',
-    canSettle && !settled ? `<button type="button" role="menuitem" data-thread-menu-action="settle">Settle thread</button>` : '',
-    settled ? `<button type="button" role="menuitem" data-thread-menu-action="unsettle">Un-settle thread</button>` : '',
+    canSettle && !settled ? `<button type="button" role="menuitem" data-thread-menu-action="settle">Archive thread</button>` : '',
+    settled ? `<button type="button" role="menuitem" data-thread-menu-action="unsettle">Unarchive thread</button>` : '',
     `<button type="button" role="menuitem" data-thread-menu-action="delete" data-danger="true">Delete</button>`,
   ].filter(Boolean).join('');
   document.body.append(menu);
@@ -1868,7 +1866,7 @@ document.addEventListener('click', async (event) => {
   if (batchSettle) {
     const count = settleSelectedSidebarThreads();
     renderGlobalSidebar(globalSidebarThreads);
-    if (count > 0) statusLine.textContent = `Settled ${count} agent${count === 1 ? '' : 's'}.`;
+    if (count > 0) statusLine.textContent = `Archived ${count} agent${count === 1 ? '' : 's'}.`;
     return;
   }
 
