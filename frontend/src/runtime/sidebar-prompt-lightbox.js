@@ -152,6 +152,33 @@ function setTriggerExpanded(open) {
   for (const trigger of elements().triggers) trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
 }
 
+function isEditableShortcutTarget(target) {
+  return target?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName);
+}
+
+function isWebNewThreadShortcut(event) {
+  return !event.repeat
+    && !event.metaKey
+    && !event.ctrlKey
+    && !event.altKey
+    && !event.shiftKey
+    && String(event.key || '').toLowerCase() === 'n'
+    && !isEditableShortcutTarget(event.target);
+}
+
+function openFromNewThreadShortcut() {
+  openSidebarPromptLightbox();
+}
+
+function bindNewThreadShortcuts() {
+  globalThis.spannerDesktop?.onNewThreadShortcut?.(openFromNewThreadShortcut);
+  document.addEventListener('keydown', (event) => {
+    if (!isWebNewThreadShortcut(event)) return;
+    event.preventDefault();
+    openFromNewThreadShortcut();
+  });
+}
+
 function thinkingIndex(value) {
   const index = THINKING_LEVELS.indexOf(String(value || '').trim().toLowerCase());
   return index >= 0 ? index : THINKING_LEVELS.indexOf('xhigh');
@@ -335,6 +362,7 @@ export function bindSidebarPromptLightbox({ fetchJson, makeThreadUrl = threadUrl
   const { dialog, form, close, prompt, projectSelect, model, thinking, imageTrigger, images, imageStatus, submit } = elements();
   if (!dialog || !form) return;
   bound = true;
+  bindNewThreadShortcuts();
   loadSidebarRunControls();
   renderProjectState();
 

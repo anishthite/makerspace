@@ -364,7 +364,7 @@ function AgentInboxSidebar({ workspaceSwitcher = true }) {
     <SidebarHeader className="workspace-agents-head grid gap-1 border-b border-[var(--rule)] p-2">
       <div className="sidebar-title-row">
         <a className="sidebar-spanner-title" href="/workspace.html" aria-label="Open Spanner workspace">Spanner</a>
-        <Button variant="ghost" size="icon" className="sidebar-icon-button sidebar-new-prompt-button" type="button" data-sidebar-new-thread aria-label="New prompt" aria-keyshortcuts="Meta+N Control+N" aria-haspopup="dialog" aria-expanded="false" aria-controls="sidebar-prompt-lightbox" title="New prompt"><PlusIcon className="size-4" aria-hidden="true" /></Button>
+        <Button variant="ghost" size="icon" className="sidebar-icon-button sidebar-new-prompt-button" type="button" data-sidebar-new-thread aria-label="New thread" aria-keyshortcuts="N Meta+T Control+T" aria-haspopup="dialog" aria-expanded="false" aria-controls="sidebar-prompt-lightbox" title="New thread (N; desktop: ⌘/Ctrl+T)"><PlusIcon className="size-4" aria-hidden="true" /></Button>
       </div>
       <div className="sidebar-command-row">
         <InputGroup label={<MagnifyingGlassIcon className="size-4" aria-hidden="true" />} className="agent-search border-0 bg-transparent px-0 shadow-none [&_input]:min-w-0 [&_input]:py-1.5" as="div">
