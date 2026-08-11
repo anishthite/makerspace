@@ -362,6 +362,7 @@ test('thread page boots the same global sidebar shell', () => {
   assert.match(globalSidebarRuntime, /function updateProjectScopeMenu\(threads\)/);
   assert.match(globalSidebarRuntime, /aria-current="page"/);
   assert.match(appCss, /\.workspace-sidebar-edge-trigger \{[^}]*top: 20px;[^}]*left: calc\(var\(--sidebar-width\) - 42px\);/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.workspace-agents-head \{[^}]*padding: 20px 12px 4px;/);
   assert.match(appCss, /\.workspace-agents-sidebar \.sidebar-title-row \{[^}]*padding-right: 40px;/);
 });
 
