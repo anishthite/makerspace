@@ -12,6 +12,11 @@ import { readSavedSettings } from '../settings.js';
 import { archiveStoredSession, getStoredSession, listStoredSessions, unarchiveStoredSession, upsertSession } from '../store.js';
 import { normalizeSubmittedAtMs, trimTrailingSlash } from './utils.js';
 
+function threadListItem(session = {}) {
+  const { name, title, status, runStatus, warning, latestActivity, finalAnswerSummary, repoPath, repoUrl, provider, localMode, branch, createdAt, updatedAt, startedAt, endedAt, completedAt, runEndedAtMs } = session;
+  return { name, title, status, runStatus, warning, latestActivity, finalAnswerSummary, repoPath, repoUrl, provider, localMode, branch, createdAt, updatedAt, startedAt, endedAt, completedAt, runEndedAtMs };
+}
+
 export function createThreadService({ config, provider, http, auth, runState, bridge }) {
   const { clientError } = http;
   const localRunControllers = new Map();
@@ -446,7 +451,7 @@ export function createThreadService({ config, provider, http, auth, runState, br
       .filter((session) => session.threadBridge && !session.archivedAt && canAccessSession(session, viewerSessionId, trusted, user));
     const threads = await traceStep(options, 'threads.decorate', () => Promise.all(visibleSessions.map(async (session) => {
       await reattachBridgeRun?.(session);
-      return decorateLiveSession(session);
+      return threadListItem(decorateLiveSession(session));
     })));
     return {
       provider: provider.info(),
