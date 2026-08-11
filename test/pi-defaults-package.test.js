@@ -34,14 +34,15 @@ test('spanner Pi defaults package exposes pi resources', async () => {
   await assert.rejects(readFile(path.join(packageDir, 'skills/excalidraw-diagram/references/.venv/pyvenv.cfg'), 'utf8'), /ENOENT/);
 });
 
-test('Cloudflare image leaves model availability to provider auth', async () => {
+test('Cloudflare image defaults to Terra and leaves availability to provider auth', async () => {
   const dockerfile = await readFile('image/Dockerfile', 'utf8');
   const manifest = JSON.parse(await readFile('image/package.json', 'utf8'));
 
   assert.equal(manifest.dependencies['@earendil-works/pi-coding-agent'], '0.80.10');
+  assert.match(dockerfile, /"defaultProvider":"openai-codex"/);
+  assert.match(dockerfile, /"defaultModel":"gpt-5\.6-terra"/);
   assert.doesNotMatch(dockerfile, /enabledModels/);
   assert.doesNotMatch(dockerfile, /inference\/nvidia/);
-  assert.doesNotMatch(dockerfile, /"defaultProvider":"openai-codex"/);
 });
 
 test('createPiResourceOptions adds package resource paths when present', async () => {

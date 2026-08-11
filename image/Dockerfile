@@ -32,7 +32,7 @@ COPY packages/spanner-pi-defaults /home/root/.pi/agent/spanner-pi-defaults
 RUN npm install --prefix /home/root/.pi/agent/npm --no-audit --no-fund --omit=dev --ignore-scripts --legacy-peer-deps && \
     ln -sf /home/root/.pi/agent/npm/node_modules/.bin/pi /home/root/.local/bin/pi && \
     ln -sf /home/root/.local/bin/pi /usr/local/bin/pi && \
-    settings='{"defaultThinkingLevel":"medium","packages":["/home/root/.pi/agent/spanner-pi-defaults","npm:pi-chrome"]}' && \
+    settings='{"defaultProvider":"openai-codex","defaultModel":"gpt-5.6-terra","defaultThinkingLevel":"medium","packages":["/home/root/.pi/agent/spanner-pi-defaults","npm:pi-chrome"]}' && \
     printf '%s\n' "$settings" > /home/root/.pi/agent/settings.json && \
     git config --system --add safe.directory '*' && \
     git config --system init.defaultBranch main && \

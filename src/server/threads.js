@@ -5,7 +5,7 @@ import path from 'node:path';
 
 import { createDraftPullRequestForThread } from '../git-delivery.js';
 import { runLocalPiSession } from '../host-pi-runner.js';
-import { ensureLocalGitRepo } from '../local-git.js';
+import { ensureLocalGitRepo, ensureLocalGitWorktree } from '../local-git.js';
 import { analyzePiTraceText, summarizeThreadPerformanceList } from '../performance.js';
 import { normalizeImageAttachments, normalizeModelOptions, normalizeThreadRequest } from '../session.js';
 import { readSavedSettings } from '../settings.js';
@@ -1051,26 +1051,32 @@ export function createThreadService({ config, provider, http, auth, runState, br
   }
 
   async function startLocalThreadSession(session) {
-    const repoPath = await resolveLocalRepoPath(session.repoPath);
+    const sourceRepoPath = await resolveLocalRepoPath(session.repoPath);
+    const worktree = await ensureLocalGitWorktree({ ...session, repoPath: sourceRepoPath }, config);
     return startLocalThreadRun({
       ...session,
-      repoPath,
+      ...worktree,
+      repoPath: worktree.worktreePath,
       repoUrl: '',
       repoMode: 'local',
+      branch: session.branch || 'main',
       threadBridge: true,
     }, session.taskPrompt, Number(session.submittedAtMs) || Date.now());
   }
 
   async function startLocalGitThreadSession(session) {
-    const repoPath = await ensureLocalGitRepo(session, config);
+    const sourceRepoPath = await ensureLocalGitRepo(session, config);
+    const worktree = await ensureLocalGitWorktree({ ...session, repoPath: sourceRepoPath, sourceRepoPath }, config);
     return startLocalThreadRun({
       ...session,
-      repoPath,
+      ...worktree,
+      repoPath: worktree.worktreePath,
       repoAuthHeader: '',
       bridgeMode: false,
       bridgeClaimed: false,
       bridgeRunId: '',
       localMode: true,
+      branch: session.branch || 'main',
       threadBridge: true,
     }, session.taskPrompt, Number(session.submittedAtMs) || Date.now());
   }

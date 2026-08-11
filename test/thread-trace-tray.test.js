@@ -416,6 +416,8 @@ test('suggested next steps render as bottom composer prompts', () => {
 
 test('inline trace uses a subtle marker without overlay behavior', () => {
   assert.match(css, /\.run-summary::before/);
+  assert.match(css, /body\.thread-page \.run-summary::before \{[\s\S]*content: '▸'/);
+  assert.doesNotMatch(css, /body\.thread-page \.run-summary::before \{\s*content: none;\s*display: none;/);
   assert.match(css, /\.run-summary-detail/);
   assert.match(css, /\.agent-trace-inline/);
   assert.doesNotMatch(css, /agent-overlay-open/);

@@ -231,6 +231,7 @@ h3 { margin-bottom: 8px; font-size: 18px; font-weight: var(--font-weight-strong)
 p { color: var(--ink-2); }
 
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+select.app-select-native { position: absolute; width: 1px; height: 1px; padding: 0 !important; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0 !important; }
 .hidden,
 [hidden] { display: none !important; }
 .muted { color: var(--ink-3); }
@@ -351,8 +352,8 @@ button:not(.primary-btn):not(.textbtn):not(.run-summary):not(.copy-button):not([
   button:not(.primary-btn):not(.run-summary):not(.copy-button):not([data-close-button]):not([data-button]):not([data-cancel]):hover { border-color: var(--blue); color: var(--blue); background: var(--blue-soft); }
 }
 [data-sonner-toaster] [data-sonner-toast].agent-main-link-toast[data-styled="true"] {
-  /* ponytail: matches workspace --t3-emerald; global token if a third surface needs it. */
-  --agent-toast-success: #6ee7b7;
+  /* ponytail: fixed sage beats another theme token for one banner. */
+  --agent-toast-success: #B1DFA4;
   cursor: pointer;
   width: min(340px, calc(100vw - 32px));
   padding: 11px 13px;
@@ -369,7 +370,7 @@ button:not(.primary-btn):not(.textbtn):not(.run-summary):not(.copy-button):not([
 }
 [data-sonner-toaster] [data-sonner-toast].agent-main-link-toast [data-icon] { display: none; }
 [data-sonner-toaster] [data-sonner-toast].agent-main-link-toast [data-content] { gap: 2px; min-width: 0; }
-[data-sonner-toaster] [data-sonner-toast].agent-main-link-toast [data-title] { color: currentColor; font: 750 12px/1.25 var(--sans); letter-spacing: .01em; }
+[data-sonner-toaster] [data-sonner-toast].agent-main-link-toast [data-title] { color: currentColor; font: 700 12px/1.25 var(--sans); letter-spacing: .01em; }
 [data-sonner-toaster] [data-sonner-toast].agent-main-link-toast [data-description] {
   display: -webkit-box;
   overflow: hidden;

@@ -6,7 +6,7 @@
 <meta name="task" content="Standardize active Spanner font families and document the type usage rules.">
 <meta name="date-started" content="2026-08-10">
 <meta name="date-updated" content="2026-08-10">
-<meta name="status" content="ready-for-review">
+<meta name="status" content="shipped">
 <meta name="blast-radius" content="low">
 <meta name="tags" content="spanner,ui,typography,css,design-system">
 <meta name="related" content="2026-07-30-assistant-ui-standardization.html,2026-08-03-sidebar-prompt-lightbox-polish.html">
@@ -28,7 +28,7 @@
 </head>
 <body>
 <h1>Typography standardization</h1>
-<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-08-10 · status <b class="status-in-progress">ready-for-review</b> · blast <span class="blast-low">low</span></p>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-08-10 · status <b class="status-shipped">shipped</b> · blast <span class="blast-low">low</span></p>
 
 <h2>Summary</h2>
 <div class="kv">
@@ -47,10 +47,11 @@
   <tr><td><code>frontend/src/styles/app.css</code></td><td>touch</td><td>Add canonical font-family, weight, and shorthand variables.</td></tr>
   <tr><td><code>frontend/src/styles/fluid-ui.css</code></td><td>touch</td><td>Point Tailwind font tokens at the same Inter stack.</td></tr>
   <tr><td><code>frontend/src/pages.jsx</code></td><td>touch</td><td>Remove standalone monospace stacks from the active landing CSS.</td></tr>
-  <tr><td><code>frontend/src/runtime/html-preview.js</code></td><td>touch</td><td>Use the canonical Inter stack in generated HTML preview CSS.</td></tr>
+  <tr><td><code>frontend/src/runtime/html-preview.js</code></td><td>touch</td><td>Use the canonical Inter stack and four-weight import in generated HTML preview CSS.</td></tr>
   <tr><td><code>frontend/src/trace-components-page.jsx</code></td><td>touch</td><td>Use the canonical Inter stack in inline iframe samples.</td></tr>
+  <tr><td><code>frontend/chimes.html</code>, <code>frontend/excalidraw-*.html</code></td><td>touch</td><td>Keep standalone built pages on the same four font weights.</td></tr>
   <tr><td><code>DESIGN.md</code></td><td>touch</td><td>Document the type usage rules.</td></tr>
-  <tr><td><code>test/typography-standard.test.js</code></td><td>new</td><td>Reject new hard-coded serif or monospace stacks in active frontend source.</td></tr>
+  <tr><td><code>test/typography-standard.test.js</code></td><td>new</td><td>Reject new hard-coded serif/monospace stacks and off-system weights in active frontend source.</td></tr>
 </table>
 
 <h2>Decisions</h2>
@@ -58,12 +59,20 @@
   <tr><th>ID</th><th>Choice · Rationale</th></tr>
   <tr><td>D-001</td><td>Use <code>Inter Variable</code> for both <code>--sans</code> and <code>--mono</code>. The product wants fewer faces, not a new code font.</td></tr>
   <tr><td>D-002</td><td>Keep <code>frontend/public</code> design samples untouched. Those files intentionally compare type directions.</td></tr>
+  <tr><td>D-003</td><td>Map active source weights to <code>400</code>, <code>500</code>, <code>700</code>, and <code>800</code>. The design guide only needs four roles.</td></tr>
 </table>
 
 <h2>Tradeoffs</h2>
 <table>
   <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
   <tr><td>T-001</td><td>Central tokens over mass selector rewrites. Lower risk in a dirty UI branch.</td></tr>
+</table>
+
+<h2>Verification</h2>
+<table>
+  <tr><th>ID</th><th>Check · Result</th></tr>
+  <tr><td>V-001</td><td><code>node --test test/typography-standard.test.js</code> passed.</td></tr>
+  <tr><td>V-002</td><td><code>npm run build</code> passed with existing large chunk warnings.</td></tr>
 </table>
 
 <h2>Reversibility</h2>

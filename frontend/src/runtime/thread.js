@@ -301,6 +301,7 @@ function setModelRef(value) {
   const text = String(value || '').trim();
   ensureModelOption(text);
   modelRefInput.value = text;
+  modelRefInput.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
 function saveRunControls() {

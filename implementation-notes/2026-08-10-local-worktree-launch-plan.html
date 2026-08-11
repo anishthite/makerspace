@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Local worktree launch plan</title>
+<meta name="task" content="Plan per-thread local worktrees for Spanner launches.">
+<meta name="date-started" content="2026-08-10">
+<meta name="date-updated" content="2026-08-10">
+<meta name="status" content="ready-for-review">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="spanner,local,git,worktree,threads,planning">
+<meta name="related" content="2026-08-01-local-github-repo-additive.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  h3 { font-size: 13px; margin: 1rem 0 .3rem; color: #444; text-transform: uppercase; letter-spacing: .04em; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code, pre { font-family: ui-monospace, Menlo, monospace; }
+  code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  pre { background: #f6f6f6; padding: .55rem .7rem; border-radius: 4px; overflow-x: auto; font-size: 12.5px; line-height: 1.4; }
+  ul, ol { margin: .3rem 0 .8rem 1.2rem; padding: 0; }
+  li { margin: .15rem 0; }
+  .q { border-left: 3px solid #b85c00; background: #fff8ee; padding: .4rem .7rem; margin: .4rem 0; }
+  .q .id { color: #b85c00; font-weight: 700; }
+  .blast-low { color: #2a7a2a; } .blast-med { color: #b85c00; } .blast-high { color: #b00020; font-weight: 600; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>Local worktree launch plan</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-08-10 · status <b>ready-for-review</b> · blast <span class="blast-med">medium</span></p>
+
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Run each local Spanner main agent in a fresh Git worktree instead of the selected checkout.</div>
+  <b>Source</b><div><code>repoPath</code> local folders and <code>ensureLocalGitRepo()</code> GitHub clones supply the source checkout.</div>
+  <b>Surface</b><div><code>POST /api/threads</code>, <code>/</code>, <code>/workspace.html</code>, sidebar prompt launch.</div>
+  <b>Schema</b><div>Add session fields <code>sourceRepoPath</code>, <code>worktreePath</code>, <code>worktreeBaseRef</code>, <code>worktreeBranch</code>, <code>localWorktree</code>.</div>
+  <b>Default</b><div><code>~/spanner/&lt;repo&gt;/&lt;thread-slug&gt;</code> from <code>main</code>; override base with <code>SPANNER_WORKTREE_BASE_DIR</code>, exact root with <code>SPANNER_WORKTREE_DIR</code>, and Git base with <code>branch</code>.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+
+<h2>API contract</h2>
+<h3>Request</h3>
+<pre>POST /api/threads
+{
+  repoPath?: string,
+  repoUrl?: string,
+  branch?: string,      // base branch/ref; default "main" for local worktrees
+  prompt: string,
+  name?: string
+}</pre>
+<h3>Response — <code>Thread</code></h3>
+<pre>{
+  repoPath: string,          // worktree path when localWorktree=true
+  sourceRepoPath?: string,   // original selected checkout or cached GitHub clone
+  worktreePath?: string,
+  worktreeBaseRef?: string,
+  worktreeBranch?: string,
+  localWorktree?: boolean
+}</pre>
+<p>Keep <code>branch</code>; do not add <code>baseRef</code> until users need branch and base to mean different things.</p>
+
+<h2>Algorithm</h2>
+<ol>
+  <li>Resolve the source checkout: <code>repoPath</code> via <code>provider.resolveRepoPath()</code>, or <code>repoUrl</code> via <code>ensureLocalGitRepo()</code>.</li>
+  <li>Find the Git root with <code>git -C &lt;source&gt; rev-parse --show-toplevel</code>; fail with a clear message if the folder is not a Git repo.</li>
+  <li>Set <code>baseName = branch || "main"</code>; fetch <code>origin baseName</code> when an <code>origin</code> remote exists.</li>
+  <li>Resolve <code>baseRef</code> in order: <code>origin/&lt;baseName&gt;</code>, <code>&lt;baseName&gt;</code>, <code>HEAD</code>.</li>
+  <li>Set <code>worktreeRoot = SPANNER_WORKTREE_DIR || (SPANNER_WORKTREE_BASE_DIR || ~/spanner)/&lt;repo-leaf&gt;</code>.</li>
+  <li>Set <code>worktreeBranch = spanner/&lt;thread-slug&gt;-&lt;hash&gt;</code> and <code>worktreePath = &lt;worktreeRoot&gt;/&lt;thread-slug&gt;</code>.</li>
+  <li>Run <code>git worktree prune</code>, then <code>git worktree add -B "$worktreeBranch" "$worktreePath" "$baseRef"</code>; reuse an existing valid worktree for the same thread.</li>
+  <li>Start local Pi with <code>repoPath = worktreePath</code> and persist the source/worktree fields for UI labels and PR delivery.</li>
+</ol>
+
+<h2>UI layout</h2>
+<ol>
+  <li><b>Project launch</b>: show a compact <code>Base</code> input beside the selected repo; default text is <code>main</code> or the GitHub default branch.</li>
+  <li><b>Sidebar launch</b>: reuse the selected project <code>branch</code>; no extra modal step.</li>
+  <li><b>Thread header</b>: show <code>worktreePath</code> in the path subtitle when <code>localWorktree</code> is true.</li>
+</ol>
+
+<h2>Files</h2>
+<table>
+  <tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+  <tr><td><code>src/local-git.js</code></td><td>touch</td><td>Add <code>ensureLocalGitWorktree()</code>, default-base fallback, and Conductor-style worktree roots.</td></tr>
+  <tr><td><code>src/server/threads.js</code></td><td>touch</td><td>Route local-folder and local-GitHub launches through the worktree helper before <code>startLocalThreadRun()</code>.</td></tr>
+  <tr><td><code>src/config.js</code></td><td>touch</td><td>Add <code>SPANNER_WORKTREE_BASE_DIR</code> and <code>SPANNER_WORKTREE_DIR</code> config plumbing for custom worktree roots.</td></tr>
+  <tr><td><code>frontend/src/pages.jsx</code></td><td>touch</td><td>Expose the current hidden branch value as a compact base input.</td></tr>
+  <tr><td><code>frontend/src/runtime/project.js</code>, <code>frontend/src/runtime/app.js</code>, <code>frontend/src/runtime/global-sidebar.js</code>, <code>frontend/src/runtime/sidebar-prompt-lightbox.js</code></td><td>touch</td><td>Keep project <code>branch</code> populated and submitted from launch surfaces.</td></tr>
+  <tr><td><code>test/local-git.test.js</code>, <code>test/project-selector-static.test.js</code></td><td>touch</td><td>Pin worktree git commands, branch fallback, and visible base input.</td></tr>
+  <tr><td><code>README.md</code></td><td>touch</td><td>Document <code>SPANNER_WORKTREE_DIR</code>.</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Choice · Rationale</th></tr>
+  <tr><td>D-001</td><td>Use Git worktrees for local launches. One source clone can back many isolated agents.</td></tr>
+  <tr><td>D-002</td><td>Reuse <code>branch</code> as the base selector. Existing API and UI already carry it.</td></tr>
+  <tr><td>D-003</td><td>Create a real <code>spanner/&lt;thread&gt;</code> branch per worktree. Local users can commit, diff, and push without first leaving detached HEAD.</td></tr>
+  <tr><td>D-004</td><td>Fetch requested remote bases with <code>refs/heads/&lt;base&gt;:refs/remotes/origin/&lt;base&gt;</code>. Shallow single-branch cached clones otherwise leave the requested base only in <code>FETCH_HEAD</code>.</td></tr>
+  <tr><td>D-005</td><td>Fall back from missing requested base branches to the repository default <code>HEAD</code>. Existing cached clones should still launch when <code>main</code> is absent.</td></tr>
+  <tr><td>D-006</td><td>Use <code>~/spanner/&lt;repo&gt;/&lt;workspace&gt;</code> for the default worktree layout. Supersedes <code>T-001</code> and the temporary <code>&lt;repo&gt;/.spanner</code> choice after user clarified the desired path.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+  <tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+  <tr><td>T-001</td><td><code>&lt;repo&gt;/spanner</code> over <code>~/.spanner/worktrees</code>. Superseded by <code>D-006</code>.</td></tr>
+  <tr><td>T-002</td><td>No auto-delete over cleanup-on-thread-delete. Removing a worktree can delete unpushed user work.</td></tr>
+  <tr><td>T-003</td><td>One helper in <code>src/local-git.js</code> over a new worktree service. The git surface is small.</td></tr>
+</table>
+
+<h2>Open questions</h2>
+<div class="q"><span class="id">Q-001</span> · Worktree directory spelling. <b>RESOLVED 2026-08-10: <code>~/spanner/&lt;repo&gt;/&lt;workspace&gt;</code>.</b></div>
+
+<h2>Assumptions</h2>
+<ul>
+  <li>A-001 · Local worktree mode applies only to <code>INFRA_PROVIDER=local</code>; Cloudflare workspace mode keeps <code>/workspace/tasks/&lt;thread&gt;</code>.</li>
+  <li>A-002 · Folders without Git should fail fast; running in non-Git folders can stay on the old direct-folder path only if explicitly requested.</li>
+</ul>
+
+<h2>Verification</h2>
+<table>
+  <tr><th>Check</th><th>Result</th></tr>
+  <tr><td><code>node --check src/local-git.js src/server/threads.js src/config.js frontend/src/runtime/project.js frontend/src/runtime/app.js frontend/src/runtime/sidebar-prompt-lightbox.js frontend/src/runtime/global-sidebar.js test/local-git.test.js test/project-selector-static.test.js</code></td><td>Passed.</td></tr>
+  <tr><td><code>node --test test/local-git.test.js test/project-selector-static.test.js test/session.test.js test/config.test.js</code></td><td>Passed 27/27.</td></tr>
+  <tr><td><code>npm run build</code></td><td>Passed.</td></tr>
+  <tr><td>Temp-home smoke: create <code>workspace/ezhost</code>, launch <code>dushanbe</code>, assert <code>$HOME/spanner/ezhost/dushanbe</code>.</td><td>Passed.</td></tr>
+</table>
+
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Gate the helper behind <code>SPANNER_LOCAL_WORKTREES=false</code> or remove the two call sites in <code>src/server/threads.js</code>.</p>
+
+<h2>Followups</h2>
+<ul>
+  <li>L-001 · Add an explicit cleanup button after users see where worktrees live.</li>
+  <li>L-002 · Add arbitrary commit-SHA base support if branch names are not enough.</li>
+</ul>
+
+<h2>Definition of done</h2>
+<ul>
+  <li>Launching two local agents for the same repo creates two distinct <code>~/spanner/&lt;repo&gt;/&lt;thread&gt;</code> worktrees.</li>
+  <li>The original checkout does not receive agent file edits.</li>
+  <li>The base selector defaults to <code>main</code> and accepts a user-provided branch.</li>
+  <li><code>git status</code> in the original checkout stays clean because the worktree directory is outside the primary checkout.</li>
+  <li><code>node --test test/local-git.test.js test/session.test.js test/thread-lifecycle.test.js</code> passes.</li>
+</ul>
+</body>
+</html>

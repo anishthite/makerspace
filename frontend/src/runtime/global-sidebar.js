@@ -1,4 +1,5 @@
 import { notifyAgentThreads } from './agent-toasts.js';
+import { projectIconSvg } from './project-icons.js';
 import { bindSidebarPromptLightbox, openSidebarPromptLightbox } from './sidebar-prompt-lightbox.js';
 
 const BROWSER_SESSION_KEY = 'spannerBrowserSession';
@@ -171,12 +172,8 @@ function folderLabel(value) {
   return text.split(/[\\/]+/).filter(Boolean).pop() || text || 'workspace';
 }
 
-function sidebarProjectInitial(label) {
-  return String(label || '').trim().match(/[A-Za-z0-9]/)?.[0]?.toUpperCase() || '#';
-}
-
 function sidebarProjectIcon(label) {
-  return `<span class="sidebar-thread-favicon" aria-hidden="true">${escapeHtml(sidebarProjectInitial(label))}</span>`;
+  return projectIconSvg(label, 'sidebar-thread-favicon project-line-icon');
 }
 
 function looksLikeLocalPath(value) {
@@ -192,7 +189,7 @@ function projectFromScopeValue(value, label = folderLabel(value)) {
     value: cleanValue,
     label: label || folderLabel(cleanValue),
     repoSource: local ? '' : 'github',
-    branch: '',
+    branch: 'main',
   };
 }
 
@@ -531,7 +528,7 @@ function renderSidebarBatchBar() {
   const selectedThreads = selectedVisibleThreads();
   if (!selectedThreads.length) return '';
   const settleableCount = selectedThreads.filter((thread) => canSettleThread(thread) && !isSettledThread(thread)).length;
-  const settleLabel = settleableCount > 0 ? `Settle ${settleableCount}` : 'Settle';
+  const settleLabel = settleableCount > 0 ? `Archive ${settleableCount}` : 'Archive';
   return `
     <div class="sidebar-batch-bar" role="toolbar" aria-label="Selected agents">
       <span>${selectedThreads.length} selected</span>
@@ -627,10 +624,10 @@ function renderThreadCard(thread, jumpLabel = '') {
   const projectKeyText = sidebarThreadProjectKey(thread);
   const current = thread.name && thread.name === currentThreadName();
   const settleButton = canSettleThread(thread) && !settled
-    ? `<button class="textbtn archive-thread" type="button" data-settle-thread="${escapeHtml(thread.name)}" aria-label="Settle thread">settle</button>`
+    ? `<button class="textbtn archive-thread" type="button" data-settle-thread="${escapeHtml(thread.name)}" aria-label="Archive thread">archive</button>`
     : '';
   const unsettleButton = settled
-    ? `<button class="textbtn archive-thread" type="button" data-unsettle-thread="${escapeHtml(thread.name)}" aria-label="Un-settle thread">unsettle</button>`
+    ? `<button class="textbtn archive-thread" type="button" data-unsettle-thread="${escapeHtml(thread.name)}" aria-label="Unarchive thread">unarchive</button>`
     : '';
   const stopButton = running
     ? `<button class="textbtn stop-thread" type="button" data-stop-thread="${escapeHtml(thread.name)}">stop</button>`
@@ -783,15 +780,15 @@ function renderGlobalSidebar(threads = sidebarThreads) {
   const settledEmpty = searchActive && !filteredThreads.length
     ? 'No agents match that search.'
     : searchActive
-      ? 'No matching settled agents.'
+      ? 'No matching archived agents.'
       : sidebarProjectScope !== 'all' && !scopedThreads.length
         ? 'No agents in this project yet.'
       : activeThreads.length
-        ? 'No settled agents yet.'
+        ? 'No archived agents yet.'
         : 'No agents yet.';
-  const settledLabel = settledShelfExpanded ? 'Settled' : `Settled (${settledThreads.length})`;
+  const settledLabel = settledShelfExpanded ? 'Archived' : `Archived (${settledThreads.length})`;
   const settledSection = `
-    <section class="action-lane sidebar-inbox-section sidebar-inbox-settled" aria-label="Settled agents">
+    <section class="action-lane sidebar-inbox-section sidebar-inbox-settled" aria-label="Archived agents">
       <div class="action-lane-head">
         <button class="settled-shelf-toggle" type="button" data-settled-shelf-toggle aria-expanded="${settledShelfExpanded ? 'true' : 'false'}">
           <span>${escapeHtml(settledLabel)}</span>
@@ -889,8 +886,8 @@ function showThreadMenu(thread, position) {
     `<button type="button" role="menuitem" data-thread-menu-action="open">Open<kbd>↵</kbd></button>`,
     `<button type="button" role="menuitem" data-thread-menu-action="new-thread-project">New thread in project</button>`,
     active ? `<button type="button" role="menuitem" data-thread-menu-action="stop">Stop thread</button>` : '',
-    canSettle && !settled ? `<button type="button" role="menuitem" data-thread-menu-action="settle">Settle thread</button>` : '',
-    settled ? `<button type="button" role="menuitem" data-thread-menu-action="unsettle">Un-settle thread</button>` : '',
+    canSettle && !settled ? `<button type="button" role="menuitem" data-thread-menu-action="settle">Archive thread</button>` : '',
+    settled ? `<button type="button" role="menuitem" data-thread-menu-action="unsettle">Unarchive thread</button>` : '',
     `<button type="button" role="menuitem" data-thread-menu-action="delete" data-danger="true">Delete</button>`,
   ].filter(Boolean).join('');
   document.body.append(menu);
@@ -1014,7 +1011,7 @@ function bindGlobalSidebarEvents() {
     if (batchSettle) {
       const count = settleSelectedSidebarThreads();
       renderGlobalSidebar(sidebarThreads);
-      if (count > 0) setStatus(`Settled ${count} agent${count === 1 ? '' : 's'}.`);
+      if (count > 0) setStatus(`Archived ${count} agent${count === 1 ? '' : 's'}.`);
       return;
     }
 
