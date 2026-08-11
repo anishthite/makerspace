@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -28,6 +29,8 @@ function fakeDocument() {
 test('acceptedImageFiles keeps supported non-empty images only', () => {
   const png = { name: 'screen.png', type: 'image/png', size: 1 };
   const jpg = { name: 'photo.jpg', type: 'image/jpg', size: 1 };
+  const screenshot = { name: 'Screenshot 2026-08-11.png', type: 'application/octet-stream', size: 1 };
+  const unnamedTypeScreenshot = { name: 'Screenshot 2026-08-11.webp', type: '', size: 1 };
 
   assert.deepEqual(
     acceptedImageFiles([
@@ -36,9 +39,20 @@ test('acceptedImageFiles keeps supported non-empty images only', () => {
       { name: 'vector.svg', type: 'image/svg+xml', size: 1 },
       { name: 'notes.txt', type: 'text/plain', size: 1 },
       jpg,
+      screenshot,
+      unnamedTypeScreenshot,
     ]),
-    [png, jpg],
+    [png, jpg, screenshot, unnamedTypeScreenshot],
   );
+});
+
+test('new-thread modal binds its image input as a drop zone', () => {
+  const pages = readFileSync(new URL('../frontend/src/pages.jsx', import.meta.url), 'utf8');
+  const runtime = readFileSync(new URL('../frontend/src/runtime/sidebar-prompt-lightbox.js', import.meta.url), 'utf8');
+
+  assert.match(pages, /<form id="sidebar-prompt-form" className="sidebar-prompt-lightbox-shell" noValidate>/);
+  assert.match(pages, /<input id="sidebar-prompt-images" className="image-input" name="images" type="file"/);
+  assert.match(runtime, /bindImageDropZone\(form, images, imageStatus\);/);
 });
 
 test('imageAttachmentSrc builds safe data URLs only', () => {
@@ -72,14 +86,20 @@ test('bindImageDropZone stores dropped and pasted images without DataTransfer co
   };
   const png = { name: 'drop.png', type: 'image/png', size: 1 };
   const webp = { name: 'paste.webp', type: 'image/webp', size: 1 };
+  let dragOverPrevented = false;
   let dropPrevented = false;
   let pastePrevented = false;
   let textPastePrevented = false;
 
   try {
     bindImageDropZone(zone, input, status);
+    const dragTransfer = { types: [], items: [{ kind: 'file' }], files: [], dropEffect: '' };
+    listeners.get('dragover')?.({
+      dataTransfer: dragTransfer,
+      preventDefault() { dragOverPrevented = true; },
+    });
     listeners.get('drop')?.({
-      dataTransfer: { types: ['Files'], files: [png] },
+      dataTransfer: { types: [], files: [png] },
       preventDefault() { dropPrevented = true; },
     });
     listeners.get('paste')?.({
@@ -91,6 +111,8 @@ test('bindImageDropZone stores dropped and pasted images without DataTransfer co
       preventDefault() { textPastePrevented = true; },
     });
 
+    assert.equal(dragOverPrevented, true);
+    assert.equal(dragTransfer.dropEffect, 'copy');
     assert.equal(dropPrevented, true);
     assert.equal(pastePrevented, true);
     assert.equal(textPastePrevented, false);
