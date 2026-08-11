@@ -1519,22 +1519,22 @@ function renderPlainDiff(node, text = '') {
 
 const PIERRE_DIFF_CSS = `
 :host {
-  --diffs-font-family: var(--mono);
-  --diffs-header-font-family: var(--font-sans);
-  --diffs-font-size: 12px;
-  --diffs-line-height: 21px;
+  --diffs-font-family: Hack, "JetBrains Mono", "SF Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --diffs-header-font-family: var(--diffs-font-family);
+  --diffs-font-size: 13px;
+  --diffs-line-height: 22px;
   --diffs-gap-block: 7px;
-  --diffs-bg: #080b10;
-  --diffs-bg-context-override: #080b10;
-  --diffs-bg-context-gutter-override: #080b10;
-  --diffs-bg-separator-override: #080b10;
-  --diffs-bg-deletion-override: rgba(248, 81, 73, .16);
-  --diffs-bg-addition-override: rgba(63, 185, 80, .16);
-  --diffs-bg-deletion-emphasis-override: rgba(248, 81, 73, .26);
-  --diffs-bg-addition-emphasis-override: rgba(63, 185, 80, .26);
-  --diffs-deletion-color-override: #ff7b72;
-  --diffs-addition-color-override: #7ee787;
-  --diffs-fg-number-override: rgba(201, 209, 217, .45);
+  --diffs-bg: #0a0a0a;
+  --diffs-bg-context-override: #0a0a0a;
+  --diffs-bg-context-gutter-override: #0a0a0a;
+  --diffs-bg-separator-override: #0a0a0a;
+  --diffs-bg-deletion-override: rgb(239 68 68 / .14);
+  --diffs-bg-addition-override: rgb(34 197 94 / .14);
+  --diffs-bg-deletion-emphasis-override: rgb(239 68 68 / .24);
+  --diffs-bg-addition-emphasis-override: rgb(34 197 94 / .24);
+  --diffs-deletion-color-override: #f87171;
+  --diffs-addition-color-override: #4ade80;
+  --diffs-fg-number-override: rgb(115 115 115 / .78);
 }
 [data-diffs-header="default"] {
   min-height: 36px;
@@ -1543,10 +1543,10 @@ const PIERRE_DIFF_CSS = `
   background: transparent;
 }
 [data-header-content] { gap: 8px; }
-[data-title] { color: #e6edf3; font-weight: 650; }
+[data-title] { color: #e5e5e5; font-weight: 650; }
 [data-metadata] { font-size: 11px; font-weight: 700; }
-[data-separator-wrapper] { background: #080b10; color: rgba(201, 209, 217, .42); }
-[data-code] { scrollbar-color: rgba(139,148,158,.38) transparent; }
+[data-separator-wrapper] { background: #0a0a0a; color: rgb(163 163 163 / .46); }
+[data-code] { scrollbar-color: rgb(115 115 115 / .46) transparent; }
 [data-column-number] { padding-left: 1.5ch; padding-right: 1ch; }
 [data-line] { padding-inline: 1.35ch; }
 [data-line-type="change-deletion"], [data-line-type="change-addition"] { box-shadow: inset 3px 0 0 currentColor; }
