@@ -6,7 +6,9 @@ const imagePreviewUrls = new WeakMap();
 
 function imageMimeType(file) {
   const type = String(typeof file === 'string' ? file : file?.type || '').toLowerCase();
-  return type === 'image/jpg' ? 'image/jpeg' : type;
+  if (type && type !== 'application/octet-stream') return type === 'image/jpg' ? 'image/jpeg' : type;
+  const extension = String(file?.name || '').match(/\.([^.]+)$/)?.[1].toLowerCase();
+  return ({ png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp' })[extension] || type;
 }
 
 function readDataUrl(file) {
@@ -122,7 +124,9 @@ export function acceptedImageFiles(files) {
 }
 
 function hasFileDrag(dataTransfer) {
-  return Array.from(dataTransfer?.types || []).some((type) => String(type).toLowerCase() === 'files');
+  return Array.from(dataTransfer?.types || []).some((type) => String(type).toLowerCase() === 'files')
+    || Array.from(dataTransfer?.items || []).some((item) => item?.kind === 'file')
+    || Array.from(dataTransfer?.files || []).length > 0;
 }
 
 function createDataTransfer() {
