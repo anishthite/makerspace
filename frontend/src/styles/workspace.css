@@ -595,6 +595,7 @@ button.sidebar-prompt-start.primary-btn:disabled {
 .launch-details { display: grid; grid-template-columns: 1fr 1fr minmax(240px, 2fr); gap: 8px; padding: 10px 12px; border-top: 1px solid var(--rule); background: var(--paper); }
 .status-line { margin: 0; padding: 10px 14px; border-top: 1px solid var(--rule); color: var(--ink-3); font-size: 13px; }
 .status-line:empty { display: none; }
+.launch-suggestions[hidden] { display: none !important; }
 .launch-suggestions {
   display: grid;
   grid-column: 1 / -1;
