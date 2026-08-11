@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec - Phosphor project icons</title>
+<meta name="task" content="Use automatic Phosphor-style line icons for project rows.">
+<meta name="date-started" content="2026-08-10">
+<meta name="date-updated" content="2026-08-10">
+<meta name="status" content="ready-for-review">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,ui,projects,icons,phosphor">
+<meta name="related" content="2026-08-01-repo-letter-icons.html,2026-08-01-workspace-plus-project-lightbox.html">
+<style>
+body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}
+h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}
+table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}
+th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}
+.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-ready-for-review{color:#b85c00}.status-blocked{color:#b00020}
+</style>
+</head>
+<body>
+<h1>Phosphor project icons</h1>
+<p class="meta"><code>main</code> · worktree <code>/Users/anishthite/workspace/makerspace</code> · 2026-08-10 · status <b class="status-ready-for-review">ready-for-review</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv">
+  <b>Goal</b><div>Render automatic line icons for project rows instead of letter avatars.</div>
+  <b>Source</b><div>Stable hash of <code>project.value</code>, falling back to <code>project.label</code>.</div>
+  <b>Surface</b><div>Project recents, workspace switcher, project lightbox, and global agent sidebar project marks.</div>
+  <b>Schema</b><div>None.</div>
+  <b>Mobile</b><div>Same 16px inline SVG inside existing rows.</div>
+  <b>Open Qs</b><div>0.</div>
+</div>
+<h2>Algorithm</h2>
+<ol>
+  <li>Collect names from <code>PROJECT_ICON_PATHS</code>.</li>
+  <li>Hash <code>project.value || project.label || project.kind || 'project'</code> with <code>hash = hash * 31 + charCode</code>.</li>
+  <li>Pick <code>PROJECT_ICON_NAMES[hash % PROJECT_ICON_NAMES.length]</code>.</li>
+</ol>
+<h2>UI layout</h2>
+<ol>
+  <li><b>Recents</b>: insert a 16px project icon before the project title.</li>
+  <li><b>Switcher</b>: insert the same icon before the workspace switcher and lightbox row title.</li>
+  <li><b>Sidebar</b>: replace letter avatar SVG content with the shared icon renderer.</li>
+</ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr>
+<tr><td><code>frontend/src/runtime/project-icons.js</code></td><td>new</td><td>Add Phosphor regular SVG paths plus stable pseudo-random icon selection.</td></tr>
+<tr><td><code>frontend/src/runtime/app.js</code></td><td>touch</td><td>Use project icons in the workspace switcher, project lightbox, and sidebar marks.</td></tr>
+<tr><td><code>frontend/src/runtime/project.js</code></td><td>touch</td><td>Use project icons in recent project cards and sidebar marks.</td></tr>
+<tr><td><code>frontend/src/runtime/global-sidebar.js</code></td><td>touch</td><td>Use project icons in global sidebar marks.</td></tr>
+<tr><td><code>frontend/src/styles/workspace.css</code></td><td>touch</td><td>Style inline SVG icons and replace letter-avatar sidebar chrome.</td></tr>
+<tr><td><code>test/project-icons.test.js</code></td><td>new</td><td>Cover random bounds and inert SVG output.</td></tr>
+<tr><td><code>test/home-runtime-summary.test.js</code></td><td>touch</td><td>Pin project icon wiring in the static runtime summary.</td></tr>
+<tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr>
+</table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr>
+<tr><td>D-001</td><td>Inline Phosphor regular SVG paths. Runtime project lists are string-rendered DOM, not React components.</td></tr>
+<tr><td>D-002</td><td><s>Use broad project-name categories.</s> Superseded by <code>D-003</code>.</td></tr>
+<tr><td>D-003</td><td><s>Use pure random icon selection.</s> Superseded by <code>D-004</code>.</td></tr>
+<tr><td>D-004</td><td>Use stable pseudo-random icon selection. User requested consistency across projects without semantic inference.</td></tr>
+</table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr>
+<tr><td>T-001</td><td>Line SVG icons over generated images. It keeps icons cheap and bundle-local.</td></tr>
+<tr><td>T-002</td><td>One shared runtime helper over duplicating paths in three sidebar runtimes. It avoids drift across project surfaces.</td></tr>
+</table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Delete <code>project-icons.js</code>, restore letter-avatar helper bodies, and remove the row icon CSS.</p>
+<h2>Verification</h2>
+<table><tr><th>ID</th><th>Check</th><th>Result</th></tr>
+<tr><td>V-001</td><td><code>node --check frontend/src/runtime/project-icons.js frontend/src/runtime/app.js frontend/src/runtime/project.js frontend/src/runtime/global-sidebar.js</code></td><td>Pass.</td></tr>
+<tr><td>V-002</td><td><code>node --test --test-name-pattern "project icons|project icon" test/project-icons.test.js test/home-runtime-summary.test.js</code></td><td>Pass, 3/3.</td></tr>
+<tr><td>V-003</td><td><code>npm run build</code></td><td>Pass with existing chunk-size warning.</td></tr>
+<tr><td>V-004</td><td><code>npm test</code></td><td><span class="status-blocked">Fails outside this change</span>: stale assertions in <code>workspace toasts when running agents finish</code> and <code>thread main header spans above the right workflow rail</code>.</td></tr>
+</table>
+<h2>Definition of done</h2>
+<ul>
+  <li>Recent project rows show a Phosphor-style line icon before the title.</li>
+  <li>Workspace switcher and project lightbox rows show the same automatic icon.</li>
+  <li>Agent sidebar project marks use SVG line icons, not letters.</li>
+  <li>Focused icon tests and the frontend build pass.</li>
+</ul>
+</body>
+</html>

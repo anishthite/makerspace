@@ -9,6 +9,7 @@ const js = readFileSync(new URL('../frontend/src/runtime/app.js', import.meta.ur
 const projectRuntime = readFileSync(new URL('../frontend/src/runtime/project.js', import.meta.url), 'utf8');
 const threadRuntime = readFileSync(new URL('../frontend/src/runtime/thread.js', import.meta.url), 'utf8');
 const globalSidebarRuntime = readFileSync(new URL('../frontend/src/runtime/global-sidebar.js', import.meta.url), 'utf8');
+const projectIconsRuntime = readFileSync(new URL('../frontend/src/runtime/project-icons.js', import.meta.url), 'utf8');
 const sidebarPromptRuntime = readFileSync(new URL('../frontend/src/runtime/sidebar-prompt-lightbox.js', import.meta.url), 'utf8');
 const agentToasts = readFileSync(new URL('../frontend/src/runtime/agent-toasts.js', import.meta.url), 'utf8');
 const completionChimes = readFileSync(new URL('../frontend/src/runtime/completion-chimes.js', import.meta.url), 'utf8');
@@ -73,6 +74,14 @@ test('home rows avoid workspace folder details', () => {
   assert.match(runState, /latestActivity: latestActivity \|\| undefined/);
 });
 
+test('sidebar prompt project picker links to the project picker', () => {
+  assert.match(sidebarPromptRuntime, /const PICK_NEW_PROJECT_VALUE = '__pick_new_project__';/);
+  assert.match(sidebarPromptRuntime, /pick new project\.\.\./);
+  assert.match(sidebarPromptRuntime, /location\.href = '\/';/);
+  assert.match(sidebarPromptRuntime, /projectSelect\.disabled = false;/);
+  assert.match(pages, /<strong>Pick new project<\/strong><small>Open or add a workspace<\/small>/);
+});
+
 test('workspace agents use shadcn sidebar beside launch composer', () => {
   const workspaceStart = pages.indexOf('export function WorkspacePage()');
   const workspaceEnd = pages.indexOf('export function ThreadPage()', workspaceStart);
@@ -125,23 +134,23 @@ test('workspace agents use shadcn sidebar beside launch composer', () => {
   const sidebarPromptMarkup = pages.slice(pages.indexOf('function SidebarPromptLightbox()'), pages.indexOf('\nfunction GlobalAppShell'));
   assert.match(sidebarPromptMarkup, /<FolderOpenIcon className="sidebar-prompt-project-icon size-4" weight="duotone" aria-hidden="true" \/>/);
   assert.doesNotMatch(sidebarPromptMarkup, /<span>project<\/span>/);
-  assert.match(pages, /<ProjectPicker id="sidebar-prompt-project-select" ariaLabel="Project for new agent" initialLabel="loading projects\.\.\." \/>/);
-  assert.match(ui, /export function ProjectPicker\(/);
+  assert.match(pages, /<Select id="sidebar-prompt-project-select" variant="prompt" aria-label="Project for new agent" placeholder="loading projects\.\.\.">/);
+  assert.match(ui, /export function Select\(/);
   assert.match(ui, /MutationObserver/);
   assert.match(pages, /placeholder="Tell the main agent what to do\.\.\."/);
   assert.match(pages, /aria-keyshortcuts="Enter"/);
   assert.match(pages, /id="sidebar-prompt-images-trigger" variant="ghost" size="sm" className="attach-btn" type="button"/);
   assert.match(pages, /id="sidebar-prompt-images" className="image-input"/);
-  assert.match(pages, /<ModelPicker id="sidebar-model-ref" name="modelRef" ariaLabel="Model for new agent" initialLabel="loading model…" \/>/);
-  assert.match(ui, /export function ModelPicker\(/);
-  assert.match(ui, /<ShadSelect value=\{picker\.value \|\| MODEL_PICKER_DEFAULT\}/);
-  assert.match(ui, /setPortalContainer\(input\.closest\('dialog'\)\);/);
-  assert.match(ui, /<ShadSelectContent container=\{portalContainer\} className="z-\[100\]/);
-  assert.match(sidebarPromptRuntime, /new CustomEvent\('spanner:model-picker-options'/);
+  assert.match(pages, /<Select id="sidebar-model-ref" name="modelRef" variant="prompt" aria-label="Model for new agent" placeholder="loading model…">/);
+  assert.doesNotMatch(ui, /export function ModelPicker\(/);
+  assert.match(ui, /<ShadSelect value=\{picker\.value\}/);
+  assert.match(ui, /setPortalContainer\(select\.closest\('dialog'\)\);/);
+  assert.match(ui, /<ShadSelectContent container=\{portalContainer\}/);
+  assert.doesNotMatch(sidebarPromptRuntime, /spanner:model-picker/);
   assert.doesNotMatch(sidebarPromptMarkup, /InputGroup label="model" className="model-picker sidebar-prompt-model/);
   assert.match(pages, /id="sidebar-thinking-level" min="0" max="5" step="1" defaultValue="5"/);
-  assert.match(pages, /id="sidebar-prompt-submit" variant="primary" className="sidebar-prompt-start" type="submit">send<kbd className="submit-enter-hint" aria-hidden="true">enter ↵<\/kbd><\/Button>/);
-  assert.match(pages, /id="thread-submit" variant="primary" className="run-btn" type="submit">send<kbd className="submit-enter-hint" aria-hidden="true">enter ↵<\/kbd><\/Button>/);
+  assert.match(pages, /id="sidebar-prompt-submit" variant="primary" className="sidebar-prompt-start" type="submit">send<kbd className="submit-enter-hint" aria-hidden="true">↵<\/kbd><\/Button>/);
+  assert.match(pages, /id="thread-submit" variant="primary" className="run-btn" type="submit">send<kbd className="submit-enter-hint" aria-hidden="true">↵<\/kbd><\/Button>/);
   assert.doesNotMatch(sidebarPromptMarkup, /sidebar-prompt-suggestions|data-sidebar-suggested-prompt|Full workspace audit/);
   assert.doesNotMatch(sidebarPromptRuntime, /sidebar-prompt-suggestions|data-sidebar-suggested-prompt/);
   assert.doesNotMatch(appCss, /#sidebar-prompt-suggestions/);
@@ -284,7 +293,9 @@ test('home settled section only moves threads after explicit settle', () => {
   assert.match(js, /settledThreads\.slice\(0, settledVisibleCount\)/);
   assert.match(js, /const hiddenSettledCount = Math\.max\(0, settledThreads\.length - renderedSettledThreads\.length\);/);
   assert.match(js, /<section class="action-lane sidebar-inbox-section sidebar-inbox-active" aria-label="Active work">/);
-  assert.match(js, /<section class="action-lane sidebar-inbox-section sidebar-inbox-settled" aria-label="Settled agents">/);
+  assert.match(js, /<section class="action-lane sidebar-inbox-section sidebar-inbox-settled" aria-label="Archived agents">/);
+  assert.match(js, /aria-label="Archive thread">archive<\/button>/);
+  assert.match(js, /aria-label="Unarchive thread">unarchive<\/button>/);
   assert.match(js, /data-settled-shelf-toggle aria-expanded="\$\{settledShelfExpanded \? 'true' : 'false'\}"/);
   assert.match(js, /data-settled-show-more/);
   assert.match(js, /data-sidebar-thread-row/);
@@ -350,6 +361,9 @@ test('thread page boots the same global sidebar shell', () => {
   assert.match(globalSidebarRuntime, /fetchJson\('\/api\/threads'\)/);
   assert.match(globalSidebarRuntime, /function updateProjectScopeMenu\(threads\)/);
   assert.match(globalSidebarRuntime, /aria-current="page"/);
+  assert.match(appCss, /\.workspace-sidebar-edge-trigger \{[^}]*top: 20px;[^}]*left: calc\(var\(--sidebar-width\) - 42px\);/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.workspace-agents-head \{[^}]*padding: 20px 12px 4px;/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.sidebar-title-row \{[^}]*padding-right: 40px;/);
 });
 
 test('sidebar refresh avoids unnecessary redraws', () => {
@@ -387,17 +401,20 @@ test('global sidebar hydrates from the cached thread snapshot before refetching'
   assert.equal((js.match(/cacheGlobalSidebarThreads\(workspaceSwitcherThreads\);/g) || []).length, 2);
 });
 
-test('sidebar project icons fall back to repo or folder initials', () => {
-  const expectedInitial = "return String(label || '').trim().match(/[A-Za-z0-9]/)?.[0]?.toUpperCase() || '#';";
-  const expectedIcon = 'return `<span class="sidebar-thread-favicon" aria-hidden="true">${escapeHtml(sidebarProjectInitial(label))}</span>`;';
+test('project icons use stable Phosphor-style line svgs', () => {
+  assert.match(projectIconsRuntime, /const PROJECT_ICON_PATHS = \{/);
+  assert.match(projectIconsRuntime, /export function projectIconName\(project\)/);
+  assert.match(projectIconsRuntime, /export function projectIconSvg\(project, className = 'project-line-icon'\)/);
   for (const runtime of [js, projectRuntime, globalSidebarRuntime]) {
-    assert.ok(runtime.includes('function sidebarProjectInitial(label) {'));
-    assert.ok(runtime.includes(expectedInitial));
-    assert.ok(runtime.includes(expectedIcon));
+    assert.match(runtime, /import \{ projectIconSvg \} from '\.\/project-icons\.js';/);
+    assert.ok(runtime.includes("return projectIconSvg(label, 'sidebar-thread-favicon project-line-icon');"));
     assert.match(runtime, /\$\{sidebarProjectIcon\(project\.label\)\}/);
     assert.match(runtime, /\$\{sidebarProjectIcon\(projectLabelText\)\}/);
   }
-  assert.match(appCss, /\.workspace-agents-sidebar \.sidebar-thread-favicon \{\s+display: grid;/);
+  assert.match(js, /project-switcher-icon/);
+  assert.match(projectRuntime, /project-choice-icon/);
+  assert.match(appCss, /\.project-line-icon \{ width: 16px; height: 16px;/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.sidebar-thread-favicon \{\s+display: block;/);
   assert.doesNotMatch(appCss, /\.sidebar-thread-favicon::after/);
 });
 
@@ -465,7 +482,7 @@ test('workspace toasts when running agents finish', () => {
   assert.match(js, /description: detail \|\| undefined,\s*duration: 8000,\s*className: 'agent-main-link-toast',\s*\}\);/);
   assert.doesNotMatch(js, /action: \{ label: 'Open main'/);
   assert.match(appCss, /\[data-sonner-toaster\] \[data-sonner-toast\]\.agent-main-link-toast\[data-styled="true"\]/);
-  assert.match(appCss, /--agent-toast-success: #6ee7b7;/);
+  assert.match(appCss, /--agent-toast-success: #B1DFA4;/);
   assert.match(appCss, /background: var\(--agent-toast-success\);/);
   assert.doesNotMatch(appCss, /\[data-button\]\[data-action\]/);
   assert.match(js, /function notifyFinishedThreads\(threads\)/);

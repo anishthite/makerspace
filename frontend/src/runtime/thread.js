@@ -1,4 +1,3 @@
-import 'diff2html/bundles/css/diff2html.min.css';
 import { captureSpannerEvent } from '../lib/posthog.js';
 import { redirectIfAuthRequired } from './auth-redirect.js';
 import './appearance.js?v=palette-2';
@@ -135,6 +134,7 @@ let historyRendered = false;
 let graphStatus = 'waiting';
 let diffDialogPath = '__all__';
 let lastDiffPayload = null;
+let diffRenderVersion = 0;
 let diffRefreshTimer = null;
 let assistantChunkBuffer = '';
 let assistantChunkFrame = 0;
@@ -143,7 +143,6 @@ let submitInFlight = false;
 let nextSubmitDelivery = 'auto';
 let queuedSteeringCount = 0;
 let queuedFollowUpCount = 0;
-let initialResumeScrollDone = false;
 let workflowPollTimer = 0;
 let timelineEntriesCanAnimate = false;
 const excalidrawRenderTokens = new WeakMap();
@@ -301,6 +300,7 @@ function setModelRef(value) {
   const text = String(value || '').trim();
   ensureModelOption(text);
   modelRefInput.value = text;
+  modelRefInput.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
 function saveRunControls() {
@@ -1098,14 +1098,13 @@ function followLatest(enabled = true) {
 }
 
 function restoreInitialThreadPosition() {
-  if (initialResumeScrollDone || !timeline) return;
-  const userMessages = timeline.querySelectorAll('.message-item.user');
-  const target = userMessages[userMessages.length - 1];
-  const hasAssistantTurn = Boolean(timeline.querySelector('.message-item.assistant'));
-  const hasTerminalSinglePrompt = userMessages.length === 1 && isTerminalStatus(effectiveStatus(currentThread));
-  if (!target || (!hasAssistantTurn && userMessages.length < 2 && !hasTerminalSinglePrompt)) return;
-  initialResumeScrollDone = true;
+  if (!timeline) return;
   requestAnimationFrame(() => {
+    const userMessages = timeline.querySelectorAll('.message-item.user');
+    const target = userMessages[userMessages.length - 1];
+    const hasAssistantTurn = Boolean(timeline.querySelector('.message-item.assistant'));
+    const hasTerminalSinglePrompt = userMessages.length === 1 && isTerminalStatus(effectiveStatus(currentThread));
+    if (!target || (!hasAssistantTurn && userMessages.length < 2 && !hasTerminalSinglePrompt)) return;
     const topbar = document.querySelector('.thread-main-header');
     const offset = Math.ceil(topbar?.getBoundingClientRect().height || 0) + 18;
     window.scrollTo({ top: Math.max(0, target.getBoundingClientRect().top + window.scrollY - offset), behavior: 'auto' });
@@ -1518,8 +1517,44 @@ function renderPlainDiff(node, text = '') {
   node.replaceChildren(pre);
 }
 
+const PIERRE_DIFF_CSS = `
+:host {
+  --diffs-font-family: Hack, "JetBrains Mono", "SF Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --diffs-header-font-family: var(--diffs-font-family);
+  --diffs-font-size: 13px;
+  --diffs-line-height: 22px;
+  --diffs-gap-block: 7px;
+  --diffs-bg: #0a0a0a;
+  --diffs-bg-context-override: #0a0a0a;
+  --diffs-bg-context-gutter-override: #0a0a0a;
+  --diffs-bg-separator-override: #0a0a0a;
+  --diffs-bg-deletion-override: rgb(239 68 68 / .14);
+  --diffs-bg-addition-override: rgb(34 197 94 / .14);
+  --diffs-bg-deletion-emphasis-override: rgb(239 68 68 / .24);
+  --diffs-bg-addition-emphasis-override: rgb(34 197 94 / .24);
+  --diffs-deletion-color-override: #f87171;
+  --diffs-addition-color-override: #4ade80;
+  --diffs-fg-number-override: rgb(115 115 115 / .78);
+}
+[data-diffs-header="default"] {
+  min-height: 36px;
+  padding-inline: 0;
+  border: 0;
+  background: transparent;
+}
+[data-header-content] { gap: 8px; }
+[data-title] { color: #e5e5e5; font-weight: 650; }
+[data-metadata] { font-size: 11px; font-weight: 700; }
+[data-separator-wrapper] { background: #0a0a0a; color: rgb(163 163 163 / .46); }
+[data-code] { scrollbar-color: rgb(115 115 115 / .46) transparent; }
+[data-column-number] { padding-left: 1.5ch; padding-right: 1ch; }
+[data-line] { padding-inline: 1.35ch; }
+[data-line-type="change-deletion"], [data-line-type="change-addition"] { box-shadow: inset 3px 0 0 currentColor; }
+`;
+
 async function renderFullDiffBody(text = '') {
   if (!diffDialogBody) return;
+  const renderVersion = ++diffRenderVersion;
   diffDialogBody.textContent = 'Loading diff…';
   const truncated = /\n\n… changes truncated\s*$/.test(text);
   const diffText = truncated ? text.replace(/\n\n… changes truncated\s*$/, '') : text;
@@ -1528,30 +1563,51 @@ async function renderFullDiffBody(text = '') {
     return;
   }
   try {
-    const Diff2Html = await import('diff2html');
-    diffDialogBody.innerHTML = `${truncated ? '<p class="diff-truncated-warning">… changes truncated</p>' : ''}${Diff2Html.html(diffText, {
-      colorScheme: 'dark',
-      drawFileList: false,
-      matching: 'lines',
-      outputFormat: 'line-by-line',
-    })}`;
+    const { FileDiff, processPatch } = await import('@pierre/diffs');
+    if (renderVersion !== diffRenderVersion) return;
+    const files = processPatch(diffText.endsWith('\n') ? diffText : `${diffText}\n`, undefined, true).files;
+    if (!files.length) {
+      renderPlainDiff(diffDialogBody, text);
+      return;
+    }
+    const list = document.createElement('div');
+    list.className = 'pierre-diff-list';
+    if (truncated) {
+      const warning = document.createElement('p');
+      warning.className = 'diff-truncated-warning';
+      warning.textContent = '… changes truncated';
+      list.append(warning);
+    }
+    for (const fileDiff of files) {
+      const section = document.createElement('section');
+      section.className = 'pierre-diff-file';
+      list.append(section);
+      // ponytail: FileDiff owns syntax highlighting and its shadow-DOM grid; CodeView can replace this if huge diffs lag.
+      new FileDiff({ diffStyle: 'unified', disableFileHeader: files.length === 1, lineDiffType: 'word', overflow: 'scroll', themeType: 'dark', unsafeCSS: PIERRE_DIFF_CSS }).render({ fileDiff, containerWrapper: section });
+    }
+    diffDialogBody.replaceChildren(list);
   } catch {
-    renderPlainDiff(diffDialogBody, text);
+    if (renderVersion === diffRenderVersion) renderPlainDiff(diffDialogBody, text);
   }
 }
 
 function renderDiffDialog() {
   if (!diffDialog || !diffDialogTitle || !diffDialogFiles || !diffDialogBody || !lastDiffPayload) return;
   const files = diffFileRows(lastDiffPayload);
+  const showFileRail = files.length > 1;
   const activeFile = files.find((file) => file.path === diffDialogPath);
   const activeText = diffDialogPath === '__all__' ? fullDiffText(lastDiffPayload) : diffTextForFile(activeFile || files[0], lastDiffPayload);
-  diffDialogTitle.textContent = diffDialogPath === '__all__' ? 'Full diff' : activeFile?.path || files[0]?.path || 'Full diff';
+  diffDialog.classList.toggle('has-file-rail', showFileRail);
+  diffDialogFiles.hidden = !showFileRail;
+  diffDialogTitle.textContent = diffDialogPath === '__all__' && showFileRail ? 'Full diff' : activeFile?.path || files[0]?.path || 'Full diff';
   diffDialogFiles.replaceChildren();
 
   const addButton = (label, pathValue) => {
+    const active = diffDialogPath === pathValue;
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = `diff-file${diffDialogPath === pathValue ? ' is-active' : ''}`;
+    button.className = `diff-file${active ? ' is-active' : ''}`;
+    if (active) button.setAttribute('aria-current', 'true');
     button.textContent = label;
     button.addEventListener('click', () => {
       diffDialogPath = pathValue;
@@ -1559,8 +1615,10 @@ function renderDiffDialog() {
     });
     diffDialogFiles.append(button);
   };
-  addButton(`all files · ${files.length}`, '__all__');
-  files.forEach((file) => addButton(`${file.label || file.code || 'changed'} · ${file.path}`, file.path));
+  if (showFileRail) {
+    addButton('All', '__all__');
+    files.forEach((file) => addButton(file.path, file.path));
+  }
   void renderFullDiffBody(activeText);
 }
 

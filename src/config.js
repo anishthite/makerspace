@@ -138,6 +138,8 @@ export function getConfig() {
     workflowRunsDir: process.env.SPANNER_WORKFLOW_RUNS_DIR || path.join(defaultDataDir, 'workflows', 'runs'),
     authFile: process.env.AUTH_DATA_PATH || process.env.SPANNER_AUTH_DATA_PATH || path.join(defaultDataDir, 'auth.json'),
     remoteWorkspaceDir: process.env.REMOTE_WORKSPACE_DIR || '/workspace',
+    localWorktreeDir: process.env.SPANNER_WORKTREE_DIR || '',
+    localWorktreeBaseDir: process.env.SPANNER_WORKTREE_BASE_DIR || path.join(homedir(), 'spanner'),
     remoteControlDir: process.env.REMOTE_CONTROL_DIR || '/home/root/.spanner/control',
     bridgePort: Number(process.env.PI_BRIDGE_PORT || 4310),
     bridgeReadyTimeoutMs: Number(process.env.PI_BRIDGE_READY_TIMEOUT_MS || 240000),

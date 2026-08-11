@@ -169,6 +169,8 @@ test('project selector offers desktop local folders', () => {
   assert.match(pages, /id="project-recent-list" className="project-list grid gap-2 md:grid-cols-2"/);
   assert.match(styles, /grid-template-columns: minmax\(0, 1fr\) auto/);
   assert.match(styles, /\.repo-suggestions \{/);
+  assert.match(pages, /id="project-branch" name="branch" type="text" defaultValue="main"/);
+  assert.match(pages, /aria-label="base branch or ref"/);
   assert.match(pages, /id="project-repo-tray" className="flex flex-wrap items-center gap-2"/);
   assert.match(app, /readSelectedProject/);
   assert.match(app, /repoPath: repoInput/);
