@@ -879,28 +879,67 @@ export function createThreadService({ config, provider, http, auth, runState, br
     }
     const localGitMode = provider.kind === 'local' && normalized.repoMode === 'git' && !normalized.repoPath;
     const bridgeRunId = normalized.bridgeMode && !localGitMode ? randomUUID() : '';
-    const session = withUserThreadMessage(withFallbackThreadTitle(await enrichGitHubRepoSession({
+    const session = withUserThreadMessage(withFallbackThreadTitle({
       ...normalized,
       ...(bridgeRunId ? { bridgeRunId } : {}),
       ...(user?.id ? { ownerUserId: user.id } : browserSessionIdValue ? { githubOwnerSessionId: browserSessionIdValue } : {}),
       submittedAtMs,
-    }, browserSession, user)), normalized.initialPrompt || normalized.taskPrompt, submittedAtMs, bridgeRunId || String(submittedAtMs), normalized.images || []);
+    }), normalized.initialPrompt || normalized.taskPrompt, submittedAtMs, bridgeRunId || String(submittedAtMs), normalized.images || []);
     const existing = await getStoredSession(config.sessionFile, session.name);
     if (existing) {
       throw new Error(`A main agent named ${session.name} already exists.`);
     }
 
-    let thread;
-    if (session.repoPath) {
-      thread = await startLocalThreadSession(session);
-    } else if (localGitMode) {
-      thread = await startLocalGitThreadSession(session);
-    } else {
-      thread = await startThreadBridgeLaunch(session, await readSavedSettings(config.settingsFile));
-    }
+    const now = new Date().toISOString();
+    const queued = await upsertSession(config.sessionFile, {
+      ...session,
+      provider: provider.kind,
+      status: 'launching',
+      runStatus: 'launching',
+      createdAt: now,
+      updatedAt: now,
+    });
+    resetRunState(queued.name, 'launching');
+    appendRunOutput(queued.name, '[system] Preparing main agent.\n', 'launching');
 
-    scheduleThreadTitleGeneration(thread);
-    return thread;
+    void (async () => {
+      try {
+        const current = await getStoredSession(config.sessionFile, queued.name);
+        if (!current || current.runStatus !== 'launching') return;
+        const enriched = await enrichGitHubRepoSession(current, browserSession, user);
+        let thread;
+        if (enriched.repoPath) {
+          thread = await startLocalThreadSession(enriched);
+        } else if (localGitMode) {
+          thread = await startLocalGitThreadSession(enriched);
+        } else {
+          thread = await startThreadBridgeLaunch(enriched, await readSavedSettings(config.settingsFile));
+        }
+        scheduleThreadTitleGeneration(thread);
+      } catch (error) {
+        const latest = (await getStoredSession(config.sessionFile, queued.name)) || queued;
+        const warning = error?.message || String(error);
+        const failedAt = new Date().toISOString();
+        await upsertSession(config.sessionFile, {
+          ...latest,
+          taskPrompt: '',
+          images: [],
+          bridgeClaimed: false,
+          warmClaimed: false,
+          status: 'failed',
+          runStatus: 'failed',
+          warning,
+          endedAt: failedAt,
+          runEndedAtMs: Date.parse(failedAt),
+          updatedAt: failedAt,
+        });
+        setRunState(queued.name, { runStatus: 'failed', warning });
+        appendRunOutput(queued.name, `[system] Main agent launch failed: ${warning}\n`, 'failed');
+        appendRunStatus(queued.name, 'failed', { warning, done: true });
+      }
+    })();
+
+    return queued;
   }
 
   async function promptThreadSession(name, body, viewerSessionId = '', trusted = false, user = null) {
