@@ -619,8 +619,7 @@ function finishedOutcome(thread, rawStatus) {
   if (summary) return summary;
   const warning = String(thread?.warning || '').replace(/\s+/g, ' ').trim();
   if (warning) return `status: ${warning}`;
-  const status = String(rawStatus || '').replace(/[-_]+/g, ' ').trim().toLowerCase();
-  return status ? `status: ${status}` : '';
+  return '';
 }
 
 function sortedSetSignature(values) {
@@ -930,9 +929,10 @@ function renderThreadCard(thread, jumpLabel = '') {
   const inactiveTimes = !running ? [finished].filter(Boolean) : [];
   const inactiveMeta = inactiveTimes.length ? `<span class="finished-meta">${inactiveTimes.map((text) => `<time>${escapeHtml(text)}</time>`).join('')}</span>` : '';
   const statusLabel = sidebarStatusLabel(rawStatus);
+  const runtimeLabel = sidebarDurationLabel(runtime);
   const activeMeta = thread.branch || detail || outcome;
   const activeRuntime = runtime
-    ? `<time class="runtime-label" data-runtime-start="${escapeHtml(start)}" data-runtime-status="${escapeHtml(statusLabel)}">${escapeHtml(statusLabel)} ${escapeHtml(sidebarDurationLabel(runtime))}</time>`
+    ? `<time class="runtime-label" data-runtime-start="${escapeHtml(start)}" data-runtime-status="${escapeHtml(statusLabel)}" aria-label="${escapeHtml(`${statusLabel} ${runtimeLabel}`)}">${escapeHtml(runtimeLabel)}</time>`
     : '';
   const indicatorKey = settled && canDismissFinishedIndicator(rawStatus, running) ? finishedIndicatorKey(thread, rawStatus) : '';
   const indicatorSeen = indicatorKey && seenFinishedThreads.has(indicatorKey);
@@ -995,7 +995,9 @@ function updateRuntimeLabels() {
   const labels = list?.querySelectorAll('[data-runtime-start]') || [];
   for (const label of labels) {
     const status = label.dataset.runtimeStatus || 'running';
-    label.textContent = `${status} ${sidebarDurationLabel(formatElapsed(label.dataset.runtimeStart, Date.now()))}`;
+    const duration = sidebarDurationLabel(formatElapsed(label.dataset.runtimeStart, Date.now()));
+    label.textContent = duration;
+    label.setAttribute('aria-label', `${status} ${duration}`);
   }
   if (!labels.length && runtimeTickTimer) {
     clearInterval(runtimeTickTimer);
