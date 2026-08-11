@@ -162,13 +162,14 @@ test('thread main header omits redundant done detail', () => {
 });
 
 test('changes rail is a summary button without inline preview', () => {
-  assert.match(pages, /<button id="diff-box" className="diff-box flow-card" type="button" hidden>[\s\S]*changes[\s\S]*<strong id="diff-count">0 files edited · 0 lines<\/strong><\/button>/);
+  assert.match(pages, /<button id="diff-box" className="diff-box flow-card" type="button" aria-label="Open changes" hidden>[\s\S]*<strong id="diff-count">0 files edited · 0 lines<\/strong><\/button>/);
   assert.doesNotMatch(pages, /<details id="diff-box"/);
   assert.doesNotMatch(pages, /id="diff-editor"|id="diff-files"/);
   assert.match(js, /function formatDiffSummary/);
   assert.match(js, /openDiffDialog\('__all__'\)/);
-  assert.doesNotMatch(js, /diffEditor|selectedDiffPath|selected diff/);
-  assert.doesNotMatch(css, /\.diff-editor|\.diff-spanner|\.diff-open-button/);
+  assert.match(js, /@pierre\/diffs/);
+  assert.doesNotMatch(js, /diff2html|diffEditor|selectedDiffPath|selected diff/);
+  assert.doesNotMatch(css, /d2h-|\.diff-editor|\.diff-spanner|\.diff-open-button/);
 });
 
 test('changes summary counts edited files and changed lines', () => {

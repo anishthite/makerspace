@@ -575,7 +575,7 @@ export function ThreadPage() {
               <div className="rail-head"><span>todos</span><strong id="todo-count">0/0</strong></div>
               <div id="todo-list" className="todo-list"></div>
             </Surface>
-            <button id="diff-box" className="diff-box flow-card" type="button" hidden><span className="inline-flex items-center gap-1.5"><GitDiffIcon className="size-4" aria-hidden="true" />changes</span><strong id="diff-count">0 files edited · 0 lines</strong></button>
+            <button id="diff-box" className="diff-box flow-card" type="button" aria-label="Open changes" hidden><GitDiffIcon className="size-4" aria-hidden="true" /><strong id="diff-count">0 files edited · 0 lines</strong></button>
           </aside>
           <section className="flow-wrap thread-workspace" aria-label="Main agent conversation">
             <section className="conversation-main flow-card" aria-label="Main agent conversation">
@@ -595,7 +595,7 @@ export function ThreadPage() {
         </section>
         <dialog id="diff-dialog" className="diff-dialog" aria-labelledby="diff-dialog-title">
           <div className="diff-dialog-shell">
-            <header className="diff-dialog-head"><div><p className={eyebrowClass}>changes</p><h2 id="diff-dialog-title">Full diff</h2></div><Button id="diff-dialog-close" variant="ghost" type="button"><ArrowLeftIcon {...buttonIconProps} />close</Button></header>
+            <header className="diff-dialog-head"><h2 id="diff-dialog-title">Full diff</h2><Button id="diff-dialog-close" variant="ghost" type="button"><ArrowLeftIcon {...buttonIconProps} />close</Button></header>
             <div id="diff-dialog-files" className="diff-dialog-files" role="list"></div>
             <div id="diff-dialog-body" className="diff-dialog-body" aria-label="Full diff"></div>
           </div>

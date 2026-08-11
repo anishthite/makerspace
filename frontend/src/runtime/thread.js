@@ -1,4 +1,3 @@
-import 'diff2html/bundles/css/diff2html.min.css';
 import { captureSpannerEvent } from '../lib/posthog.js';
 import { redirectIfAuthRequired } from './auth-redirect.js';
 import './appearance.js?v=palette-2';
@@ -135,6 +134,7 @@ let historyRendered = false;
 let graphStatus = 'waiting';
 let diffDialogPath = '__all__';
 let lastDiffPayload = null;
+let diffRenderVersion = 0;
 let diffRefreshTimer = null;
 let assistantChunkBuffer = '';
 let assistantChunkFrame = 0;
@@ -1517,8 +1517,44 @@ function renderPlainDiff(node, text = '') {
   node.replaceChildren(pre);
 }
 
+const PIERRE_DIFF_CSS = `
+:host {
+  --diffs-font-family: var(--mono);
+  --diffs-header-font-family: var(--font-sans);
+  --diffs-font-size: 12px;
+  --diffs-line-height: 21px;
+  --diffs-gap-block: 7px;
+  --diffs-bg: #080b10;
+  --diffs-bg-context-override: #080b10;
+  --diffs-bg-context-gutter-override: #080b10;
+  --diffs-bg-separator-override: #080b10;
+  --diffs-bg-deletion-override: rgba(248, 81, 73, .16);
+  --diffs-bg-addition-override: rgba(63, 185, 80, .16);
+  --diffs-bg-deletion-emphasis-override: rgba(248, 81, 73, .26);
+  --diffs-bg-addition-emphasis-override: rgba(63, 185, 80, .26);
+  --diffs-deletion-color-override: #ff7b72;
+  --diffs-addition-color-override: #7ee787;
+  --diffs-fg-number-override: rgba(201, 209, 217, .45);
+}
+[data-diffs-header="default"] {
+  min-height: 36px;
+  padding-inline: 0;
+  border: 0;
+  background: transparent;
+}
+[data-header-content] { gap: 8px; }
+[data-title] { color: #e6edf3; font-weight: 650; }
+[data-metadata] { font-size: 11px; font-weight: 700; }
+[data-separator-wrapper] { background: #080b10; color: rgba(201, 209, 217, .42); }
+[data-code] { scrollbar-color: rgba(139,148,158,.38) transparent; }
+[data-column-number] { padding-left: 1.5ch; padding-right: 1ch; }
+[data-line] { padding-inline: 1.35ch; }
+[data-line-type="change-deletion"], [data-line-type="change-addition"] { box-shadow: inset 3px 0 0 currentColor; }
+`;
+
 async function renderFullDiffBody(text = '') {
   if (!diffDialogBody) return;
+  const renderVersion = ++diffRenderVersion;
   diffDialogBody.textContent = 'Loading diff…';
   const truncated = /\n\n… changes truncated\s*$/.test(text);
   const diffText = truncated ? text.replace(/\n\n… changes truncated\s*$/, '') : text;
@@ -1527,30 +1563,51 @@ async function renderFullDiffBody(text = '') {
     return;
   }
   try {
-    const Diff2Html = await import('diff2html');
-    diffDialogBody.innerHTML = `${truncated ? '<p class="diff-truncated-warning">… changes truncated</p>' : ''}${Diff2Html.html(diffText, {
-      colorScheme: 'dark',
-      drawFileList: false,
-      matching: 'lines',
-      outputFormat: 'line-by-line',
-    })}`;
+    const { FileDiff, processPatch } = await import('@pierre/diffs');
+    if (renderVersion !== diffRenderVersion) return;
+    const files = processPatch(diffText.endsWith('\n') ? diffText : `${diffText}\n`, undefined, true).files;
+    if (!files.length) {
+      renderPlainDiff(diffDialogBody, text);
+      return;
+    }
+    const list = document.createElement('div');
+    list.className = 'pierre-diff-list';
+    if (truncated) {
+      const warning = document.createElement('p');
+      warning.className = 'diff-truncated-warning';
+      warning.textContent = '… changes truncated';
+      list.append(warning);
+    }
+    for (const fileDiff of files) {
+      const section = document.createElement('section');
+      section.className = 'pierre-diff-file';
+      list.append(section);
+      // ponytail: FileDiff owns syntax highlighting and its shadow-DOM grid; CodeView can replace this if huge diffs lag.
+      new FileDiff({ diffStyle: 'unified', disableFileHeader: files.length === 1, lineDiffType: 'word', overflow: 'scroll', themeType: 'dark', unsafeCSS: PIERRE_DIFF_CSS }).render({ fileDiff, containerWrapper: section });
+    }
+    diffDialogBody.replaceChildren(list);
   } catch {
-    renderPlainDiff(diffDialogBody, text);
+    if (renderVersion === diffRenderVersion) renderPlainDiff(diffDialogBody, text);
   }
 }
 
 function renderDiffDialog() {
   if (!diffDialog || !diffDialogTitle || !diffDialogFiles || !diffDialogBody || !lastDiffPayload) return;
   const files = diffFileRows(lastDiffPayload);
+  const showFileRail = files.length > 1;
   const activeFile = files.find((file) => file.path === diffDialogPath);
   const activeText = diffDialogPath === '__all__' ? fullDiffText(lastDiffPayload) : diffTextForFile(activeFile || files[0], lastDiffPayload);
-  diffDialogTitle.textContent = diffDialogPath === '__all__' ? 'Full diff' : activeFile?.path || files[0]?.path || 'Full diff';
+  diffDialog.classList.toggle('has-file-rail', showFileRail);
+  diffDialogFiles.hidden = !showFileRail;
+  diffDialogTitle.textContent = diffDialogPath === '__all__' && showFileRail ? 'Full diff' : activeFile?.path || files[0]?.path || 'Full diff';
   diffDialogFiles.replaceChildren();
 
   const addButton = (label, pathValue) => {
+    const active = diffDialogPath === pathValue;
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = `diff-file${diffDialogPath === pathValue ? ' is-active' : ''}`;
+    button.className = `diff-file${active ? ' is-active' : ''}`;
+    if (active) button.setAttribute('aria-current', 'true');
     button.textContent = label;
     button.addEventListener('click', () => {
       diffDialogPath = pathValue;
@@ -1558,8 +1615,10 @@ function renderDiffDialog() {
     });
     diffDialogFiles.append(button);
   };
-  addButton(`all files · ${files.length}`, '__all__');
-  files.forEach((file) => addButton(`${file.label || file.code || 'changed'} · ${file.path}`, file.path));
+  if (showFileRail) {
+    addButton('All', '__all__');
+    files.forEach((file) => addButton(file.path, file.path));
+  }
   void renderFullDiffBody(activeText);
 }
 
