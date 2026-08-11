@@ -1506,7 +1506,6 @@ function renderThreads(threads, options = {}) {
       <div class="action-lane-head">
         <button class="settled-shelf-toggle" type="button" data-settled-shelf-toggle aria-expanded="${settledShelfExpanded ? 'true' : 'false'}">
           <span>${escapeHtml(settledLabel)}</span>
-          <span class="settled-shelf-rule" aria-hidden="true"></span>
           <span class="settled-shelf-chevron" aria-hidden="true">⌄</span>
         </button>
         <span class="action-lane-tools">

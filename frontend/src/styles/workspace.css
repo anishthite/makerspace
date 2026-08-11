@@ -1213,14 +1213,14 @@ button.sidebar-prompt-start.primary-btn:disabled {
 .workspace-agents-sidebar .settled-shelf-toggle {
   display: flex;
   min-width: 0;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   height: 36px;
   cursor: pointer;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   border: 0 !important;
   border-radius: 6px;
-  padding: 0 8px;
+  padding: 0 6px 0 8px;
   background: transparent !important;
   color: rgba(142, 142, 142, .68);
   text-align: left;
@@ -1233,25 +1233,21 @@ button.sidebar-prompt-start.primary-btn:disabled {
   outline: 0;
 }
 
-.workspace-agents-sidebar .settled-shelf-rule {
-  height: 1px;
-  min-width: 32px;
-  flex: 1 1 auto;
-  background: rgba(255, 255, 255, .07);
-}
-
 .workspace-agents-sidebar .settled-shelf-chevron {
-  width: 12px;
-  flex: 0 0 12px;
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border: solid currentColor;
+  border-width: 0 1.5px 1.5px 0;
   color: currentColor;
-  text-align: center;
-  font-size: 12px;
-  line-height: 1;
+  font-size: 0;
+  line-height: 0;
+  transform: translateY(-1px) rotate(45deg);
   transition: transform 140ms ease;
 }
 
 .workspace-agents-sidebar .settled-shelf-toggle[aria-expanded="true"] .settled-shelf-chevron {
-  transform: rotate(180deg);
+  transform: translateY(1px) rotate(-135deg);
 }
 
 .workspace-agents-sidebar .action-lane-tools {
