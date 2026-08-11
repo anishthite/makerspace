@@ -137,7 +137,7 @@ test('thread main header spans above the right workflow rail', () => {
   const workspaceIndex = pages.indexOf('<section className="flow-wrap thread-workspace"');
   assert.ok(headerIndex > -1 && headerIndex < sidebarIndex);
   assert.ok(sidebarIndex < workspaceIndex);
-  assert.match(pages, /<div className="thread-main-row[^"]*">[\s\S]+href="\/"[\s\S]+id="thinking-title"[\s\S]+id="archive-thread"[\s\S]+<\/div>/);
+  assert.match(pages, /<div className="thread-main-row[^"]*">[\s\S]+aria-label="open agents"[\s\S]+id="thinking-title"[\s\S]+id="archive-thread"[\s\S]+<\/div>/);
   assert.match(css, /\.thread-main-header \{ position: sticky; top: 0; z-index: 20; grid-column: 1 \/ -1; [^}]*display: grid/);
   assert.match(css, /\.thread-stage \{[^}]*grid-template-columns: minmax\(0, 1fr\) minmax\(190px, 250px\)/);
   assert.match(css, /\.flow-wrap \{[^}]*grid-column: 1;[^}]*grid-row: 2/);
@@ -381,10 +381,9 @@ test('openui fenced blocks render after assistant message text without extra chr
 });
 
 test('opening a populated thread scrolls back to the latest user turn', () => {
-  assert.match(js, /let initialResumeScrollDone = false/);
   assert.match(js, /function isTerminalStatus\(status\)/);
-  assert.match(js, /function restoreInitialThreadPosition\(\)/);
-  assert.match(js, /timeline\.querySelectorAll\('\.message-item\.user'\)/);
+  assert.match(js, /function restoreInitialThreadPosition\(\) \{\n\s*if \(!timeline\) return;\n\s*requestAnimationFrame\(\(\) => \{\n\s*const userMessages = timeline\.querySelectorAll\('\.message-item\.user'\)/);
+  assert.doesNotMatch(js, /initialResumeScrollDone/);
   assert.match(js, /const hasAssistantTurn = Boolean\(timeline\.querySelector\('\.message-item\.assistant'\)\)/);
   assert.match(js, /const hasTerminalSinglePrompt = userMessages\.length === 1 && isTerminalStatus\(effectiveStatus\(currentThread\)\)/);
   assert.match(js, /!hasAssistantTurn && userMessages\.length < 2 && !hasTerminalSinglePrompt/);

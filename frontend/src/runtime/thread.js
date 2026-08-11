@@ -143,7 +143,6 @@ let submitInFlight = false;
 let nextSubmitDelivery = 'auto';
 let queuedSteeringCount = 0;
 let queuedFollowUpCount = 0;
-let initialResumeScrollDone = false;
 let workflowPollTimer = 0;
 let timelineEntriesCanAnimate = false;
 const excalidrawRenderTokens = new WeakMap();
@@ -1099,14 +1098,13 @@ function followLatest(enabled = true) {
 }
 
 function restoreInitialThreadPosition() {
-  if (initialResumeScrollDone || !timeline) return;
-  const userMessages = timeline.querySelectorAll('.message-item.user');
-  const target = userMessages[userMessages.length - 1];
-  const hasAssistantTurn = Boolean(timeline.querySelector('.message-item.assistant'));
-  const hasTerminalSinglePrompt = userMessages.length === 1 && isTerminalStatus(effectiveStatus(currentThread));
-  if (!target || (!hasAssistantTurn && userMessages.length < 2 && !hasTerminalSinglePrompt)) return;
-  initialResumeScrollDone = true;
+  if (!timeline) return;
   requestAnimationFrame(() => {
+    const userMessages = timeline.querySelectorAll('.message-item.user');
+    const target = userMessages[userMessages.length - 1];
+    const hasAssistantTurn = Boolean(timeline.querySelector('.message-item.assistant'));
+    const hasTerminalSinglePrompt = userMessages.length === 1 && isTerminalStatus(effectiveStatus(currentThread));
+    if (!target || (!hasAssistantTurn && userMessages.length < 2 && !hasTerminalSinglePrompt)) return;
     const topbar = document.querySelector('.thread-main-header');
     const offset = Math.ceil(topbar?.getBoundingClientRect().height || 0) + 18;
     window.scrollTo({ top: Math.max(0, target.getBoundingClientRect().top + window.scrollY - offset), behavior: 'auto' });
