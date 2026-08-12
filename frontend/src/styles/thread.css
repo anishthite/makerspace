@@ -3561,6 +3561,11 @@ body.thread-page .notes-main {
   margin-inline: auto;
 }
 
+/* ponytail: hide optional thread panels until they are requested again. */
+body.thread-page :is(#suggested-next-steps, .notes-main) {
+  display: none !important;
+}
+
 body.thread-page .conversation-main > .timeline-flow {
   gap: 20px;
   max-width: none;
