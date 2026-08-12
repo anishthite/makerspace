@@ -166,19 +166,21 @@
 }
 
 .spanner-sidebar-mobile-sheet[data-mobile="true"] {
+  z-index: 60;
   width: var(--sidebar-width);
   max-width: none;
   height: 100dvh;
   max-height: 100dvh;
   overflow: hidden;
   border-color: var(--rule);
+  background: var(--t3-sidebar, #181818);
 }
 
 .spanner-sidebar-mobile-sheet[data-mobile="true"] #agents-section {
   width: 100%;
   min-width: 0;
   overflow: hidden;
-  background: color-mix(in srgb, var(--paper) 62%, transparent);
+  background: var(--t3-sidebar, #181818);
 }
 
 .spanner-sidebar-mobile-sheet[data-mobile="true"] [data-sidebar="header"] {

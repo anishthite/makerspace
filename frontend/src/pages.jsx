@@ -45,14 +45,8 @@ import onboardingContent from './onboarding-content.json';
 import { TraceComponentsPage } from './trace-components-page.jsx';
 import { AgentElementsDemoPage } from './agent-elements-demo-page.jsx';
 import { AssistantUiComponentsPage } from './assistant-ui-components-page.jsx';
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarHeader,
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from './components/ui/sidebar.jsx';
+import { GlobalAppShell } from './components/agent-sidebar.jsx';
+import { SidebarTrigger } from './components/ui/sidebar.jsx';
 import { cn } from '#lib/utils';
 
 const buttonIconProps = { 'aria-hidden': true, 'data-icon': 'inline-start', className: 'size-4' };
@@ -357,77 +351,6 @@ function WorkspaceManager({ className = '', prominent = false, quickSwitch = fal
   return <div className={cn('flex min-w-0 items-center text-[var(--ink-3)]', prominent ? 'gap-3' : 'gap-2', className)} aria-label="Selected workspace">{quickSwitch ? <WorkspaceQuickSwitcher prominent={prominent} labelClass={labelClass} /> : <><strong id="workspace-label" className={labelClass}>loading…</strong><Button as="a" variant="ghost" size={prominent ? 'md' : 'sm'} className={buttonClass} href="/"><FolderOpenIcon {...buttonIconProps} />switch</Button></>}</div>;
 }
 
-function AgentInboxSidebar({ workspaceSwitcher = true }) {
-  return <Surface id="agents-section" className="workspace-agents-sidebar flex h-full min-h-0 flex-col bg-[color-mix(in_srgb,var(--paper)_44%,transparent)]" aria-label="Agent inbox">
-    <SidebarHeader className="workspace-agents-head grid gap-1 border-b border-[var(--rule)] p-2">
-      <div className="sidebar-title-row">
-        <a className="sidebar-spanner-title" href="/workspace.html" aria-label="Open Spanner workspace">Spanner</a>
-      </div>
-      <div className="sidebar-command-row">
-        <InputGroup label={<MagnifyingGlassIcon className="size-4" aria-hidden="true" />} className="agent-search border-0 bg-transparent px-0 shadow-none [&_input]:min-w-0 [&_input]:py-1.5" as="div">
-          <input id="agent-search" type="search" placeholder="Search agents" autoComplete="off" aria-label="Search agent inbox" aria-controls="threads-list" aria-keyshortcuts="Meta+K Control+K" />
-          <button id="sidebar-project-scope" className="sidebar-project-scope sidebar-search-filter" type="button" data-sidebar-scope-toggle aria-label="Filter agents" aria-haspopup="menu" aria-expanded="false" aria-controls="sidebar-project-scope-menu">
-            <FunnelIcon className="size-4 shrink-0" aria-hidden="true" />
-            <span id="sidebar-project-scope-label" className="sr-only">All projects</span>
-            <span id="sidebar-project-scope-count" className="sidebar-project-scope-count" hidden></span>
-          </button>
-        </InputGroup>
-        <div id="sidebar-project-scope-menu" className="sidebar-scope-menu" role="menu" hidden></div>
-      </div>
-      <Button variant="ghost" className="sidebar-new-prompt-button sidebar-new-prompt-wide" type="button" data-sidebar-new-thread aria-label="New thread" aria-keyshortcuts="N Meta+T Control+T" aria-haspopup="dialog" aria-expanded="false" aria-controls="sidebar-prompt-lightbox" title="New thread (N; desktop: ⌘/Ctrl+T)"><PlusIcon className="size-4" aria-hidden="true" />new thread</Button>
-    </SidebarHeader>
-    <SidebarContent className="min-h-0">
-      <ScrollArea id="threads-list" className="action-lanes px-2 pb-5"></ScrollArea>
-    </SidebarContent>
-  </Surface>;
-}
-
-function SidebarPromptLightbox() {
-  return <dialog id="sidebar-prompt-lightbox" className="sidebar-prompt-lightbox" aria-label="Start a main agent" aria-describedby="sidebar-prompt-status">
-    <form id="sidebar-prompt-form" className="sidebar-prompt-lightbox-shell" noValidate>
-      <header className="sidebar-prompt-topbar">
-        <div className="sidebar-prompt-project-picker">
-          <FolderOpenIcon className="sidebar-prompt-project-icon size-4" weight="duotone" aria-hidden="true" />
-          <Select id="sidebar-prompt-project-select" variant="prompt" aria-label="Project for new agent" placeholder="loading projects..."><option value="">loading projects...</option></Select>
-        </div>
-        <Button id="sidebar-prompt-lightbox-close" variant="ghost" size="icon" className="sidebar-prompt-close" type="button" aria-label="close prompt"><XIcon className="size-4" aria-hidden="true" /></Button>
-      </header>
-      <label className="sr-only" htmlFor="sidebar-prompt">Prompt</label>
-      <textarea id="sidebar-prompt" name="prompt" rows="4" placeholder="Tell the main agent what to do..." aria-keyshortcuts="Enter" required></textarea>
-      <div className="sidebar-prompt-control-strip" aria-label="main agent run controls">
-        <div className="attachment-row composer-attachment-row">
-          <Button id="sidebar-prompt-images-trigger" variant="ghost" size="sm" className="attach-btn" type="button" aria-label="add images" aria-controls="sidebar-prompt-images" title="add images"><PlusIcon {...buttonIconProps} /></Button>
-          <input id="sidebar-prompt-images" className="image-input" name="images" type="file" accept="image/png,image/jpeg,image/gif,image/webp" multiple tabIndex="-1" aria-hidden="true" />
-          <span id="sidebar-prompt-image-status" className="attachment-status muted" role="status" aria-live="polite"></span>
-        </div>
-        <InputGroup className="model-picker sidebar-prompt-model max-sm:flex-[1_1_100%]">
-          <Select id="sidebar-model-ref" name="modelRef" variant="prompt" aria-label="Model for new agent" placeholder="loading model…"><option value="">loading model…</option></Select>
-        </InputGroup>
-        <InputGroup label="thinking" className="thinking-slider sidebar-prompt-thinking max-sm:flex-[1_1_100%]">
-          <Slider id="sidebar-thinking-level" min="0" max="5" step="1" defaultValue="5" />
-          <output id="sidebar-thinking-level-value" htmlFor="sidebar-thinking-level">xhigh</output>
-        </InputGroup>
-        <Button id="sidebar-prompt-submit" variant="primary" className="sidebar-prompt-start" type="submit" aria-label="send prompt"><PaperPlaneTiltIcon className="size-4" aria-hidden="true" /></Button>
-      </div>
-      <p id="sidebar-prompt-project" className="sr-only" aria-live="polite">Choose a project first.</p>
-      <p id="sidebar-prompt-status" className="sidebar-prompt-status" role="status" aria-live="polite"></p>
-    </form>
-  </dialog>;
-}
-
-function GlobalAppShell({ children, sidebarWorkspaceSwitcher = true, sidebarDefaultOpen = true, insetClassName = '' }) {
-  return <SidebarProvider defaultOpen={sidebarDefaultOpen} className="global-sidebar-shell min-h-svh bg-[var(--bg)]" style={{ '--sidebar-width': 'var(--workspace-sidebar-width, 22rem)' }}>
-    <SidebarTrigger className="workspace-sidebar-edge-trigger" aria-label="toggle agents sidebar" title="toggle agents sidebar" />
-    <Sidebar className="workspace-global-sidebar border-r border-[var(--rule)]" collapsible="offcanvas">
-      <AgentInboxSidebar workspaceSwitcher={sidebarWorkspaceSwitcher} />
-    </Sidebar>
-    <SidebarInset className={cn('global-app-inset min-w-0 bg-[var(--bg)]', insetClassName)}>
-      {children}
-    </SidebarInset>
-    <SidebarPromptLightbox />
-  </SidebarProvider>;
-}
-
 function WorkspaceNav({ active = 'workspace', showBrand = true, showWorkspaceManager = true, workspaceManagerClassName = '', workspaceManagerProminent = false }) {
   return <nav className={topbarClass} aria-label="Spanner navigation">
     {showBrand && <Brand href="/workspace.html" label="Spanner workspace" />}
@@ -442,7 +365,7 @@ function WorkspaceNav({ active = 'workspace', showBrand = true, showWorkspaceMan
 }
 
 export function ProjectPage() {
-  return <GlobalAppShell sidebarWorkspaceSwitcher={false} insetClassName="px-[clamp(16px,4vw,56px)] py-6 pb-18 max-sm:px-2.5 max-sm:py-3 max-sm:pb-7">
+  return <GlobalAppShell insetClassName="px-[clamp(16px,4vw,56px)] py-6 pb-18 max-sm:px-2.5 max-sm:py-3 max-sm:pb-7">
       <main className="mx-auto w-[min(920px,calc(100%_-_clamp(24px,8vw,160px)))] px-0 pb-14">
         <div className="mb-5 flex min-w-0 items-center gap-2 max-sm:mb-3 max-sm:items-start">
           <div className="workspace-mobile-sidebar-launcher shrink-0 items-center gap-1">
@@ -549,7 +472,7 @@ export function WorkspacePage() {
 }
 
 export function ThreadPage() {
-  return <GlobalAppShell sidebarWorkspaceSwitcher={false} insetClassName="global-app-center">
+  return <GlobalAppShell insetClassName="global-app-center">
       <main className="thread-flow-shell">
         <section className="thread-stage" aria-label="Main agent workspace">
           <header className="thread-main-header">
@@ -614,7 +537,7 @@ export function HistoryPage() {
     ['failed', 'failed'],
   ];
 
-  return <GlobalAppShell sidebarWorkspaceSwitcher={false} insetClassName="px-[clamp(16px,4vw,56px)] py-6 pb-18 max-sm:px-2.5 max-sm:py-3 max-sm:pb-7">
+  return <GlobalAppShell insetClassName="px-[clamp(16px,4vw,56px)] py-6 pb-18 max-sm:px-2.5 max-sm:py-3 max-sm:pb-7">
   <main className="history-shell mx-auto w-[min(1180px,100%)] px-0">
     <WorkspaceNav active="history" />
     <header className="history-page-head">
@@ -649,7 +572,7 @@ export function HistoryPage() {
 
 export function PerformancePage() {
   const isLocal = globalThis.location?.pathname?.includes('local-telemetry');
-  return <GlobalAppShell sidebarWorkspaceSwitcher={false} insetClassName="px-[clamp(16px,4vw,56px)] py-6 pb-18 max-sm:px-2.5 max-sm:py-3 max-sm:pb-7">
+  return <GlobalAppShell insetClassName="px-[clamp(16px,4vw,56px)] py-6 pb-18 max-sm:px-2.5 max-sm:py-3 max-sm:pb-7">
   <main className="mx-auto w-[min(1180px,100%)] px-0">
     <nav className={topbarClass} aria-label="Spanner navigation"><Brand href="/" /><div className={headerActionsClass}><Button as="a" variant="ghost" href="/workspace.html"><RobotIcon {...buttonIconProps} />agents</Button><Button as="a" variant="ghost" href={isLocal ? '/telemetry.html' : '/local-telemetry.html'}>{isLocal ? <DatabaseIcon {...buttonIconProps} /> : <ClockCounterClockwiseIcon {...buttonIconProps} />}{isLocal ? 'db telemetry' : 'local sessions'}</Button><Button as="a" variant="ghost" href="/settings.html"><GearSixIcon {...buttonIconProps} />settings</Button></div></nav>
     <section className="performance-page-head grid gap-3 py-8"><p className={eyebrowClass}>telemetry</p><h1>{isLocal ? 'Local session telemetry' : 'Agent telemetry'}</h1><p id="performance-status" className={mutedClass}>Loading {isLocal ? 'local session' : 'DB-derived'} agent metrics…</p><p className={mutedClass}>{isLocal ? 'Reads the desktop/local sessions file and ignores old browser-session IDs.' : 'Estimated from the session DB plus live run events. No extra product tracking.'}</p></section>
@@ -660,7 +583,7 @@ export function PerformancePage() {
 }
 
 export function SettingsPage() {
-  return <GlobalAppShell sidebarWorkspaceSwitcher={false} insetClassName="px-[clamp(16px,4vw,56px)] py-6 pb-18 max-sm:px-2.5 max-sm:py-3 max-sm:pb-7">
+  return <GlobalAppShell insetClassName="px-[clamp(16px,4vw,56px)] py-6 pb-18 max-sm:px-2.5 max-sm:py-3 max-sm:pb-7">
   <main className="mx-auto w-[min(1180px,100%)] px-0">
     <nav className={topbarClass} aria-label="Settings controls">
       <Brand href="/" label="Spanner home" />

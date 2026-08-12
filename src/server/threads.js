@@ -13,8 +13,18 @@ import { archiveStoredSession, getStoredSession, listStoredSessions, unarchiveSt
 import { normalizeSubmittedAtMs, trimTrailingSlash } from './utils.js';
 
 function threadListItem(session = {}) {
-  const { name, title, status, runStatus, warning, latestActivity, finalAnswerSummary, repoPath, repoUrl, provider, localMode, branch, createdAt, updatedAt, startedAt, endedAt, completedAt, runEndedAtMs } = session;
-  return { name, title, status, runStatus, warning, latestActivity, finalAnswerSummary, repoPath, repoUrl, provider, localMode, branch, createdAt, updatedAt, startedAt, endedAt, completedAt, runEndedAtMs };
+  const {
+    name, title, status, runStatus, warning, latestActivity, finalAnswerSummary,
+    repoPath, sourceRepoPath, worktreePath, worktreeBranch, localWorktree,
+    repoUrl, provider, localMode, branch,
+    createdAt, updatedAt, startedAt, endedAt, completedAt, runEndedAtMs,
+  } = session;
+  return {
+    name, title, status, runStatus, warning, latestActivity, finalAnswerSummary,
+    repoPath, sourceRepoPath, worktreePath, worktreeBranch, localWorktree,
+    repoUrl, provider, localMode, branch,
+    createdAt, updatedAt, startedAt, endedAt, completedAt, runEndedAtMs,
+  };
 }
 
 export function createThreadService({ config, provider, http, auth, runState, bridge }) {
