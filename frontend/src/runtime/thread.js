@@ -50,6 +50,7 @@ const stopButton = document.querySelector('#stop-thread');
 const resumeButton = document.querySelector('#resume-thread');
 const deleteButton = document.querySelector('#delete-thread');
 const archiveButton = document.querySelector('#archive-thread');
+const archiveButtonContent = archiveButton?.firstElementChild?.cloneNode(true) || null;
 const timeline = document.querySelector('#timeline');
 const traceTimeline = document.querySelector('#trace-timeline');
 const agentRail = document.querySelector('#agent-rail');
@@ -917,11 +918,19 @@ function syncHeaderStatusVisibility() {
   statusNode.hidden = statusNode.textContent === 'done' && Boolean(archiveButton && !archiveButton.hidden);
 }
 
+function renderArchiveButtonContent(label = 'Archive thread') {
+  if (!archiveButton) return;
+  archiveButton.setAttribute('aria-label', label);
+  archiveButton.title = label;
+  if (archiveButtonContent) archiveButton.replaceChildren(archiveButtonContent.cloneNode(true));
+  else archiveButton.textContent = 'archive';
+}
+
 function renderArchiveButton(thread = currentThread) {
   if (!archiveButton) return;
   archiveButton.hidden = !canArchiveThread(thread);
   archiveButton.disabled = false;
-  archiveButton.textContent = 'archive';
+  renderArchiveButtonContent();
   syncHeaderStatusVisibility();
 }
 
@@ -2805,13 +2814,12 @@ deleteButton?.addEventListener('click', () => {
 
 archiveButton?.addEventListener('click', async () => {
   archiveButton.disabled = true;
-  archiveButton.textContent = 'archiving…';
+  renderArchiveButtonContent('Archiving thread');
   try {
     await fetchJson(`/api/threads/${encodeURIComponent(name)}/archive`, { method: 'POST' });
     window.location.assign('/workspace.html');
   } catch (error) {
-    archiveButton.disabled = false;
-    archiveButton.textContent = 'archive';
+    renderArchiveButton();
     setStatus(error.message, 'error');
   }
 });

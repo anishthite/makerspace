@@ -6,8 +6,8 @@ import {
   ArrowsClockwiseIcon,
   CaretDownIcon,
   CaretUpIcon,
+  ArchiveIcon,
   ChartLineIcon,
-  CheckCircleIcon,
   ClockCounterClockwiseIcon,
   CopySimpleIcon,
   CubeIcon,
@@ -481,7 +481,7 @@ export function ThreadPage() {
               </div>
               <span id="project-label" className="project-pill" hidden></span>
               <h1 id="thinking-title" className="min-w-0">Loading</h1>
-              <div className="header-actions"><StatusPill id="thread-status">connecting</StatusPill><Button id="stop-thread" variant="ghost" className="thread-stop-btn" type="button" hidden><StopCircleIcon {...buttonIconProps} />stop</Button><Button id="resume-thread" variant="ghost" className="thread-resume-btn" type="button" hidden>resume</Button><Button id="delete-thread" variant="ghost" className="thread-delete-btn" type="button" hidden>delete</Button><Button id="archive-thread" variant="primary" className="thread-done-btn" type="button" hidden><CheckCircleIcon {...buttonIconProps} />archive</Button></div>
+              <div className="header-actions"><StatusPill id="thread-status">connecting</StatusPill><Button id="stop-thread" variant="ghost" className="thread-stop-btn" type="button" hidden><StopCircleIcon {...buttonIconProps} />stop</Button><Button id="resume-thread" variant="ghost" className="thread-resume-btn" type="button" hidden>resume</Button><Button id="delete-thread" variant="ghost" className="thread-delete-btn" type="button" hidden>delete</Button><Button id="archive-thread" variant="primary" size="icon" className="thread-done-btn" type="button" hidden aria-label="Archive thread" title="Archive thread"><ArchiveIcon {...buttonIconProps} /><span className="sr-only">archive</span></Button></div>
             </div>
             <p id="thinking-detail" className={mutedClass}></p>
             <div className="sr-only"><strong id="thread-title">Loading</strong><span id="thread-meta"></span></div>

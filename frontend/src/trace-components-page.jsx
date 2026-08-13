@@ -1,8 +1,8 @@
 import {
   ArrowLeftIcon,
+  ArchiveIcon,
   CaretDownIcon,
   CaretRightIcon,
-  CheckCircleIcon,
   CodeIcon,
   CopyIcon,
   FileIcon,
@@ -1271,7 +1271,7 @@ function ThreadLikeTraceMockPage() {
           <div className="header-actions">
             <StatusPill id="thread-status" tone="success">completed</StatusPill>
             <Button id="stop-thread" variant="ghost" className="thread-stop-btn" type="button"><StopCircleIcon {...buttonIconProps} />stop</Button>
-            <Button id="archive-thread" variant="primary" className="thread-done-btn" type="button"><CheckCircleIcon {...buttonIconProps} />archive</Button>
+            <Button id="archive-thread" variant="primary" size="icon" className="thread-done-btn" type="button" aria-label="Archive thread" title="Archive thread"><ArchiveIcon {...buttonIconProps} /><span className="sr-only">archive</span></Button>
           </div>
         </div>
         <p id="thinking-detail" className={muted}>main agent · ran 12m 08s · edited 3 files · verified in Chrome</p>

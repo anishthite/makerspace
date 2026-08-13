@@ -2495,8 +2495,9 @@ button.trace-ref-row { cursor: pointer; }
 .legacy-log .tool-card summary::before { content: 'log'; }
 .thread-done-btn {
   flex: none;
+  width: 32px;
   min-height: 32px;
-  padding: 8px 10px;
+  padding: 0;
   font-size: 11px;
   white-space: nowrap;
 }
@@ -3535,6 +3536,8 @@ body.thread-page .thread-main-row .header-actions > button {
 }
 
 body.thread-page .thread-main-row .thread-done-btn {
+  width: 32px;
+  padding-inline: 0;
   border-color: transparent;
   background: transparent;
   color: var(--ink-3);
