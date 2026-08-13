@@ -523,8 +523,15 @@ test('workspace toasts when running agents finish', () => {
   assert.match(js, /description: detail \|\| undefined,\s*duration: 8000,\s*className: 'agent-main-link-toast',\s*\}\);/);
   assert.doesNotMatch(js, /action: \{ label: 'Open main'/);
   assert.match(appCss, /\[data-sonner-toaster\] \[data-sonner-toast\]\.agent-main-link-toast\[data-styled="true"\]/);
-  assert.match(appCss, /--agent-toast-success: #B1DFA4;/);
-  assert.match(appCss, /background: var\(--agent-toast-success\);/);
+  assert.match(appCss, /--agent-toast-accent: var\(--green\);/);
+  assert.match(appCss, /background: color-mix\(in srgb, var\(--paper-2\) 92%, var\(--agent-toast-accent\) 8%\);/);
+  assert.match(appCss, /agent-main-link-toast \[data-icon\] \{\s*display: grid;/);
+  assert.match(appCss, /agent-main-link-toast \[data-content\] \{ gap: 3px; min-width: 0; max-width: 100%; \}/);
+  assert.match(appCss, /agent-main-link-toast \[data-title\] \{[\s\S]*overflow-wrap: anywhere;[\s\S]*-webkit-line-clamp: 1;/);
+  assert.match(appCss, /agent-main-link-toast \[data-description\] \{[\s\S]*overflow-wrap: anywhere;[\s\S]*-webkit-line-clamp: 2;/);
+  assert.match(appCss, /agent-main-link-toast \[data-close-button\] \{\s*display: grid;/);
+  assert.doesNotMatch(appCss, /agent-main-link-toast\[data-styled="true"\]::before/);
+  assert.doesNotMatch(`${pages}\n${js}\n${appCss}`, /provider-banner|providerBanner|\.notice\b/);
   assert.doesNotMatch(appCss, /\[data-button\]\[data-action\]/);
   assert.match(js, /function notifyFinishedThreads\(threads\)/);
   assert.equal((js.match(/notifyFinishedThreads\(workspaceSwitcherThreads\);/g) || []).length, 2);

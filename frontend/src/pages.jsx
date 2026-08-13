@@ -458,7 +458,7 @@ export function WorkspacePage() {
           <Button id="choose-folder" variant="ghost" type="button" hidden><FolderOpenIcon {...buttonIconProps} />choose folder</Button>
           <p id="repo-hint" className="muted">Sign in for repo picker.</p>
         </div>
-        <div className="advanced-fields launch-details"><input name="name" placeholder="main agent name" /><div id="provider-banner" className="notice" aria-live="polite">Connecting…</div></div>
+        <div className="advanced-fields launch-details"><input name="name" placeholder="main agent name" /></div>
         <section id="launch-suggestions" className="launch-suggestions" aria-label="Suggested starter prompts" hidden>
           <button type="button" data-suggested-prompt="Read the README, package files, and top-level source folders. Create a concise architecture diagram artifact showing the app entry points, key folders, runtime boundaries, and safest first command to try."><strong>Make repo diagram</strong><span>Draw the app structure, entry points, and runtime boundaries.</span></button>
           <button type="button" data-suggested-prompt="Find the existing install, test, lint, and build commands. Run the smallest safe check that proves the repo is wired up, then summarize any failure with the next fix."><strong>Run health check</strong><span>Verify setup with the narrowest useful check.</span></button>

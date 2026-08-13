@@ -45,7 +45,6 @@ migrateStorageKey('workbenchSelectedProject', PROJECT_KEY);
 migrateStorageKey('workbenchRecentProjects', RECENT_PROJECTS_KEY);
 migrateStorageKey('workbenchSeenFinishedThreads', SEEN_FINISHED_THREADS_KEY);
 
-const providerBanner = document.querySelector('#provider-banner');
 const projectLabel = document.querySelector('#project-label');
 const workspaceSwitcherToggle = document.querySelector('#workspace-switcher-toggle');
 const workspaceSwitcherMenu = document.querySelector('#workspace-switcher-menu');
@@ -667,14 +666,6 @@ function renderProject(provider) {
   document.title = visible ? `Spanner · ${name}` : 'Spanner';
 }
 
-function providerSummary(provider) {
-  if (provider?.kind === 'cloudflare') {
-    return provider.ready ? `Cloudflare ${provider.machine || 'sandbox'}` : 'Cloudflare broker missing';
-  }
-  if (provider?.kind === 'local') return 'local folders';
-  return '';
-}
-
 async function loadLastLocalFolder() {
   if (!globalThis.spannerDesktop?.getLastFolder || repoUrlInput.value.trim()) return;
   try {
@@ -700,12 +691,6 @@ function applyProviderMode(provider) {
 
 function renderProvider(provider) {
   renderProject(provider);
-  const target = getApiBase() ? 'remote' : 'local';
-  const summary = providerSummary(provider);
-  providerBanner.dataset.tone = provider?.ready === false ? 'error' : 'success';
-  providerBanner.textContent = provider
-    ? [target, provider.kind, summary].filter(Boolean).join(' · ')
-    : target;
   applyProviderMode(provider);
   renderWorkspaceSwitcher();
 }
@@ -1614,8 +1599,6 @@ async function reloadControlData() {
     await loadWorkspaceBootstrap();
   } catch (error) {
     renderAuthError(error.message);
-    providerBanner.dataset.tone = 'error';
-    providerBanner.textContent = error.message;
     threadStatus.textContent = error.message;
     repoHint.textContent = error.message;
   }
@@ -1864,8 +1847,6 @@ threadForm.addEventListener('submit', async (event) => {
     updateImageStatus(imageInput, imageStatus);
     location.href = threadUrl(payload.thread.name);
   } catch (error) {
-    providerBanner.dataset.tone = 'error';
-    providerBanner.textContent = error.message;
     threadStatus.textContent = error.message;
     threadSubmit.disabled = false;
   }

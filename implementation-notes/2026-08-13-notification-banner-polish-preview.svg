@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="460" viewBox="0 0 860 460" role="img" aria-labelledby="title desc">
+  <title id="title">Notification toast polish preview</title>
+  <desc id="desc">Dark Spanner UI mock showing flat success and error toasts without left bars.</desc>
+  <filter id="shadow" x="-20%" y="-30%" width="140%" height="180%">
+    <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#000" flood-opacity="0.32"/>
+  </filter>
+  <rect width="860" height="460" rx="28" fill="#141922"/>
+  <g font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">
+    <text x="64" y="72" fill="#F1F5FA" font-size="30" font-weight="800" letter-spacing="-1.4">notification toasts</text>
+    <text x="64" y="101" fill="#9BA8BA" font-size="14">Flat cards, no left rail, visible icon and dismiss control.</text>
+
+    <g filter="url(#shadow)">
+      <rect x="250" y="150" width="360" height="88" rx="16" fill="#313f4a" stroke="#587150"/>
+      <circle cx="288" cy="194" r="14" fill="#B1DFA4" opacity=".16"/>
+      <path d="M281 194l5 5 10-12" fill="none" stroke="#B1DFA4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="326" y="188" fill="#F1F5FA" font-size="13" font-weight="800" letter-spacing="-.1">Agent finished</text>
+      <text x="326" y="210" fill="#9BA8BA" font-size="12" font-weight="600">Review notification banners · polished the toast UI</text>
+      <circle cx="582" cy="174" r="12" fill="#263142" stroke="#43564E"/>
+      <path d="M578 170l8 8M586 170l-8 8" stroke="#9BA8BA" stroke-width="1.4" stroke-linecap="round"/>
+    </g>
+
+    <g filter="url(#shadow)">
+      <rect x="250" y="270" width="360" height="88" rx="16" fill="#2B2634" stroke="#734253"/>
+      <circle cx="288" cy="314" r="14" fill="#F1A1B6" opacity=".16"/>
+      <path d="M283 309l10 10M293 309l-10 10" stroke="#F1A1B6" stroke-width="2.1" stroke-linecap="round"/>
+      <text x="326" y="308" fill="#F1F5FA" font-size="13" font-weight="800" letter-spacing="-.1">Agent failed</text>
+      <text x="326" y="330" fill="#9BA8BA" font-size="12" font-weight="600">Main agent · status: bridge disconnected</text>
+      <circle cx="582" cy="294" r="12" fill="#263142" stroke="#5A3E4A"/>
+      <path d="M578 290l8 8M586 290l-8 8" stroke="#9BA8BA" stroke-width="1.4" stroke-linecap="round"/>
+    </g>
+
+    <text x="64" y="416" fill="#748198" font-size="12">Inline provider notices removed from the launch form.</text>
+  </g>
+</svg>
