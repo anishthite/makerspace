@@ -660,11 +660,13 @@ function renderThreadCard(thread, jumpLabel = '') {
   const outcome = running ? '' : finishedOutcome(thread, rawStatus);
   const inactiveTimes = !running ? [finished].filter(Boolean) : [];
   const inactiveMeta = inactiveTimes.length ? `<span class="finished-meta">${inactiveTimes.map((text) => `<time>${escapeHtml(text)}</time>`).join('')}</span>` : '';
-  const indicatorKey = settled && canDismissFinishedIndicator(rawStatus, running) ? finishedIndicatorKey(thread, rawStatus) : '';
-  const indicatorSeen = indicatorKey && seenFinishedThreads.has(indicatorKey);
-  const indicatorAttrs = indicatorKey && !indicatorSeen
+  const indicatorKey = canDismissFinishedIndicator(rawStatus, running) ? finishedIndicatorKey(thread, rawStatus) : '';
+  const indicatorUnread = Boolean(indicatorKey && !seenFinishedThreads.has(indicatorKey));
+  const showStatusDot = running || rawStatus === 'failed' || indicatorUnread;
+  const indicatorAttrs = indicatorUnread
     ? `role="button" tabindex="0" aria-label="hide finished indicator" title="hide finished indicator" data-finished-indicator="${escapeHtml(indicatorKey)}"`
     : 'aria-hidden="true"';
+  const statusDot = showStatusDot ? `<span class="status-dot" ${indicatorAttrs}></span>` : '';
   const displayTitle = thread.title || thread.name;
   const projectLabelText = sidebarThreadProjectLabel(thread);
   const projectKeyText = sidebarThreadProjectKey(thread);
@@ -686,7 +688,7 @@ function renderThreadCard(thread, jumpLabel = '') {
     <a class="inbox-main" ${linkAttrs}>
       <span class="sidebar-thread-title-row"><strong>${escapeHtml(displayTitle)}</strong></span>
     </a>
-    <span class="inbox-side">${selectButton}${stopButton}${settleButton}</span>
+    <span class="inbox-side">${stopButton}${settleButton}</span>
   `;
   const settledBody = `
     <a class="inbox-main" ${linkAttrs}>
@@ -694,13 +696,14 @@ function renderThreadCard(thread, jumpLabel = '') {
       <span class="sidebar-thread-title-row"><strong>${escapeHtml(displayTitle)}</strong></span>
       ${inactiveMeta}
     </a>
-    <span class="inbox-side">${selectButton}${unsettleButton}</span>
+    <span class="inbox-side">${unsettleButton}</span>
     ${outcome ? `<small class="answer-preview">${escapeHtml(outcome)}</small>` : ''}
   `;
   return `
     <div class="inbox-item action-thread sidebar-thread ${modeClass} ${badgeClass}${current ? ' is-current' : ''}${selected ? ' is-selected' : ''}" data-sidebar-thread-row data-thread-name="${escapeHtml(thread.name)}" data-thread-project-key="${escapeHtml(projectKeyText)}" data-thread-worktree-key="${escapeHtml(worktreeKeyText)}" aria-selected="${selected ? 'true' : 'false'}"${jumpLabel ? ` data-jump-index="${escapeHtml(jumpLabel)}"` : ''}>
-      <span class="status-dot${indicatorSeen ? ' is-seen' : ''}" ${indicatorAttrs}></span>
+      ${selectButton}
       ${cardMode ? activeBody : settledBody}
+      ${statusDot}
       ${jumpLabel ? `<span class="jump-hint" aria-hidden="true">${escapeHtml(jumpLabel)}</span>` : ''}
     </div>
   `;

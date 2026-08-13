@@ -340,6 +340,8 @@ test('sidebar batch selection can settle selected agents', () => {
     assert.match(runtime, /function settleSelectedSidebarThreads\(\)/);
     assert.match(runtime, /function renderSidebarBatchBar\(\)/);
     assert.match(runtime, /data-sidebar-thread-select="\$\{escapeHtml\(thread\.name\)\}"/);
+    assert.match(runtime, /\$\{selectButton\}\s+\$\{cardMode \? activeBody : settledBody\}\s+\$\{statusDot\}/);
+    assert.doesNotMatch(runtime, /\$\{selectButton\}\$\{stopButton\}|\$\{selectButton\}\$\{unsettleButton\}/);
     assert.match(runtime, /aria-selected="\$\{selected \? 'true' : 'false'\}"/);
     assert.match(runtime, /data-sidebar-select-visible/);
     assert.match(runtime, /data-sidebar-batch-settle/);
@@ -468,11 +470,13 @@ test('recently finished rows use compact T3-style settled rows', () => {
   assert.match(js, /\$\{sidebarProjectIcon\(project\.label\)\}/);
   assert.doesNotMatch(js, /data-runtime-status|data-runtime-start|activeRuntime/);
   assert.match(js, /class="answer-preview">\$\{escapeHtml\(outcome\)\}/);
-  assert.match(appCss, /\.workspace-agents-sidebar \.active-work \{\s+display: grid;\s+grid-template-columns: 10px minmax\(0, 1fr\);[\s\S]*height: 38px;/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.active-work \{\s+display: grid;\s+grid-template-columns: 24px minmax\(0, 1fr\) 16px;[\s\S]*height: 38px;/);
   assert.match(appCss, /--sidebar-agent-font: 500 13px\/20px var\(--sans\);/);
-  assert.match(appCss, /\.workspace-agents-sidebar \.settled-work \{\s+display: grid;\s+grid-template-columns: minmax\(0, 1fr\) auto;\s+gap: 0;\s+align-items: center;\s+height: 36px;/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.settled-work \{\s+display: grid;\s+grid-template-columns: 24px minmax\(0, 1fr\) 16px;\s+gap: 0 4px;\s+align-items: center;\s+height: 36px;/);
   assert.doesNotMatch(appCss, /runtime-label|sidebar-thread-status|background: var\(--runtime-dot, currentColor\);/);
-  assert.match(appCss, /\.workspace-agents-sidebar \.settled-work > \.status-dot \{\s+display: none;\s+\}/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.active-work > \.sidebar-thread-select,[\s\S]*\.workspace-agents-sidebar \.settled-work > \.sidebar-thread-select/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.active-work > \.status-dot,[\s\S]*\.workspace-agents-sidebar \.settled-work > \.status-dot/);
+  assert.doesNotMatch(appCss, /\.workspace-agents-sidebar \.settled-work > \.status-dot \{\s+display: none;\s+\}/);
   assert.doesNotMatch(appCss, /\.workspace-agents-sidebar \.settled-work\.failed > \.status-dot/);
   assert.match(appCss, /\.workspace-agents-sidebar :where\(a, button, input, select, textarea, h1, h2, h3, strong, small, span, time, output, kbd\) \{\s+font: var\(--sidebar-agent-font\) !important;/);
   assert.match(appCss, /\.workspace-agents-sidebar \.settled-work \.answer-preview \{\s+display: none;/);
@@ -489,6 +493,9 @@ test('recently finished success indicators can be dismissed locally', () => {
   assert.match(js, /function hasFreshFinishedIndicator\(thread\) \{/);
   assert.match(js, /return isSettledThread\(thread\) && canDismissFinishedIndicator/);
   assert.match(js, /const hasFreshFinished = settledThreads\.some\(hasFreshFinishedIndicator\);/);
+  assert.match(js, /const indicatorUnread = Boolean\(indicatorKey && !seenFinishedThreads\.has\(indicatorKey\)\);/);
+  assert.match(js, /const showStatusDot = running \|\| rawStatus === 'failed' \|\| indicatorUnread;/);
+  assert.match(js, /const statusDot = showStatusDot \? `<span class="status-dot" \$\{indicatorAttrs\}><\/span>` : '';/);
   assert.match(js, /data-finished-indicator-count>new/);
   assert.match(js, /list\.querySelectorAll\('\[data-finished-indicator\]'\)\.length/);
   assert.ok(js.includes('data-finished-indicator="${escapeHtml(indicatorKey)}"'));
