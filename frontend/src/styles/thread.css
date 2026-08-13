@@ -209,12 +209,12 @@ html[data-desktop="true"] .flow-topbar,
 .diff-box:hover > svg, .diff-box:focus-visible > svg { color: var(--blue); }
 .diff-file { flex: 0 0 auto; max-width: 210px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-color: var(--rule); padding: 6px 8px; background: color-mix(in srgb, var(--paper) 82%, var(--bg)); color: var(--ink-3); font: 700 10px/1.2 var(--mono); letter-spacing: 0; text-transform: none; }
 .diff-file.is-active { border-color: color-mix(in srgb, var(--blue) 68%, var(--rule)); color: var(--blue); background: var(--blue-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--blue) 20%, transparent); }
-.diff-dialog { --diff-mono: Hack, "JetBrains Mono", "SF Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; width: min(1280px, calc(100vw - 32px)); max-width: none; height: min(82svh, 860px); max-height: calc(100svh - 32px); margin: auto; padding: 0; color: #e5e5e5; border: 0; border-radius: 18px; background: #0a0a0a; box-shadow: none; }
+.diff-dialog { --diff-mono: var(--mono); width: min(1280px, calc(100vw - 32px)); max-width: none; height: min(82svh, 860px); max-height: calc(100svh - 32px); margin: auto; padding: 0; color: #e5e5e5; border: 0; border-radius: 18px; background: #0a0a0a; box-shadow: none; }
 .diff-dialog::backdrop { background: rgb(0 0 0 / .74); backdrop-filter: none; }
 .diff-dialog-shell { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); height: 100%; min-height: 0; }
 .diff-dialog.has-file-rail .diff-dialog-shell { grid-template-columns: minmax(180px, 240px) minmax(0, 1fr); }
 .diff-dialog-head { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 18px 12px; border: 0; background: transparent; }
-.diff-dialog-head h2 { margin: 0; max-width: min(820px, 72vw); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #e5e5e5; font: 750 13px/1.2 var(--diff-mono); }
+.diff-dialog-head h2 { margin: 0; max-width: min(820px, 72vw); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #e5e5e5; font: 700 13px/1.2 var(--diff-mono); }
 #diff-dialog-close { border: 0; background: transparent; box-shadow: none; color: rgb(212 212 212 / .62); }
 #diff-dialog-close:hover, #diff-dialog-close:focus-visible { background: transparent; color: #e5e5e5; }
 .diff-dialog-files { grid-column: 1; grid-row: 2; display: flex; flex-direction: column; gap: 4px; overflow: auto; padding: 0 16px 18px 18px; border: 0; background: transparent; scrollbar-width: thin; }

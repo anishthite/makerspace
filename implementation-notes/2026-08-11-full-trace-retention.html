@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Implementation Notes — Full local trace retention</title>
+<meta name="task" content="Keep all local sanitized trace events durably while loading only the recent page by default.">
+<meta name="date-started" content="2026-08-11">
+<meta name="date-updated" content="2026-08-11">
+<meta name="status" content="ready-for-review">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,trace,persistence,jsonl,memory">
+<meta name="related" content="2026-08-11-thread-list-payload-and-pi-memory.html,2026-08-01-pi-style-trace-sidecar.html,2026-06-26-durable-agent-traces.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code,pre{font-family:ui-monospace,Menlo,monospace}code{background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}pre{background:#f6f6f6;padding:.55rem .7rem;border-radius:4px;overflow-x:auto;font-size:12.5px;line-height:1.4}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-in-progress{color:#b85c00}</style>
+</head>
+<body>
+<h1>Full local trace retention</h1>
+<p class="meta"><code>spanner/makerspace-20260811010547-7fafb2-bcd04700</code> · worktree <code>/Users/anishthite/spanner/makerspace/makerspace-20260811010547-7fafb2</code> · 2026-08-11 · status <b>ready-for-review</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Keep all local sanitized trace events without restoring terminal <code>activeRuns</code> retention.</div><b>Source</b><div>User requested complete durable traces; the existing local compactor removed events beyond <code>2,000</code>.</div><b>Surface</b><div>Local JSONL trace files and <code>GET /api/sessions/:name/output</code>.</div><b>Schema</b><div>Append-only JSONL; normal output returns recent events and explicit <code>traceLimit</code> widens the read.</div><b>Open Qs</b><div>Cloud D1 remains bounded because its single-KV trace format lacks segment storage.</div></div>
+<h2>API contract</h2>
+<pre>GET /api/sessions/:name/output?traceLimit=all
+// normal request: newest 2,000 durable trace events
+// traceLimit=N: newest N durable trace events
+// traceLimit=all: complete local durable trace history</pre>
+<h2>Algorithm</h2>
+<ol><li>Append each sanitized local event to its existing JSONL file; never compact that file.</li><li>Read the tail of the file until the requested number of complete JSONL records is found.</li><li>Parse only that tail for normal output; parse the complete file only after explicit <code>traceLimit=all</code>.</li></ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>src/trace-store.js</code></td><td>touch</td><td>Preserve all local JSONL records and tail-read recent events.</td></tr><tr><td><code>src/server/routes.js</code></td><td>touch</td><td>Accept explicit trace-history read limits.</td></tr><tr><td><code>test/trace-store.test.js</code></td><td>touch</td><td>Prove full local persistence and bounded reads.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Keep append-only local JSONL over event-count compaction. Durable trace history remains complete.</td></tr><tr><td>D-002</td><td>Tail-read normal output over whole-file reads. Reopening an old thread does not materialize its whole trace.</td></tr><tr><td>D-003</td><td>Expose <code>traceLimit=all</code> without a UI control. The expensive history read is explicit; current timeline behavior stays small.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>Uncompressed JSONL over archive format. Existing files remain readable and the smallest code path preserves all events.</td></tr></table>
+<h2>Assumptions</h2>
+<ul><li>A-001 · Local filesystem traces are the target; D1's single-KV layout remains capped until it gains a trace-event table.</li></ul>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Restore local compaction; existing full JSONL files remain valid.</p>
+<h2>Verification</h2>
+<table><tr><th>ID</th><th>Check</th><th>Result</th></tr><tr><td>V-001</td><td><code>node --test test/trace-store.test.js test/thread-trace-tray.test.js</code></td><td>Pass, 39 tests.</td></tr><tr><td>V-002</td><td><code>npm test</code></td><td>Pass, 342 tests.</td></tr><tr><td>V-003</td><td><code>npm run build</code></td><td>Pass; existing chunk-size warning remains.</td></tr><tr><td>V-004</td><td><code>git diff --check</code></td><td>Pass.</td></tr></table>
+<h2>Definition of done</h2>
+<ul><li>Local JSONL contains more than <code>2,000</code> persisted events.</li><li>Normal reads return only the recent page without parsing the full file.</li><li><code>traceLimit=all</code> returns complete local history.</li><li>Focused tests and <code>npm test</code> pass.</li></ul>
+</body>
+</html>

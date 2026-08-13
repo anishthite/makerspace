@@ -275,8 +275,9 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
     const run = ensureRunState(name);
     if (!Array.isArray(run.trackedChanges)) run.trackedChanges = [];
     const remembered = rememberToolArgs(run, event);
-    if (event.phase !== 'end' || event.isError) return;
-    const change = trackedChangeFromToolEvent(event, event.args || remembered.args || {});
+    if (event.phase !== 'end') return;
+    const change = event.isError ? null : trackedChangeFromToolEvent(event, event.args || remembered.args || {});
+    if (event.toolCallId) run.toolCalls.delete(event.toolCallId);
     if (!change) return;
     run.trackedChanges = mergeTrackedChanges(run.trackedChanges, [change]);
     void persistTrackedChanges(name).catch((error) => console.warn(`[spanner] failed to persist tracked changes for ${name}: ${error.message}`));

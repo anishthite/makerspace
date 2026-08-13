@@ -8,6 +8,7 @@ import { runLocalPiSession } from '../host-pi-runner.js';
 import { ensureLocalGitRepo, ensureLocalGitWorktree } from '../local-git.js';
 import { analyzePiTraceText, summarizeThreadPerformanceList } from '../performance.js';
 import { normalizeImageAttachments, normalizeModelOptions, normalizeThreadRequest } from '../session.js';
+import { flushStoredTraceEvents } from '../trace-store.js';
 import { readSavedSettings } from '../settings.js';
 import { archiveStoredSession, getStoredSession, listStoredSessions, unarchiveStoredSession, upsertSession } from '../store.js';
 import { normalizeSubmittedAtMs, trimTrailingSlash } from './utils.js';
@@ -1099,6 +1100,9 @@ export function createThreadService({ config, provider, http, auth, runState, br
     }).finally(() => {
       liveLocalRuns.delete(stored.name);
       if (localRunControllers.get(stored.name) === controller) localRunControllers.delete(stored.name);
+      void flushStoredTraceEvents(config, stored.name)
+        .catch((error) => console.warn(`[trace-store] Failed to flush trace events for ${stored.name}: ${error.message}`))
+        .finally(() => activeRuns.delete(stored.name));
     });
 
     return stored;

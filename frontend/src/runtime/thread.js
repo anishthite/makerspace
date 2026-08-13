@@ -1526,7 +1526,7 @@ function renderPlainDiff(node, text = '') {
 
 const PIERRE_DIFF_CSS = `
 :host {
-  --diffs-font-family: Hack, "JetBrains Mono", "SF Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --diffs-font-family: var(--mono);
   --diffs-header-font-family: var(--diffs-font-family);
   --diffs-font-size: 13px;
   --diffs-line-height: 22px;
@@ -1550,7 +1550,7 @@ const PIERRE_DIFF_CSS = `
   background: transparent;
 }
 [data-header-content] { gap: 8px; }
-[data-title] { color: #e5e5e5; font-weight: 650; }
+[data-title] { color: #e5e5e5; font-weight: 700; }
 [data-metadata] { font-size: 11px; font-weight: 700; }
 [data-separator-wrapper] { background: #0a0a0a; color: rgb(163 163 163 / .46); }
 [data-code] { scrollbar-color: rgb(115 115 115 / .46) transparent; }

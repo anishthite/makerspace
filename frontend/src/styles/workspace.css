@@ -1302,7 +1302,7 @@ button.sidebar-prompt-start.primary-btn:disabled {
 .workspace-agents-sidebar .sidebar-project-group-head small,
 .workspace-agents-sidebar .sidebar-worktree-group-head small {
   color: rgba(142, 142, 142, .62);
-  font: 600 11px/1 var(--sans);
+  font: 700 11px/1 var(--sans);
 }
 
 .workspace-agents-sidebar .sidebar-worktree-group {

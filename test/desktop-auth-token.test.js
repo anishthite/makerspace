@@ -6,6 +6,7 @@ const desktopMain = readFileSync(new URL('../desktop/main.js', import.meta.url),
 const desktopPreload = readFileSync(new URL('../desktop/preload.cjs', import.meta.url), 'utf8');
 const frontendEntry = readFileSync(new URL('../frontend/src/entry.jsx', import.meta.url), 'utf8');
 const frontendPages = readFileSync(new URL('../frontend/src/pages.jsx', import.meta.url), 'utf8');
+const frontendSidebar = readFileSync(new URL('../frontend/src/components/agent-sidebar.jsx', import.meta.url), 'utf8');
 const frontendRouteManifest = readFileSync(new URL('../frontend/route-manifest.json', import.meta.url), 'utf8');
 const frontendSettings = readFileSync(new URL('../frontend/src/runtime/settings.js', import.meta.url), 'utf8');
 const sidebarPromptRuntime = readFileSync(new URL('../frontend/src/runtime/sidebar-prompt-lightbox.js', import.meta.url), 'utf8');
@@ -75,11 +76,11 @@ test('desktop Cmd/Ctrl+T asks the renderer to open a new thread', () => {
 });
 
 test('website N shortcut opens the new-thread lightbox outside inputs', () => {
-  assert.match(frontendPages, /aria-keyshortcuts="N Meta\+T Control\+T"/);
+  assert.match(frontendSidebar, /aria-keyshortcuts="N Meta\+T Control\+T"/);
   assert.match(sidebarPromptRuntime, /function isWebNewThreadShortcut\(event\)/);
   assert.match(sidebarPromptRuntime, /String\(event\.key \|\| ''\)\.toLowerCase\(\) === 'n'/);
   assert.match(sidebarPromptRuntime, /!isEditableShortcutTarget\(event\.target\)/);
-  assert.match(sidebarPromptRuntime, /openSidebarPromptLightbox\(\)/);
+  assert.match(sidebarPromptRuntime, /openFromNewThreadShortcut\(\)/);
 });
 
 test('desktop package build emits the signed app OTA zip', () => {

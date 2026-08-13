@@ -47,7 +47,7 @@ test('acceptedImageFiles keeps supported non-empty images only', () => {
 });
 
 test('new-thread modal binds its image input as a drop zone', () => {
-  const pages = readFileSync(new URL('../frontend/src/pages.jsx', import.meta.url), 'utf8');
+  const pages = readFileSync(new URL('../frontend/src/components/agent-sidebar.jsx', import.meta.url), 'utf8');
   const runtime = readFileSync(new URL('../frontend/src/runtime/sidebar-prompt-lightbox.js', import.meta.url), 'utf8');
 
   assert.match(pages, /<form id="sidebar-prompt-form" className="sidebar-prompt-lightbox-shell" noValidate>/);

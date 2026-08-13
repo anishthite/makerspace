@@ -394,7 +394,7 @@ async function runCreatedPiSession({ createSession, session, emitOutput, emitMet
   let unsubscribe = null;
   let clearMessageControl = null;
   let firstProviderCallPublished = false;
-  let streamedAssistantText = '';
+  let hasStreamedAssistantText = false;
   let lastProviderError = '';
   const toolOutput = new Map();
   let backgroundWorkflowCount = 0;
@@ -489,7 +489,7 @@ async function runCreatedPiSession({ createSession, session, emitOutput, emitMet
       if (event.type === 'message_update') {
         const messageEvent = event.assistantMessageEvent;
         if (messageEvent.type === 'text_delta') {
-          streamedAssistantText += messageEvent.delta;
+          hasStreamedAssistantText = true;
           emitAssistantChunk(messageEvent.delta);
           return;
         }
@@ -546,8 +546,8 @@ async function runCreatedPiSession({ createSession, session, emitOutput, emitMet
         const messages = Array.isArray(event.messages) ? event.messages : Array.isArray(event.newMessages) ? event.newMessages : [];
         const assistant = [...messages].reverse().find((message) => message?.role === 'assistant');
         const finalText = textFromContent(assistant?.content);
-        if (finalText && !streamedAssistantText.trim()) {
-          streamedAssistantText = finalText;
+        if (finalText && !hasStreamedAssistantText) {
+          hasStreamedAssistantText = true;
           emitAssistantChunk(finalText);
         }
         return;
@@ -587,6 +587,7 @@ async function runCreatedPiSession({ createSession, session, emitOutput, emitMet
 
       if (event.type === 'tool_execution_end') {
         const output = resultText(event.result).trim();
+        toolOutput.delete(event.toolCallId);
         const backgroundWorkflow = isBackgroundWorkflowToolEnd(event, output);
         if (backgroundWorkflow) {
           backgroundWorkflowCount += 1;
@@ -643,10 +644,11 @@ async function runCreatedPiSession({ createSession, session, emitOutput, emitMet
     }
     if (stopped) throw new Error('Stopped by user.');
     const lastAssistantText = piSession.getLastAssistantText?.();
-    if (lastAssistantText && !streamedAssistantText.trim()) {
+    if (lastAssistantText && !hasStreamedAssistantText) {
+      hasStreamedAssistantText = true;
       emitAssistantChunk(lastAssistantText);
     }
-    if (!streamedAssistantText.trim() && !lastAssistantText) {
+    if (!hasStreamedAssistantText && !lastAssistantText) {
       throw new Error(lastProviderError || 'Main agent completed without assistant output. Check provider auth.');
     }
     await emitStatus('completed', { done: true });

@@ -12,7 +12,7 @@ test('visible dropdowns use the app select bridge', () => {
     read('frontend/src/styles/thread.css'),
   ].join('\n');
   const ui = read('frontend/src/components/ui.jsx');
-  const pages = read('frontend/src/pages.jsx');
+  const pages = [read('frontend/src/pages.jsx'), read('frontend/src/components/agent-sidebar.jsx')].join('\n');
   const tracePage = read('frontend/src/trace-components-page.jsx');
   const interactive = read('frontend/src/runtime/interactive-artifacts.js');
   const workspace = read('frontend/src/styles/workspace.css');

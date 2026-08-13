@@ -67,6 +67,8 @@ test('thread page reload fetches fresh worker trace state', () => {
 
 test('thread output replays stored trace events without advancing stream cursor', () => {
   assert.match(routes, /readStoredTraceEvents/);
+  assert.match(routes, /traceLimit/);
+  assert.match(routes, /storedTraceEvents\(name, traceReadLimit\(url\)\)/);
   assert.match(routes, /mergeTraceEvents\(storedEvents, run\.events\)/);
   assert.match(js, /if \(event\.historical\) \{/);
   assert.match(js, /if \(event\?\.historical\) return;/);
@@ -230,9 +232,9 @@ test('thread trace tools render assistant-ui style typed bodies', () => {
 });
 
 test('thread keeps the global inbox open', () => {
-  assert.match(pages, /function GlobalAppShell\(\{ children, sidebarWorkspaceSwitcher = true, sidebarDefaultOpen = true/);
-  assert.match(pages, /<GlobalAppShell sidebarWorkspaceSwitcher=\{false\} insetClassName="global-app-center">/);
-  assert.doesNotMatch(pages, /<GlobalAppShell sidebarWorkspaceSwitcher=\{false\} sidebarDefaultOpen=\{false\} insetClassName="global-app-center">/);
+  assert.match(pages, /import \{ GlobalAppShell \} from '\.\/components\/agent-sidebar\.jsx';/);
+  assert.match(pages, /<GlobalAppShell insetClassName="global-app-center">/);
+  assert.doesNotMatch(pages, /<GlobalAppShell[^>]*sidebarDefaultOpen=\{false\}/);
   assert.match(css, /body\.thread-page \.thread-stage \{[\s\S]*grid-template-columns: minmax\(0, 1fr\) 382px/);
   assert.match(css, /body\.thread-page \.conversation-main > \.timeline-flow,[\s\S]*width: min\(100%, 1060px\)/);
   assert.match(css, /body\.thread-page \.agent-column \{[\s\S]*max-height: 100svh/);
