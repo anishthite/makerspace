@@ -945,7 +945,7 @@ function InspectorFiles() {
   return (
     <div className="aui-inspector-files" aria-label="Workspace inspector">
       <section className="aui-right-thread-list" aria-label="Threads">
-        <header><span>Threads</span><button type="button" aria-label="New thread">+</button></header>
+        <header><span>Threads</span><button type="button" aria-label="New worktree">+</button></header>
         {threads.map(([state, title, detail, plus, minus], index) => (
           <button key={title} type="button" className={index === 0 ? 'is-selected' : ''} aria-current={index === 0 ? 'true' : undefined}>
             <span className={`aui-right-thread-dot is-${state}`} aria-hidden="true" />

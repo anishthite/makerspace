@@ -1681,7 +1681,7 @@ function showThreadMenu(thread, position) {
   menu.setAttribute('role', 'menu');
   menu.innerHTML = [
     `<button type="button" role="menuitem" data-thread-menu-action="open">Open<kbd>↵</kbd></button>`,
-    `<button type="button" role="menuitem" data-thread-menu-action="new-thread-project">New thread in project</button>`,
+    `<button type="button" role="menuitem" data-thread-menu-action="new-thread-project">New worktree in project</button>`,
     active ? `<button type="button" role="menuitem" data-thread-menu-action="stop">Stop thread</button>` : '',
     canSettle && !settled ? `<button type="button" role="menuitem" data-thread-menu-action="settle">Archive thread</button>` : '',
     settled ? `<button type="button" role="menuitem" data-thread-menu-action="unsettle">Unarchive thread</button>` : '',
