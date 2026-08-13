@@ -1321,18 +1321,38 @@ button.sidebar-prompt-start.primary-btn:disabled {
 }
 
 .workspace-agents-sidebar .sidebar-worktree-new {
-  display: inline-grid;
+  position: relative;
+  display: inline-flex;
   width: 28px;
   height: 28px;
   flex: 0 0 28px;
   margin-left: 8px;
   cursor: pointer;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
   border: 0;
   border-radius: 8px;
   background: transparent;
   color: rgba(142, 142, 142, .86);
-  font: var(--sidebar-agent-font);
+  font-size: 0;
+  line-height: 0;
+}
+
+.workspace-agents-sidebar .sidebar-worktree-new::before,
+.workspace-agents-sidebar .sidebar-worktree-new::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 12px;
+  height: 1.5px;
+  border-radius: 999px;
+  background: currentColor;
+  transform: translate(-50%, -50%);
+}
+
+.workspace-agents-sidebar .sidebar-worktree-new::after {
+  transform: translate(-50%, -50%) rotate(90deg);
 }
 
 .workspace-agents-sidebar .sidebar-worktree-new:hover,
