@@ -3,12 +3,12 @@ import { redirectIfAuthRequired } from './auth-redirect.js';
 import './appearance.js?v=palette-2';
 import { htmlPreviewDocument } from './html-preview.js';
 import { renderInteractiveArtifacts, stripInteractiveArtifactBlocks } from './interactive-artifacts.js';
-import { openSafeLink, renderLinkedText } from './link-rendering.js';
+import { classifyLinkTarget, openSafeLink, renderLinkedText } from './link-rendering.js';
 import { extractOpenUIArtifacts, stripOpenUIArtifactBlocks } from './openui-artifacts.js';
 import { submitOnEnter } from './submit-on-enter.js';
 import { bindImageDropZone, clearImageInput, filesToImageAttachments, imageAttachmentSrc, imageAttachmentText, imageInputFiles, updateImageStatus } from './image-attachments.js';
 import { implementationNoteFromToolEvent, implementationNotesFromToolEvent } from './implementation-notes.js';
-import { diagramImageArtifactPaths, excalidrawArtifactPaths, htmlArtifactPaths, htmlImageArtifactPaths, isRenderableHtmlArtifactPath, normalizeDiagramImageArtifactPath, normalizeHtmlArtifactPath } from './excalidraw-artifacts.js';
+import { diagramImageArtifactPaths, excalidrawArtifactPaths, htmlArtifactPaths, htmlImageArtifactPaths, normalizeDiagramImageArtifactPath } from './excalidraw-artifacts.js';
 import { startGlobalSidebar } from './global-sidebar.js';
 
 const BROWSER_SESSION_KEY = 'spannerBrowserSession';
@@ -408,11 +408,12 @@ function htmlArtifactStateUrl(artifactPath, stateKey = 'default') {
   return `${url.pathname}${url.search}`;
 }
 
-function localHtmlArtifactPathFromHref(href) {
-  const raw = String(href || '').trim();
-  const sameOrigin = raw.startsWith(location.origin) ? raw.slice(location.origin.length) : raw;
-  const path = normalizeHtmlArtifactPath(sameOrigin.replace(/^\/+/, ''));
-  return path && isRenderableHtmlArtifactPath(path) ? path : '';
+function workspaceFileUrl(filePath, lineStart = 0) {
+  const url = new URL(apiUrl(`/api/threads/${encodeURIComponent(name)}/files/content`), location.origin);
+  url.searchParams.set('path', filePath);
+  url.searchParams.set('browserSession', getBrowserSessionId());
+  if (lineStart) url.hash = `L${lineStart}`;
+  return url.toString();
 }
 
 function resolveHtmlPreviewImageSrc(src) {
@@ -2757,15 +2758,23 @@ diffDialog?.addEventListener('click', (event) => {
 timeline?.addEventListener('click', (event) => {
   const link = event.target?.closest?.('a.rendered-link');
   if (!link || !timeline.contains(link)) return;
-  if (link.dataset.linkKind === 'local') {
-    const artifactPath = name ? localHtmlArtifactPathFromHref(link.getAttribute('href')) : '';
-    if (!artifactPath) return;
-    event.preventDefault();
-    location.assign(htmlArtifactUrl(artifactPath, { interactive: true }));
+  const target = classifyLinkTarget(link.getAttribute('href'));
+  if (!target) return;
+
+  if (target.kind === 'app') return;
+
+  event.preventDefault();
+  if (target.kind === 'artifact' && name) {
+    if (target.artifactKind === 'html') location.assign(htmlArtifactUrl(target.path, { interactive: true }));
+    else if (target.artifactKind === 'image') location.assign(diagramImageArtifactUrl(target.path));
+    else if (target.artifactKind === 'excalidraw') location.assign(excalidrawViewerUrl(target.path));
     return;
   }
-  event.preventDefault();
-  void openSafeLink(link.getAttribute('href'));
+  if (target.kind === 'workspace-file' && name) {
+    location.assign(workspaceFileUrl(target.path, target.lineStart));
+    return;
+  }
+  void openSafeLink(target.href);
 });
 agentActivityClose?.addEventListener('click', () => setAgentActivityOpen(false));
 document.addEventListener('keydown', (event) => {

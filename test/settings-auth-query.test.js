@@ -42,9 +42,9 @@ test('settings page exposes app logout action', () => {
   assert.match(settingsJs, /location\.replace\(homepageRedirectUrl\(\)\)/);
 });
 
-test('desktop external opener allows web and code links only', () => {
+test('desktop external opener allows web links only', () => {
   assert.match(desktopPreload, /openExternal: \(url\) => ipcRenderer\.invoke\('spanner:open-external', url\)/);
-  assert.match(desktopMain, /EXTERNAL_PROTOCOLS = new Set\(\['http:', 'https:', 'vscode:', 'vscode-insiders:', 'cursor:', 'zed:', 'jetbrains:'\]\)/);
+  assert.match(desktopMain, /EXTERNAL_PROTOCOLS = new Set\(\['http:', 'https:'\]\)/);
   assert.match(desktopMain, /shell\.openExternal\(target\.href\)/);
   assert.match(settingsJs, /spannerDesktop\?\.openExternal/);
 });

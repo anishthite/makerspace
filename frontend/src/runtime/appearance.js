@@ -1,4 +1,4 @@
-const APPEARANCE = Object.freeze({ theme: 'light', font: 'inter', palette: 'terra' });
+const APPEARANCE = Object.freeze({ theme: 'dark', font: 'inter', palette: 'terra' });
 
 export function applyAppearance() {
   const root = globalThis.document?.documentElement;

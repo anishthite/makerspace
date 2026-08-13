@@ -113,6 +113,19 @@ test('thread artifact route serves local Excalidraw drawings only', async () => 
     assert.doesNotMatch(interactiveCsp, /allow-same-origin/);
     assert.match(await interactiveHtml.text(), /data-spanner-interaction-shim/);
 
+    const workspaceFile = await fetch(`${baseUrl}/api/threads/viewer/files/content?path=notes.txt`, { headers });
+    assert.equal(workspaceFile.status, 200);
+    assert.equal(workspaceFile.headers.get('content-type'), 'text/plain; charset=utf-8');
+    assert.match(workspaceFile.headers.get('content-security-policy') || '', /sandbox/);
+    assert.equal(await workspaceFile.text(), 'not a drawing\n');
+
+    const workspaceHtml = await fetch(`${baseUrl}/api/threads/viewer/files/content?path=demo.html`, { headers });
+    assert.equal(workspaceHtml.status, 200);
+    assert.match(workspaceHtml.headers.get('content-security-policy') || '', /script-src 'none'; sandbox/);
+
+    const workspaceTraversal = await fetch(`${baseUrl}/api/threads/viewer/files/content?path=../notes.txt`, { headers });
+    assert.equal(workspaceTraversal.status, 400);
+
     const save = await fetch(`${baseUrl}/api/threads/viewer/artifacts?path=diagram.excalidraw`, {
       method: 'POST',
       headers: { ...headers, 'content-type': 'application/json' },

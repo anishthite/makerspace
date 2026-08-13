@@ -2277,8 +2277,8 @@ button.trace-ref-row { cursor: pointer; }
 .message-card.html-rendered .message-body { padding: 0; }
 .message-body[data-render-mode="text"] { white-space: pre-wrap; word-break: break-word; }
 .message-body a.rendered-link { color: var(--blue); text-decoration: underline; text-underline-offset: 2px; }
-.message-body a.rendered-link[data-link-kind="code"] { font-family: var(--mono); }
-.message-body a.rendered-link[data-link-kind="local"] { font-family: var(--mono); text-decoration-style: dotted; }
+.message-body a.rendered-link[data-link-kind="artifact"],
+.message-body a.rendered-link[data-link-kind="workspace-file"] { font-family: var(--mono); text-decoration-style: dotted; }
 .message-body a.rendered-link:hover,
 .message-body a.rendered-link:focus-visible { color: color-mix(in srgb, var(--blue) 82%, #fff); }
 .message-body[data-render-mode="html"] { min-width: min(760px, 100%); }

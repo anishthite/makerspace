@@ -60,6 +60,7 @@ export function createThreadService({ config, provider, http, auth, runState, br
   const MAX_IMAGE_ARTIFACT_BYTES = 16 * 1024 * 1024;
   const MAX_HTML_ARTIFACT_BYTES = 4 * 1024 * 1024;
   const MAX_HTML_ARTIFACT_STATE_BYTES = 256 * 1024;
+  const MAX_WORKSPACE_FILE_BYTES = 4 * 1024 * 1024;
   const IMAGE_ARTIFACT_TYPES = new Map([
     ['.gif', 'image/gif'],
     ['.jpg', 'image/jpeg'],
@@ -74,17 +75,23 @@ export function createThreadService({ config, provider, http, auth, runState, br
     return options?.traceStep ? options.traceStep(label, task) : task();
   }
 
-  function safeRelativeArtifactPath(value, allowedExts, message) {
+  function safeRelativePath(value, message) {
     const input = String(value || '').trim().replaceAll('\\', '/');
     if (!input || input.includes('\0') || path.isAbsolute(input) || /^[a-z][a-z0-9+.-]*:/i.test(input) || /[*?\[\]{}]/.test(input)) {
       throw clientError(message);
     }
 
     const normalized = path.posix.normalize(input.replace(/^\.\//, ''));
-    const ext = path.posix.extname(normalized).toLowerCase();
-    if (!normalized || normalized === '.' || normalized === '..' || normalized.startsWith('../') || !allowedExts.has(ext)) {
+    if (!normalized || normalized === '.' || normalized === '..' || normalized.startsWith('../')) {
       throw clientError(message);
     }
+    return normalized;
+  }
+
+  function safeRelativeArtifactPath(value, allowedExts, message) {
+    const normalized = safeRelativePath(value, message);
+    const ext = path.posix.extname(normalized).toLowerCase();
+    if (!allowedExts.has(ext)) throw clientError(message);
     return normalized;
   }
 
@@ -98,6 +105,10 @@ export function createThreadService({ config, provider, http, auth, runState, br
 
   function safeHtmlArtifactPath(value) {
     return safeRelativeArtifactPath(value, new Set(['.html']), 'Only relative HTML artifacts can be viewed.');
+  }
+
+  function safeWorkspaceFilePath(value) {
+    return safeRelativePath(value, 'Only relative workspace files can be viewed.');
   }
 
   function safeWorkflowRunId(value) {
@@ -392,6 +403,20 @@ export function createThreadService({ config, provider, http, auth, runState, br
       path: safePath,
       contentType: 'text/html; charset=utf-8',
       data: await readThreadArtifactBuffer(session, safePath, MAX_HTML_ARTIFACT_BYTES),
+    };
+  }
+
+  async function threadWorkspaceFilePayload(name, filePath, viewerSessionId = '', trusted = false, user = null) {
+    const session = await getThreadSession(name);
+    if (!canAccessSession(session, viewerSessionId, trusted, user)) {
+      throw clientError(`Main agent ${name} belongs to a different user.`, 403);
+    }
+
+    const safePath = safeWorkspaceFilePath(filePath);
+    return {
+      path: safePath,
+      contentType: http.contentTypeFor(safePath),
+      data: await readThreadArtifactBuffer(session, safePath, MAX_WORKSPACE_FILE_BYTES),
     };
   }
 
@@ -1191,6 +1216,7 @@ export function createThreadService({ config, provider, http, auth, runState, br
     threadArtifactPayload,
     threadImageArtifactPayload,
     threadHtmlArtifactPayload,
+    threadWorkspaceFilePayload,
     threadHtmlArtifactStatePayload,
     saveThreadHtmlArtifactStatePayload,
     saveThreadArtifactPayload,

@@ -115,7 +115,6 @@ body[data-react-page="workspace"] .launch-input-panel { background: var(--paper-
   color: #f0f0f0;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font: 700 12px/1.2 var(--sans);
 }
 .launch-input-panel > textarea {
   grid-column: 1 / -1;
@@ -367,13 +366,12 @@ button.workspace-project-lightbox-project:not(.primary-btn):not(.textbtn):not(.r
   border: 0;
   border-radius: 10px;
   background: transparent;
-  padding: 0 12px;
+  padding: 0;
   color: rgba(255, 255, 255, .74);
 }
 .sidebar-prompt-project-picker [data-slot="select-trigger"] {
   padding: 8px 0;
   color: #f0f0f0;
-  font: 700 12px/1.2 var(--sans);
 }
 .sidebar-prompt-project-picker > svg { pointer-events: none; color: rgba(255, 255, 255, .48); }
 .sidebar-prompt-project-picker > .sidebar-prompt-project-icon { color: rgba(255, 255, 255, .78); }
@@ -445,12 +443,12 @@ button.workspace-project-lightbox-project:not(.primary-btn):not(.textbtn):not(.r
 }
 .sidebar-prompt-model,
 .sidebar-prompt-thinking {
-  min-height: 40px;
+  min-height: 42px;
   border-color: transparent;
   border-radius: 10px;
   background: transparent;
   color: #ececec;
-  padding-inline: 12px;
+  padding-inline: 0;
   box-shadow: none;
 }
 .sidebar-prompt-model,
@@ -579,10 +577,25 @@ button.sidebar-prompt-start.primary-btn:disabled {
   .sidebar-prompt-model { grid-column: 2; min-width: 0; }
   .sidebar-prompt-thinking { grid-column: 1 / -1; grid-row: 2; min-width: 0; }
   .sidebar-prompt-start.primary-btn,
-  button.sidebar-prompt-start.primary-btn { grid-column: 3; grid-row: 1; }
+  button.sidebar-prompt-start.primary-btn { grid-column: 3; grid-row: 1; width: 42px; }
   .sidebar-prompt-lightbox .attachment-status.has-images,
   .workspace-prompt-inline .attachment-status.has-images { max-width: calc(100vw - 100px); }
-  .sidebar-prompt-status:not(:empty) { padding: 0 12px 10px; }
+  .sidebar-prompt-status:not(:empty) { padding-top: 8px; }
+}
+/* ponytail: one workspace text voice; remove when a real hierarchy needs distinct weights. */
+body[data-react-page="workspace"],
+body[data-react-page="workspace"] :where(a, button, input, textarea, select, option, label, p, span, strong, small, output, kbd, code, time, h1, h2, h3),
+#sidebar-prompt-lightbox,
+#sidebar-prompt-lightbox :where(button, select, option, label, p, span, strong, small, output, textarea) {
+  font-family: var(--sans) !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+}
+body[data-react-page="workspace"] ::placeholder,
+#sidebar-prompt-lightbox ::placeholder {
+  font-family: var(--sans) !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
 }
 .launch-card,
 .flow-composer { transition: border-color 120ms ease, box-shadow 120ms ease, background 120ms ease; }

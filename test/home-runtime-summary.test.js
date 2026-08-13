@@ -474,7 +474,7 @@ test('recently finished rows use compact T3-style settled rows', () => {
   assert.doesNotMatch(js, /data-runtime-status|data-runtime-start|activeRuntime/);
   assert.match(js, /class="answer-preview">\$\{escapeHtml\(outcome\)\}/);
   assert.match(appCss, /\.workspace-agents-sidebar \.active-work \{\s+display: grid;\s+grid-template-columns: 10px minmax\(0, 1fr\);[\s\S]*height: 38px;/);
-  assert.match(appCss, /--sidebar-agent-font: 500 13px\/20px var\(--sans\);/);
+  assert.match(appCss, /--sidebar-agent-font: 500 14px\/21px var\(--sans\);/);
   assert.match(appCss, /\.workspace-agents-sidebar \.settled-work \{\s+display: grid;\s+grid-template-columns: minmax\(0, 1fr\) auto;\s+gap: 0;\s+align-items: center;\s+height: 36px;/);
   assert.doesNotMatch(appCss, /runtime-label|sidebar-thread-status|background: var\(--runtime-dot, currentColor\);/);
   assert.match(appCss, /\.workspace-agents-sidebar \.settled-work > \.status-dot \{\s+display: none;\s+\}/);

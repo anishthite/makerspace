@@ -131,7 +131,7 @@
   <tr><td><code>node --check src/local-git.js src/server/threads.js src/config.js frontend/src/runtime/project.js frontend/src/runtime/app.js frontend/src/runtime/sidebar-prompt-lightbox.js frontend/src/runtime/global-sidebar.js test/local-git.test.js test/project-selector-static.test.js</code></td><td>Passed.</td></tr>
   <tr><td><code>node --test test/local-git.test.js test/project-selector-static.test.js test/session.test.js test/config.test.js</code></td><td>Passed 27/27.</td></tr>
   <tr><td><code>npm run build</code></td><td>Passed.</td></tr>
-  <tr><td>Temp-home smoke: create <code>workspace/ezhost</code>, launch <code>dushanbe</code>, assert <code>$HOME/spanner/ezhost/dushanbe</code>.</td><td>Passed.</td></tr>
+  <tr><td>Service smoke: call <code>createThreadSession()</code> with <code>workspace/ezhost</code> and <code>dushanbe</code>; assert <code>$HOME/spanner/ezhost/dushanbe</code>.</td><td>Passed.</td></tr>
 </table>
 
 <h2>Reversibility</h2>

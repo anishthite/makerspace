@@ -5,6 +5,7 @@ import { runInNewContext } from 'node:vm';
 
 const pages = readFileSync(new URL('../frontend/src/pages.jsx', import.meta.url), 'utf8');
 const components = readFileSync(new URL('../frontend/src/components/ui.jsx', import.meta.url), 'utf8');
+const agentSidebar = readFileSync(new URL('../frontend/src/components/agent-sidebar.jsx', import.meta.url), 'utf8');
 const threadHtml = readFileSync(new URL('../frontend/thread.html', import.meta.url), 'utf8');
 const js = readFileSync(new URL('../frontend/src/runtime/thread.js', import.meta.url), 'utf8');
 const openuiRenderer = readFileSync(new URL('../frontend/src/runtime/openui-renderer.jsx', import.meta.url), 'utf8');
@@ -351,15 +352,18 @@ test('openui assistant messages still scan raw text for media artifacts', () => 
 });
 
 test('assistant text links render and OpenUI URL actions open externally', () => {
-  assert.match(js, /import \{ openSafeLink, renderLinkedText \} from '\.\/link-rendering\.js'/);
+  assert.match(js, /import \{ classifyLinkTarget, openSafeLink, renderLinkedText \} from '\.\/link-rendering\.js'/);
   assert.match(js, /renderLinkedText\(node, displayText\)/);
   assert.match(js, /a\.rendered-link/);
-  assert.match(js, /function localHtmlArtifactPathFromHref/);
-  assert.match(js, /link\.dataset\.linkKind === 'local'/);
-  assert.match(js, /location\.assign\(htmlArtifactUrl\(artifactPath, \{ interactive: true \}\)\)/);
-  assert.match(js, /void openSafeLink\(link\.getAttribute\('href'\)\)/);
+  assert.match(js, /const target = classifyLinkTarget\(link\.getAttribute\('href'\)\)/);
+  assert.match(js, /target\.kind === 'artifact'/);
+  assert.match(js, /location\.assign\(htmlArtifactUrl\(target\.path, \{ interactive: true \}\)\)/);
+  assert.match(js, /target\.kind === 'workspace-file'/);
+  assert.match(js, /location\.assign\(workspaceFileUrl\(target\.path, target\.lineStart\)\)/);
+  assert.match(js, /void openSafeLink\(target\.href\)/);
   assert.match(css, /\.message-body a\.rendered-link/);
-  assert.match(css, /\.message-body a\.rendered-link\[data-link-kind="local"\]/);
+  assert.match(css, /\.message-body a\.rendered-link\[data-link-kind="artifact"\]/);
+  assert.match(css, /\.message-body a\.rendered-link\[data-link-kind="workspace-file"\]/);
   assert.match(openuiRenderer, /event\?\.type === 'open_url'/);
   assert.match(openuiRenderer, /void openSafeLink\(event\.params\?\.url\)/);
 });

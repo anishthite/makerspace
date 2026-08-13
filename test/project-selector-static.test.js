@@ -4,6 +4,10 @@ import { test } from 'node:test';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
+test('root route opens the project picker', () => {
+  assert.match(read('frontend/index.html'), /data-react-page="project"/);
+});
+
 test('project selector offers desktop local folders', () => {
   const pages = read('frontend/src/pages.jsx');
   const project = read('frontend/src/runtime/project.js');

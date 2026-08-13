@@ -69,6 +69,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
     threadArtifactPayload,
     threadImageArtifactPayload,
     threadHtmlArtifactPayload,
+    threadWorkspaceFilePayload,
     threadHtmlArtifactStatePayload,
     saveThreadHtmlArtifactStatePayload,
     saveThreadArtifactPayload,
@@ -611,6 +612,19 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
         sendText(response, 200, htmlArtifactData(artifact, interactive), artifact.contentType, {
           'cache-control': 'no-store',
           'content-security-policy': htmlArtifactCsp(interactive),
+          'x-content-type-options': 'nosniff',
+        });
+        return;
+      }
+
+      const threadFileContentMatch = pathname.match(/^\/api\/threads\/([^/]+)\/files\/content$/);
+      if (request.method === 'GET' && threadFileContentMatch) {
+        const name = decodeURIComponent(threadFileContentMatch[1]);
+        const file = await threadWorkspaceFilePayload(name, url.searchParams.get('path'), viewerSessionId, trusted, user);
+        const isHtml = String(file.contentType || '').startsWith('text/html');
+        sendText(response, 200, file.data, file.contentType, {
+          'cache-control': 'no-store',
+          'content-security-policy': isHtml ? htmlArtifactCsp(false) : "default-src 'none'; sandbox",
           'x-content-type-options': 'nosniff',
         });
         return;
