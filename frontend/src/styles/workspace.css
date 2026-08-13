@@ -1347,7 +1347,7 @@ body[data-react-page="workspace"] ::placeholder,
   cursor: pointer;
   align-items: center;
   justify-content: center;
-  border: 0;
+  border: 0 !important;
   border-radius: 8px;
   padding: 0;
   background: transparent;
