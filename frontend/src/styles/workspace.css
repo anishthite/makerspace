@@ -908,7 +908,7 @@ button.sidebar-prompt-start.primary-btn:disabled {
 
 /* T3Code nightly Sidebar V2 fidelity pass. */
 .workspace-agents-sidebar {
-  --sidebar-agent-font: 500 13px/20px var(--sans);
+  --sidebar-agent-font: 500 14px/21px var(--sans);
   --t3-sidebar: #181818;
   --t3-sidebar-fg: #e7e7e7;
   --t3-sidebar-muted: #8e8e8e;
