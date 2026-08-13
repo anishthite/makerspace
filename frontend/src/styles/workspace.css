@@ -1667,9 +1667,9 @@ body.sidebar-jump-hints .workspace-agents-sidebar .sidebar-thread[data-jump-inde
 
 .workspace-agents-sidebar .active-work {
   display: grid;
-  grid-template-columns: 10px minmax(0, 1fr);
+  grid-template-columns: 24px minmax(0, 1fr) 16px;
   align-items: center;
-  gap: 0 8px;
+  gap: 0 4px;
   height: 38px;
   min-height: 38px;
   margin: 0 0 1px;
@@ -1684,12 +1684,22 @@ body.sidebar-jump-hints .workspace-agents-sidebar .sidebar-thread[data-jump-inde
   opacity: 1;
 }
 
-.workspace-agents-sidebar .active-work > .status-dot {
-  display: block;
+.workspace-agents-sidebar .active-work > .sidebar-thread-select,
+.workspace-agents-sidebar .settled-work > .sidebar-thread-select {
+  position: relative;
+  z-index: 3;
   grid-column: 1;
+  justify-self: center;
+}
+
+.workspace-agents-sidebar .active-work > .status-dot,
+.workspace-agents-sidebar .settled-work > .status-dot {
+  display: block;
+  grid-column: 3;
+  justify-self: end;
   width: 7px;
   height: 7px;
-  margin: 0 auto;
+  margin: 0 6px 0 0;
 }
 
 .workspace-agents-sidebar .active-work .inbox-main {
@@ -1754,7 +1764,7 @@ body.sidebar-jump-hints .workspace-agents-sidebar .sidebar-thread[data-jump-inde
 .workspace-agents-sidebar .active-work .inbox-side {
   position: absolute;
   top: 10px;
-  right: 9px;
+  right: 24px;
   z-index: 3;
   grid-column: auto;
   margin: 0;
@@ -1770,8 +1780,8 @@ body.sidebar-jump-hints .workspace-agents-sidebar .sidebar-thread[data-jump-inde
 
 .workspace-agents-sidebar .settled-work {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0;
+  grid-template-columns: 24px minmax(0, 1fr) 16px;
+  gap: 0 4px;
   align-items: center;
   height: 36px;
   min-height: 36px;
@@ -1779,19 +1789,14 @@ body.sidebar-jump-hints .workspace-agents-sidebar .sidebar-thread[data-jump-inde
   color: rgba(142, 142, 142, .76);
 }
 
-.workspace-agents-sidebar .settled-work > .status-dot {
-  display: none;
-}
-
-
 .workspace-agents-sidebar .settled-work .inbox-main {
-  grid-column: 1;
+  grid-column: 2;
   display: flex;
   min-width: 0;
   height: 36px;
   align-items: center;
   gap: 10px;
-  padding: 0 10px;
+  padding: 0 4px;
 }
 
 .workspace-agents-sidebar .settled-work .sidebar-thread-favicon {
@@ -1837,7 +1842,7 @@ body.sidebar-jump-hints .workspace-agents-sidebar .sidebar-thread[data-jump-inde
 
 .workspace-agents-sidebar .settled-work .inbox-side {
   position: absolute;
-  right: 4px;
+  right: 24px;
   z-index: 3;
   grid-column: 3;
   opacity: 0;
