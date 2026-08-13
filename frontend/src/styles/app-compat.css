@@ -184,7 +184,7 @@ select:focus { border-color: var(--blue); box-shadow: none; outline: none; }
     grid-column: 2;
     min-width: 0;
   }
-  .launch-controls .thinking-slider {
+  .launch-controls .thinking-picker {
     grid-column: 1 / -1;
     min-width: 0;
   }
@@ -243,7 +243,7 @@ select:focus { border-color: var(--blue); box-shadow: none; outline: none; }
     grid-column: 2;
     min-width: 0;
   }
-  body.thread-page .flow-composer .thinking-slider {
+  body.thread-page .flow-composer .thinking-picker {
     grid-column: 1 / -1;
     min-width: 0;
   }

@@ -111,9 +111,14 @@ function threadUrl(name) {
   return `/thread.html?${new URLSearchParams({ name })}`;
 }
 
+function normalizeThinkingLevel(value, fallback = '') {
+  const level = String(value || '').trim().toLowerCase();
+  return THINKING_LEVELS.includes(level) ? level : THINKING_LEVELS[Number(level)] || fallback;
+}
+
 function sidebarThinkingLevelValue() {
   const { thinking } = elements();
-  return THINKING_LEVELS[Number(thinking?.value)] || '';
+  return normalizeThinkingLevel(thinking?.value);
 }
 
 function promptRequestBody(project, prompt, controls = {}) {
@@ -180,28 +185,24 @@ function bindNewThreadShortcuts() {
   });
 }
 
-function thinkingIndex(value) {
-  const index = THINKING_LEVELS.indexOf(String(value || '').trim().toLowerCase());
-  return index >= 0 ? index : THINKING_LEVELS.indexOf('xhigh');
-}
-
 function renderSidebarThinkingLevel() {
   const { thinking, thinkingOutput } = elements();
-  if (!thinking || !thinkingOutput) return;
+  if (!thinking) return;
   const level = sidebarThinkingLevelValue() || defaultThinkingLevel || 'xhigh';
   const title = `Thinking: ${level}`;
-  thinkingOutput.textContent = level;
-  thinkingOutput.title = title;
+  if (thinkingOutput) {
+    thinkingOutput.textContent = level;
+    thinkingOutput.title = title;
+  }
   thinking.title = title;
-  thinking.setAttribute('aria-valuetext', level);
 }
 
 function setSidebarThinkingLevel(value) {
   const { thinking } = elements();
   if (!thinking) return;
-  const level = String(value || 'xhigh').trim().toLowerCase();
-  thinking.value = String(thinkingIndex(level));
-  thinking.dispatchEvent(new Event('input', { bubbles: true }));
+  const level = normalizeThinkingLevel(value, 'xhigh');
+  thinking.value = level;
+  thinking.dispatchEvent(new Event('change', { bubbles: true }));
   renderSidebarThinkingLevel();
 }
 
@@ -397,7 +398,7 @@ export function bindSidebarPromptLightbox({ fetchJson, makeThreadUrl = threadUrl
   });
 
   model?.addEventListener('change', saveSidebarRunControls);
-  thinking?.addEventListener('input', () => {
+  thinking?.addEventListener('change', () => {
     renderSidebarThinkingLevel();
     saveSidebarRunControls();
   });
