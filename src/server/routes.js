@@ -99,9 +99,16 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
     };
   }
 
-  async function storedTraceEvents(name) {
+  function traceReadLimit(url) {
+    const value = String(url.searchParams.get('traceLimit') || '').trim().toLowerCase();
+    if (value === 'all') return Infinity;
+    const limit = Number(value);
+    return Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : undefined;
+  }
+
+  async function storedTraceEvents(name, limit) {
     try {
-      return await readStoredTraceEvents(config, name);
+      return await readStoredTraceEvents(config, name, limit === undefined ? undefined : { limit });
     } catch (error) {
       console.warn(`[trace-store] Failed to read trace events for ${name}: ${error.message}`);
       return [];
@@ -231,7 +238,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
 
           const offset = Number(url.searchParams.get('offset'));
           const run = await trace.step('thread.syncOutput', () => syncRunOutput(thread));
-          const storedEvents = await trace.step('trace.readEvents', () => storedTraceEvents(name));
+          const storedEvents = await trace.step('trace.readEvents', () => storedTraceEvents(name, traceReadLimit(url)));
           const output = retainedOutputChunk(run, Number.isFinite(offset) && offset > 0 ? offset : 0);
           const session = decorateLiveSession({
             ...thread,
@@ -798,7 +805,7 @@ export function createRequestHandler({ config, provider, http, auth, runState, t
         if (requireSessionAccess(request, response, session, url, user)) return;
 
         const run = await syncRunOutput(session);
-        const storedEvents = await storedTraceEvents(name);
+        const storedEvents = await storedTraceEvents(name, traceReadLimit(url));
         const offset = Number(url.searchParams.get('offset'));
         const output = retainedOutputChunk(run, Number.isFinite(offset) && offset > 0 ? offset : 0);
         const decorated = decorateLiveSession({

@@ -80,6 +80,21 @@ test('trace store skips malformed JSONL lines on read', async (t) => {
   });
 });
 
+test('local trace files keep complete history while normal reads use the recent page', async (t) => {
+  await withTraceStore(t, async (config) => {
+    const configWithSmallPage = { ...config, traceStoreMaxEvents: 2 };
+    const name = 'complete-trace';
+    for (let id = 1; id <= 251; id += 1) {
+      await appendStoredTraceEvent(configWithSmallPage, name, { id, type: 'thinking', content: `event-${id}` });
+    }
+
+    const lines = (await readFile(traceStoreFilePath(configWithSmallPage, name), 'utf8')).trim().split('\n');
+    assert.equal(lines.length, 252);
+    assert.deepEqual((await readStoredTraceEvents(configWithSmallPage, name)).map((event) => event.id), [250, 251]);
+    assert.equal((await readStoredTraceEvents(configWithSmallPage, name, { limit: Infinity })).length, 251);
+  });
+});
+
 test('run-state persistence hook queues trace events', async (t) => {
   await withTraceStore(t, async (config) => {
     const state = createRunState({
@@ -97,6 +112,26 @@ test('run-state persistence hook queues trace events', async (t) => {
     assert.equal(events.length, 1);
     assert.equal(events[0].type, 'status');
     assert.equal(events[0].runStatus, 'running');
+  });
+});
+
+test('terminal tool events release remembered arguments', async (t) => {
+  await withTraceStore(t, async (config) => {
+    const state = createRunState({
+      config,
+      provider: { info: () => ({ kind: 'test' }) },
+      loadPiSdk: async () => ({}),
+      loadPiAi: async () => ({}),
+      canAccessSession: () => true,
+    });
+    const args = { content: 'x'.repeat(1024 * 1024) };
+
+    state.recordRunEvent('run-tool', { type: 'tool', phase: 'start', toolCallId: 'call-1', toolName: 'read', args });
+    assert.equal(state.activeRuns.get('run-tool').toolCalls.size, 1);
+
+    state.recordRunEvent('run-tool', { type: 'tool', phase: 'end', toolCallId: 'call-1', toolName: 'read', args });
+    assert.equal(state.activeRuns.get('run-tool').toolCalls.size, 0);
+    await flushStoredTraceEvents(config, 'run-tool');
   });
 });
 

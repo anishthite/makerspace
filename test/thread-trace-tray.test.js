@@ -67,6 +67,8 @@ test('thread page reload fetches fresh worker trace state', () => {
 
 test('thread output replays stored trace events without advancing stream cursor', () => {
   assert.match(routes, /readStoredTraceEvents/);
+  assert.match(routes, /traceLimit/);
+  assert.match(routes, /storedTraceEvents\(name, traceReadLimit\(url\)\)/);
   assert.match(routes, /mergeTraceEvents\(storedEvents, run\.events\)/);
   assert.match(js, /if \(event\.historical\) \{/);
   assert.match(js, /if \(event\?\.historical\) return;/);

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { appendFile, mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, open, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { d1StateRequested, readD1Kv, writeD1Kv } from './d1-state.js';
@@ -11,11 +11,9 @@ const MAX_TRACE_STRING_CHARS = 32_000;
 const MAX_TRACE_ARRAY_ITEMS = 120;
 const MAX_TRACE_OBJECT_KEYS = 160;
 const MAX_TRACE_DEPTH = 8;
-const COMPACT_EVERY_WRITES = 250;
 const SECRET_KEY_PATTERN = /(?:api[_-]?key|auth(?:orization)?|credential|password|secret|token)/i;
 
 const writeQueues = new Map();
-const appendCounts = new Map();
 const lastEntryIds = new Map();
 
 function maxTraceEvents(config = {}) {
@@ -150,12 +148,43 @@ function parseTraceFile(text) {
   return { header, entries };
 }
 
-async function readLocalTraceEntries(config, name) {
+function traceReadLimit(value, fallback) {
+  if (value === Infinity) return Infinity;
+  const limit = Number(value);
+  return Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : fallback;
+}
+
+async function readLocalTraceTail(filePath, limit) {
+  const handle = await open(filePath, 'r');
+  try {
+    const { size } = await handle.stat();
+    const chunks = [];
+    let position = size;
+    let lineBreaks = 0;
+    while (position > 0 && lineBreaks <= limit) {
+      const length = Math.min(position, 64 * 1024);
+      position -= length;
+      const buffer = Buffer.allocUnsafe(length);
+      const { bytesRead } = await handle.read(buffer, 0, length, position);
+      const chunk = buffer.subarray(0, bytesRead);
+      for (const byte of chunk) {
+        if (byte === 0x0a) lineBreaks += 1;
+      }
+      chunks.unshift(chunk);
+    }
+    return Buffer.concat(chunks).toString('utf8').split(/\r?\n/).filter(Boolean).slice(-limit).join('\n');
+  } finally {
+    await handle.close();
+  }
+}
+
+async function readLocalTraceEntries(config, name, { limit = maxTraceEvents(config) } = {}) {
   const filePath = traceStoreFilePath(config, name);
   if (!filePath) return [];
 
   try {
-    const text = await readFile(filePath, 'utf8');
+    const count = traceReadLimit(limit, maxTraceEvents(config));
+    const text = count === Infinity ? await readFile(filePath, 'utf8') : await readLocalTraceTail(filePath, count);
     return parseTraceFile(text).entries;
   } catch (error) {
     if (error.code === 'ENOENT') return [];
@@ -190,9 +219,9 @@ async function readD1TraceEntries(name) {
   return normalizeD1TraceStore(stored, name).entries;
 }
 
-export async function readStoredTraceEvents(config = {}, name, { after = 0 } = {}) {
+export async function readStoredTraceEvents(config = {}, name, { after = 0, limit = maxTraceEvents(config) } = {}) {
   if (!traceStoreEnabled(config)) return [];
-  const entries = d1TraceStoreEnabled() ? await readD1TraceEntries(name) : await readLocalTraceEntries(config, name);
+  const entries = d1TraceStoreEnabled() ? await readD1TraceEntries(name) : await readLocalTraceEntries(config, name, { limit });
   const lastId = Number(after);
   return entries
     .map(storedEventFromEntry)
@@ -216,23 +245,6 @@ async function ensureLocalTraceFile(config, name, timestamp) {
   return filePath;
 }
 
-async function compactLocalTraceFile(config, name, filePath) {
-  const text = await readFile(filePath, 'utf8').catch((error) => {
-    if (error.code === 'ENOENT') return '';
-    throw error;
-  });
-  const parsed = parseTraceFile(text);
-  const maxEvents = maxTraceEvents(config);
-  if (parsed.entries.length <= maxEvents) return;
-
-  const entries = parsed.entries.slice(-maxEvents);
-  const header = parsed.header || sessionHeader(name, entries[0]?.timestamp);
-  const tempPath = `${filePath}.${process.pid}.${randomUUID()}.tmp`;
-  const lines = [JSON.stringify(header), ...entries.map((entry) => JSON.stringify(entry))];
-  await writeFile(tempPath, `${lines.join('\n')}\n`, 'utf8');
-  await rename(tempPath, filePath);
-}
-
 async function appendLocalTraceEvent(config, name, event, key) {
   const entry = traceEntry(name, event, lastEntryIds.get(key) || null);
   const filePath = await ensureLocalTraceFile(config, name, entry.timestamp);
@@ -240,13 +252,6 @@ async function appendLocalTraceEvent(config, name, event, key) {
 
   await appendFile(filePath, `${JSON.stringify(entry)}\n`, 'utf8');
   lastEntryIds.set(key, entry.id);
-
-  const count = (appendCounts.get(key) || 0) + 1;
-  appendCounts.set(key, count);
-  if (count % COMPACT_EVERY_WRITES === 0) {
-    await compactLocalTraceFile(config, name, filePath);
-  }
-
   return entry;
 }
 
