@@ -21,7 +21,7 @@ import {
 } from '@phosphor-icons/react';
 import { useState } from 'react';
 
-import { Button, InputGroup, ScrollArea, Select, Slider, StatusPill, Surface } from './components/ui.jsx';
+import { Button, InputGroup, ScrollArea, Select, StatusPill, Surface } from './components/ui.jsx';
 import { cn } from '#lib/utils';
 
 const buttonIconProps = { 'aria-hidden': true, 'data-icon': 'inline-start', className: 'size-4' };
@@ -968,9 +968,8 @@ function ThreadMockRunControls() {
     <InputGroup label="model" className="model-picker max-sm:flex-[1_1_100%]">
       <Select name="modelRef" variant="inline" defaultValue="codex-gpt-5"><option value="codex-gpt-5">codex · gpt-5</option></Select>
     </InputGroup>
-    <InputGroup label="thinking" className="thinking-slider max-sm:flex-[1_1_100%]">
-      <Slider min="0" max="5" step="1" defaultValue="5" />
-      <output>xhigh</output>
+    <InputGroup label="thinking" className="thinking-picker max-sm:flex-[1_1_100%]">
+      <Select name="thinkingLevel" variant="inline" aria-label="Thinking level" defaultValue="xhigh"><option value="off">off</option><option value="minimal">minimal</option><option value="low">low</option><option value="medium">medium</option><option value="high">high</option><option value="xhigh">xhigh</option></Select>
     </InputGroup>
   </div>;
 }

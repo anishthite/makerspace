@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import {
   ArrowLeftIcon,
+  ArrowUpIcon,
   ArrowsClockwiseIcon,
   CaretDownIcon,
   CaretUpIcon,
@@ -36,7 +37,6 @@ import {
   InputMessage,
   ScrollArea,
   Select,
-  Slider,
   StatusPill,
   Surface,
   Switch,
@@ -291,9 +291,8 @@ function RunControls({ launch = false }) {
     <InputGroup label="model" className="model-picker max-sm:flex-[1_1_100%]">
       <Select id="model-ref" name="modelRef" variant="inline" placeholder="loading model…"><option value="">loading model…</option></Select>
     </InputGroup>
-    <InputGroup label="thinking" className="thinking-slider max-sm:flex-[1_1_100%]">
-      <Slider id="thinking-level" min="0" max="5" step="1" defaultValue="5" />
-      <output id="thinking-level-value" htmlFor="thinking-level">xhigh</output>
+    <InputGroup label="thinking" className="thinking-picker max-sm:flex-[1_1_100%]">
+      <Select id="thinking-level" name="thinkingLevel" defaultValue="xhigh" variant="inline" aria-label="Thinking level" placeholder="xhigh"><option value="off">off</option><option value="minimal">minimal</option><option value="low">low</option><option value="medium">medium</option><option value="high">high</option><option value="xhigh">xhigh</option></Select>
     </InputGroup>
   </div>;
 }
@@ -447,11 +446,10 @@ export function WorkspacePage() {
           <InputGroup className="model-picker sidebar-prompt-model max-sm:flex-[1_1_100%]">
             <Select id="model-ref" name="modelRef" variant="prompt" aria-label="Model for new agent" placeholder="loading model…"><option value="">loading model…</option></Select>
           </InputGroup>
-          <InputGroup label="thinking" className="thinking-slider sidebar-prompt-thinking max-sm:flex-[1_1_100%]">
-            <Slider id="thinking-level" min="0" max="5" step="1" defaultValue="5" />
-            <output id="thinking-level-value" htmlFor="thinking-level">xhigh</output>
+          <InputGroup className="model-picker sidebar-prompt-thinking max-sm:flex-[1_1_100%]">
+            <Select id="thinking-level" name="thinkingLevel" defaultValue="xhigh" variant="prompt" aria-label="Thinking level" placeholder="xhigh"><option value="off">off</option><option value="minimal">minimal</option><option value="low">low</option><option value="medium">medium</option><option value="high">high</option><option value="xhigh">xhigh</option></Select>
           </InputGroup>
-          <Button id="thread-submit" variant="primary" className="sidebar-prompt-start" type="submit" aria-label="send prompt"><PaperPlaneTiltIcon className="size-4" aria-hidden="true" /></Button>
+          <Button id="thread-submit" variant="primary" className="sidebar-prompt-start" type="submit" aria-label="send prompt"><ArrowUpIcon className="size-4" weight="bold" aria-hidden="true" /></Button>
         </div>
         <WorkspaceProjectLightbox />
         <div className="repo-tray" hidden>
