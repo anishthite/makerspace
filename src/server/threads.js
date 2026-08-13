@@ -1109,8 +1109,22 @@ export function createThreadService({ config, provider, http, auth, runState, br
   }
 
   async function startLocalThreadSession(session) {
-    const sourceRepoPath = await resolveLocalRepoPath(session.repoPath);
-    const worktree = await ensureLocalGitWorktree({ ...session, repoPath: sourceRepoPath }, config);
+    const repoPath = await resolveLocalRepoPath(session.repoPath);
+    const sourceRepoPath = session.sourceRepoPath ? await resolveLocalRepoPath(session.sourceRepoPath) : repoPath;
+    if (session.reuseRepoPath) {
+      return startLocalThreadRun({
+        ...session,
+        repoPath,
+        sourceRepoPath,
+        worktreePath: session.worktreePath || repoPath,
+        localWorktree: Boolean(session.worktreePath || session.localWorktree),
+        repoUrl: '',
+        repoMode: 'local',
+        branch: session.branch || 'main',
+        threadBridge: true,
+      }, session.taskPrompt, Number(session.submittedAtMs) || Date.now());
+    }
+    const worktree = await ensureLocalGitWorktree({ ...session, repoPath: sourceRepoPath, sourceRepoPath }, config);
     return startLocalThreadRun({
       ...session,
       ...worktree,

@@ -111,18 +111,28 @@ function threadUrl(name) {
   return `/thread.html?${new URLSearchParams({ name })}`;
 }
 
+function normalizeThinkingLevel(value, fallback = '') {
+  const level = String(value || '').trim().toLowerCase();
+  return THINKING_LEVELS.includes(level) ? level : THINKING_LEVELS[Number(level)] || fallback;
+}
+
 function sidebarThinkingLevelValue() {
   const { thinking } = elements();
-  return THINKING_LEVELS[Number(thinking?.value)] || '';
+  return normalizeThinkingLevel(thinking?.value);
 }
 
 function promptRequestBody(project, prompt, controls = {}) {
   const localProject = project?.kind === 'local' || looksLikeLocalPath(project?.value);
+  const sourceRepoPath = cleanProjectValue(project?.sourceRepoPath);
+  const worktreePath = cleanProjectValue(project?.worktreePath);
   return {
     ...(localProject ? { repoPath: cleanProjectValue(project.value) } : { repoUrl: normalizeRepoUrl(project.value) }),
     branch: project?.branch || 'main',
     prompt,
     repoSource: localProject ? '' : project?.repoSource || 'github',
+    ...(sourceRepoPath ? { sourceRepoPath } : {}),
+    ...(worktreePath ? { worktreePath } : {}),
+    ...(project?.reuseRepoPath ? { reuseRepoPath: true } : {}),
     modelRef: controls.modelRef || localStorage.getItem(MODEL_REF_KEY) || '',
     thinkingLevel: controls.thinkingLevel || localStorage.getItem(THINKING_LEVEL_KEY) || '',
     images: Array.isArray(controls.images) ? controls.images : [],
@@ -145,7 +155,7 @@ function elements() {
     imageTrigger: document.querySelector('#sidebar-prompt-images-trigger'),
     images: document.querySelector('#sidebar-prompt-images'),
     imageStatus: document.querySelector('#sidebar-prompt-image-status'),
-    triggers: [...document.querySelectorAll('[data-sidebar-new-thread]')],
+    triggers: [...document.querySelectorAll('[data-sidebar-new-thread], [data-sidebar-worktree-new-thread]')],
   };
 }
 
@@ -180,28 +190,24 @@ function bindNewThreadShortcuts() {
   });
 }
 
-function thinkingIndex(value) {
-  const index = THINKING_LEVELS.indexOf(String(value || '').trim().toLowerCase());
-  return index >= 0 ? index : THINKING_LEVELS.indexOf('xhigh');
-}
-
 function renderSidebarThinkingLevel() {
   const { thinking, thinkingOutput } = elements();
-  if (!thinking || !thinkingOutput) return;
+  if (!thinking) return;
   const level = sidebarThinkingLevelValue() || defaultThinkingLevel || 'xhigh';
   const title = `Thinking: ${level}`;
-  thinkingOutput.textContent = level;
-  thinkingOutput.title = title;
+  if (thinkingOutput) {
+    thinkingOutput.textContent = level;
+    thinkingOutput.title = title;
+  }
   thinking.title = title;
-  thinking.setAttribute('aria-valuetext', level);
 }
 
 function setSidebarThinkingLevel(value) {
   const { thinking } = elements();
   if (!thinking) return;
-  const level = String(value || 'xhigh').trim().toLowerCase();
-  thinking.value = String(thinkingIndex(level));
-  thinking.dispatchEvent(new Event('input', { bubbles: true }));
+  const level = normalizeThinkingLevel(value, 'xhigh');
+  thinking.value = level;
+  thinking.dispatchEvent(new Event('change', { bubbles: true }));
   renderSidebarThinkingLevel();
 }
 
@@ -332,10 +338,10 @@ function ensureSidebarProjects() {
   return projectsPromise;
 }
 
-export function openSidebarPromptLightbox() {
+export function openSidebarPromptLightbox(projectOverride = null) {
   const { dialog, prompt, status, images, imageStatus } = elements();
   if (!dialog) return;
-  selectedPromptProject = readSelectedProject();
+  selectedPromptProject = projectOverride?.value ? projectOverride : readSelectedProject();
   renderSidebarProjectOptions(readCachedRecentProjects());
   loadSidebarRunControls();
   const selected = renderProjectState();
@@ -391,13 +397,13 @@ export function bindSidebarPromptLightbox({ fetchJson, makeThreadUrl = threadUrl
     }
     const index = projectSelect.value === '' ? -1 : Number(projectSelect.value);
     selectedPromptProject = Number.isInteger(index) && index >= 0 ? sidebarProjects[index] || null : null;
-    writeSelectedProject(selectedPromptProject);
+    if (!selectedPromptProject?.reuseRepoPath) writeSelectedProject(selectedPromptProject);
     renderProjectState();
     elements().prompt?.focus();
   });
 
   model?.addEventListener('change', saveSidebarRunControls);
-  thinking?.addEventListener('input', () => {
+  thinking?.addEventListener('change', () => {
     renderSidebarThinkingLevel();
     saveSidebarRunControls();
   });
@@ -438,7 +444,7 @@ export function bindSidebarPromptLightbox({ fetchJson, makeThreadUrl = threadUrl
       return;
     }
     saveSidebarRunControls();
-    writeSelectedProject(selected);
+    if (!selected.reuseRepoPath) writeSelectedProject(selected);
     if (submit) submit.disabled = true;
     if (status) status.textContent = 'Starting...';
     try {

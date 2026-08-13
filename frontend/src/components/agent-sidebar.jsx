@@ -2,12 +2,12 @@ import {
   FolderOpenIcon,
   FunnelIcon,
   MagnifyingGlassIcon,
-  PaperPlaneTiltIcon,
+  ArrowUpIcon,
   PlusIcon,
   XIcon,
 } from '@phosphor-icons/react';
 
-import { Button, InputGroup, ScrollArea, Select, Slider, Surface } from './ui.jsx';
+import { Button, InputGroup, ScrollArea, Select, Surface } from './ui.jsx';
 import {
   Sidebar,
   SidebarContent,
@@ -32,7 +32,6 @@ export function AgentInboxSidebar() {
           <button id="sidebar-project-scope" className="sidebar-project-scope sidebar-search-filter" type="button" data-sidebar-scope-toggle aria-label="Filter agents" aria-haspopup="menu" aria-expanded="false" aria-controls="sidebar-project-scope-menu">
             <FunnelIcon className="size-4 shrink-0" aria-hidden="true" />
             <span id="sidebar-project-scope-label" className="sr-only">All projects</span>
-            <span id="sidebar-project-scope-count" className="sidebar-project-scope-count" hidden></span>
           </button>
         </InputGroup>
         <div id="sidebar-project-scope-menu" className="sidebar-scope-menu" role="menu" hidden></div>
@@ -66,11 +65,10 @@ export function SidebarPromptLightbox() {
         <InputGroup className="model-picker sidebar-prompt-model max-sm:flex-[1_1_100%]">
           <Select id="sidebar-model-ref" name="modelRef" variant="prompt" aria-label="Model for new agent" placeholder="loading model…"><option value="">loading model…</option></Select>
         </InputGroup>
-        <InputGroup label="thinking" className="thinking-slider sidebar-prompt-thinking max-sm:flex-[1_1_100%]">
-          <Slider id="sidebar-thinking-level" min="0" max="5" step="1" defaultValue="5" />
-          <output id="sidebar-thinking-level-value" htmlFor="sidebar-thinking-level">xhigh</output>
+        <InputGroup className="model-picker sidebar-prompt-thinking max-sm:flex-[1_1_100%]">
+          <Select id="sidebar-thinking-level" name="thinkingLevel" defaultValue="xhigh" variant="prompt" aria-label="Thinking level" placeholder="xhigh"><option value="off">off</option><option value="minimal">minimal</option><option value="low">low</option><option value="medium">medium</option><option value="high">high</option><option value="xhigh">xhigh</option></Select>
         </InputGroup>
-        <Button id="sidebar-prompt-submit" variant="primary" className="sidebar-prompt-start" type="submit" aria-label="send prompt"><PaperPlaneTiltIcon className="size-4" aria-hidden="true" /></Button>
+        <Button id="sidebar-prompt-submit" variant="primary" className="sidebar-prompt-start" type="submit" aria-label="send prompt"><ArrowUpIcon className="size-4" weight="bold" aria-hidden="true" /></Button>
       </div>
       <p id="sidebar-prompt-project" className="sr-only" aria-live="polite">Choose a project first.</p>
       <p id="sidebar-prompt-status" className="sidebar-prompt-status" role="status" aria-live="polite"></p>

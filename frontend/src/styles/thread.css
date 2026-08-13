@@ -2588,7 +2588,6 @@ button.trace-ref-row { cursor: pointer; }
 .flow-composer .attach-btn { border-radius: 10px; }
 .flow-composer .target-input input,
 .flow-composer .target-input select { padding: 9px 0; font-size: 13px; }
-.flow-composer .thinking-slider input[type="range"] { padding: 0; }
 .flow-composer > .primary-btn { align-self: stretch; min-width: 112px; min-height: 38px; margin: 0 12px 12px 0; padding: 8px 12px; border-radius: 10px; }
 /* ponytail: soften the thread page as one surface; add per-component contrast back only if a state gets unclear. */
 .thread-page .flow-card,

@@ -62,7 +62,7 @@ test('home agents header omits aggregate status line', () => {
 test('home running lane only uses active thread statuses', () => {
   assert.match(js, /function effectiveThreadStatus\(thread\)/);
   assert.match(js, /runStatus && runStatus !== 'unknown' \? runStatus : String\(thread\?\.status \|\| ''\)\.toLowerCase\(\)/);
-  assert.match(js, /function threadLane\(thread\) \{\s*return isActiveThread\(thread\) \? 'running' : 'done';\s*\}/);
+  assert.match(js, /const activeThreads = inboxThreads\.filter\(\(thread\) => !isSettledThread\(thread\)\);/);
 });
 
 test('home rows avoid workspace folder details', () => {
@@ -153,9 +153,9 @@ test('workspace agents use shadcn sidebar beside launch composer', () => {
   assert.match(ui, /<ShadSelectContent container=\{portalContainer\}/);
   assert.doesNotMatch(sidebarPromptRuntime, /spanner:model-picker/);
   assert.doesNotMatch(sidebarPromptMarkup, /InputGroup label="model" className="model-picker sidebar-prompt-model/);
-  assert.match(agentSidebar, /id="sidebar-thinking-level" min="0" max="5" step="1" defaultValue="5"/);
-  assert.match(agentSidebar, /id="sidebar-prompt-submit" variant="primary" className="sidebar-prompt-start" type="submit" aria-label="send prompt"><PaperPlaneTiltIcon className="size-4" aria-hidden="true" \/><\/Button>/);
-  assert.match(pages, /id="thread-submit" variant="primary" className="sidebar-prompt-start" type="submit" aria-label="send prompt"><PaperPlaneTiltIcon className="size-4" aria-hidden="true" \/><\/Button>/);
+  assert.match(agentSidebar, /<Select id="sidebar-thinking-level" name="thinkingLevel" defaultValue="xhigh" variant="prompt" aria-label="Thinking level" placeholder="xhigh"><option value="off">off<\/option>/);
+  assert.match(agentSidebar, /id="sidebar-prompt-submit" variant="primary" className="sidebar-prompt-start" type="submit" aria-label="send prompt"><ArrowUpIcon className="size-4" weight="bold" aria-hidden="true" \/><\/Button>/);
+  assert.match(pages, /id="thread-submit" variant="primary" className="sidebar-prompt-start" type="submit" aria-label="send prompt"><ArrowUpIcon className="size-4" weight="bold" aria-hidden="true" \/><\/Button>/);
   assert.doesNotMatch(sidebarPromptMarkup, /sidebar-prompt-suggestions|data-sidebar-suggested-prompt|Full workspace audit/);
   assert.doesNotMatch(sidebarPromptRuntime, /sidebar-prompt-suggestions|data-sidebar-suggested-prompt/);
   assert.doesNotMatch(appCss, /#sidebar-prompt-suggestions/);
@@ -164,7 +164,7 @@ test('workspace agents use shadcn sidebar beside launch composer', () => {
   assert.match(appCss, /@media \(max-width: 640px\) \{[\s\S]*\.sidebar-prompt-model \{ grid-column: 2; min-width: 0; \}/);
   assert.match(js, /const agentSearchInput = document\.querySelector\('#agent-search'\);/);
   assert.match(js, /bindSidebarPromptLightbox\(\{ fetchJson, makeThreadUrl: threadUrl \}\);/);
-  assert.match(sidebarPromptRuntime, /export function openSidebarPromptLightbox\(\)/);
+  assert.match(sidebarPromptRuntime, /export function openSidebarPromptLightbox\(projectOverride = null\)/);
   assert.match(sidebarPromptRuntime, /runtimeFetchJson\('\/api\/threads'/);
   assert.match(sidebarPromptRuntime, /runtimeFetchJson\('\/api\/bootstrap\?page=workspace&fast=1'\)/);
   assert.match(sidebarPromptRuntime, /runtimeFetchJson\('\/api\/recent-projects'\)/);
@@ -328,7 +328,7 @@ test('home settled section only moves threads after explicit settle', () => {
   assert.match(appCss, /\.workspace-agents-sidebar \.active-work/);
   assert.match(appCss, /\.workspace-agents-sidebar \.settled-work/);
   assert.match(appCss, /\.workspace-agents-sidebar \.settled-shelf-toggle/);
-  assert.match(appCss, /\.workspace-agents-sidebar \.active-work:hover \.sidebar-thread-status/);
+  assert.doesNotMatch(appCss, /\.workspace-agents-sidebar \.active-work:hover \.sidebar-thread-status/);
   assert.match(js, /cache: 'no-store'/);
 });
 
@@ -368,20 +368,18 @@ test('thread page boots the same global sidebar shell', () => {
   assert.match(globalSidebarRuntime, /aria-current="page"/);
   assert.match(appCss, /\.workspace-sidebar-edge-trigger \{[^}]*top: 20px;[^}]*left: calc\(var\(--sidebar-width\) - 42px\);/);
   assert.match(appCss, /\.workspace-agents-sidebar \.workspace-agents-head \{[^}]*padding: 20px 12px 4px;/);
-  assert.match(appCss, /\.workspace-agents-sidebar \.sidebar-title-row \{[^}]*padding-right: 40px;/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.sidebar-title-row \{[^}]*padding-right: 0;/);
 });
 
 test('sidebar refresh avoids unnecessary redraws', () => {
   for (const runtime of [js, projectRuntime, globalSidebarRuntime]) {
-    assert.match(runtime, /const SIDEBAR_RUNTIME_TICK_MS = 30000;/);
     assert.match(runtime, /let lastSidebarRenderSignature = '';/);
     assert.match(runtime, /let lastSidebarRenderList = null;/);
     assert.match(runtime, /function sidebarRenderSignature\(threads\)/);
     assert.match(runtime, /threads: threads\.map\(sidebarThreadRenderSignature\)/);
     assert.match(runtime, /const renderSignature = sidebarRenderSignature\(/);
     assert.match(runtime, /list === lastSidebarRenderList && renderSignature === lastSidebarRenderSignature/);
-    assert.match(runtime, /setInterval\(updateRuntimeLabels, SIDEBAR_RUNTIME_TICK_MS\)/);
-    assert.match(runtime, /formatElapsed\(label\.dataset\.runtimeStart, Date\.now\(\)\)/);
+    assert.doesNotMatch(runtime, /data-runtime-start|runtime-label|SIDEBAR_RUNTIME_TICK_MS/);
     assert.doesNotMatch(runtime, /formatElapsed\(label\.dataset\.runtimeStart, Date\.now\(\), true\)/);
   }
   assert.match(globalSidebarRuntime, /const SIDEBAR_POLL_INTERVAL_MS = 30000;/);
@@ -421,11 +419,19 @@ test('sidebar groups threads by project and worktree metadata', () => {
     assert.match(runtime, /renderSidebarThreadGroups\(renderedSettledThreads, renderJumpThreadCard\)/);
     assert.match(runtime, /data-thread-worktree-key="\$\{escapeHtml\(worktreeKeyText\)\}"/);
     assert.match(runtime, /sidebarThreadWorktreeLabel\(thread\)/);
+    assert.match(runtime, /data-sidebar-worktree-new-thread/);
+    assert.match(runtime, /function projectFromWorktreeButton\(button\)/);
+    assert.match(runtime, /const reuseRepoPath = button\.dataset\.sidebarReuseRepoPath === 'true';/);
+    assert.doesNotMatch(runtime, /<small>\$\{worktree\.count\}<\/small>/);
+    assert.doesNotMatch(runtime, /<small>\$\{project\.count\}<\/small>/);
+    assert.doesNotMatch(runtime, /class="action-count"/);
+    assert.doesNotMatch(runtime, /Archived \(\$\{settledThreads\.length\}\)/);
   }
   assert.match(appCss, /\.workspace-agents-sidebar \.sidebar-project-group/);
-  assert.match(appCss, /\.workspace-agents-sidebar \.sidebar-worktree-group-head \{[\s\S]*height: 28px;/);
-  assert.match(appCss, /\.workspace-agents-sidebar \.sidebar-worktree-group-head::before/);
-  assert.match(appCss, /\.workspace-agents-sidebar \.sidebar-worktree-thread-list \{[\s\S]*margin-left: 34px;[\s\S]*padding-left: 12px;/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.sidebar-worktree-group-head \{[\s\S]*height: 30px;/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.sidebar-worktree-new \{/);
+  assert.doesNotMatch(appCss, /\.workspace-agents-sidebar \.sidebar-worktree-group-head::before/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.sidebar-worktree-thread-list \{[\s\S]*margin-left: 31px;[\s\S]*border-left: 0;[\s\S]*padding-left: 0;/);
 });
 
 test('project icons use stable Phosphor-style line svgs', () => {
@@ -452,30 +458,26 @@ test('recently finished rows use compact T3-style settled rows', () => {
   assert.match(js, /const outcome = running \? '' : finishedOutcome\(thread, rawStatus\);/);
   assert.match(js, /function finishedAt\(thread\) \{/);
   assert.match(js, /function finishedAtMs\(thread\) \{/);
-  assert.match(js, /function sidebarStatusLabel\(rawStatus\) \{/);
   assert.match(js, /return compact\.replace\(\/\\b\(\\d\+m\)\\s\+\\d\+s\\b\/g, '\$1'\);/);
-  assert.match(js, /if \(status === 'running' \|\| status === 'starting' \|\| status === 'launching'\) return 'Working';/);
   assert.match(js, /const finishedValue = finishedAt\(thread\);/);
   assert.match(js, /const finished = running \? '' : sidebarDurationLabel\(formatFinishedAgo\(finishedValue\)\);/);
   assert.match(js, /const inactiveTimes = !running \? \[finished\]\.filter\(Boolean\) : \[\];/);
   assert.match(js, /<span class="finished-meta">\$\{inactiveTimes\.map\(\(text\) => `<time>\$\{escapeHtml\(text\)\}<\/time>`\)\.join\(''\)\}<\/span>/);
-  assert.match(js, /<span class="sidebar-thread-title-row">\s*<strong>\$\{escapeHtml\(displayTitle\)\}<\/strong>\s*<span class="sidebar-thread-status">\$\{activeRuntime\}<\/span>/);
+  assert.match(js, /<span class="sidebar-thread-title-row"><strong>\$\{escapeHtml\(displayTitle\)\}<\/strong><\/span>/);
   assert.doesNotMatch(js.slice(js.indexOf('const activeBody ='), js.indexOf('const settledBody =', js.indexOf('const activeBody ='))), /sidebar-thread-meta-row/);
   assert.match(js, /\$\{sidebarProjectIcon\(project\.label\)\}/);
-  assert.match(js, /data-runtime-status="\$\{escapeHtml\(statusLabel\)\}"/);
-  assert.match(js, /label\.textContent = duration;/);
+  assert.doesNotMatch(js, /data-runtime-status|data-runtime-start|activeRuntime/);
   assert.match(js, /class="answer-preview">\$\{escapeHtml\(outcome\)\}/);
-  assert.match(appCss, /\.workspace-agents-sidebar \.active-work \{\s+display: block;\s+height: 44px;/);
-  assert.match(appCss, /\.workspace-agents-sidebar \.settled-work \{\s+display: grid;\s+grid-template-columns: 24px minmax\(0, 1fr\) auto;\s+gap: 0;\s+align-items: center;\s+height: 36px;/);
-  assert.match(appCss, /\.workspace-agents-sidebar \.runtime-label::before \{\s+content: "";\s+width: 8px;\s+height: 8px;[\s\S]+background: var\(--runtime-dot, currentColor\);/);
-  assert.match(appCss, /\.workspace-agents-sidebar \.running \.runtime-label::before,[\s\S]+\.workspace-agents-sidebar \.queued \.runtime-label::before \{\s+--runtime-dot: var\(--t3-amber\);\s+animation: status-pulse/);
-  assert.match(appCss, /\.workspace-agents-sidebar \.completed \.runtime-label::before,[\s\S]+--runtime-dot: var\(--t3-emerald\);/);
-  assert.match(appCss, /\.workspace-agents-sidebar \.settled-work > \.status-dot \{\s+position: static;\s+width: 8px;\s+height: 8px;/);
-  assert.match(appCss, /\.workspace-agents-sidebar \.settled-work > \.status-dot \{[\s\S]+box-shadow: none !important;/);
-  assert.match(appCss, /\.workspace-agents-sidebar \.settled-work\.failed > \.status-dot/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.active-work \{\s+display: grid;\s+grid-template-columns: 10px minmax\(0, 1fr\);[\s\S]*height: 38px;/);
+  assert.match(appCss, /--sidebar-agent-font: 500 13px\/20px var\(--sans\);/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.settled-work \{\s+display: grid;\s+grid-template-columns: minmax\(0, 1fr\) auto;\s+gap: 0;\s+align-items: center;\s+height: 36px;/);
+  assert.doesNotMatch(appCss, /runtime-label|sidebar-thread-status|background: var\(--runtime-dot, currentColor\);/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.settled-work > \.status-dot \{\s+display: none;\s+\}/);
+  assert.doesNotMatch(appCss, /\.workspace-agents-sidebar \.settled-work\.failed > \.status-dot/);
+  assert.match(appCss, /\.workspace-agents-sidebar :where\(a, button, input, select, textarea, h1, h2, h3, strong, small, span, time, output, kbd\) \{\s+font: var\(--sidebar-agent-font\) !important;/);
   assert.match(appCss, /\.workspace-agents-sidebar \.settled-work \.answer-preview \{\s+display: none;/);
-  assert.match(js, /function sortThreadInbox\(left, right\) \{/);
-  assert.match(js, /return threadInboxTimeMs\(right\) - threadInboxTimeMs\(left\);/);
+  assert.doesNotMatch(js, /function sortThreadInbox|\.sort\(sortThreadInbox\)/);
+  assert.match(js, /const inboxThreads = filteredThreads;/);
   assert.match(runState, /scheduleFinalAnswerSummaryGeneration\(updated, text, runId\);/);
   assert.match(runState, /scheduleFinalTurnStatusClassification\(updated, \{ text \}, runId\);/);
   assert.match(runState, /scheduleSuggestedNextStepsGeneration\(updated, text, runId\);/);
@@ -486,8 +488,8 @@ test('recently finished success indicators can be dismissed locally', () => {
   assert.ok(js.includes("return !active && ['completed', 'ready'].includes(rawStatus);"));
   assert.match(js, /function hasFreshFinishedIndicator\(thread\) \{/);
   assert.match(js, /return isSettledThread\(thread\) && canDismissFinishedIndicator/);
-  assert.match(js, /const freshFinishedCount = settledThreads\.filter\(hasFreshFinishedIndicator\)\.length;/);
-  assert.ok(js.includes('data-finished-indicator-count'));
+  assert.match(js, /const hasFreshFinished = settledThreads\.some\(hasFreshFinishedIndicator\);/);
+  assert.match(js, /data-finished-indicator-count>new/);
   assert.match(js, /list\.querySelectorAll\('\[data-finished-indicator\]'\)\.length/);
   assert.ok(js.includes('data-finished-indicator="${escapeHtml(indicatorKey)}"'));
   assert.ok(js.includes('data-finished-thread="${escapeHtml(indicatorKey)}"'));
