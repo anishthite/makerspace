@@ -6,7 +6,7 @@ import './appearance.js?v=palette-2';
 import { playCompletionChime } from './completion-chimes.js';
 import { bindImageDropZone, clearImageInput, filesToImageAttachments, imageInputFiles, updateImageStatus } from './image-attachments.js';
 import { projectIconSvg } from './project-icons.js';
-import { bindSidebarPromptLightbox, openSidebarPromptLightbox } from './sidebar-prompt-lightbox.js';
+import { bindSidebarPromptLightbox } from './sidebar-prompt-lightbox.js';
 import { submitOnEnter } from './submit-on-enter.js';
 
 const BROWSER_SESSION_KEY = 'spannerBrowserSession';
@@ -1640,6 +1640,11 @@ function prepareNewThreadFromScope() {
   if (project) writeSelectedProject(project);
 }
 
+function focusWorkspacePrompt() {
+  promptInput?.scrollIntoView({ block: 'center' });
+  promptInput?.focus();
+}
+
 function navigateToThreadName(name) {
   if (!name) return;
   location.href = threadUrl(name);
@@ -1702,7 +1707,7 @@ async function runThreadMenuAction(action, thread) {
   if (action === 'new-thread-project') {
     const project = projectFromScopeValue(sidebarThreadProjectKey(thread), sidebarThreadProjectLabel(thread));
     if (project) writeSelectedProject(project);
-    openSidebarPromptLightbox();
+    focusWorkspacePrompt();
     return;
   }
   if (action === 'stop') {
@@ -1742,6 +1747,7 @@ imageInput?.addEventListener('change', () => updateImageStatus(imageInput, image
 bindImageDropZone(threadForm, imageInput, imageStatus);
 submitOnEnter(promptInput, threadForm, threadSubmit);
 bindSidebarPromptLightbox({ fetchJson, makeThreadUrl: threadUrl });
+if (location.hash === '#prompt') setTimeout(focusWorkspacePrompt, 0);
 workspaceProjectLightboxTrigger?.addEventListener('click', () => setWorkspaceProjectLightboxOpen(true));
 workspaceProjectLightboxClose?.addEventListener('click', () => setWorkspaceProjectLightboxOpen(false));
 workspaceProjectLightbox?.addEventListener('cancel', () => {
@@ -1986,7 +1992,7 @@ document.addEventListener('click', async (event) => {
     const project = projectFromWorktreeButton(worktreeNewThread);
     if (project) writeSelectedProject(project);
     closeScopeMenu();
-    openSidebarPromptLightbox();
+    focusWorkspacePrompt();
     return;
   }
 
@@ -1995,7 +2001,7 @@ document.addEventListener('click', async (event) => {
     event.preventDefault();
     prepareNewThreadFromScope();
     closeScopeMenu();
-    openSidebarPromptLightbox();
+    focusWorkspacePrompt();
     return;
   }
 
@@ -2068,7 +2074,7 @@ document.addEventListener('keydown', (event) => {
   if (isCommand && event.key.toLowerCase() === 'n') {
     event.preventDefault();
     prepareNewThreadFromScope();
-    promptInput?.focus();
+    focusWorkspacePrompt();
     return;
   }
   if (isCommand && /^[1-9]$/.test(event.key)) {

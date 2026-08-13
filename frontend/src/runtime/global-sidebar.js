@@ -861,6 +861,10 @@ function navigateToThreadName(name) {
   location.href = threadUrl(name);
 }
 
+function openWorkspaceComposer() {
+  location.href = '/workspace.html#prompt';
+}
+
 function visibleThreadNames() {
   return [...renderedSidebarThreadNames];
 }
@@ -957,8 +961,9 @@ function bindGlobalSidebarEvents() {
     if (worktreeNewThread) {
       event.preventDefault();
       const project = projectFromWorktreeButton(worktreeNewThread);
+      if (project) writeSelectedProject(project);
       closeScopeMenu();
-      openSidebarPromptLightbox(project);
+      openWorkspaceComposer();
       return;
     }
 
@@ -967,7 +972,7 @@ function bindGlobalSidebarEvents() {
       event.preventDefault();
       prepareNewThreadFromScope();
       closeScopeMenu();
-      openSidebarPromptLightbox();
+      openWorkspaceComposer();
       return;
     }
 

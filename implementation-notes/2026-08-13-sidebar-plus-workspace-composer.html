@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Sidebar plus workspace composer</title>
+<meta name="task" content="Route sidebar plus actions to the workspace composer instead of the sidebar prompt lightbox.">
+<meta name="date-started" content="2026-08-13">
+<meta name="date-updated" content="2026-08-13">
+<meta name="status" content="shipped">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,ui,sidebar,workspace,prompt">
+<meta name="related" content="2026-08-12-sidebar-workspace-plus.html,2026-08-10-workspace-inline-new-thread-input.html,2026-08-01-sidebar-plus-composer-lightbox.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-in-progress{color:#b85c00}</style>
+</head>
+<body>
+<h1>Sidebar plus workspace composer</h1>
+<p class="meta"><code>spanner/makerspace-20260813034247-d0555e-10c2d756</code> · worktree <code>/Users/anishthite/spanner/makerspace/makerspace-20260813034247-d0555e</code> · 2026-08-13 · status <b class="status-shipped">shipped</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Sidebar plus opens the root workspace composer instead of the prompt modal.</div><b>Source</b><div>User asked for the sidebar plus sign to open in the workspace.</div><b>Surface</b><div><code>data-sidebar-new-thread</code>, <code>data-sidebar-worktree-new-thread</code>, and <code>/workspace.html#prompt</code>.</div><b>Schema</b><div>None.</div><b>Mobile</b><div>Use the existing workspace route and composer focus behavior.</div><b>Open Qs</b><div>0; interpret “plus sign” as both sidebar new-thread buttons.</div></div>
+<h2>UI layout</h2>
+<ol><li><code>Workspace route</code>: click the sidebar plus, keep the user on the workspace, and focus <code>#prompt</code>.</li><li><code>Other routes</code>: click the sidebar plus, store any scoped project, then navigate to <code>/workspace.html#prompt</code>.</li></ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>frontend/src/runtime/app.js</code></td><td>touch</td><td>Focus the inline workspace composer for sidebar plus actions.</td></tr><tr><td><code>frontend/src/runtime/project.js</code>, <code>frontend/src/runtime/global-sidebar.js</code></td><td>touch</td><td>Route sidebar plus actions to <code>/workspace.html#prompt</code> after preserving scope.</td></tr><tr><td><code>test/home-runtime-summary.test.js</code></td><td>touch</td><td>Pin plus-to-workspace runtime behavior.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Use the existing workspace composer. It already owns project picking, attachments, model controls, and submission.</td></tr><tr><td>D-002</td><td>Preserve clicked worktree scope before navigation. The per-workspace plus still targets the clicked worktree.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>Three local handler edits over a shared sidebar refactor. The duplicated runtimes already carry route-specific behavior.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Revert the click handler edits, static expectations, and this index row.</p>
+<h2>Validation</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>node --check frontend/src/runtime/app.js &amp;&amp; node --check frontend/src/runtime/project.js &amp;&amp; node --check frontend/src/runtime/global-sidebar.js</code></td><td>pass</td></tr><tr><td><code>node --test test/home-runtime-summary.test.js</code></td><td>pass, 23/23</td></tr><tr><td><code>git diff --check</code></td><td>pass</td></tr></table>
+<h2>Definition of done</h2>
+<ul><li>Workspace sidebar plus focuses <code>#prompt</code>.</li><li>Other route sidebar plus buttons navigate to <code>/workspace.html#prompt</code>.</li><li>Clicked worktree plus still writes its project/worktree before opening the composer.</li><li>Focused static tests pass.</li></ul>
+</body>
+</html>

@@ -164,6 +164,8 @@ test('workspace agents use shadcn sidebar beside launch composer', () => {
   assert.match(appCss, /@media \(max-width: 640px\) \{[\s\S]*\.sidebar-prompt-model \{ grid-column: 2; min-width: 0; \}/);
   assert.match(js, /const agentSearchInput = document\.querySelector\('#agent-search'\);/);
   assert.match(js, /bindSidebarPromptLightbox\(\{ fetchJson, makeThreadUrl: threadUrl \}\);/);
+  assert.match(js, /function focusWorkspacePrompt\(\) \{[\s\S]*promptInput\?\.focus\(\);[\s\S]*\}/);
+  assert.match(js, /if \(location\.hash === '#prompt'\) setTimeout\(focusWorkspacePrompt, 0\);/);
   assert.match(sidebarPromptRuntime, /export function openSidebarPromptLightbox\(projectOverride = null\)/);
   assert.match(sidebarPromptRuntime, /runtimeFetchJson\('\/api\/threads'/);
   assert.match(sidebarPromptRuntime, /runtimeFetchJson\('\/api\/bootstrap\?page=workspace&fast=1'\)/);
@@ -224,6 +226,9 @@ test('project home uses the shared global agent inbox sidebar', () => {
   assert.match(pages, /<SidebarTrigger className="workspace-sidebar-trigger" aria-label="open agents"/);
   assert.match(projectRuntime, /const agentSearchInput = document\.querySelector\('#agent-search'\);/);
   assert.match(projectRuntime, /bindSidebarPromptLightbox\(\{ fetchJson, makeThreadUrl: threadUrl \}\);/);
+  for (const runtime of [projectRuntime, globalSidebarRuntime]) {
+    assert.match(runtime, /function openWorkspaceComposer\(\) \{\s*location\.href = '\/workspace\.html#prompt';\s*\}/);
+  }
   assert.match(projectRuntime, /let threadsList = document\.querySelector\('#threads-list'\);/);
   assert.ok(projectRuntime.includes("const SIDEBAR_SETTLED_EXPANDED_KEY = 'spannerSidebarSettledExpanded';"));
   assert.ok(projectRuntime.includes("const SIDEBAR_SETTLED_THREADS_KEY = 'spannerSidebarSettledThreads';"));
