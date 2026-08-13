@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { assistantProviderErrorMessage, assistantTraceFields } from '../src/host-pi-runner.js';
+import { assistantProviderErrorMessage, assistantTraceFields, runCreatedPiSession } from '../src/host-pi-runner.js';
 
 test('assistantProviderErrorMessage extracts provider detail from empty assistant errors', () => {
   assert.equal(
@@ -31,4 +31,41 @@ test('assistantTraceFields keeps thinking deltas tied to assistant messages', ()
     { messageTimestamp: 1234, contentIndex: 2 },
   );
   assert.deepEqual(assistantTraceFields({}, { partial: { timestamp: 4567 } }), { messageTimestamp: 4567 });
+});
+
+test('emits a non-streamed final response after an earlier streamed assistant turn', async () => {
+  const chunks = [];
+  let onEvent;
+  const finalMessage = { role: 'assistant', content: [{ type: 'text', text: 'Done.' }] };
+  const piSession = {
+    agent: { streamFn: async () => {} },
+    subscribe(listener) {
+      onEvent = listener;
+      return () => {};
+    },
+    async prompt() {
+      onEvent({ type: 'message_start', message: { role: 'assistant' } });
+      onEvent({ type: 'message_update', assistantMessageEvent: { type: 'text_delta', delta: 'Working.' } });
+      onEvent({ type: 'message_end', message: { role: 'assistant', content: [{ type: 'text', text: 'Working.' }] } });
+      onEvent({ type: 'message_start', message: { role: 'assistant' } });
+      onEvent({ type: 'message_end', message: finalMessage });
+      onEvent({ type: 'agent_end', messages: [finalMessage] });
+    },
+    getLastAssistantText: () => 'Done.',
+    dispose() {},
+  };
+
+  await runCreatedPiSession({
+    createSession: async () => ({ session: piSession }),
+    session: { taskPrompt: 'Test', submittedAtMs: 1 },
+    emitOutput: () => {},
+    emitMetric: async () => {},
+    emitStatus: async () => {},
+    emitEvent: (event) => {
+      if (event.type === 'chunk') chunks.push(event.chunk);
+    },
+    failureLabel: 'Test run',
+  });
+
+  assert.deepEqual(chunks, ['Working.', 'Done.']);
 });
