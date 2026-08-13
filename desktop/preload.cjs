@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('spannerDesktop', {
   checkForUpdates: () => ipcRenderer.invoke('spanner:check-for-updates'),
+  getUpdateStatus: () => ipcRenderer.invoke('spanner:get-update-status'),
   chooseFolder: (folder) => ipcRenderer.invoke('spanner:choose-folder', folder),
   getLastFolder: () => ipcRenderer.invoke('spanner:get-last-folder'),
   rememberFolder: (folder) => ipcRenderer.invoke('spanner:remember-folder', folder),

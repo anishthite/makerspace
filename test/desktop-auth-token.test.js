@@ -57,14 +57,17 @@ test('downloaded desktop updates apply silently on next launch', () => {
 
 test('settings can manually check desktop updates', () => {
   assert.match(desktopMain, /spanner:check-for-updates/);
+  assert.match(desktopMain, /spanner:get-update-status/);
   assert.match(desktopMain, /autoUpdater\.checkForUpdates\(\)/);
   assert.match(desktopMain, /spanner:update-status/);
   assert.match(desktopPreload, /checkForUpdates/);
+  assert.match(desktopPreload, /getUpdateStatus/);
   assert.match(desktopPreload, /onUpdateStatus/);
   assert.match(frontendPages, /id="desktop-updates"/);
   assert.match(frontendPages, /id="desktop-check-updates"/);
   assert.match(frontendSettings, /desktop-check-updates/);
   assert.match(frontendSettings, /checkForUpdates/);
+  assert.match(frontendSettings, /getUpdateStatus/);
 });
 
 test('desktop Cmd/Ctrl+T asks the renderer to open a new thread', () => {
