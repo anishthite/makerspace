@@ -129,7 +129,7 @@ test('workspace agents use shadcn sidebar beside launch composer', () => {
   assert.doesNotMatch(agentSidebar, /<WrenchIcon className="size-4 shrink-0" aria-hidden="true" \/>/);
   assert.match(agentSidebar, /className="sidebar-project-scope sidebar-search-filter"/);
   assert.match(agentSidebar, /id="sidebar-project-scope-menu"/);
-  assert.match(agentSidebar, /aria-label="New thread"/);
+  assert.match(agentSidebar, /aria-label="New worktree"/);
   assert.doesNotMatch(agentSidebar, /aria-label="New project"/);
   assert.match(agentSidebar, /className="agent-search border-0 bg-transparent px-0 shadow-none \[&_input\]:min-w-0 \[&_input\]:py-1\.5"/);
   assert.match(agentSidebar, /<input id="agent-search" type="search" placeholder="Search agents"/);
