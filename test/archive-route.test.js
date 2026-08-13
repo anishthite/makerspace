@@ -2,8 +2,21 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import os from 'node:os';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { execFile, spawn } from 'node:child_process';
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { promisify } from 'node:util';
+
+const execFileAsync = promisify(execFile);
+
+async function exists(filePath) {
+  try {
+    await stat(filePath);
+    return true;
+  } catch (error) {
+    if (error?.code === 'ENOENT') return false;
+    throw error;
+  }
+}
 
 function waitForServer(child) {
   return new Promise((resolve, reject) => {
@@ -250,6 +263,86 @@ test('archive route accepts finished and stale inactive threads', async () => {
     assert.ok(sessions.find((session) => session.name === 'failed').archivedAt);
     assert.ok(sessions.find((session) => session.name === 'unknown-done').archivedAt);
     assert.ok(sessions.find((session) => session.name === 'busy').archivedAt);
+  } finally {
+    if (server) await stopServer(server);
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
+
+test('archive closes Spanner-created local worktrees and unarchive restores them', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'spanner-archive-worktree-'));
+  const sessionFile = path.join(tempDir, 'sessions.json');
+  const settingsFile = path.join(tempDir, 'settings.json');
+  const repoPath = path.join(tempDir, 'repo');
+  const worktreePath = path.join(tempDir, 'worktrees', 'done-worktree');
+  const branch = 'spanner/done-worktree';
+  const createdAt = '2026-08-13T01:00:00.000Z';
+  let server;
+
+  async function git(cwd, args) {
+    return execFileAsync('git', args, { cwd, env: { ...process.env, GIT_TERMINAL_PROMPT: '0' } });
+  }
+
+  try {
+    await mkdir(repoPath, { recursive: true });
+    await git(repoPath, ['init', '-q', '-b', 'main']);
+    await git(repoPath, ['config', 'user.email', 'spanner@example.test']);
+    await git(repoPath, ['config', 'user.name', 'Spanner Test']);
+    await writeFile(path.join(repoPath, 'tracked.txt'), 'base\n');
+    await git(repoPath, ['add', 'tracked.txt']);
+    await git(repoPath, ['commit', '-qm', 'base']);
+    await git(repoPath, ['worktree', 'add', '-b', branch, worktreePath, 'main']);
+
+    await writeFile(sessionFile, `${JSON.stringify([
+      {
+        name: 'done-worktree',
+        provider: 'local',
+        threadBridge: true,
+        localMode: true,
+        localWorktree: true,
+        repoPath: worktreePath,
+        sourceRepoPath: repoPath,
+        worktreePath,
+        worktreeBranch: branch,
+        status: 'completed',
+        runStatus: 'completed',
+        createdAt,
+      },
+    ])}\n`);
+    await writeFile(settingsFile, '{}\n');
+
+    server = spawn(process.execPath, ['src/server.js'], {
+      cwd: path.resolve(import.meta.dirname, '..'),
+      env: {
+        ...process.env,
+        INFRA_PROVIDER: 'local',
+        HOST: '127.0.0.1',
+        PORT: '0',
+        SESSION_DATA_PATH: sessionFile,
+        SETTINGS_DATA_PATH: settingsFile,
+        WARM_BRIDGE_POOL_SIZE: '0',
+        IDLE_BRIDGE_TTL_MS: '0',
+        CONTROL_API_TOKEN: 'test-token',
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    const baseUrl = await waitForServer(server);
+    const authHeaders = { authorization: 'Bearer test-token' };
+
+    const archiveResponse = await fetch(`${baseUrl}/api/threads/done-worktree/archive`, { method: 'POST', headers: authHeaders });
+    const archived = await archiveResponse.json();
+    assert.equal(archiveResponse.status, 200, archived.error);
+    assert.ok(archived.thread.archivedAt);
+    assert.ok(archived.thread.worktreeClosedAt);
+    assert.equal(await exists(path.join(worktreePath, '.git')), false);
+
+    const unarchiveResponse = await fetch(`${baseUrl}/api/threads/done-worktree/unarchive`, { method: 'POST', headers: authHeaders });
+    const unarchived = await unarchiveResponse.json();
+    assert.equal(unarchiveResponse.status, 200, unarchived.error);
+    assert.equal(unarchived.thread.archivedAt, undefined);
+    assert.equal(unarchived.thread.worktreeClosedAt, null);
+    assert.ok(unarchived.thread.worktreeRestoredAt);
+    assert.equal(await exists(path.join(worktreePath, '.git')), true);
   } finally {
     if (server) await stopServer(server);
     await rm(tempDir, { recursive: true, force: true });

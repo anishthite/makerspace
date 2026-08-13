@@ -236,3 +236,61 @@ export async function ensureLocalGitWorktree(session = {}, config = {}) {
   await runGit(['-C', sourceRepoPath, 'worktree', 'add', '-B', worktreeBranch, worktreePath, worktreeBaseRef]);
   return { sourceRepoPath, worktreePath, worktreeBaseRef, worktreeBranch, localWorktree: true };
 }
+
+function managedLocalWorktree(session = {}) {
+  if (!session.localMode || !session.localWorktree || session.reuseRepoPath) return null;
+  const sourceInput = String(session.sourceRepoPath || '').trim();
+  const worktreePath = String(session.worktreePath || '').trim();
+  if (!sourceInput || !worktreePath) return null;
+  if (path.resolve(sourceInput) === path.resolve(worktreePath)) return null;
+  return { sourceInput, worktreePath };
+}
+
+async function latestStashRef(sourceRepoPath) {
+  const { stdout } = await runGit(['-C', sourceRepoPath, 'stash', 'list', '-n', '1', '--format=%H']);
+  return stdout.trim().split('\n')[0] || '';
+}
+
+export async function closeLocalGitWorktree(session = {}) {
+  const target = managedLocalWorktree(session);
+  if (!target) return { closed: false, reason: 'not-managed-local-worktree' };
+
+  const sourceRepoPath = await gitTopLevel(target.sourceInput);
+  const worktreePath = target.worktreePath;
+  if (path.resolve(sourceRepoPath) === path.resolve(worktreePath)) return { closed: false, reason: 'source-worktree' };
+  if (!(await isGitCheckout(worktreePath))) return { closed: false, reason: 'already-closed', sourceRepoPath, worktreePath };
+
+  const { stdout } = await runGit(['-C', worktreePath, 'status', '--porcelain=v1', '--untracked-files=all']);
+  const dirty = Boolean(stdout.trim());
+  let stashRef = '';
+  if (dirty) {
+    const before = await latestStashRef(sourceRepoPath).catch(() => '');
+    await runGit(['-C', worktreePath, 'stash', 'push', '-u', '-m', `spanner archive ${session.name || path.basename(worktreePath)}`]);
+    const after = await latestStashRef(sourceRepoPath).catch(() => '');
+    stashRef = after && after !== before ? after : '';
+  }
+
+  // ponytail: force only after stashing git-visible state; ignored build outputs are disposable workspace artifacts.
+  await runGit(['-C', sourceRepoPath, 'worktree', 'remove', '--force', worktreePath]);
+  return { closed: true, dirty, stashRef, sourceRepoPath, worktreePath };
+}
+
+export async function restoreLocalGitWorktree(session = {}) {
+  const target = managedLocalWorktree(session);
+  if (!target) return { restored: false, reason: 'not-managed-local-worktree' };
+
+  const sourceRepoPath = await gitTopLevel(target.sourceInput);
+  const worktreePath = target.worktreePath;
+  if (await isGitCheckout(worktreePath)) return { restored: false, reason: 'already-open', sourceRepoPath, worktreePath };
+  if (await exists(worktreePath)) throw new Error(`${worktreePath} exists but is not a git worktree.`);
+
+  const ref = String(session.worktreeBranch || session.worktreeBaseRef || session.branch || 'HEAD').trim() || 'HEAD';
+  await mkdir(path.dirname(worktreePath), { recursive: true });
+  await runGit(['-C', sourceRepoPath, 'worktree', 'prune']).catch(() => {});
+  await runGit(['-C', sourceRepoPath, 'worktree', 'add', worktreePath, ref]);
+
+  const stashRef = String(session.worktreeArchiveStash || '').trim();
+  const stashApplied = Boolean(stashRef && !session.worktreeArchiveStashAppliedAt);
+  if (stashApplied) await runGit(['-C', worktreePath, 'stash', 'apply', stashRef]);
+  return { restored: true, stashApplied, sourceRepoPath, worktreePath };
+}

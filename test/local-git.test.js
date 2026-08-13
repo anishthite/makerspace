@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
 
-import { ensureLocalGitRepo, ensureLocalGitWorktree, localGitRepoPath } from '../src/local-git.js';
+import { closeLocalGitWorktree, ensureLocalGitRepo, ensureLocalGitWorktree, localGitRepoPath, restoreLocalGitWorktree } from '../src/local-git.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -215,4 +215,50 @@ process.exit(0);
     else process.env.SPANNER_FAKE_GIT_SOURCE = previousSource;
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test('closeLocalGitWorktree stashes dirty state and restoreLocalGitWorktree reapplies it', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-close-worktree-'));
+  const repoPath = path.join(root, 'repo');
+  const worktreePath = path.join(root, 'worktrees', 'demo');
+  const branch = 'spanner/demo';
+
+  async function git(cwd, args) {
+    return execFileAsync('git', args, { cwd, env: { ...process.env, GIT_TERMINAL_PROMPT: '0' } });
+  }
+
+  try {
+    await mkdir(repoPath, { recursive: true });
+    await git(repoPath, ['init', '-q', '-b', 'main']);
+    await git(repoPath, ['config', 'user.email', 'spanner@example.test']);
+    await git(repoPath, ['config', 'user.name', 'Spanner Test']);
+    await writeFile(path.join(repoPath, 'tracked.txt'), 'base\n');
+    await git(repoPath, ['add', 'tracked.txt']);
+    await git(repoPath, ['commit', '-qm', 'base']);
+    await git(repoPath, ['worktree', 'add', '-b', branch, worktreePath, 'main']);
+
+    await writeFile(path.join(worktreePath, 'tracked.txt'), 'changed\n');
+    await writeFile(path.join(worktreePath, 'new.txt'), 'untracked\n');
+
+    const session = { name: 'demo', localMode: true, localWorktree: true, sourceRepoPath: repoPath, worktreePath, worktreeBranch: branch };
+    const closed = await closeLocalGitWorktree(session);
+    assert.equal(closed.closed, true);
+    assert.equal(closed.dirty, true);
+    assert.match(closed.stashRef, /^[a-f0-9]{40}$/);
+    assert.equal(await exists(path.join(worktreePath, '.git')), false);
+
+    const restored = await restoreLocalGitWorktree({ ...session, worktreeArchiveStash: closed.stashRef });
+    assert.equal(restored.restored, true);
+    assert.equal(restored.stashApplied, true);
+    assert.equal(await readFile(path.join(worktreePath, 'tracked.txt'), 'utf8'), 'changed\n');
+    assert.equal(await readFile(path.join(worktreePath, 'new.txt'), 'utf8'), 'untracked\n');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('closeLocalGitWorktree skips reused worktree paths', async () => {
+  const result = await closeLocalGitWorktree({ localMode: true, localWorktree: true, reuseRepoPath: true, sourceRepoPath: '/repo', worktreePath: '/repo/wt' });
+  assert.equal(result.closed, false);
+  assert.equal(result.reason, 'not-managed-local-worktree');
 });

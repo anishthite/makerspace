@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Conductor worktree archive</title>
+<meta name="task" content="Close Spanner-created local worktrees when a thread is archived and restore them when unarchived.">
+<meta name="date-started" content="2026-08-13">
+<meta name="date-updated" content="2026-08-13">
+<meta name="status" content="ready-for-review">
+<meta name="blast-radius" content="medium">
+<meta name="tags" content="spanner,local,git,worktree,archive,conductor">
+<meta name="related" content="2026-08-10-local-worktree-launch-plan.html,2026-08-11-conductor-sidebar-grouping.html,2026-06-25-thread-done-action.html">
+<style>
+  body { font: 14px/1.45 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 1.5rem auto; padding: 0 1rem; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 .25rem; }
+  h2 { font-size: 15px; margin: 1.4rem 0 .4rem; border-bottom: 1px solid #ddd; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .4rem 0 .8rem; }
+  th, td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f6f6; font-weight: 600; }
+  code, pre { font-family: ui-monospace, Menlo, monospace; }
+  code { background: #f1f1f1; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+  ul, ol { margin: .3rem 0 .8rem 1.2rem; padding: 0; }
+  li { margin: .15rem 0; }
+  .blast-low { color: #2a7a2a; } .blast-med { color: #b85c00; } .blast-high { color: #b00020; font-weight: 600; }
+  .meta { color: #555; font-size: 12.5px; margin-bottom: .8rem; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 2px 14px; font-size: 13px; margin: .4rem 0 1rem; }
+  .kv b { color: #444; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>Conductor worktree archive</h1>
+<p class="meta"><code>spanner/makerspace-20260813025143-58acae-fa8c568c</code> · worktree <code>/Users/anishthite/spanner/makerspace/makerspace-20260813025143-58acae</code> · 2026-08-13 · status <b>ready-for-review</b> · blast <span class="blast-med">medium</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Close Spanner-created local worktrees on archive and recreate them on unarchive.</div><b>Source</b><div>Conductor archives workspaces by saving git state, running archive cleanup, and removing the worktree.</div><b>Surface</b><div><code>POST /api/threads/:name/archive</code>, <code>POST /api/threads/:name/unarchive</code>, local Git helpers.</div><b>Schema</b><div>Add session metadata <code>worktreeClosedAt</code>, <code>worktreeRestoredAt</code>, <code>worktreeArchiveStash</code>, <code>worktreeArchiveStashAppliedAt</code>.</div><b>Mode</b><div>Only local Spanner-created worktrees; skip reused/shared worktree paths.</div><b>Open Qs</b><div>0.</div></div>
+<h2>Algorithm</h2>
+<ol><li>Archive validates terminal status, then targets sessions with <code>localMode && localWorktree && !reuseRepoPath</code>.</li><li>If the worktree has tracked or untracked changes, run <code>git stash push -u</code> from the worktree and record the stash hash.</li><li>Run <code>git worktree remove --force &lt;worktreePath&gt;</code> from <code>sourceRepoPath</code>; fail archive if Git refuses.</li><li>Unarchive recreates a missing worktree from <code>worktreeBranch || worktreeBaseRef || branch || HEAD</code> and reapplies the recorded stash once.</li></ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>src/local-git.js</code></td><td>touch</td><td>Add close and restore helpers around <code>git worktree remove/add</code>.</td></tr><tr><td><code>src/server/threads.js</code></td><td>touch</td><td>Wire archive/unarchive routes through local worktree close/restore.</td></tr><tr><td><code>test/local-git.test.js</code></td><td>touch</td><td>Cover dirty state stashing and worktree restore.</td></tr><tr><td><code>test/archive-route.test.js</code></td><td>touch</td><td>Cover route-level worktree close and unarchive restore.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Archive owns worktree removal. It matches Conductor's close point.</td></tr><tr><td>D-002</td><td>Skip <code>reuseRepoPath</code>. A reused worktree can host multiple threads or be user-owned.</td></tr><tr><td>D-003</td><td>Use <code>git stash push -u</code> before removal. It preserves normal git state without committing agent work.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>Stash tracked/untracked files over force-only deletion. It avoids deleting reviewable work.</td></tr><tr><td>T-002</td><td>Leave branch deletion out. Spanner lacks Conductor's <code>delete_branch_on_archive</code> setting and branch deletion would break restore.</td></tr><tr><td>T-003</td><td>Local-only over remote workspace cleanup. Remote durable workspaces need provider scripting and restore semantics.</td></tr></table>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>node --check src/local-git.js &amp;&amp; node --check src/server/threads.js &amp;&amp; node --check test/local-git.test.js &amp;&amp; node --check test/archive-route.test.js</code></td><td>Passed.</td></tr><tr><td><code>node --test test/local-git.test.js test/archive-route.test.js</code></td><td>Passed 11/11.</td></tr><tr><td><code>git diff --check</code></td><td>Passed.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-med">medium</span>. Revert helper wiring and tests; archived sessions with removed worktrees can be restored manually with <code>git worktree add</code>.</p>
+<h2>Followups</h2>
+<ul><li>L-001 · Add optional remote workspace worktree cleanup after provider restore semantics are explicit.</li><li>L-002 · Add a branch-delete setting only after restore can recreate from a saved commit.</li></ul>
+<h2>Definition of done</h2>
+<ul><li>Archive removes Spanner-created local worktrees.</li><li>Dirty tracked and untracked files survive via stash and restore on unarchive.</li><li>Reused worktree threads do not delete the shared path.</li><li><code>node --test test/local-git.test.js test/archive-route.test.js</code> passes.</li></ul>
+</body>
+</html>

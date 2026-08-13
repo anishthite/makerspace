@@ -5,7 +5,7 @@ import path from 'node:path';
 
 import { createDraftPullRequestForThread } from '../git-delivery.js';
 import { runLocalPiSession } from '../host-pi-runner.js';
-import { ensureLocalGitRepo, ensureLocalGitWorktree } from '../local-git.js';
+import { closeLocalGitWorktree, ensureLocalGitRepo, ensureLocalGitWorktree, restoreLocalGitWorktree } from '../local-git.js';
 import { analyzePiTraceText, summarizeThreadPerformanceList } from '../performance.js';
 import { normalizeImageAttachments, normalizeModelOptions, normalizeThreadRequest } from '../session.js';
 import { flushStoredTraceEvents } from '../trace-store.js';
@@ -623,6 +623,16 @@ export function createThreadService({ config, provider, http, auth, runState, br
     return effectiveStoredRunStatus(decorateLiveSession(session));
   }
 
+  function worktreeArchivePatch(result, now) {
+    if (!result.closed) return null;
+    return {
+      worktreeClosedAt: now,
+      worktreeArchiveStash: result.stashRef || '',
+      worktreeArchiveStashAppliedAt: null,
+      worktreeArchiveDirty: result.dirty,
+    };
+  }
+
   async function archiveThreadSession(name, viewerSessionId = '', trusted = false, user = null) {
     const existing = await getThreadSession(name);
     if (!canAccessSession(existing, viewerSessionId, trusted, user)) {
@@ -635,8 +645,14 @@ export function createThreadService({ config, provider, http, auth, runState, br
       throw clientError('Only finished main agents can be archived.');
     }
 
-    const archived = await archiveStoredSession(config.sessionFile, name);
-    return archived || existing;
+    const now = new Date().toISOString();
+    const closeResult = await closeLocalGitWorktree(existing);
+    const archived = await archiveStoredSession(config.sessionFile, name, now);
+    const patch = worktreeArchivePatch(closeResult, now);
+    if (!patch) return archived || existing;
+
+    appendRunOutput(name, `[system] Archived worktree closed: ${closeResult.worktreePath}.\n`, status);
+    return upsertSession(config.sessionFile, { name, ...patch, updatedAt: now });
   }
 
   async function unarchiveThreadSession(name, viewerSessionId = '', trusted = false, user = null) {
@@ -645,7 +661,19 @@ export function createThreadService({ config, provider, http, auth, runState, br
       throw clientError(`Main agent ${name} belongs to a different user.`, 403);
     }
 
-    return (await unarchiveStoredSession(config.sessionFile, name)) || existing;
+    const restoreResult = await restoreLocalGitWorktree(existing);
+    const now = new Date().toISOString();
+    const unarchived = (await unarchiveStoredSession(config.sessionFile, name, now)) || existing;
+    if (!restoreResult.restored) return unarchived;
+
+    appendRunOutput(name, `[system] Archived worktree restored: ${restoreResult.worktreePath}.\n`, unarchived.runStatus || unarchived.status || 'ready');
+    return upsertSession(config.sessionFile, {
+      name,
+      worktreeClosedAt: null,
+      worktreeRestoredAt: now,
+      ...(restoreResult.stashApplied ? { worktreeArchiveStashAppliedAt: now } : {}),
+      updatedAt: now,
+    });
   }
 
   async function markThreadStopped(session) {
