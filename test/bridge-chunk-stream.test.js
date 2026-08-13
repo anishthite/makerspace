@@ -130,7 +130,11 @@ test('remote bridge script emits assistant deltas as chunk events', async () => 
   const setupScript = await readFile(new URL('../src/setup-script.js', import.meta.url), 'utf8');
 
   assert.match(setupScript, /publish\(run, \{ type: "chunk", chunk: e\.delta, runStatus: "running" \}\)/);
-  assert.match(setupScript, /publish\(run, \{ type: "chunk", chunk: finalText, runStatus: "running" \}\)/);
-  assert.match(setupScript, /publish\(run, \{ type: "chunk", chunk: lastAssistantText, runStatus: "running" \}\)/);
+  assert.match(setupScript, /publish\(run,\{type:"chunk",chunk:t,runStatus:"running"\}\)/);
+  assert.match(setupScript, /let a=""/);
+  assert.match(setupScript, /event\.type==="message_start"&&event\.message\?\.role==="assistant"/);
+  assert.match(setupScript, /t&&t!==a/);
+  assert.match(setupScript, /t&&t!==f/);
+  assert.doesNotMatch(setupScript, /streamedAssistantText/);
   assert.doesNotMatch(setupScript, /type: "stdout", chunk: e\.delta/);
 });

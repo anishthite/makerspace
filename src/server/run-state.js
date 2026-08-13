@@ -887,22 +887,21 @@ export function createRunState({ config, provider, loadPiSdk, loadPiAi, canAcces
     });
   }
 
-  function persistHostDispatchStatus(sessionName, runStatus, extra = {}) {
+  // Decision: see implementation-notes/2026-08-13-assistant-message-persistence-and-bridge-final.html#D-001
+  async function persistHostDispatchStatus(sessionName, runStatus, extra = {}) {
     appendRunStatus(sessionName, runStatus, extra);
     setRunState(sessionName, { runStatus, warning: extra.warning || null });
 
-    void (async () => {
-      const current = await getStoredSession(config.sessionFile, sessionName);
-      await upsertSession(config.sessionFile, {
-        name: sessionName,
-        ...performancePatchForSession(current || { name: sessionName }, runStatus),
-        status: statusFromRunStatus(runStatus, current?.status || 'unknown'),
-        runStatus,
-        warning: Object.prototype.hasOwnProperty.call(extra, 'warning') ? extra.warning : current?.warning || null,
-        updatedAt: new Date().toISOString(),
-      });
-      if (runStatus === 'completed' || runStatus === 'failed') await persistThreadAssistantMessage(sessionName);
-    })();
+    const current = await getStoredSession(config.sessionFile, sessionName);
+    await upsertSession(config.sessionFile, {
+      name: sessionName,
+      ...performancePatchForSession(current || { name: sessionName }, runStatus),
+      status: statusFromRunStatus(runStatus, current?.status || 'unknown'),
+      runStatus,
+      warning: Object.prototype.hasOwnProperty.call(extra, 'warning') ? extra.warning : current?.warning || null,
+      updatedAt: new Date().toISOString(),
+    });
+    if (runStatus === 'completed' || runStatus === 'failed') await persistThreadAssistantMessage(sessionName);
   }
 
   function isActiveRunStatus(runStatus) {

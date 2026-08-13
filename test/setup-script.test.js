@@ -93,7 +93,7 @@ test('buildSetupScript clones a repo and auto-runs pi when requested', () => {
   assert.match(bridgeScript, /function createPiSession\(modelRef="",thinkingLevel="",resume=null,cwd=workspaceDir\)/);
   assert.match(bridgeScript, /function preparePiSession\(modelRef="",thinkingLevel="",resume=null,cwd=workspaceDir\)/);
   assert.match(bridgeScript, /metric: "first_llm_call_start"/);
-  assert.match(bridgeScript, /let streamedAssistantText = ""/);
+  assert.match(bridgeScript, /let a=""/);
   assert.match(bridgeScript, /event\.type === "agent_end"/);
   assert.match(bridgeScript, /e\.type === "thinking_delta"/);
   assert.match(bridgeScript, /messageTimestamp = Number\(event\.message\?\.timestamp \?\? e\.partial\?\.timestamp\)/);

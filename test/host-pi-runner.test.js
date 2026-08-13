@@ -69,3 +69,39 @@ test('emits a non-streamed final response after an earlier streamed assistant tu
 
   assert.deepEqual(chunks, ['Working.', 'Done.']);
 });
+
+test('emits a non-streamed final response when its message start event is absent', async () => {
+  const chunks = [];
+  let onEvent;
+  const finalMessage = { role: 'assistant', content: [{ type: 'text', text: 'Done.' }] };
+  const piSession = {
+    agent: { streamFn: async () => {} },
+    subscribe(listener) {
+      onEvent = listener;
+      return () => {};
+    },
+    async prompt() {
+      onEvent({ type: 'message_start', message: { role: 'assistant' } });
+      onEvent({ type: 'message_update', assistantMessageEvent: { type: 'text_delta', delta: 'Working.' } });
+      onEvent({ type: 'message_end', message: { role: 'assistant', content: [{ type: 'text', text: 'Working.' }] } });
+      onEvent({ type: 'message_end', message: finalMessage });
+      onEvent({ type: 'agent_end', messages: [finalMessage] });
+    },
+    getLastAssistantText: () => 'Done.',
+    dispose() {},
+  };
+
+  await runCreatedPiSession({
+    createSession: async () => ({ session: piSession }),
+    session: { taskPrompt: 'Test', submittedAtMs: 1 },
+    emitOutput: () => {},
+    emitMetric: async () => {},
+    emitStatus: async () => {},
+    emitEvent: (event) => {
+      if (event.type === 'chunk') chunks.push(event.chunk);
+    },
+    failureLabel: 'Test run',
+  });
+
+  assert.deepEqual(chunks, ['Working.', 'Done.']);
+});

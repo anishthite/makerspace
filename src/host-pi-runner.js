@@ -394,7 +394,7 @@ export async function runCreatedPiSession({ createSession, session, emitOutput, 
   let unsubscribe = null;
   let clearMessageControl = null;
   let firstProviderCallPublished = false;
-  let currentAssistantMessageStreamed = false;
+  let currentAssistantText = '';
   let hasAssistantOutput = false;
   let lastFinalAssistantText = '';
   let lastProviderError = '';
@@ -489,14 +489,14 @@ export async function runCreatedPiSession({ createSession, session, emitOutput, 
       }
 
       if (event.type === 'message_start' && event.message?.role === 'assistant') {
-        currentAssistantMessageStreamed = false;
+        currentAssistantText = '';
         return;
       }
 
       if (event.type === 'message_update') {
         const messageEvent = event.assistantMessageEvent;
         if (messageEvent.type === 'text_delta') {
-          currentAssistantMessageStreamed = true;
+          currentAssistantText += messageEvent.delta;
           hasAssistantOutput = true;
           emitAssistantChunk(messageEvent.delta);
           return;
@@ -520,7 +520,7 @@ export async function runCreatedPiSession({ createSession, session, emitOutput, 
         lastProviderError = assistantProviderErrorMessage(event.message) || lastProviderError;
         if (event.message?.role === 'assistant') {
           const finalText = textFromContent(event.message.content);
-          if (finalText && !currentAssistantMessageStreamed) {
+          if (finalText && finalText !== currentAssistantText) {
             hasAssistantOutput = true;
             emitAssistantChunk(finalText);
           }
