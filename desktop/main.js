@@ -20,12 +20,14 @@ const rootDir = path.resolve(__dirname, '..');
 let serverProcess = null;
 let mainWindow = null;
 let userDataMigrated = false;
+let updateStatus = { message: app.isPackaged ? 'Checking for updates on launch…' : 'Update checks run in the packaged app.' };
 const EXTERNAL_PROTOCOLS = new Set(['http:', 'https:', 'vscode:', 'vscode-insiders:', 'cursor:', 'zed:', 'jetbrains:']);
 const LOCAL_BACKEND_HOST = 'localhost';
 const LOCAL_BACKEND_PORT = 8788;
 const NEW_THREAD_SHORTCUT_CHANNEL = 'spanner:new-thread-shortcut';
 
 function sendUpdateStatus(message) {
+  updateStatus = { message };
   BrowserWindow.getAllWindows().forEach((window) => {
     if (!window || window.isDestroyed()) return;
     window.webContents.send('spanner:update-status', { message });
@@ -222,6 +224,8 @@ async function openExternalUrl(url) {
 }
 
 ipcMain.handle('spanner:open-external', (_event, url) => openExternalUrl(url));
+
+ipcMain.handle('spanner:get-update-status', () => updateStatus);
 
 ipcMain.handle('spanner:check-for-updates', () => {
   if (!app.isPackaged) return { ok: false, message: 'Update checks work in the packaged app.' };

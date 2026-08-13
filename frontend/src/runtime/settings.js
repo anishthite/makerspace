@@ -500,8 +500,15 @@ function initDesktopUpdates() {
   const desktop = globalThis.spannerDesktop;
   if (!desktopUpdates || !desktopCheckUpdates || !desktopUpdateStatus || !desktop?.checkForUpdates) return;
   desktopUpdates.hidden = false;
-  desktopUpdateStatus.textContent = 'Ready to check for desktop updates.';
+  desktopUpdateStatus.textContent = 'Checking launch update status…';
   const unsubscribe = desktop.onUpdateStatus?.(showDesktopUpdateStatus);
+  if (desktop.getUpdateStatus) {
+    desktop.getUpdateStatus().then(showDesktopUpdateStatus).catch(() => {
+      desktopUpdateStatus.textContent = 'Ready to check for desktop updates.';
+    });
+  } else {
+    desktopUpdateStatus.textContent = 'Ready to check for desktop updates.';
+  }
   desktopCheckUpdates.addEventListener('click', async () => {
     desktopCheckUpdates.disabled = true;
     desktopUpdateStatus.textContent = 'Checking for updates…';
