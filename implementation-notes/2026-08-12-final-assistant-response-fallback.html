@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Implementation Notes — Final assistant response fallback</title>
+<meta name="task" content="Deliver each finalized assistant response when token streaming was absent for that message.">
+<meta name="date-started" content="2026-08-12">
+<meta name="date-updated" content="2026-08-12">
+<meta name="status" content="in-progress">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,pi,runner,streaming,response,regression">
+<meta name="related" content="2026-08-11-full-trace-retention.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}ul{margin:.3rem 0 .8rem 1.2rem;padding:0}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Final assistant response fallback</h1>
+<p class="meta"><code>spanner/makerspace-20260813064059-3e400b-7d18f245</code> · worktree <code>/Users/anishthite/spanner/makerspace/makerspace-20260813064059-3e400b</code> · 2026-08-12 · status <b>in-progress</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Emit a finalized response when that assistant message has no text deltas.</div><b>Source</b><div><code>message_start</code>, <code>message_update</code>, and <code>message_end</code> from the Pi session.</div><b>Surface</b><div>Bridge <code>chunk</code> events consumed by the thread transcript.</div><b>Schema</b><div>None.</div><b>Mobile</b><div>Untouched.</div><b>Open Qs</b><div>0.</div></div>
+<h2>Algorithm</h2>
+<ol><li>Reset the streamed flag at each assistant <code>message_start</code>.</li><li>Emit the finalized text at <code>message_end</code> only when that message emitted no text delta.</li><li>Use later fallbacks only when they identify a different finalized message.</li></ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>src/host-pi-runner.js</code></td><td>touch</td><td>Scope stream deduplication to one assistant message.</td></tr><tr><td><code>test/host-pi-runner.test.js</code></td><td>touch</td><td>Cover a streamed interim turn followed by a non-streamed final response.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Use Pi message lifecycle boundaries over a run-wide streamed flag. A tool loop contains multiple assistant messages.</td></tr><tr><td>D-002</td><td>Keep <code>agent_end</code> and <code>getLastAssistantText()</code> fallbacks. Providers can omit normal lifecycle events.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>Boolean per message over retaining all streamed text. It prevents missing whole responses without retaining long traces.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Revert the runner and focused test together; no persisted data changes.</p>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>node --test test/host-pi-runner.test.js</code></td><td>Pass, including streamed interim text followed by a non-streamed final response.</td></tr><tr><td><code>npm test</code></td><td>Blocked by pre-existing <code>test/appearance.test.js</code>: it expects <code>light</code> while <code>frontend/src/runtime/appearance.js</code> fixes <code>dark</code>.</td></tr><tr><td><code>git diff --check</code></td><td>Pass.</td></tr></table>
+<h2>Definition of done</h2>
+<ul><li>Non-streamed final text follows earlier streamed assistant text.</li><li>Final fallback does not duplicate the finalized response.</li><li><code>node --test test/host-pi-runner.test.js</code> passes.</li></ul>
+</body>
+</html>

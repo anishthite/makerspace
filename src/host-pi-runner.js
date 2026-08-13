@@ -388,13 +388,15 @@ async function createLocalPiSession(config, session) {
   });
 }
 
-async function runCreatedPiSession({ createSession, session, emitOutput, emitMetric, emitStatus, emitEvent, failureLabel, signal, onMessageControl }) {
+export async function runCreatedPiSession({ createSession, session, emitOutput, emitMetric, emitStatus, emitEvent, failureLabel, signal, onMessageControl }) {
   const submittedAtMs = Number(session.submittedAtMs) || Date.now();
   let piSession = null;
   let unsubscribe = null;
   let clearMessageControl = null;
   let firstProviderCallPublished = false;
-  let hasStreamedAssistantText = false;
+  let currentAssistantMessageStreamed = false;
+  let hasAssistantOutput = false;
+  let lastFinalAssistantText = '';
   let lastProviderError = '';
   const toolOutput = new Map();
   let backgroundWorkflowCount = 0;
@@ -486,10 +488,16 @@ async function runCreatedPiSession({ createSession, session, emitOutput, emitMet
         return;
       }
 
+      if (event.type === 'message_start' && event.message?.role === 'assistant') {
+        currentAssistantMessageStreamed = false;
+        return;
+      }
+
       if (event.type === 'message_update') {
         const messageEvent = event.assistantMessageEvent;
         if (messageEvent.type === 'text_delta') {
-          hasStreamedAssistantText = true;
+          currentAssistantMessageStreamed = true;
+          hasAssistantOutput = true;
           emitAssistantChunk(messageEvent.delta);
           return;
         }
@@ -510,12 +518,20 @@ async function runCreatedPiSession({ createSession, session, emitOutput, emitMet
 
       if (event.type === 'message_end') {
         lastProviderError = assistantProviderErrorMessage(event.message) || lastProviderError;
-        if (event.message?.role === 'assistant' && event.message.usage) {
-          emitEvent?.({
-            type: 'usage',
-            usage: event.message.usage,
-            runStatus: 'running',
-          });
+        if (event.message?.role === 'assistant') {
+          const finalText = textFromContent(event.message.content);
+          if (finalText && !currentAssistantMessageStreamed) {
+            hasAssistantOutput = true;
+            emitAssistantChunk(finalText);
+          }
+          lastFinalAssistantText = finalText;
+          if (event.message.usage) {
+            emitEvent?.({
+              type: 'usage',
+              usage: event.message.usage,
+              runStatus: 'running',
+            });
+          }
           return;
         }
         if (event.message?.role === 'custom' && event.message.display) {
@@ -546,8 +562,9 @@ async function runCreatedPiSession({ createSession, session, emitOutput, emitMet
         const messages = Array.isArray(event.messages) ? event.messages : Array.isArray(event.newMessages) ? event.newMessages : [];
         const assistant = [...messages].reverse().find((message) => message?.role === 'assistant');
         const finalText = textFromContent(assistant?.content);
-        if (finalText && !hasStreamedAssistantText) {
-          hasStreamedAssistantText = true;
+        if (finalText && finalText !== lastFinalAssistantText) {
+          hasAssistantOutput = true;
+          lastFinalAssistantText = finalText;
           emitAssistantChunk(finalText);
         }
         return;
@@ -644,11 +661,12 @@ async function runCreatedPiSession({ createSession, session, emitOutput, emitMet
     }
     if (stopped) throw new Error('Stopped by user.');
     const lastAssistantText = piSession.getLastAssistantText?.();
-    if (lastAssistantText && !hasStreamedAssistantText) {
-      hasStreamedAssistantText = true;
+    if (lastAssistantText && lastAssistantText !== lastFinalAssistantText) {
+      hasAssistantOutput = true;
+      lastFinalAssistantText = lastAssistantText;
       emitAssistantChunk(lastAssistantText);
     }
-    if (!hasStreamedAssistantText && !lastAssistantText) {
+    if (!hasAssistantOutput && !lastAssistantText) {
       throw new Error(lastProviderError || 'Main agent completed without assistant output. Check provider auth.');
     }
     await emitStatus('completed', { done: true });
