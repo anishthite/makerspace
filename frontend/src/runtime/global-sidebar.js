@@ -599,7 +599,7 @@ function groupedSidebarThreads(threads) {
 function renderSidebarWorktreeNewButton(project, worktree) {
   const label = worktree.label || project.label || 'workspace';
   const reuseRepoPath = looksLikeLocalPath(worktree.key);
-  return `<button class="sidebar-worktree-new" type="button" data-sidebar-worktree-new-thread data-sidebar-project-key="${escapeHtml(project.key)}" data-sidebar-project-label="${escapeHtml(project.label)}" data-sidebar-worktree-key="${escapeHtml(worktree.key)}" data-sidebar-worktree-label="${escapeHtml(label)}" data-sidebar-worktree-branch="${escapeHtml(worktree.branch || 'main')}"${reuseRepoPath ? ' data-sidebar-reuse-repo-path="true"' : ''} aria-label="New agent in ${escapeHtml(label)}" title="New agent in ${escapeHtml(label)}">+</button>`;
+  return `<button class="sidebar-worktree-new" type="button" data-sidebar-worktree-new-thread data-sidebar-project-key="${escapeHtml(project.key)}" data-sidebar-project-label="${escapeHtml(project.label)}" data-sidebar-worktree-key="${escapeHtml(worktree.key)}" data-sidebar-worktree-label="${escapeHtml(label)}" data-sidebar-worktree-branch="${escapeHtml(worktree.branch || 'main')}"${reuseRepoPath ? ' data-sidebar-reuse-repo-path="true"' : ''} aria-label="New agent in ${escapeHtml(label)}" title="New agent in ${escapeHtml(label)}"></button>`;
 }
 
 function projectFromWorktreeButton(button) {
