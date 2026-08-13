@@ -123,11 +123,16 @@ function sidebarThinkingLevelValue() {
 
 function promptRequestBody(project, prompt, controls = {}) {
   const localProject = project?.kind === 'local' || looksLikeLocalPath(project?.value);
+  const sourceRepoPath = cleanProjectValue(project?.sourceRepoPath);
+  const worktreePath = cleanProjectValue(project?.worktreePath);
   return {
     ...(localProject ? { repoPath: cleanProjectValue(project.value) } : { repoUrl: normalizeRepoUrl(project.value) }),
     branch: project?.branch || 'main',
     prompt,
     repoSource: localProject ? '' : project?.repoSource || 'github',
+    ...(sourceRepoPath ? { sourceRepoPath } : {}),
+    ...(worktreePath ? { worktreePath } : {}),
+    ...(project?.reuseRepoPath ? { reuseRepoPath: true } : {}),
     modelRef: controls.modelRef || localStorage.getItem(MODEL_REF_KEY) || '',
     thinkingLevel: controls.thinkingLevel || localStorage.getItem(THINKING_LEVEL_KEY) || '',
     images: Array.isArray(controls.images) ? controls.images : [],
@@ -150,7 +155,7 @@ function elements() {
     imageTrigger: document.querySelector('#sidebar-prompt-images-trigger'),
     images: document.querySelector('#sidebar-prompt-images'),
     imageStatus: document.querySelector('#sidebar-prompt-image-status'),
-    triggers: [...document.querySelectorAll('[data-sidebar-new-thread]')],
+    triggers: [...document.querySelectorAll('[data-sidebar-new-thread], [data-sidebar-worktree-new-thread]')],
   };
 }
 
@@ -333,10 +338,10 @@ function ensureSidebarProjects() {
   return projectsPromise;
 }
 
-export function openSidebarPromptLightbox() {
+export function openSidebarPromptLightbox(projectOverride = null) {
   const { dialog, prompt, status, images, imageStatus } = elements();
   if (!dialog) return;
-  selectedPromptProject = readSelectedProject();
+  selectedPromptProject = projectOverride?.value ? projectOverride : readSelectedProject();
   renderSidebarProjectOptions(readCachedRecentProjects());
   loadSidebarRunControls();
   const selected = renderProjectState();
@@ -392,7 +397,7 @@ export function bindSidebarPromptLightbox({ fetchJson, makeThreadUrl = threadUrl
     }
     const index = projectSelect.value === '' ? -1 : Number(projectSelect.value);
     selectedPromptProject = Number.isInteger(index) && index >= 0 ? sidebarProjects[index] || null : null;
-    writeSelectedProject(selectedPromptProject);
+    if (!selectedPromptProject?.reuseRepoPath) writeSelectedProject(selectedPromptProject);
     renderProjectState();
     elements().prompt?.focus();
   });
@@ -439,7 +444,7 @@ export function bindSidebarPromptLightbox({ fetchJson, makeThreadUrl = threadUrl
       return;
     }
     saveSidebarRunControls();
-    writeSelectedProject(selected);
+    if (!selected.reuseRepoPath) writeSelectedProject(selected);
     if (submit) submit.disabled = true;
     if (status) status.textContent = 'Starting...';
     try {

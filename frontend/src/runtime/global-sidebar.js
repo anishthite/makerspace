@@ -15,14 +15,12 @@ const SETTLED_TAIL_PAGE_COUNT = 20;
 const SETTLEABLE_THREAD_STATUSES = ['completed', 'ready', 'failed'];
 const FINISHED_INDICATOR_RESET_ATTRIBUTES = ['role', 'tabindex', 'aria-label', 'title', 'data-finished-indicator'];
 const SIDEBAR_POLL_INTERVAL_MS = 30000;
-const SIDEBAR_RUNTIME_TICK_MS = 30000;
 const API_BASE = String(import.meta.env?.VITE_SPANNER_API_BASE || '').trim().replace(/\/+$/, '');
 
 let threadsList = null;
 let agentSearchInput = null;
 let statusNode = null;
 let sidebarThreads = [];
-let runtimeTickTimer = null;
 let settledShelfExpanded = readSettledShelfExpanded();
 let settledVisibleCount = readSettledVisibleCount();
 let settledThreadNames = readSettledThreadNames();
@@ -180,16 +178,21 @@ function looksLikeLocalPath(value) {
   return /^(~|\/|[A-Za-z]:[\\/]|\\\\)/.test(String(value || '').trim());
 }
 
-function projectFromScopeValue(value, label = folderLabel(value)) {
+function projectFromScopeValue(value, label = folderLabel(value), options = {}) {
   const cleanValue = cleanProjectValue(value);
   if (!cleanValue) return null;
   const local = looksLikeLocalPath(cleanValue);
+  const sourceRepoPath = cleanProjectValue(options.sourceRepoPath);
+  const worktreePath = cleanProjectValue(options.worktreePath);
   return {
     kind: local ? 'local' : 'git',
     value: cleanValue,
     label: label || folderLabel(cleanValue),
     repoSource: local ? '' : 'github',
-    branch: 'main',
+    branch: options.branch || 'main',
+    ...(sourceRepoPath ? { sourceRepoPath } : {}),
+    ...(worktreePath ? { worktreePath } : {}),
+    ...(options.reuseRepoPath ? { reuseRepoPath: true } : {}),
   };
 }
 
@@ -344,7 +347,6 @@ function sidebarThreadRenderSignature(thread) {
     thread?.localWorktree,
     thread?.repoUrl,
     thread?.branch,
-    runtimeStart(thread),
     finishedAt(thread),
     thread?.updatedAt,
   ].map((value) => String(value ?? '')).join('\t');
@@ -432,25 +434,19 @@ function updateProjectScopeMenu(threads) {
   }
   const currentProject = projects.find((project) => project.key === sidebarProjectScope);
   const label = document.querySelector('#sidebar-project-scope-label');
-  const count = document.querySelector('#sidebar-project-scope-count');
   const menu = document.querySelector('#sidebar-project-scope-menu');
   const toggle = document.querySelector('#sidebar-project-scope');
   if (label) label.textContent = currentProject?.label || 'All projects';
-  if (count) {
-    count.hidden = sidebarProjectScope === 'all';
-    count.textContent = currentProject ? String(currentProject.count) : '';
-  }
   if (toggle) toggle.disabled = projects.length < 1;
   if (!menu) return;
   const options = [
-    { key: 'all', label: 'All projects', count: threads.length },
+    { key: 'all', label: 'All projects' },
     ...projects,
   ];
   menu.innerHTML = options.map((project) => `
     <button class="sidebar-scope-option" type="button" role="menuitemradio" aria-checked="${project.key === sidebarProjectScope ? 'true' : 'false'}" data-sidebar-scope-option="${escapeHtml(project.key)}">
       ${sidebarProjectIcon(project.label)}
       <span>${escapeHtml(project.label)}</span>
-      <small>${project.count}</small>
     </button>
   `).join('');
 }
@@ -577,28 +573,8 @@ function hasFreshFinishedIndicator(thread) {
   return isSettledThread(thread) && canDismissFinishedIndicator(rawStatus, isActiveThread(thread)) && !seenFinishedThreads.has(finishedIndicatorKey(thread, rawStatus));
 }
 
-function runtimeStart(thread) {
-  return thread.startedAt || thread.createdAt || thread.updatedAt || '';
-}
-
-function threadInboxTimeMs(thread) {
-  const active = isActiveThread(thread);
-  const value = active
-    ? thread?.updatedAt || thread?.createdAt || ''
-    : finishedAt(thread) || thread?.updatedAt || thread?.createdAt || '';
-  const parsed = Date.parse(value);
-  return Number.isNaN(parsed) ? 0 : parsed;
-}
-
-function sortThreadInbox(left, right) {
-  const leftActive = isActiveThread(left);
-  const rightActive = isActiveThread(right);
-  if (leftActive !== rightActive) return leftActive ? -1 : 1;
-  return threadInboxTimeMs(right) - threadInboxTimeMs(left);
-}
-
 function sidebarGroupSort(left, right) {
-  return right.latest - left.latest || left.label.localeCompare(right.label);
+  return left.label.localeCompare(right.label);
 }
 
 function groupedSidebarThreads(threads) {
@@ -608,13 +584,9 @@ function groupedSidebarThreads(threads) {
     const projectLabel = sidebarThreadProjectLabel(thread) || 'workspace';
     const worktreeKey = sidebarThreadWorktreeKey(thread) || projectKey;
     const worktreeLabel = sidebarThreadWorktreeLabel(thread) || 'main';
-    const latest = threadInboxTimeMs(thread);
-    const project = projects.get(projectKey) || { key: projectKey, label: projectLabel, count: 0, latest: 0, worktrees: new Map() };
-    const worktree = project.worktrees.get(worktreeKey) || { key: worktreeKey, label: worktreeLabel, count: 0, latest: 0, threads: [] };
-    project.count += 1;
-    project.latest = Math.max(project.latest, latest);
-    worktree.count += 1;
-    worktree.latest = Math.max(worktree.latest, latest);
+    const project = projects.get(projectKey) || { key: projectKey, label: projectLabel, worktrees: new Map() };
+    const worktree = project.worktrees.get(worktreeKey) || { key: worktreeKey, label: worktreeLabel, branch: 'main', threads: [] };
+    worktree.branch = worktree.branch === 'main' ? thread?.branch || 'main' : worktree.branch;
     worktree.threads.push(thread);
     project.worktrees.set(worktreeKey, worktree);
     projects.set(projectKey, project);
@@ -624,19 +596,37 @@ function groupedSidebarThreads(threads) {
     .map((project) => ({ ...project, worktrees: [...project.worktrees.values()].sort(sidebarGroupSort) }));
 }
 
+function renderSidebarWorktreeNewButton(project, worktree) {
+  const label = worktree.label || project.label || 'workspace';
+  const reuseRepoPath = looksLikeLocalPath(worktree.key);
+  return `<button class="sidebar-worktree-new" type="button" data-sidebar-worktree-new-thread data-sidebar-project-key="${escapeHtml(project.key)}" data-sidebar-project-label="${escapeHtml(project.label)}" data-sidebar-worktree-key="${escapeHtml(worktree.key)}" data-sidebar-worktree-label="${escapeHtml(label)}" data-sidebar-worktree-branch="${escapeHtml(worktree.branch || 'main')}"${reuseRepoPath ? ' data-sidebar-reuse-repo-path="true"' : ''} aria-label="New agent in ${escapeHtml(label)}" title="New agent in ${escapeHtml(label)}">+</button>`;
+}
+
+function projectFromWorktreeButton(button) {
+  if (!button) return null;
+  const reuseRepoPath = button.dataset.sidebarReuseRepoPath === 'true';
+  return projectFromScopeValue(button.dataset.sidebarWorktreeKey || button.dataset.sidebarProjectKey, button.dataset.sidebarWorktreeLabel || button.dataset.sidebarProjectLabel, {
+    branch: button.dataset.sidebarWorktreeBranch || 'main',
+    ...(reuseRepoPath ? {
+      sourceRepoPath: button.dataset.sidebarProjectKey,
+      worktreePath: button.dataset.sidebarWorktreeKey,
+      reuseRepoPath: true,
+    } : {}),
+  });
+}
+
 function renderSidebarThreadGroups(threads, renderCard) {
   return groupedSidebarThreads(threads).map((project) => `
     <section class="sidebar-project-group" aria-label="${escapeHtml(project.label)}">
       <div class="sidebar-project-group-head">
         ${sidebarProjectIcon(project.label)}
         <span>${escapeHtml(project.label)}</span>
-        <small>${project.count}</small>
       </div>
       ${project.worktrees.map((worktree) => `
         <section class="sidebar-worktree-group" aria-label="${escapeHtml(`${project.label} ${worktree.label}`)}">
           <div class="sidebar-worktree-group-head">
             <span>${escapeHtml(worktree.label)}</span>
-            <small>${worktree.count}</small>
+            ${renderSidebarWorktreeNewButton(project, worktree)}
           </div>
           <div class="action-list sidebar-worktree-thread-list">${worktree.threads.map(renderCard).join('')}</div>
         </section>
@@ -658,14 +648,6 @@ function sidebarDurationLabel(value) {
   return compact.replace(/\b(\d+m)\s+\d+s\b/g, '$1');
 }
 
-function sidebarStatusLabel(rawStatus) {
-  const status = String(rawStatus || '').toLowerCase();
-  if (status === 'running' || status === 'starting' || status === 'launching') return 'Working';
-  if (status === 'queued') return 'Queued';
-  if (status === 'failed') return 'Failed';
-  return status.replace(/[-_]+/g, ' ').replace(/^\w/, (letter) => letter.toUpperCase());
-}
-
 function renderThreadCard(thread, jumpLabel = '') {
   const rawStatus = effectiveThreadStatus(thread) || 'unknown';
   const badgeClass = statusClass(rawStatus);
@@ -676,16 +658,8 @@ function renderThreadCard(thread, jumpLabel = '') {
   const finishedValue = finishedAt(thread);
   const finished = running ? '' : sidebarDurationLabel(formatFinishedAgo(finishedValue));
   const outcome = running ? '' : finishedOutcome(thread, rawStatus);
-  const start = runtimeStart(thread);
-  const runtimeEnd = running ? Date.now() : finishedValue || start;
-  const runtime = formatElapsed(start, runtimeEnd);
   const inactiveTimes = !running ? [finished].filter(Boolean) : [];
   const inactiveMeta = inactiveTimes.length ? `<span class="finished-meta">${inactiveTimes.map((text) => `<time>${escapeHtml(text)}</time>`).join('')}</span>` : '';
-  const statusLabel = sidebarStatusLabel(rawStatus);
-  const runtimeLabel = sidebarDurationLabel(runtime);
-  const activeRuntime = runtime
-    ? `<time class="runtime-label" data-runtime-start="${escapeHtml(start)}" data-runtime-status="${escapeHtml(statusLabel)}" aria-label="${escapeHtml(`${statusLabel} ${runtimeLabel}`)}">${escapeHtml(runtimeLabel)}</time>`
-    : '';
   const indicatorKey = settled && canDismissFinishedIndicator(rawStatus, running) ? finishedIndicatorKey(thread, rawStatus) : '';
   const indicatorSeen = indicatorKey && seenFinishedThreads.has(indicatorKey);
   const indicatorAttrs = indicatorKey && !indicatorSeen
@@ -710,10 +684,7 @@ function renderThreadCard(thread, jumpLabel = '') {
   const linkAttrs = `href="${escapeHtml(threadUrl(thread.name))}"${current ? ' aria-current="page"' : ''}${indicatorKey ? ` data-finished-thread="${escapeHtml(indicatorKey)}"` : ''}`;
   const activeBody = `
     <a class="inbox-main" ${linkAttrs}>
-      <span class="sidebar-thread-title-row">
-        <strong>${escapeHtml(displayTitle)}</strong>
-        <span class="sidebar-thread-status">${activeRuntime}</span>
-      </span>
+      <span class="sidebar-thread-title-row"><strong>${escapeHtml(displayTitle)}</strong></span>
     </a>
     <span class="inbox-side">${selectButton}${stopButton}${settleButton}</span>
   `;
@@ -740,31 +711,6 @@ function currentThreadsListNode() {
   return threadsList;
 }
 
-function updateRuntimeLabels() {
-  const list = currentThreadsListNode();
-  const labels = list?.querySelectorAll('[data-runtime-start]') || [];
-  for (const label of labels) {
-    const status = label.dataset.runtimeStatus || 'running';
-    const duration = sidebarDurationLabel(formatElapsed(label.dataset.runtimeStart, Date.now()));
-    label.textContent = duration;
-    label.setAttribute('aria-label', `${status} ${duration}`);
-  }
-  if (!labels.length && runtimeTickTimer) {
-    clearInterval(runtimeTickTimer);
-    runtimeTickTimer = null;
-  }
-}
-
-function syncRuntimeTick() {
-  const list = currentThreadsListNode();
-  const hasActiveRuntime = Boolean(list?.querySelector('[data-runtime-start]'));
-  if (hasActiveRuntime && !runtimeTickTimer) {
-    runtimeTickTimer = setInterval(updateRuntimeLabels, SIDEBAR_RUNTIME_TICK_MS);
-  } else if (!hasActiveRuntime && runtimeTickTimer) {
-    clearInterval(runtimeTickTimer);
-    runtimeTickTimer = null;
-  }
-}
 
 function updateFinishedIndicatorCount() {
   const list = currentThreadsListNode();
@@ -772,7 +718,7 @@ function updateFinishedIndicatorCount() {
   if (!badge) return;
   const count = list.querySelectorAll('[data-finished-indicator]').length;
   badge.hidden = count < 1;
-  badge.textContent = `${count} new`;
+  badge.textContent = 'new';
 }
 
 function dismissFinishedIndicator(indicator) {
@@ -793,7 +739,7 @@ function renderGlobalSidebar(threads = sidebarThreads) {
   const scopedThreads = scopedAgentThreads(sidebarThreads);
   const filteredThreads = filterAgentThreads(scopedThreads);
   const searchActive = Boolean(agentSearchQuery());
-  const inboxThreads = [...filteredThreads].sort(sortThreadInbox);
+  const inboxThreads = filteredThreads;
   const activeThreads = inboxThreads.filter((thread) => !isSettledThread(thread));
   const settledThreads = inboxThreads.filter(isSettledThread);
   const renderedSettledThreads = searchActive
@@ -811,17 +757,14 @@ function renderGlobalSidebar(threads = sidebarThreads) {
   const renderedThreads = [...activeThreads, ...renderedSettledThreads];
   pruneSidebarSelection(renderedThreads);
 
-  const freshFinishedCount = settledThreads.filter(hasFreshFinishedIndicator).length;
+  const hasFreshFinished = settledThreads.some(hasFreshFinishedIndicator);
   const list = currentThreadsListNode();
   if (!list) {
-    syncRuntimeTick();
     return;
   }
   const renderSignature = sidebarRenderSignature(sidebarThreads);
   if (list === lastSidebarRenderList && renderSignature === lastSidebarRenderSignature) {
-    updateRuntimeLabels();
     updateFinishedIndicatorCount();
-    syncRuntimeTick();
     return;
   }
   lastSidebarRenderSignature = renderSignature;
@@ -840,12 +783,12 @@ function renderGlobalSidebar(threads = sidebarThreads) {
     <section class="action-lane sidebar-inbox-section sidebar-inbox-active" aria-label="Active work">
       <div class="action-lane-head">
         <h3>Active work</h3>
-        <span class="action-lane-tools">${selectActiveButton}<span class="action-count">${activeThreads.length}</span></span>
+        <span class="action-lane-tools">${selectActiveButton}</span>
       </div>
       <div class="action-list sidebar-active-list">${renderSidebarThreadGroups(activeThreads, renderJumpThreadCard)}</div>
     </section>
   ` : '';
-  const freshBadge = freshFinishedCount ? `<span class="fresh-finished-count" data-finished-indicator-count>${freshFinishedCount} new</span>` : '';
+  const freshBadge = hasFreshFinished ? '<span class="fresh-finished-count" data-finished-indicator-count>new</span>' : '';
   const historyLink = '<a class="textbtn lane-history" href="/history.html">history</a>';
   const settledEmpty = searchActive && !filteredThreads.length
     ? 'No agents match that search.'
@@ -856,7 +799,7 @@ function renderGlobalSidebar(threads = sidebarThreads) {
       : activeThreads.length
         ? 'No archived agents yet.'
         : 'No agents yet.';
-  const settledLabel = settledShelfExpanded ? 'Archived' : `Archived (${settledThreads.length})`;
+  const settledLabel = 'Archived';
   const settledSection = `
     <section class="action-lane sidebar-inbox-section sidebar-inbox-settled" aria-label="Archived agents">
       <div class="action-lane-head">
@@ -865,7 +808,7 @@ function renderGlobalSidebar(threads = sidebarThreads) {
           <span class="settled-shelf-chevron" aria-hidden="true">⌄</span>
         </button>
         <span class="action-lane-tools">
-          ${freshBadge}<span class="action-count">${settledThreads.length}</span>
+          ${freshBadge}
           ${historyLink}
         </span>
       </div>
@@ -877,7 +820,6 @@ function renderGlobalSidebar(threads = sidebarThreads) {
   `;
   list.innerHTML = `${batchBar}${activeSection}${settledSection}`;
   updateFinishedIndicatorCount();
-  syncRuntimeTick();
 }
 
 async function refreshGlobalSidebar() {
@@ -1011,6 +953,15 @@ function bindGlobalSidebarEvents() {
   });
 
   document.addEventListener('click', async (event) => {
+    const worktreeNewThread = event.target?.closest?.('[data-sidebar-worktree-new-thread]');
+    if (worktreeNewThread) {
+      event.preventDefault();
+      const project = projectFromWorktreeButton(worktreeNewThread);
+      closeScopeMenu();
+      openSidebarPromptLightbox(project);
+      return;
+    }
+
     const newThread = event.target?.closest?.('[data-sidebar-new-thread]');
     if (newThread) {
       event.preventDefault();

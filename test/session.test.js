@@ -127,6 +127,25 @@ test('normalizeThreadRequest preserves a local repo path', () => {
   assert.match(session.name, /^project-\d{14}-[a-f0-9]{6}$/);
 });
 
+test('normalizeThreadRequest preserves clicked workspace reuse metadata', () => {
+  const session = normalizeThreadRequest(
+    {
+      repoPath: '/Users/me/project/.worktrees/sidebar-fix',
+      sourceRepoPath: '/Users/me/project',
+      worktreePath: '/Users/me/project/.worktrees/sidebar-fix',
+      reuseRepoPath: true,
+      prompt: 'Run in this workspace.',
+    },
+    config,
+  );
+
+  assert.equal(session.repoPath, '/Users/me/project/.worktrees/sidebar-fix');
+  assert.equal(session.sourceRepoPath, '/Users/me/project');
+  assert.equal(session.worktreePath, '/Users/me/project/.worktrees/sidebar-fix');
+  assert.equal(session.localWorktree, true);
+  assert.equal(session.reuseRepoPath, true);
+});
+
 test('normalizeModelOptions rejects invalid thinking levels', () => {
   assert.throws(() => normalizeModelOptions({ thinkingLevel: 'maximum' }), /Thinking level/);
 });

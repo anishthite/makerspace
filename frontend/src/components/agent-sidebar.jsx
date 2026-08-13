@@ -32,7 +32,6 @@ export function AgentInboxSidebar() {
           <button id="sidebar-project-scope" className="sidebar-project-scope sidebar-search-filter" type="button" data-sidebar-scope-toggle aria-label="Filter agents" aria-haspopup="menu" aria-expanded="false" aria-controls="sidebar-project-scope-menu">
             <FunnelIcon className="size-4 shrink-0" aria-hidden="true" />
             <span id="sidebar-project-scope-label" className="sr-only">All projects</span>
-            <span id="sidebar-project-scope-count" className="sidebar-project-scope-count" hidden></span>
           </button>
         </InputGroup>
         <div id="sidebar-project-scope-menu" className="sidebar-scope-menu" role="menu" hidden></div>
