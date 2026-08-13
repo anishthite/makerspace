@@ -153,9 +153,9 @@ test('workspace agents use shadcn sidebar beside launch composer', () => {
   assert.match(ui, /<ShadSelectContent container=\{portalContainer\}/);
   assert.doesNotMatch(sidebarPromptRuntime, /spanner:model-picker/);
   assert.doesNotMatch(sidebarPromptMarkup, /InputGroup label="model" className="model-picker sidebar-prompt-model/);
-  assert.match(agentSidebar, /id="sidebar-thinking-level" min="0" max="5" step="1" defaultValue="5"/);
-  assert.match(agentSidebar, /id="sidebar-prompt-submit" variant="primary" className="sidebar-prompt-start" type="submit" aria-label="send prompt"><PaperPlaneTiltIcon className="size-4" aria-hidden="true" \/><\/Button>/);
-  assert.match(pages, /id="thread-submit" variant="primary" className="sidebar-prompt-start" type="submit" aria-label="send prompt"><PaperPlaneTiltIcon className="size-4" aria-hidden="true" \/><\/Button>/);
+  assert.match(agentSidebar, /<Select id="sidebar-thinking-level" name="thinkingLevel" defaultValue="xhigh" variant="prompt" aria-label="Thinking level" placeholder="xhigh"><option value="off">off<\/option>/);
+  assert.match(agentSidebar, /id="sidebar-prompt-submit" variant="primary" className="sidebar-prompt-start" type="submit" aria-label="send prompt"><ArrowUpIcon className="size-4" weight="bold" aria-hidden="true" \/><\/Button>/);
+  assert.match(pages, /id="thread-submit" variant="primary" className="sidebar-prompt-start" type="submit" aria-label="send prompt"><ArrowUpIcon className="size-4" weight="bold" aria-hidden="true" \/><\/Button>/);
   assert.doesNotMatch(sidebarPromptMarkup, /sidebar-prompt-suggestions|data-sidebar-suggested-prompt|Full workspace audit/);
   assert.doesNotMatch(sidebarPromptRuntime, /sidebar-prompt-suggestions|data-sidebar-suggested-prompt/);
   assert.doesNotMatch(appCss, /#sidebar-prompt-suggestions/);

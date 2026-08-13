@@ -267,23 +267,30 @@ function getApiToken() {
   return '';
 }
 
+function normalizeThinkingLevel(value, fallback = '') {
+  const level = String(value || '').trim().toLowerCase();
+  return THINKING_LEVELS.includes(level) ? level : THINKING_LEVELS[Number(level)] || fallback;
+}
+
 function thinkingLevelValue() {
-  return THINKING_LEVELS[Number(thinkingLevelInput.value)] || '';
+  return normalizeThinkingLevel(thinkingLevelInput.value);
 }
 
 function renderThinkingLevel() {
   const level = thinkingLevelValue();
   const label = level || defaultThinkingLevel || 'xhigh';
   const title = `Thinking: ${label}`;
-  thinkingLevelOutput.textContent = label;
-  thinkingLevelOutput.title = title;
+  if (thinkingLevelOutput) {
+    thinkingLevelOutput.textContent = label;
+    thinkingLevelOutput.title = title;
+  }
   thinkingLevelInput.title = title;
-  thinkingLevelInput.setAttribute('aria-valuetext', label);
 }
 
 function setThinkingLevel(value) {
-  const level = String(value || 'xhigh').trim().toLowerCase();
-  thinkingLevelInput.value = String(Math.max(0, THINKING_LEVELS.indexOf(level)));
+  const level = normalizeThinkingLevel(value, 'xhigh');
+  thinkingLevelInput.value = level;
+  thinkingLevelInput.dispatchEvent(new Event('change', { bubbles: true }));
   renderThinkingLevel();
 }
 
@@ -2756,7 +2763,7 @@ document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && isAgentActivityOpen()) setAgentActivityOpen(false);
 });
 modelRefInput.addEventListener('change', saveRunControls);
-thinkingLevelInput.addEventListener('input', () => {
+thinkingLevelInput.addEventListener('change', () => {
   renderThinkingLevel();
   saveRunControls();
 });
