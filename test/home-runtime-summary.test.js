@@ -355,7 +355,10 @@ test('sidebar batch selection can settle selected agents', () => {
     assert.match(runtime, /setSettledShelfExpanded\(true\);/);
   }
   assert.match(appCss, /\.workspace-agents-sidebar \.sidebar-batch-bar \{/);
+  assert.match(appCss, /button:not\(\.primary-btn\):not\(\.textbtn\):not\(\.sidebar-thread-select\)/);
   assert.match(appCss, /\.workspace-agents-sidebar \.sidebar-thread-select \{/);
+  assert.match(appCss, /@media \(hover: hover\) and \(pointer: fine\) \{[\s\S]*\.workspace-agents-sidebar \.sidebar-thread-select \{[\s\S]*opacity: 0;[\s\S]*pointer-events: none;/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.sidebar-thread:hover > \.sidebar-thread-select,[\s\S]*pointer-events: auto;/);
   assert.match(appCss, /\.workspace-agents-sidebar \.sidebar-thread\.is-selected \{/);
   assert.match(appCss, /\.workspace-agents-sidebar \.action-lanes\.has-sidebar-selection \.active-work \.inbox-side/);
 });

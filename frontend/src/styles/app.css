@@ -334,7 +334,7 @@ select.app-select-native { position: absolute; width: 1px; height: 1px; padding:
 .textbtn,
 .nav-link,
 .primary-btn,
-button:not(.primary-btn):not(.textbtn):not(.run-summary):not(.copy-button):not([data-close-button]):not([data-button]):not([data-cancel]) {
+button:not(.primary-btn):not(.textbtn):not(.sidebar-thread-select):not(.run-summary):not(.copy-button):not([data-close-button]):not([data-button]):not([data-cancel]) {
   border: 1px solid var(--rule);
   border-radius: 6px;
   background: var(--paper);
@@ -348,7 +348,7 @@ button:not(.primary-btn):not(.textbtn):not(.run-summary):not(.copy-button):not([
 @media (hover: hover) and (pointer: fine) {
   .textbtn:hover,
   .nav-link:hover,
-  button:not(.primary-btn):not(.run-summary):not(.copy-button):not([data-close-button]):not([data-button]):not([data-cancel]):hover { border-color: var(--blue); color: var(--blue); background: var(--blue-soft); }
+  button:not(.primary-btn):not(.sidebar-thread-select):not(.run-summary):not(.copy-button):not([data-close-button]):not([data-button]):not([data-cancel]):hover { border-color: var(--blue); color: var(--blue); background: var(--blue-soft); }
 }
 [data-sonner-toaster] [data-sonner-toast].agent-main-link-toast[data-styled="true"] {
   --agent-toast-accent: var(--green);

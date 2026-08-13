@@ -1619,7 +1619,7 @@ body[data-react-page="workspace"] ::placeholder,
 
 .workspace-agents-sidebar .sidebar-thread-select:hover,
 .workspace-agents-sidebar .sidebar-thread-select[aria-pressed="true"] {
-  background: rgba(255, 255, 255, .08);
+  background: transparent;
   color: var(--t3-sidebar-fg);
   opacity: 1;
 }
@@ -1642,6 +1642,21 @@ body[data-react-page="workspace"] ::placeholder,
 
 .workspace-agents-sidebar .sidebar-thread-select[aria-pressed="true"] span::after {
   opacity: 1;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .workspace-agents-sidebar .sidebar-thread-select {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .workspace-agents-sidebar .sidebar-thread:hover > .sidebar-thread-select,
+  .workspace-agents-sidebar .sidebar-thread:focus-within > .sidebar-thread-select,
+  .workspace-agents-sidebar .sidebar-thread.is-selected > .sidebar-thread-select,
+  .workspace-agents-sidebar .action-lanes.has-sidebar-selection .sidebar-thread > .sidebar-thread-select {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 
 .workspace-agents-sidebar .jump-hint {
