@@ -46,6 +46,38 @@ test('acceptedImageFiles keeps supported non-empty images only', () => {
   );
 });
 
+test('updateImageStatus previews screenshots with inferred image MIME', () => {
+  const previousCreateObjectURL = globalThis.URL.createObjectURL;
+  const previousRevokeObjectURL = globalThis.URL.revokeObjectURL;
+  const seen = [];
+  const status = fakeDocument().createElement('span');
+  status.classList = { toggle() {} };
+  const screenshot = {
+    name: 'Screenshot 2026-08-13.png',
+    type: 'application/octet-stream',
+    size: 12,
+    slice(start, end, type) { return { name: this.name, size: end - start, type }; },
+  };
+
+  try {
+    globalThis.URL.createObjectURL = (blob) => {
+      seen.push(blob);
+      return `blob:${blob.type || 'none'}`;
+    };
+    globalThis.URL.revokeObjectURL = () => {};
+
+    updateImageStatus({ files: [screenshot] }, status);
+
+    assert.equal(seen[0]?.type, 'image/png');
+    assert.equal(status.children[1]?.children[0]?.src, 'blob:image/png');
+  } finally {
+    if (previousCreateObjectURL === undefined) delete globalThis.URL.createObjectURL;
+    else globalThis.URL.createObjectURL = previousCreateObjectURL;
+    if (previousRevokeObjectURL === undefined) delete globalThis.URL.revokeObjectURL;
+    else globalThis.URL.revokeObjectURL = previousRevokeObjectURL;
+  }
+});
+
 test('new-thread modal binds its image input as a drop zone', () => {
   const pages = readFileSync(new URL('../frontend/src/components/agent-sidebar.jsx', import.meta.url), 'utf8');
   const runtime = readFileSync(new URL('../frontend/src/runtime/sidebar-prompt-lightbox.js', import.meta.url), 'utf8');

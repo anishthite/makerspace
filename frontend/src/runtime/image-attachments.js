@@ -58,8 +58,14 @@ function revokeImagePreviewUrls(node) {
   imagePreviewUrls.delete(node);
 }
 
+function previewBlobForFile(file) {
+  const mimeType = imageMimeType(file);
+  if (!IMAGE_MIME_TYPES.has(mimeType) || file?.type === mimeType) return file;
+  return typeof file?.slice === 'function' ? file.slice(0, file.size, mimeType) : file;
+}
+
 function objectUrlForFile(file) {
-  try { return globalThis.URL?.createObjectURL?.(file) || ''; } catch { return ''; }
+  try { return globalThis.URL?.createObjectURL?.(previewBlobForFile(file)) || ''; } catch { return ''; }
 }
 
 function renderImagePreviewTile(doc, file, urls) {
