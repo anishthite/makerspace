@@ -441,6 +441,14 @@ test('sidebar groups threads by project and worktree metadata', () => {
   assert.match(appCss, /\.workspace-agents-sidebar \.sidebar-worktree-thread-list \{[\s\S]*margin-left: 31px;[\s\S]*border-left: 0;[\s\S]*padding-left: 0;/);
 });
 
+test('workspace composer preserves the clicked worktree target', () => {
+  const start = js.indexOf("threadForm.addEventListener('submit'");
+  const workspaceSubmit = js.slice(start, js.indexOf('launchSuggestions?.addEventListener', start));
+  assert.match(workspaceSubmit, /sourceRepoPath: selectedProject\.sourceRepoPath/);
+  assert.match(workspaceSubmit, /worktreePath: selectedProject\.worktreePath/);
+  assert.match(workspaceSubmit, /reuseRepoPath: true/);
+});
+
 test('project icons use stable Phosphor-style line svgs', () => {
   assert.match(projectIconsRuntime, /const PROJECT_ICON_PATHS = \{/);
   assert.match(projectIconsRuntime, /export function projectIconName\(project\)/);
