@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Worktree plus target</title>
+<meta name="task" content="Preserve selected worktree reuse metadata when the workspace composer creates a thread.">
+<meta name="date-started" content="2026-08-13">
+<meta name="date-updated" content="2026-08-13">
+<meta name="status" content="ready-for-review">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,ui,workspace,worktree,threads">
+<meta name="related" content="2026-08-13-sidebar-plus-workspace-composer.html,2026-08-12-sidebar-workspace-plus.html,2026-08-10-local-worktree-launch-plan.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-in-progress{color:#b85c00}</style>
+</head>
+<body>
+<h1>Worktree plus target</h1>
+<p class="meta"><code>spanner/makerspace-20260813060842-f3892a-401e98e7</code> · worktree <code>/Users/anishthite/spanner/makerspace/makerspace-20260813060842-f3892a</code> · 2026-08-13 · status <b>ready-for-review</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Run a workspace-plus launch in its clicked worktree.</div><b>Source</b><div>The sidebar persists <code>sourceRepoPath</code>, <code>worktreePath</code>, and <code>reuseRepoPath</code> before focusing the workspace composer.</div><b>Surface</b><div><code>POST /api/threads</code> from <code>/workspace.html</code>.</div><b>Schema</b><div>None; send existing request fields.</div><b>Mobile</b><div>Untouched.</div><b>Open Qs</b><div>0.</div></div>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>frontend/src/runtime/app.js</code></td><td>touch</td><td>Forward selected worktree reuse metadata in the workspace-form request.</td></tr><tr><td><code>test/home-runtime-summary.test.js</code></td><td>touch</td><td>Pin metadata forwarding from the workspace composer.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Forward the selected project’s existing reuse fields. The server already recognizes them and skips fresh worktree creation.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>One request-body fix over changing sidebar routing. The selected worktree survives routing; the workspace form drops it.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Revert request forwarding, test, and index row.</p>
+<h2>Validation</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>node --check frontend/src/runtime/app.js</code></td><td>pass</td></tr><tr><td><code>node --test test/home-runtime-summary.test.js test/session.test.js</code></td><td>pass, 37/37</td></tr><tr><td><code>git diff --check</code></td><td>pass</td></tr></table>
+<h2>Definition of done</h2>
+<ul><li>Workspace form sends the clicked worktree reuse metadata.</li><li>Focused tests pass.</li></ul>
+</body>
+</html>
