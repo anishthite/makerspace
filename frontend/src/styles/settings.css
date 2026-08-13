@@ -37,13 +37,13 @@
 .settings-card-head .primary-btn { align-self: start; white-space: nowrap; }
 .settings-auth-card .settings-card-head { grid-template-columns: auto minmax(0, 1fr); }
 .settings-auth-card .settings-card-head .primary-btn { grid-column: 2; justify-self: start; }
-.settings-mark { display: inline-grid; place-items: center; flex: none; width: 34px; height: 34px; border: 1px solid var(--rule-2); border-radius: 6px; background: var(--blue-soft); color: var(--blue); font: 900 11px/1 var(--mono); text-transform: lowercase; }
+.settings-mark { display: inline-grid; place-items: center; flex: none; width: 34px; height: 34px; border: 1px solid var(--rule-2); border-radius: 6px; background: var(--blue-soft); color: var(--blue); font: 800 11px/1 var(--mono); text-transform: lowercase; }
 .settings-status-line { margin: 0; border: 1px solid var(--rule); border-radius: 999px; padding: 7px 10px; background: var(--paper-2); color: var(--ink-2); font-size: 12px; line-height: 1.35; }
 .auth-dialog { width: min(540px, calc(100vw - 28px)); max-width: none; margin: auto; padding: 0; color: var(--ink); border: 1px solid color-mix(in srgb, var(--blue) 28%, var(--rule)); border-radius: 16px; background: var(--paper); box-shadow: 0 24px 70px rgba(0,0,0,.52); font-family: var(--sans); font-optical-sizing: auto; font-variation-settings: normal; }
 .auth-dialog::backdrop { background: color-mix(in srgb, black 72%, transparent); backdrop-filter: blur(8px); }
 .auth-dialog-shell { display: grid; gap: 0; }
 .auth-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 20px 16px; border-bottom: 1px solid var(--rule); }
-.auth-dialog-head h2 { margin: 0; font-size: clamp(26px, 4vw, 34px); font-weight: 450; line-height: 1; letter-spacing: -.052em; }
+.auth-dialog-head h2 { margin: 0; font-size: clamp(26px, 4vw, 34px); font-weight: 400; line-height: 1; letter-spacing: -.052em; }
 .auth-dialog-head #codex-device-close,
 .auth-dialog-head #claude-code-close { border-color: transparent; background: transparent; color: var(--ink-2); }
 .auth-dialog-head #codex-device-close:hover,

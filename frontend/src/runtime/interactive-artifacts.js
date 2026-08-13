@@ -165,6 +165,70 @@ function appendHelp(container, control) {
   container.append(help);
 }
 
+function renderSelectControl(control) {
+  let value = control.default;
+  const root = document.createElement('div');
+  root.className = 'interactive-select';
+  const trigger = document.createElement('button');
+  trigger.type = 'button';
+  trigger.className = 'interactive-select-trigger';
+  trigger.setAttribute('aria-haspopup', 'listbox');
+  trigger.setAttribute('aria-expanded', 'false');
+  const menu = document.createElement('div');
+  menu.className = 'interactive-select-menu';
+  menu.role = 'listbox';
+  menu.hidden = true;
+
+  const render = () => {
+    const current = control.options.find((item) => item.value === value) || control.options[0];
+    trigger.textContent = current?.label || '';
+    menu.querySelectorAll('[role="option"]').forEach((item) => {
+      item.setAttribute('aria-selected', item.dataset.value === value ? 'true' : 'false');
+    });
+  };
+  const setOpen = (open) => {
+    menu.hidden = !open;
+    trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+  };
+
+  control.options.forEach((item) => {
+    const option = document.createElement('button');
+    option.type = 'button';
+    option.role = 'option';
+    option.className = 'interactive-select-option';
+    option.dataset.value = item.value;
+    option.textContent = item.label;
+    option.addEventListener('click', () => {
+      value = item.value;
+      render();
+      setOpen(false);
+      trigger.focus();
+    });
+    menu.append(option);
+  });
+
+  trigger.addEventListener('click', () => setOpen(menu.hidden));
+  trigger.addEventListener('keydown', (event) => {
+    if (event.key !== 'ArrowDown' && event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    setOpen(true);
+    menu.querySelector('[aria-selected="true"]')?.focus();
+  });
+  menu.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      setOpen(false);
+      trigger.focus();
+    }
+  });
+  root.addEventListener('focusout', () => setTimeout(() => {
+    if (!root.contains(document.activeElement)) setOpen(false);
+  }, 0));
+
+  root.append(trigger, menu);
+  render();
+  return { field: root, getValue: () => value };
+}
+
 function renderControl(control, key) {
   const field = document.createElement('div');
   field.className = `interactive-control interactive-control-${control.type}`;
@@ -192,17 +256,10 @@ function renderControl(control, key) {
   }
 
   if (control.type === 'select') {
-    const select = document.createElement('select');
-    control.options.forEach((item) => {
-      const option = document.createElement('option');
-      option.value = item.value;
-      option.textContent = item.label;
-      option.selected = item.value === control.default;
-      select.append(option);
-    });
-    field.append(select);
+    const rendered = renderSelectControl(control);
+    field.append(rendered.field);
     appendHelp(field, control);
-    return { field, getValue: () => select.value };
+    return { field, getValue: rendered.getValue };
   }
 
   if (control.type === 'radio') {

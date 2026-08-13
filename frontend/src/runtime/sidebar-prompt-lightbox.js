@@ -5,6 +5,7 @@ const PROJECT_KEY = 'spannerSelectedProject';
 const RECENT_PROJECTS_KEY = 'spannerRecentProjects';
 const MODEL_REF_KEY = 'spannerModelRef';
 const THINKING_LEVEL_KEY = 'spannerThinkingLevel';
+const PICK_NEW_PROJECT_VALUE = '__pick_new_project__';
 const THINKING_LEVELS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh'];
 
 let bound = false;
@@ -119,7 +120,7 @@ function promptRequestBody(project, prompt, controls = {}) {
   const localProject = project?.kind === 'local' || looksLikeLocalPath(project?.value);
   return {
     ...(localProject ? { repoPath: cleanProjectValue(project.value) } : { repoUrl: normalizeRepoUrl(project.value) }),
-    branch: project?.branch || '',
+    branch: project?.branch || 'main',
     prompt,
     repoSource: localProject ? '' : project?.repoSource || 'github',
     modelRef: controls.modelRef || localStorage.getItem(MODEL_REF_KEY) || '',
@@ -152,6 +153,33 @@ function setTriggerExpanded(open) {
   for (const trigger of elements().triggers) trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
 }
 
+function isEditableShortcutTarget(target) {
+  return target?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName);
+}
+
+function isWebNewThreadShortcut(event) {
+  return !event.repeat
+    && !event.metaKey
+    && !event.ctrlKey
+    && !event.altKey
+    && !event.shiftKey
+    && String(event.key || '').toLowerCase() === 'n'
+    && !isEditableShortcutTarget(event.target);
+}
+
+function openFromNewThreadShortcut() {
+  openSidebarPromptLightbox();
+}
+
+function bindNewThreadShortcuts() {
+  globalThis.spannerDesktop?.onNewThreadShortcut?.(openFromNewThreadShortcut);
+  document.addEventListener('keydown', (event) => {
+    if (!isWebNewThreadShortcut(event)) return;
+    event.preventDefault();
+    openFromNewThreadShortcut();
+  });
+}
+
 function thinkingIndex(value) {
   const index = THINKING_LEVELS.indexOf(String(value || '').trim().toLowerCase());
   return index >= 0 ? index : THINKING_LEVELS.indexOf('xhigh');
@@ -177,12 +205,23 @@ function setSidebarThinkingLevel(value) {
   renderSidebarThinkingLevel();
 }
 
+function ensureSidebarModelOption(value) {
+  const { model } = elements();
+  const text = String(value || '').trim();
+  if (!model || !text || Array.from(model.options).some((option) => option.value === text)) return;
+  const option = document.createElement('option');
+  option.value = text;
+  option.textContent = text;
+  model.append(option);
+}
+
 function setSidebarModelRef(value) {
   const { model } = elements();
   if (!model) return;
   const text = String(value || '').trim();
+  ensureSidebarModelOption(text);
   model.value = text;
-  model.dispatchEvent(new CustomEvent('spanner:model-picker-value', { detail: text }));
+  model.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
 function saveSidebarRunControls() {
@@ -218,10 +257,9 @@ function renderSidebarModelOptions(defaults = {}) {
   const title = values.length
     ? `Model: ${modelLabel}\nOptions: ${values.join(', ')}`
     : `Model: ${modelLabel}`;
-  modelInput.dispatchEvent(new CustomEvent('spanner:model-picker-options', {
-    detail: { label: modelLabel, options: values, title, value: selectedValue },
-  }));
+  modelInput.innerHTML = `<option value="">${escapeHtml(modelLabel)}</option>${values.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join('')}`;
   modelInput.title = title;
+  setSidebarModelRef(selectedValue);
 }
 
 function renderSidebarPiDefaults(defaults = {}) {
@@ -271,8 +309,9 @@ function renderSidebarProjectOptions(projects = sidebarProjects) {
   sidebarProjects = normalizedSidebarProjects(projects);
   if (!projectSelect) return;
   const placeholder = sidebarProjects.length ? '<option value="">choose project...</option>' : '<option value="">no recent projects</option>';
-  projectSelect.innerHTML = `${placeholder}${sidebarProjects.map((project, index) => `<option value="${index}">${escapeHtml(selectedProjectLabel(project))}</option>`).join('')}`;
-  projectSelect.disabled = !sidebarProjects.length;
+  const pickNewOption = `<option value="${PICK_NEW_PROJECT_VALUE}">pick new project...</option>`;
+  projectSelect.innerHTML = `${placeholder}${sidebarProjects.map((project, index) => `<option value="${index}">${escapeHtml(selectedProjectLabel(project))}</option>`).join('')}${pickNewOption}`;
+  projectSelect.disabled = false;
   renderProjectState();
 }
 
@@ -335,6 +374,7 @@ export function bindSidebarPromptLightbox({ fetchJson, makeThreadUrl = threadUrl
   const { dialog, form, close, prompt, projectSelect, model, thinking, imageTrigger, images, imageStatus, submit } = elements();
   if (!dialog || !form) return;
   bound = true;
+  bindNewThreadShortcuts();
   loadSidebarRunControls();
   renderProjectState();
 
@@ -345,6 +385,10 @@ export function bindSidebarPromptLightbox({ fetchJson, makeThreadUrl = threadUrl
   });
 
   projectSelect?.addEventListener('change', () => {
+    if (projectSelect.value === PICK_NEW_PROJECT_VALUE) {
+      location.href = '/';
+      return;
+    }
     const index = projectSelect.value === '' ? -1 : Number(projectSelect.value);
     selectedPromptProject = Number.isInteger(index) && index >= 0 ? sidebarProjects[index] || null : null;
     writeSelectedProject(selectedPromptProject);

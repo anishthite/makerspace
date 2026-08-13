@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="520" viewBox="0 0 1040 520" role="img" aria-labelledby="title desc">
+  <title id="title">Spanner local worktree launch plan</title>
+  <desc id="desc">A flow from launch UI through POST /api/threads to Git worktree creation and Pi running inside a per-thread worktree.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#333" />
+    </marker>
+    <style>
+      .box { fill: #fff; stroke: #222; stroke-width: 1.5; rx: 14; }
+      .muted { fill: #f7f7f4; }
+      .accent { fill: #eef5ff; }
+      .safe { fill: #eff8ef; }
+      .warn { fill: #fff7e8; }
+      .label { font: 600 16px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #111; }
+      .text { font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #333; }
+      .small { font: 12px ui-sans-serif, system-ui, sans-serif; fill: #555; }
+      .arrow { stroke: #333; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <rect width="1040" height="520" fill="#fbfbf8" />
+  <text x="40" y="42" class="label" font-size="22">Local Spanner worktrees</text>
+  <text x="40" y="66" class="small">Default: create each main agent from main into ~/spanner/&lt;repo&gt;/&lt;thread&gt;; branch field overrides the base.</text>
+
+  <rect x="40" y="110" width="210" height="105" class="box accent" />
+  <text x="62" y="142" class="label">Launch UI</text>
+  <text x="62" y="170" class="text">repoPath | repoUrl</text>
+  <text x="62" y="192" class="text">branch = main</text>
+
+  <rect x="310" y="110" width="220" height="105" class="box" />
+  <text x="332" y="142" class="label">POST /api/threads</text>
+  <text x="332" y="170" class="text">normalizeThreadRequest()</text>
+  <text x="332" y="192" class="text">createThreadSession()</text>
+
+  <rect x="590" y="95" width="190" height="75" class="box muted" />
+  <text x="612" y="126" class="label">Source checkout</text>
+  <text x="612" y="152" class="text">selected repo root</text>
+
+  <rect x="590" y="205" width="190" height="75" class="box muted" />
+  <text x="612" y="236" class="label">Base ref</text>
+  <text x="612" y="262" class="text">origin/main → main → HEAD</text>
+
+  <rect x="840" y="110" width="160" height="170" class="box safe" />
+  <text x="862" y="142" class="label">Worktree</text>
+  <text x="862" y="170" class="text">~/spanner/</text>
+  <text x="862" y="192" class="text">  repo/login-fix/</text>
+  <text x="862" y="214" class="text">branch:</text>
+  <text x="862" y="236" class="text">spanner/login-fix</text>
+  <text x="862" y="258" class="small">outside primary checkout</text>
+
+  <rect x="310" y="330" width="220" height="105" class="box warn" />
+  <text x="332" y="362" class="label">Session fields</text>
+  <text x="332" y="390" class="text">sourceRepoPath</text>
+  <text x="332" y="412" class="text">worktreePath</text>
+
+  <rect x="590" y="330" width="190" height="105" class="box" />
+  <text x="612" y="362" class="label">Pi run cwd</text>
+  <text x="612" y="390" class="text">repoPath = worktreePath</text>
+  <text x="612" y="412" class="small">original checkout untouched</text>
+
+  <path d="M250 162 H302" class="arrow" />
+  <path d="M530 150 C550 132,565 132,582 132" class="arrow" />
+  <path d="M530 185 C555 230,565 242,582 242" class="arrow" />
+  <path d="M780 132 H832" class="arrow" />
+  <path d="M780 242 H832" class="arrow" />
+  <path d="M920 280 C890 348,825 382,788 382" class="arrow" />
+  <path d="M530 382 H582" class="arrow" />
+  <path d="M420 215 V322" class="arrow" />
+
+  <text x="272" y="150" class="small">body</text>
+  <text x="548" y="116" class="small">resolve</text>
+  <text x="548" y="232" class="small">fetch</text>
+  <text x="798" y="120" class="small">add -B</text>
+  <text x="798" y="232" class="small">from</text>
+</svg>

@@ -286,8 +286,9 @@ test('local Codex and Claude auth populate all signed-in model picker defaults',
     const expected = (await expectedRuntime.getAvailable()).map((model) => `${model.provider}/${model.id}`);
     const defaults = await auth.loadPiDefaults();
 
-    assert.equal(defaults.models[0], 'openai-codex/gpt-5.4-mini');
-    assert.ok(expected.includes('openai-codex/gpt-5.6-luna'));
+    assert.equal(defaults.model, 'openai-codex/gpt-5.6-terra');
+    assert.equal(defaults.models[0], 'openai-codex/gpt-5.6-terra');
+    assert.ok(expected.includes('openai-codex/gpt-5.6-terra'));
     for (const ref of expected) assert.ok(defaults.models.includes(ref), ref);
     assert.equal(defaults.models.includes('inference/nvidia/nemotron3-super'), false);
   } finally {
@@ -316,9 +317,11 @@ test('hosted Codex and Claude auth populate all signed-in model picker defaults'
     const defaults = await auth.loadPiDefaults(user);
 
     assert.ok(expected.includes('openai-codex/gpt-5.5'));
-    assert.ok(expected.includes('openai-codex/gpt-5.6-luna'));
+    assert.ok(expected.includes('openai-codex/gpt-5.6-terra'));
     assert.ok(expected.includes('anthropic/claude-opus-4-8'));
-    assert.deepEqual(defaults.models, expected);
+    assert.equal(defaults.model, 'openai-codex/gpt-5.6-terra');
+    assert.equal(defaults.models[0], 'openai-codex/gpt-5.6-terra');
+    for (const ref of expected) assert.ok(defaults.models.includes(ref), ref);
     assert.equal(defaults.models.includes('inference/nvidia/nemotron3-super'), false);
   } finally {
     await rm(root, { recursive: true, force: true });

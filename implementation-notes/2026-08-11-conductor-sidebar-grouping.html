@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Conductor sidebar grouping</title>
+<meta name="task" content="Group the global agent sidebar by project and worktree.">
+<meta name="date-started" content="2026-08-11">
+<meta name="date-updated" content="2026-08-11">
+<meta name="status" content="ready-for-review">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,ui,sidebar,projects,worktrees,conductor">
+<meta name="related" content="2026-07-12-workspace-agents-sidebar.html,2026-08-10-local-worktree-launch-plan.html,2026-08-01-global-sidebar-cache-hydration.html">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-in-progress{color:#b85c00}.status-shipped{color:#2a7a2a}</style>
+</head>
+<body>
+<h1>Conductor sidebar grouping</h1>
+<p class="meta"><code>spanner/makerspace-20260811203917-8cb2ac-60d0135f</code> · worktree <code>/Users/anishthite/spanner/makerspace/makerspace-20260811203917-8cb2ac</code> · 2026-08-11 · status <b class="status-in-progress">ready-for-review</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Render sidebar threads under project headings, then worktree headings.</div><b>Source</b><div>User asked for Conductor-style automatic project/worktree grouping.</div><b>Surface</b><div><code>/workspace.html</code>, <code>/project.html</code>, <code>/thread.html</code>, global sidebar cache, <code>/api/threads</code> list fields.</div><b>Schema</b><div>Expose existing session fields <code>sourceRepoPath</code>, <code>worktreePath</code>, <code>worktreeBranch</code>, <code>localWorktree</code> in list rows.</div><b>Open Qs</b><div>0; keep launch semantics unchanged.</div></div>
+<h2>UI layout</h2>
+<ol><li><code>Active work</code>: project group → worktree group → active thread rows.</li><li><code>Archived</code>: existing shelf and paging stay; visible rows are grouped the same way.</li><li><code>Search/filter</code>: still run before grouping.</li></ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>src/server/threads.js</code></td><td>touch</td><td>Include worktree metadata in sidebar thread list items.</td></tr><tr><td><code>frontend/src/runtime/global-sidebar.js</code>, <code>frontend/src/runtime/project.js</code>, <code>frontend/src/runtime/app.js</code></td><td>touch</td><td>Group rendered sidebar rows by project and worktree.</td></tr><tr><td><code>frontend/src/styles/workspace.css</code></td><td>touch</td><td>Add compact project/worktree headers.</td></tr><tr><td><code>test/home-runtime-summary.test.js</code></td><td>touch</td><td>Pin list metadata and grouping helpers.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Use <code>sourceRepoPath || repoUrl || repoPath</code> as the project key. Local worktrees from one checkout stay together.</td></tr><tr><td>D-002</td><td>Use <code>worktreePath || repoPath || repoUrl</code> as the worktree key. Existing remote and older rows still group without migration.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>Static grouping over collapsible trees. It changes scan order without adding state.</td></tr><tr><td>T-002</td><td>Keep launch semantics over adding shared-worktree threads. The request targets sidebar organization.</td></tr></table>
+<h2>Verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>node --check src/server/threads.js frontend/src/runtime/{global-sidebar,project,app}.js</code></td><td>Passed.</td></tr><tr><td><code>node --test test/home-runtime-summary.test.js</code></td><td>Passed 23/23.</td></tr><tr><td><code>npm run build</code></td><td>Passed after <code>npm ci --ignore-scripts</code> restored local dev packages.</td></tr><tr><td><code>Chrome headless screenshot</code></td><td>Captured <code>output/playwright/conductor-sidebar-workspace.png</code> against a mock <code>/api/threads</code> payload.</td></tr></table>
+<h2>UI polish pass · 2026-08-11</h2>
+<table><tr><th>ID</th><th>Note</th></tr><tr><td>D-003</td><td>Project context lives in group headers, not repeated inside every active row; row height drops from <code>78px</code> to <code>44px</code>.</td></tr><tr><td>D-004</td><td>Active rows hide activity/status text for now; the compact right runtime dot remains as the only live signal.</td></tr><tr><td>D-005</td><td>Mobile sidebar sheet uses a solid sidebar background and higher z-index so the modal overlay cannot wash out row contrast.</td></tr><tr><td>D-006</td><td>Worktree/workspace distinguishers are larger outline rows with no fill; nested thread lists use a deeper rail indent.</td></tr><tr><td>D-007</td><td>Extracted shared sidebar shell, inbox, and prompt lightbox JSX to <code>frontend/src/components/agent-sidebar.jsx</code>; pages now import one reusable shell.</td></tr><tr><td>Q-001</td><td>Ran mobile-responsiveness, paper-design-style, and Playwright-guided QA; no extra dependency or collapsible tree added.</td></tr></table>
+<h2>Polish verification</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>node --check src/server/threads.js frontend/src/runtime/{global-sidebar,project,app}.js</code></td><td>Passed.</td></tr><tr><td><code>node --test test/home-runtime-summary.test.js</code></td><td>Passed 23/23 after extraction.</td></tr><tr><td><code>npm run build</code></td><td>Passed after extraction; Vite chunk-size warning unchanged.</td></tr><tr><td><code>Playwright desktop/mobile screenshots</code></td><td>Captured <code>output/playwright/conductor-sidebar-workspace.png</code> and <code>output/playwright/conductor-sidebar-mobile.png</code>.</td></tr></table>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Revert list-field additions, runtime grouping helpers, CSS headers, tests, and index row.</p>
+<h2>Definition of done</h2>
+<ul><li>Thread list payload includes worktree metadata.</li><li>Active and archived sidebar rows render under project and worktree groups.</li><li>Selection, search, archive, and cached sidebar hydration still use the same thread rows.</li><li>Focused static checks pass.</li></ul>
+</body>
+</html>

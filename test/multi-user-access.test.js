@@ -331,16 +331,7 @@ test('thread list payload returns only the signed-in user sessions', async () =>
   try {
     const sessionFile = path.join(root, 'sessions.json');
     await writeFile(sessionFile, `${JSON.stringify([
-      {
-        name: 'u1-thread',
-        title: 'Visible title',
-        threadBridge: true,
-        ownerUserId: 'github-1',
-        createdAt: '2026-06-30T00:00:00.000Z',
-        taskPrompt: 'private prompt',
-        threadMessages: [{ role: 'assistant', text: 'x'.repeat(1024 * 1024) }],
-        trackedChanges: [{ path: 'private.txt', diff: 'y'.repeat(1024 * 1024) }],
-      },
+      { name: 'u1-thread', title: 'Visible title', threadBridge: true, ownerUserId: 'github-1', createdAt: '2026-06-30T00:00:00.000Z', threadMessages: [{ role: 'assistant', text: 'x'.repeat(1024 * 1024) }], taskPrompt: 'private prompt', trackedChanges: [{ path: 'private.txt', diff: 'y'.repeat(1024 * 1024) }] },
       { name: 'u2-thread', threadBridge: true, ownerUserId: 'github-2', createdAt: '2026-06-30T00:00:01.000Z' },
       { name: 'legacy-thread', threadBridge: true, createdAt: '2026-06-30T00:00:02.000Z' },
     ])}\n`);

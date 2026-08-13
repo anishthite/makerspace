@@ -26,7 +26,7 @@
 .history-page-head h1 {
   margin: 0;
   font-size: clamp(28px, 4vw, 38px);
-  font-weight: 650;
+  font-weight: 700;
   line-height: 1.05;
   letter-spacing: 0;
 }
@@ -59,7 +59,7 @@
 .history-panel-head h2 {
   margin: 0;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.2;
   letter-spacing: 0;
 }
@@ -117,7 +117,7 @@
 .history-stat strong {
   color: var(--ink);
   font-size: 25px;
-  font-weight: 650;
+  font-weight: 700;
   line-height: 1;
   letter-spacing: 0;
 }
@@ -244,7 +244,7 @@ button.history-filter-tab[aria-pressed="true"]:not(.primary-btn):not(.textbtn):n
   margin: 0;
   color: var(--ink);
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.35;
   letter-spacing: 0;
   text-align: left;

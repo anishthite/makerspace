@@ -151,6 +151,107 @@ function baseSession(overrides = {}) {
   };
 }
 
+async function waitForValue(read) {
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    const value = await read();
+    if (value) return value;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error('Timed out waiting for value.');
+}
+
+test('new threads return before slow launch preparation finishes', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-thread-create-'));
+  const sessionFile = path.join(root, 'sessions.json');
+  const settingsFile = path.join(root, 'settings.json');
+  let releaseEnrichment;
+  const enrichment = new Promise((resolve) => { releaseEnrichment = resolve; });
+  const launches = [];
+  const provider = { kind: 'cloudflare', info: () => ({ kind: 'cloudflare' }) };
+  const runState = createRunState({
+    config: { sessionFile, settingsFile },
+    provider,
+    loadPiSdk: async () => ({}),
+    loadPiAi: async () => ({}),
+    canAccessSession: () => true,
+  });
+  const service = createThreadService({
+    config: { sessionFile, settingsFile, bridgePort: 4310 },
+    provider,
+    http: httpStub(),
+    auth: {
+      ...authStub(),
+      enrichGitHubRepoSession: async (session) => {
+        await enrichment;
+        return { ...session, repoAuthHeader: 'secret' };
+      },
+    },
+    runState,
+    bridge: {
+      startThreadBridgeLaunch: async (session) => {
+        launches.push(session);
+        return session;
+      },
+    },
+  });
+
+  try {
+    await writeFile(settingsFile, '{}\n');
+    const created = await service.createThreadSession({
+      repoUrl: 'https://github.com/acme/demo.git',
+      prompt: 'Start now.',
+      submittedAtMs: 1000,
+    });
+
+    assert.equal(created.runStatus, 'launching');
+    assert.equal(created.threadMessages[0].text, 'Start now.');
+    assert.deepEqual(launches, []);
+
+    releaseEnrichment();
+    const launch = await waitForValue(() => launches[0]);
+    assert.equal(launch.name, created.name);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('thread launch preparation failures remain visible after the immediate return', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-thread-create-failure-'));
+  const sessionFile = path.join(root, 'sessions.json');
+  const settingsFile = path.join(root, 'settings.json');
+  const provider = { kind: 'cloudflare', info: () => ({ kind: 'cloudflare' }) };
+  const runState = createRunState({
+    config: { sessionFile, settingsFile },
+    provider,
+    loadPiSdk: async () => ({}),
+    loadPiAi: async () => ({}),
+    canAccessSession: () => true,
+  });
+  const service = createThreadService({
+    config: { sessionFile, settingsFile, bridgePort: 4310 },
+    provider,
+    http: httpStub(),
+    auth: { ...authStub(), enrichGitHubRepoSession: async () => { throw new Error('GitHub unavailable'); } },
+    runState,
+    bridge: {},
+  });
+
+  try {
+    const created = await service.createThreadSession({
+      repoUrl: 'https://github.com/acme/demo.git',
+      prompt: 'Start now.',
+    });
+    const failed = await waitForValue(async () => {
+      const session = await getStoredSession(sessionFile, created.name);
+      return session?.runStatus === 'failed' ? session : null;
+    });
+
+    assert.match(failed.warning, /GitHub unavailable/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('thread lifecycle service suspends, resumes, and backup-deletes idle Cloudflare sessions', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-lifecycle-'));
   const sessionFile = path.join(root, 'sessions.json');

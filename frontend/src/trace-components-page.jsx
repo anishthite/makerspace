@@ -918,7 +918,7 @@ function ArtifactBoard({ trusted = false, copied = false, onTrust, onCopy }) {
             <p className="interactive-artifact-description">Adjust the trace gallery before sending the next instruction.</p>
             <div className="interactive-controls">
               <label className="interactive-control"><span className="interactive-control-label">Density</span><span className="interactive-slider-row"><input type="range" min="1" max="10" defaultValue="6" /><output>6</output></span><p className="interactive-control-help">Lower values keep cards compact.</p></label>
-              <label className="interactive-control"><span className="interactive-control-label">Mode</span><select defaultValue="all"><option value="all">All components</option><option value="trace">Trace only</option></select></label>
+              <label className="interactive-control"><span className="interactive-control-label">Mode</span><Select defaultValue="all"><option value="all">All components</option><option value="trace">Trace only</option></Select></label>
               <div className="interactive-control"><span className="interactive-control-label">Include</span><div className="interactive-choice-list"><label className="interactive-choice"><input type="checkbox" defaultChecked /> artifacts</label><label className="interactive-choice"><input type="checkbox" defaultChecked /> notes</label></div></div>
             </div>
             <div className="interactive-actions"><button className="interactive-action-button" type="button">Revise</button></div>
@@ -966,7 +966,7 @@ function ThreadMockRunControls() {
       <span className="attachment-status muted" role="status" aria-live="polite">5 images</span>
     </div>
     <InputGroup label="model" className="model-picker max-sm:flex-[1_1_100%]">
-      <Select name="modelRef" defaultValue="codex-gpt-5"><option value="codex-gpt-5">codex · gpt-5</option></Select>
+      <Select name="modelRef" variant="inline" defaultValue="codex-gpt-5"><option value="codex-gpt-5">codex · gpt-5</option></Select>
     </InputGroup>
     <InputGroup label="thinking" className="thinking-slider max-sm:flex-[1_1_100%]">
       <Slider min="0" max="5" step="1" defaultValue="5" />

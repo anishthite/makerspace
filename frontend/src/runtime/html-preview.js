@@ -21,7 +21,7 @@ const FRAGMENT_THEMES = {
 
 function fragmentStyle(theme = 'dark') {
   return `<style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap');
   ${FRAGMENT_THEMES[theme === 'dark' ? 'dark' : 'light']}
   :root { --font-family-ui: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
   html, body { background: transparent; }

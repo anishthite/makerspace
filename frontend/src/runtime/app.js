@@ -5,6 +5,7 @@ import { redirectIfAuthRequired } from './auth-redirect.js';
 import './appearance.js?v=palette-2';
 import { playCompletionChime } from './completion-chimes.js';
 import { bindImageDropZone, clearImageInput, filesToImageAttachments, imageInputFiles, updateImageStatus } from './image-attachments.js';
+import { projectIconSvg } from './project-icons.js';
 import { bindSidebarPromptLightbox, openSidebarPromptLightbox } from './sidebar-prompt-lightbox.js';
 import { submitOnEnter } from './submit-on-enter.js';
 
@@ -271,6 +272,7 @@ function setModelRef(value) {
   const text = String(value || '').trim();
   ensureModelOption(text);
   modelRefInput.value = text;
+  modelRefInput.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
 function saveRunControls() {
@@ -367,6 +369,10 @@ function cacheableWorkspaceThread(thread = {}) {
     latestActivity: thread.latestActivity,
     finalAnswerSummary: thread.finalAnswerSummary,
     repoPath: thread.repoPath,
+    sourceRepoPath: thread.sourceRepoPath,
+    worktreePath: thread.worktreePath,
+    worktreeBranch: thread.worktreeBranch,
+    localWorktree: thread.localWorktree,
     repoUrl: thread.repoUrl,
     provider: thread.provider,
     localMode: thread.localMode,
@@ -412,12 +418,8 @@ function folderLabel(value) {
   return text.split(/[\\/]+/).filter(Boolean).pop() || text || 'workspace';
 }
 
-function sidebarProjectInitial(label) {
-  return String(label || '').trim().match(/[A-Za-z0-9]/)?.[0]?.toUpperCase() || '#';
-}
-
 function sidebarProjectIcon(label) {
-  return `<span class="sidebar-thread-favicon" aria-hidden="true">${escapeHtml(sidebarProjectInitial(label))}</span>`;
+  return projectIconSvg(label, 'sidebar-thread-favicon project-line-icon');
 }
 
 function compactProjectLabel(value) {
@@ -500,7 +502,7 @@ function renderWorkspaceSwitcher(message = '') {
     ].filter(Boolean).join('');
     return `
       <button class="workspace-switcher-project" type="button" data-workspace-project-index="${index}"${active ? ' aria-current="page"' : ''}>
-        <span><strong>${escapeHtml(selectedProjectLabel(project))}</strong>${counts ? `<span class="project-activity-badges">${counts}</span>` : ''}</span>
+        <span class="workspace-switcher-project-title">${projectIconSvg(project, 'project-line-icon project-switcher-icon')}<strong>${escapeHtml(selectedProjectLabel(project))}</strong>${counts ? `<span class="project-activity-badges">${counts}</span>` : ''}</span>
         <small>${escapeHtml(project.value)}</small>
       </button>
     `;
@@ -538,7 +540,7 @@ function renderWorkspaceProjectLightbox(message = '') {
     const badges = lightboxProjectActivity(project);
     return `
       <button class="workspace-project-lightbox-project" type="button" data-workspace-lightbox-project-index="${index}"${active ? ' aria-current="page"' : ''}>
-        <span><strong>${escapeHtml(selectedProjectLabel(project))}</strong>${badges ? `<span class="project-activity-badges">${badges}</span>` : ''}</span>
+        <span class="workspace-project-lightbox-project-title">${projectIconSvg(project, 'project-line-icon project-lightbox-icon')}<strong>${escapeHtml(selectedProjectLabel(project))}</strong>${badges ? `<span class="project-activity-badges">${badges}</span>` : ''}</span>
         <small>${escapeHtml(project.value)}</small>
       </button>
     `;
@@ -604,12 +606,19 @@ function switchWorkspaceProject(project) {
 
 function applySelectedProject() {
   if (!selectedProject) {
-    location.replace('/');
+    repoUrlInput.value = '';
+    repoSourceInput.value = '';
+    branchInput.value = '';
+    for (const label of document.querySelectorAll('#workspace-label')) {
+      label.textContent = 'choose project';
+      label.title = 'Choose a project before starting';
+    }
+    renderWorkspaceProjectLightbox();
     return;
   }
   repoUrlInput.value = selectedProject.value || '';
   repoSourceInput.value = selectedProject.repoSource || '';
-  branchInput.value = selectedProject.branch || '';
+  branchInput.value = selectedProject.branch || 'main';
   for (const label of document.querySelectorAll('#workspace-label')) {
     label.textContent = selectedProjectLabel(selectedProject);
     label.title = selectedProject.value;
@@ -934,8 +943,7 @@ function finishedOutcome(thread, rawStatus) {
   if (summary) return summary;
   const warning = String(thread?.warning || '').replace(/\s+/g, ' ').trim();
   if (warning) return `status: ${warning}`;
-  const status = String(rawStatus || '').replace(/[-_]+/g, ' ').trim().toLowerCase();
-  return status ? `status: ${status}` : '';
+  return '';
 }
 
 function sortedSetSignature(values) {
@@ -953,6 +961,10 @@ function sidebarThreadRenderSignature(thread) {
     thread?.latestActivity,
     thread?.finalAnswerSummary,
     thread?.repoPath,
+    thread?.sourceRepoPath,
+    thread?.worktreePath,
+    thread?.worktreeBranch,
+    thread?.localWorktree,
     thread?.repoUrl,
     thread?.branch,
     runtimeStart(thread),
@@ -998,6 +1010,8 @@ function agentSearchText(thread) {
     thread?.title,
     thread?.name,
     rawStatus,
+    sidebarThreadProjectLabel(thread),
+    sidebarThreadWorktreeLabel(thread),
     isActiveThread(thread) ? runningActivity(thread, rawStatus) : finishedOutcome(thread, rawStatus),
   ].join(' ').toLowerCase();
 }
@@ -1088,7 +1102,7 @@ function renderSidebarBatchBar() {
   const selectedThreads = selectedVisibleThreads();
   if (!selectedThreads.length) return '';
   const settleableCount = selectedThreads.filter((thread) => canSettleThread(thread) && !isSettledThread(thread)).length;
-  const settleLabel = settleableCount > 0 ? `Settle ${settleableCount}` : 'Settle';
+  const settleLabel = settleableCount > 0 ? `Archive ${settleableCount}` : 'Archive';
   return `
     <div class="sidebar-batch-bar" role="toolbar" aria-label="Selected agents">
       <span>${selectedThreads.length} selected</span>
@@ -1146,6 +1160,54 @@ function sortThreadInbox(left, right) {
   return threadInboxTimeMs(right) - threadInboxTimeMs(left);
 }
 
+function sidebarGroupSort(left, right) {
+  return right.latest - left.latest || left.label.localeCompare(right.label);
+}
+
+function groupedSidebarThreads(threads) {
+  const projects = new Map();
+  for (const thread of threads) {
+    const projectKey = sidebarThreadProjectKey(thread) || 'workspace';
+    const projectLabel = sidebarThreadProjectLabel(thread) || 'workspace';
+    const worktreeKey = sidebarThreadWorktreeKey(thread) || projectKey;
+    const worktreeLabel = sidebarThreadWorktreeLabel(thread) || 'main';
+    const latest = threadInboxTimeMs(thread);
+    const project = projects.get(projectKey) || { key: projectKey, label: projectLabel, count: 0, latest: 0, worktrees: new Map() };
+    const worktree = project.worktrees.get(worktreeKey) || { key: worktreeKey, label: worktreeLabel, count: 0, latest: 0, threads: [] };
+    project.count += 1;
+    project.latest = Math.max(project.latest, latest);
+    worktree.count += 1;
+    worktree.latest = Math.max(worktree.latest, latest);
+    worktree.threads.push(thread);
+    project.worktrees.set(worktreeKey, worktree);
+    projects.set(projectKey, project);
+  }
+  return [...projects.values()]
+    .sort(sidebarGroupSort)
+    .map((project) => ({ ...project, worktrees: [...project.worktrees.values()].sort(sidebarGroupSort) }));
+}
+
+function renderSidebarThreadGroups(threads, renderCard) {
+  return groupedSidebarThreads(threads).map((project) => `
+    <section class="sidebar-project-group" aria-label="${escapeHtml(project.label)}">
+      <div class="sidebar-project-group-head">
+        ${sidebarProjectIcon(project.label)}
+        <span>${escapeHtml(project.label)}</span>
+        <small>${project.count}</small>
+      </div>
+      ${project.worktrees.map((worktree) => `
+        <section class="sidebar-worktree-group" aria-label="${escapeHtml(`${project.label} ${worktree.label}`)}">
+          <div class="sidebar-worktree-group-head">
+            <span>${escapeHtml(worktree.label)}</span>
+            <small>${worktree.count}</small>
+          </div>
+          <div class="action-list sidebar-worktree-thread-list">${worktree.threads.map(renderCard).join('')}</div>
+        </section>
+      `).join('')}
+    </section>
+  `).join('');
+}
+
 function sidebarDurationLabel(value) {
   const compact = String(value || '')
     .replace(/\s+/g, ' ')
@@ -1167,12 +1229,29 @@ function sidebarStatusLabel(rawStatus) {
   return status.replace(/[-_]+/g, ' ').replace(/^\w/, (letter) => letter.toUpperCase());
 }
 
+function sidebarThreadProjectValue(thread) {
+  return thread?.sourceRepoPath || thread?.repoUrl || thread?.repoPath || selectedProject?.value || '';
+}
+
 function sidebarThreadProjectLabel(thread) {
-  return folderLabel(thread?.repoPath || thread?.repoUrl || selectedProject?.value || '');
+  return folderLabel(sidebarThreadProjectValue(thread));
 }
 
 function sidebarThreadProjectKey(thread) {
-  return cleanProjectValue(thread?.repoPath || thread?.repoUrl || selectedProject?.value || '');
+  return cleanProjectValue(sidebarThreadProjectValue(thread));
+}
+
+function sidebarThreadWorktreeValue(thread) {
+  return thread?.worktreePath || thread?.repoPath || thread?.repoUrl || selectedProject?.value || sidebarThreadProjectValue(thread);
+}
+
+function sidebarThreadWorktreeLabel(thread) {
+  const worktreeKey = sidebarThreadWorktreeKey(thread);
+  return worktreeKey && worktreeKey !== sidebarThreadProjectKey(thread) ? folderLabel(worktreeKey) : 'main';
+}
+
+function sidebarThreadWorktreeKey(thread) {
+  return cleanProjectValue(sidebarThreadWorktreeValue(thread));
 }
 
 function sidebarProjects(threads) {
@@ -1196,7 +1275,7 @@ function projectFromScopeValue(value, label = folderLabel(value)) {
     value: cleanValue,
     label: label || folderLabel(cleanValue),
     repoSource: local ? '' : 'github',
-    branch: '',
+    branch: 'main',
   };
 }
 
@@ -1260,7 +1339,6 @@ function renderThreadCard(thread, jumpLabel = '') {
   const modeClass = cardMode ? 'active-work' : 'settled-work';
   const finishedValue = finishedAt(thread);
   const finished = running ? '' : sidebarDurationLabel(formatFinishedAgo(finishedValue));
-  const detail = running ? runningActivity(thread, rawStatus) : '';
   const outcome = running ? '' : finishedOutcome(thread, rawStatus);
   const start = runtimeStart(thread);
   const runtimeEnd = running ? Date.now() : finishedValue || start;
@@ -1268,9 +1346,9 @@ function renderThreadCard(thread, jumpLabel = '') {
   const inactiveTimes = !running ? [finished].filter(Boolean) : [];
   const inactiveMeta = inactiveTimes.length ? `<span class="finished-meta">${inactiveTimes.map((text) => `<time>${escapeHtml(text)}</time>`).join('')}</span>` : '';
   const statusLabel = sidebarStatusLabel(rawStatus);
-  const activeMeta = thread.branch || detail || outcome;
+  const runtimeLabel = sidebarDurationLabel(runtime);
   const activeRuntime = runtime
-    ? `<time class="runtime-label" data-runtime-start="${escapeHtml(start)}" data-runtime-status="${escapeHtml(statusLabel)}">${escapeHtml(statusLabel)} ${escapeHtml(sidebarDurationLabel(runtime))}</time>`
+    ? `<time class="runtime-label" data-runtime-start="${escapeHtml(start)}" data-runtime-status="${escapeHtml(statusLabel)}" aria-label="${escapeHtml(`${statusLabel} ${runtimeLabel}`)}">${escapeHtml(runtimeLabel)}</time>`
     : '';
   const indicatorKey = settled && canDismissFinishedIndicator(rawStatus, running) ? finishedIndicatorKey(thread, rawStatus) : '';
   const indicatorSeen = indicatorKey && seenFinishedThreads.has(indicatorKey);
@@ -1280,11 +1358,12 @@ function renderThreadCard(thread, jumpLabel = '') {
   const displayTitle = thread.title || thread.name;
   const projectLabelText = sidebarThreadProjectLabel(thread);
   const projectKeyText = sidebarThreadProjectKey(thread);
+  const worktreeKeyText = sidebarThreadWorktreeKey(thread);
   const settleButton = canSettleThread(thread) && !settled
-    ? `<button class="textbtn archive-thread" type="button" data-settle-thread="${escapeHtml(thread.name)}" aria-label="Settle thread">settle</button>`
+    ? `<button class="textbtn archive-thread" type="button" data-settle-thread="${escapeHtml(thread.name)}" aria-label="Archive thread">archive</button>`
     : '';
   const unsettleButton = settled
-    ? `<button class="textbtn archive-thread" type="button" data-unsettle-thread="${escapeHtml(thread.name)}" aria-label="Un-settle thread">unsettle</button>`
+    ? `<button class="textbtn archive-thread" type="button" data-unsettle-thread="${escapeHtml(thread.name)}" aria-label="Unarchive thread">unarchive</button>`
     : '';
   const stopButton = running
     ? `<button class="textbtn stop-thread" type="button" data-stop-thread="${escapeHtml(thread.name)}">stop</button>`
@@ -1293,14 +1372,9 @@ function renderThreadCard(thread, jumpLabel = '') {
   const selectButton = renderSidebarSelectButton(thread, selected);
   const activeBody = `
     <a class="inbox-main" href="${escapeHtml(threadUrl(thread.name))}"${indicatorKey ? ` data-finished-thread="${escapeHtml(indicatorKey)}"` : ''}>
-      <span class="sidebar-thread-project-row">
-        ${sidebarProjectIcon(projectLabelText)}
-        <span class="sidebar-thread-project">${escapeHtml(projectLabelText)}</span>
+      <span class="sidebar-thread-title-row">
+        <strong>${escapeHtml(displayTitle)}</strong>
         <span class="sidebar-thread-status">${activeRuntime}</span>
-      </span>
-      <span class="sidebar-thread-title-row"><strong>${escapeHtml(displayTitle)}</strong></span>
-      <span class="sidebar-thread-meta-row">
-        ${activeMeta ? `<small class="thread-activity">${escapeHtml(activeMeta)}</small>` : '<small></small>'}
       </span>
     </a>
     <span class="inbox-side">${selectButton}${stopButton}${settleButton}</span>
@@ -1315,7 +1389,7 @@ function renderThreadCard(thread, jumpLabel = '') {
     ${outcome ? `<small class="answer-preview">${escapeHtml(outcome)}</small>` : ''}
   `;
   return `
-    <div class="inbox-item action-thread sidebar-thread ${modeClass} ${badgeClass}${selected ? ' is-selected' : ''}" data-sidebar-thread-row data-thread-name="${escapeHtml(thread.name)}" data-thread-project-key="${escapeHtml(projectKeyText)}" aria-selected="${selected ? 'true' : 'false'}"${jumpLabel ? ` data-jump-index="${escapeHtml(jumpLabel)}"` : ''}>
+    <div class="inbox-item action-thread sidebar-thread ${modeClass} ${badgeClass}${selected ? ' is-selected' : ''}" data-sidebar-thread-row data-thread-name="${escapeHtml(thread.name)}" data-thread-project-key="${escapeHtml(projectKeyText)}" data-thread-worktree-key="${escapeHtml(worktreeKeyText)}" aria-selected="${selected ? 'true' : 'false'}"${jumpLabel ? ` data-jump-index="${escapeHtml(jumpLabel)}"` : ''}>
       <span class="status-dot${indicatorSeen ? ' is-seen' : ''}" ${indicatorAttrs}></span>
       ${cardMode ? activeBody : settledBody}
       ${jumpLabel ? `<span class="jump-hint" aria-hidden="true">${escapeHtml(jumpLabel)}</span>` : ''}
@@ -1333,7 +1407,9 @@ function updateRuntimeLabels() {
   const labels = list?.querySelectorAll('[data-runtime-start]') || [];
   for (const label of labels) {
     const status = label.dataset.runtimeStatus || 'running';
-    label.textContent = `${status} ${sidebarDurationLabel(formatElapsed(label.dataset.runtimeStart, Date.now()))}`;
+    const duration = sidebarDurationLabel(formatElapsed(label.dataset.runtimeStart, Date.now()));
+    label.textContent = duration;
+    label.setAttribute('aria-label', `${status} ${duration}`);
   }
   if (!labels.length && runtimeTickTimer) {
     clearInterval(runtimeTickTimer);
@@ -1486,7 +1562,7 @@ function renderThreads(threads, options = {}) {
         <h3>Active work</h3>
         <span class="action-lane-tools">${selectActiveButton}<span class="action-count">${activeThreads.length}</span></span>
       </div>
-      <div class="action-list sidebar-active-list">${activeThreads.map(renderJumpThreadCard).join('')}</div>
+      <div class="action-list sidebar-active-list">${renderSidebarThreadGroups(activeThreads, renderJumpThreadCard)}</div>
     </section>
   ` : '';
   const freshBadge = freshFinishedCount ? `<span class="fresh-finished-count" data-finished-indicator-count>${freshFinishedCount} new</span>` : '';
@@ -1494,19 +1570,18 @@ function renderThreads(threads, options = {}) {
   const settledEmpty = searchActive && !filteredThreads.length
     ? 'No agents match that search.'
     : searchActive
-      ? 'No matching settled agents.'
+      ? 'No matching archived agents.'
       : sidebarProjectScope !== 'all' && !scopedThreads.length
         ? 'No agents in this project yet.'
       : activeThreads.length
-        ? 'No settled agents yet.'
+        ? 'No archived agents yet.'
         : 'No agents yet.';
-  const settledLabel = settledShelfExpanded ? 'Settled' : `Settled (${settledThreads.length})`;
+  const settledLabel = settledShelfExpanded ? 'Archived' : `Archived (${settledThreads.length})`;
   const settledSection = `
-    <section class="action-lane sidebar-inbox-section sidebar-inbox-settled" aria-label="Settled agents">
+    <section class="action-lane sidebar-inbox-section sidebar-inbox-settled" aria-label="Archived agents">
       <div class="action-lane-head">
         <button class="settled-shelf-toggle" type="button" data-settled-shelf-toggle aria-expanded="${settledShelfExpanded ? 'true' : 'false'}">
           <span>${escapeHtml(settledLabel)}</span>
-          <span class="settled-shelf-rule" aria-hidden="true"></span>
           <span class="settled-shelf-chevron" aria-hidden="true">⌄</span>
         </button>
         <span class="action-lane-tools">
@@ -1515,7 +1590,7 @@ function renderThreads(threads, options = {}) {
         </span>
       </div>
       <div class="action-list sidebar-settled-list">
-        ${renderedSettledThreads.length ? renderedSettledThreads.map(renderJumpThreadCard).join('') : settledThreads.length ? '' : `<p class="empty-state">${escapeHtml(settledEmpty)}</p>`}
+        ${renderedSettledThreads.length ? renderSidebarThreadGroups(renderedSettledThreads, renderJumpThreadCard) : settledThreads.length ? '' : `<p class="empty-state">${escapeHtml(settledEmpty)}</p>`}
         ${settledShelfExpanded && hiddenSettledCount > 0 ? `<button class="settled-show-more" type="button" data-settled-show-more><span aria-hidden="true">+</span>Show ${Math.min(hiddenSettledCount, SETTLED_TAIL_PAGE_COUNT)} more</button>` : ''}
       </div>
     </section>
@@ -1663,8 +1738,8 @@ function showThreadMenu(thread, position) {
     `<button type="button" role="menuitem" data-thread-menu-action="open">Open<kbd>↵</kbd></button>`,
     `<button type="button" role="menuitem" data-thread-menu-action="new-thread-project">New thread in project</button>`,
     active ? `<button type="button" role="menuitem" data-thread-menu-action="stop">Stop thread</button>` : '',
-    canSettle && !settled ? `<button type="button" role="menuitem" data-thread-menu-action="settle">Settle thread</button>` : '',
-    settled ? `<button type="button" role="menuitem" data-thread-menu-action="unsettle">Un-settle thread</button>` : '',
+    canSettle && !settled ? `<button type="button" role="menuitem" data-thread-menu-action="settle">Archive thread</button>` : '',
+    settled ? `<button type="button" role="menuitem" data-thread-menu-action="unsettle">Unarchive thread</button>` : '',
     `<button type="button" role="menuitem" data-thread-menu-action="delete" data-danger="true">Delete</button>`,
   ].filter(Boolean).join('');
   document.body.append(menu);
@@ -1793,6 +1868,11 @@ threadForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   const form = new FormData(threadForm);
   const repoInput = String(form.get('repoUrl') || '').trim();
+  if (!selectedProject?.value || !repoInput) {
+    threadStatus.textContent = 'Choose a project before starting.';
+    setWorkspaceProjectLightboxOpen(true);
+    return;
+  }
   saveRunControls();
   threadSubmit.disabled = true;
   threadStatus.textContent = 'Starting…';
@@ -1886,7 +1966,7 @@ document.addEventListener('click', async (event) => {
   if (batchSettle) {
     const count = settleSelectedSidebarThreads();
     renderThreads(currentWorkspaceThreads, { suggestions: false });
-    if (count > 0) threadStatus.textContent = `Settled ${count} agent${count === 1 ? '' : 's'}.`;
+    if (count > 0) threadStatus.textContent = `Archived ${count} agent${count === 1 ? '' : 's'}.`;
     return;
   }
 

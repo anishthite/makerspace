@@ -3,12 +3,14 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const pages = readFileSync(new URL('../frontend/src/pages.jsx', import.meta.url), 'utf8');
+const agentSidebar = readFileSync(new URL('../frontend/src/components/agent-sidebar.jsx', import.meta.url), 'utf8');
 const entry = readFileSync(new URL('../frontend/src/entry.jsx', import.meta.url), 'utf8');
 const authRedirect = readFileSync(new URL('../frontend/src/runtime/auth-redirect.js', import.meta.url), 'utf8');
 const js = readFileSync(new URL('../frontend/src/runtime/app.js', import.meta.url), 'utf8');
 const projectRuntime = readFileSync(new URL('../frontend/src/runtime/project.js', import.meta.url), 'utf8');
 const threadRuntime = readFileSync(new URL('../frontend/src/runtime/thread.js', import.meta.url), 'utf8');
 const globalSidebarRuntime = readFileSync(new URL('../frontend/src/runtime/global-sidebar.js', import.meta.url), 'utf8');
+const projectIconsRuntime = readFileSync(new URL('../frontend/src/runtime/project-icons.js', import.meta.url), 'utf8');
 const sidebarPromptRuntime = readFileSync(new URL('../frontend/src/runtime/sidebar-prompt-lightbox.js', import.meta.url), 'utf8');
 const agentToasts = readFileSync(new URL('../frontend/src/runtime/agent-toasts.js', import.meta.url), 'utf8');
 const completionChimes = readFileSync(new URL('../frontend/src/runtime/completion-chimes.js', import.meta.url), 'utf8');
@@ -64,13 +66,24 @@ test('home running lane only uses active thread statuses', () => {
 });
 
 test('home rows avoid workspace folder details', () => {
+  const renderStart = js.indexOf('function renderThreadCard');
+  const activeBodyStart = js.indexOf('const activeBody =', renderStart);
+  const settledBodyStart = js.indexOf('const settledBody =', activeBodyStart);
+  const activeBody = js.slice(activeBodyStart, settledBodyStart);
+  assert.ok(renderStart >= 0 && activeBodyStart > renderStart && settledBodyStart > activeBodyStart);
   assert.match(js, /function runningActivity\(thread, rawStatus = effectiveThreadStatus\(thread\)\)/);
-  assert.match(js, /const detail = running \? runningActivity\(thread, rawStatus\) : '';/);
-  assert.match(js, /const activeMeta = thread\.branch \|\| detail \|\| outcome;/);
-  assert.match(js, /\$\{activeMeta \? `<small class="thread-activity">\$\{escapeHtml\(activeMeta\)\}<\/small>` : '<small><\/small>'\}/);
+  assert.doesNotMatch(activeBody, /thread-activity|sidebar-thread-meta-row|runningActivity/);
   assert.doesNotMatch(js, /repoLabel\(thread\)/);
   assert.match(runState, /function latestRunActivity\(run\)/);
   assert.match(runState, /latestActivity: latestActivity \|\| undefined/);
+});
+
+test('sidebar prompt project picker links to the project picker', () => {
+  assert.match(sidebarPromptRuntime, /const PICK_NEW_PROJECT_VALUE = '__pick_new_project__';/);
+  assert.match(sidebarPromptRuntime, /pick new project\.\.\./);
+  assert.match(sidebarPromptRuntime, /location\.href = '\/';/);
+  assert.match(sidebarPromptRuntime, /projectSelect\.disabled = false;/);
+  assert.match(pages, /<strong>Pick new project<\/strong><small>Open or add a workspace<\/small>/);
 });
 
 test('workspace agents use shadcn sidebar beside launch composer', () => {
@@ -81,17 +94,18 @@ test('workspace agents use shadcn sidebar beside launch composer', () => {
   const formIndex = workspaceBlock.indexOf('id="thread-form"');
   const suggestionsIndex = workspaceBlock.indexOf('id="launch-suggestions"');
   assert.ok(shellIndex > -1 && shellIndex < formIndex && formIndex < suggestionsIndex);
-  assert.match(pages, /SidebarProvider[\s\S]+from '\.\/components\/ui\/sidebar\.jsx';/);
-  assert.match(pages, /function GlobalAppShell\(\{ children, sidebarWorkspaceSwitcher = true, sidebarDefaultOpen = true, insetClassName = '' \}\)/);
-  assert.match(pages, /<Sidebar className="workspace-global-sidebar border-r border-\[var\(--rule\)\]" collapsible="offcanvas">/);
-  assert.doesNotMatch(pages, /SidebarRail/);
-  assert.match(pages, /<SidebarInset className=\{cn\('global-app-inset min-w-0 bg-\[var\(--bg\)\]', insetClassName\)\}>/);
+  assert.match(pages, /import \{ GlobalAppShell \} from '\.\/components\/agent-sidebar\.jsx';/);
+  assert.match(agentSidebar, /SidebarProvider[\s\S]+from '\.\/ui\/sidebar\.jsx';/);
+  assert.match(agentSidebar, /export function GlobalAppShell\(\{ children, sidebarDefaultOpen = true, insetClassName = '' \}\)/);
+  assert.match(agentSidebar, /<Sidebar className="workspace-global-sidebar border-r border-\[var\(--rule\)\]" collapsible="offcanvas">/);
+  assert.doesNotMatch(agentSidebar, /SidebarRail/);
+  assert.match(agentSidebar, /<SidebarInset className=\{cn\('global-app-inset min-w-0 bg-\[var\(--bg\)\]', insetClassName\)\}>/);
   assert.doesNotMatch(pages, /sidebar-collapse-button/);
   assert.match(pages, /workspace-mobile-sidebar-launcher/);
   assert.match(pages, /<SidebarTrigger className="workspace-sidebar-trigger" aria-label="open agents"/);
   assert.match(sidebar, /const SIDEBAR_WIDTH_MOBILE = "min\(28rem, calc\(100vw - 0\.75rem\)\)"/);
   assert.match(sidebar, /className="spanner-sidebar-mobile-sheet w-\(--sidebar-width\) max-w-none/);
-  assert.match(fluidCss, /\.spanner-sidebar-mobile-sheet\[data-mobile="true"\] \{[\s\S]+width: var\(--sidebar-width\);/);
+  assert.match(fluidCss, /\.spanner-sidebar-mobile-sheet\[data-mobile="true"\] \{[\s\S]+z-index: 60;[\s\S]+width: var\(--sidebar-width\);[\s\S]+background: var\(--t3-sidebar, #181818\);/);
   assert.match(fluidCss, /\.spanner-sidebar-mobile-sheet\[data-mobile="true"\] \.agent-search,[\s\S]+width: 100%;/);
   assert.match(fluidCss, /\.spanner-sidebar-desktop-shell,\n\.spanner-sidebar-desktop-container \{\n  display: none;/);
   assert.match(fluidCss, /@media \(min-width: 768px\) \{[\s\S]+\.spanner-sidebar-desktop-shell \{\n    display: block;/);
@@ -103,51 +117,51 @@ test('workspace agents use shadcn sidebar beside launch composer', () => {
   assert.match(pages, /<strong[^>]*>Find first task<\/strong>/);
   assert.doesNotMatch(pages, /Find paper cuts/);
   assert.match(js, /const launchSuggestions = document\.querySelector\('#launch-suggestions'\);/);
-  assert.match(pages, /aria-label="Agent inbox"/);
-  assert.match(pages, /MagnifyingGlassIcon/);
-  assert.match(pages, /className="sidebar-title-row"/);
-  assert.match(pages, /className="sidebar-spanner-title"/);
-  assert.match(pages, />Spanner<\/a>/);
-  assert.match(pages, /className="sidebar-command-row"/);
-  assert.doesNotMatch(pages, /className="sidebar-scope-row"/);
-  assert.match(pages, /id="sidebar-project-scope"/);
-  assert.match(pages, /<FunnelIcon className="size-4 shrink-0" aria-hidden="true" \/>/);
-  assert.doesNotMatch(pages, /<WrenchIcon className="size-4 shrink-0" aria-hidden="true" \/>/);
-  assert.match(pages, /className="sidebar-project-scope sidebar-search-filter"/);
-  assert.match(pages, /id="sidebar-project-scope-menu"/);
-  assert.match(pages, /aria-label="New prompt"/);
-  assert.doesNotMatch(pages, /aria-label="New project"/);
-  assert.match(pages, /className="agent-search border-0 bg-transparent px-0 shadow-none \[&_input\]:min-w-0 \[&_input\]:py-1\.5"/);
-  assert.match(pages, /<input id="agent-search" type="search" placeholder="Search agents"/);
-  assert.match(pages, /id="sidebar-prompt-lightbox" className="sidebar-prompt-lightbox"/);
-  assert.match(pages, /id="sidebar-prompt-form" className="sidebar-prompt-lightbox-shell" noValidate/);
-  assert.match(pages, /className="sidebar-prompt-topbar"/);
-  const sidebarPromptMarkup = pages.slice(pages.indexOf('function SidebarPromptLightbox()'), pages.indexOf('\nfunction GlobalAppShell'));
+  assert.match(agentSidebar, /aria-label="Agent inbox"/);
+  assert.match(agentSidebar, /MagnifyingGlassIcon/);
+  assert.match(agentSidebar, /className="sidebar-title-row"/);
+  assert.match(agentSidebar, /className="sidebar-spanner-title"/);
+  assert.match(agentSidebar, />Spanner<\/a>/);
+  assert.match(agentSidebar, /className="sidebar-command-row"/);
+  assert.doesNotMatch(agentSidebar, /className="sidebar-scope-row"/);
+  assert.match(agentSidebar, /id="sidebar-project-scope"/);
+  assert.match(agentSidebar, /<FunnelIcon className="size-4 shrink-0" aria-hidden="true" \/>/);
+  assert.doesNotMatch(agentSidebar, /<WrenchIcon className="size-4 shrink-0" aria-hidden="true" \/>/);
+  assert.match(agentSidebar, /className="sidebar-project-scope sidebar-search-filter"/);
+  assert.match(agentSidebar, /id="sidebar-project-scope-menu"/);
+  assert.match(agentSidebar, /aria-label="New thread"/);
+  assert.doesNotMatch(agentSidebar, /aria-label="New project"/);
+  assert.match(agentSidebar, /className="agent-search border-0 bg-transparent px-0 shadow-none \[&_input\]:min-w-0 \[&_input\]:py-1\.5"/);
+  assert.match(agentSidebar, /<input id="agent-search" type="search" placeholder="Search agents"/);
+  assert.match(agentSidebar, /id="sidebar-prompt-lightbox" className="sidebar-prompt-lightbox"/);
+  assert.match(agentSidebar, /id="sidebar-prompt-form" className="sidebar-prompt-lightbox-shell" noValidate/);
+  assert.match(agentSidebar, /className="sidebar-prompt-topbar"/);
+  const sidebarPromptMarkup = agentSidebar.slice(agentSidebar.indexOf('export function SidebarPromptLightbox()'), agentSidebar.indexOf('\nexport function GlobalAppShell'));
   assert.match(sidebarPromptMarkup, /<FolderOpenIcon className="sidebar-prompt-project-icon size-4" weight="duotone" aria-hidden="true" \/>/);
   assert.doesNotMatch(sidebarPromptMarkup, /<span>project<\/span>/);
-  assert.match(pages, /<ProjectPicker id="sidebar-prompt-project-select" ariaLabel="Project for new agent" initialLabel="loading projects\.\.\." \/>/);
-  assert.match(ui, /export function ProjectPicker\(/);
+  assert.match(agentSidebar, /<Select id="sidebar-prompt-project-select" variant="prompt" aria-label="Project for new agent" placeholder="loading projects\.\.\.">/);
+  assert.match(ui, /export function Select\(/);
   assert.match(ui, /MutationObserver/);
-  assert.match(pages, /placeholder="Tell the main agent what to do\.\.\."/);
-  assert.match(pages, /aria-keyshortcuts="Enter"/);
-  assert.match(pages, /id="sidebar-prompt-images-trigger" variant="ghost" size="sm" className="attach-btn" type="button"/);
-  assert.match(pages, /id="sidebar-prompt-images" className="image-input"/);
-  assert.match(pages, /<ModelPicker id="sidebar-model-ref" name="modelRef" ariaLabel="Model for new agent" initialLabel="loading model…" \/>/);
-  assert.match(ui, /export function ModelPicker\(/);
-  assert.match(ui, /<ShadSelect value=\{picker\.value \|\| MODEL_PICKER_DEFAULT\}/);
-  assert.match(ui, /setPortalContainer\(input\.closest\('dialog'\)\);/);
-  assert.match(ui, /<ShadSelectContent container=\{portalContainer\} className="z-\[100\]/);
-  assert.match(sidebarPromptRuntime, /new CustomEvent\('spanner:model-picker-options'/);
+  assert.match(agentSidebar, /placeholder="Tell the main agent what to do\.\.\."/);
+  assert.match(agentSidebar, /aria-keyshortcuts="Enter"/);
+  assert.match(agentSidebar, /id="sidebar-prompt-images-trigger" variant="ghost" size="sm" className="attach-btn" type="button"/);
+  assert.match(agentSidebar, /id="sidebar-prompt-images" className="image-input"/);
+  assert.match(agentSidebar, /<Select id="sidebar-model-ref" name="modelRef" variant="prompt" aria-label="Model for new agent" placeholder="loading model…">/);
+  assert.doesNotMatch(ui, /export function ModelPicker\(/);
+  assert.match(ui, /<ShadSelect value=\{picker\.value\}/);
+  assert.match(ui, /setPortalContainer\(select\.closest\('dialog'\)\);/);
+  assert.match(ui, /<ShadSelectContent container=\{portalContainer\}/);
+  assert.doesNotMatch(sidebarPromptRuntime, /spanner:model-picker/);
   assert.doesNotMatch(sidebarPromptMarkup, /InputGroup label="model" className="model-picker sidebar-prompt-model/);
-  assert.match(pages, /id="sidebar-thinking-level" min="0" max="5" step="1" defaultValue="5"/);
-  assert.match(pages, /id="sidebar-prompt-submit" variant="primary" className="sidebar-prompt-start" type="submit">send<kbd className="submit-enter-hint" aria-hidden="true">enter ↵<\/kbd><\/Button>/);
-  assert.match(pages, /id="thread-submit" variant="primary" className="run-btn" type="submit">send<kbd className="submit-enter-hint" aria-hidden="true">enter ↵<\/kbd><\/Button>/);
+  assert.match(agentSidebar, /id="sidebar-thinking-level" min="0" max="5" step="1" defaultValue="5"/);
+  assert.match(agentSidebar, /id="sidebar-prompt-submit" variant="primary" className="sidebar-prompt-start" type="submit" aria-label="send prompt"><PaperPlaneTiltIcon className="size-4" aria-hidden="true" \/><\/Button>/);
+  assert.match(pages, /id="thread-submit" variant="primary" className="sidebar-prompt-start" type="submit" aria-label="send prompt"><PaperPlaneTiltIcon className="size-4" aria-hidden="true" \/><\/Button>/);
   assert.doesNotMatch(sidebarPromptMarkup, /sidebar-prompt-suggestions|data-sidebar-suggested-prompt|Full workspace audit/);
   assert.doesNotMatch(sidebarPromptRuntime, /sidebar-prompt-suggestions|data-sidebar-suggested-prompt/);
   assert.doesNotMatch(appCss, /#sidebar-prompt-suggestions/);
   assert.match(appCss, /\.sidebar-prompt-project-picker > \.sidebar-prompt-project-icon \{ color: rgba\(255, 255, 255, \.78\); \}/);
   assert.match(appCss, /\.sidebar-prompt-project-picker \{[\s\S]*grid-template-columns: auto minmax\(0, max-content\) auto;/);
-  assert.match(appCss, /@media \(max-width: 640px\) \{[\s\S]*\.sidebar-prompt-model \{ grid-column: auto; \}/);
+  assert.match(appCss, /@media \(max-width: 640px\) \{[\s\S]*\.sidebar-prompt-model \{ grid-column: 2; min-width: 0; \}/);
   assert.match(js, /const agentSearchInput = document\.querySelector\('#agent-search'\);/);
   assert.match(js, /bindSidebarPromptLightbox\(\{ fetchJson, makeThreadUrl: threadUrl \}\);/);
   assert.match(sidebarPromptRuntime, /export function openSidebarPromptLightbox\(\)/);
@@ -199,12 +213,12 @@ test('workspace agents use shadcn sidebar beside launch composer', () => {
 });
 
 test('project home uses the shared global agent inbox sidebar', () => {
-  assert.match(pages, /function AgentInboxSidebar\(\{ workspaceSwitcher = true \}\)/);
-  assert.match(pages, /<AgentInboxSidebar workspaceSwitcher=\{sidebarWorkspaceSwitcher\} \/>/);
-  assert.match(pages, /return <GlobalAppShell sidebarWorkspaceSwitcher=\{false\}/);
+  assert.match(agentSidebar, /export function AgentInboxSidebar\(\)/);
+  assert.match(agentSidebar, /<AgentInboxSidebar \/>/);
+  assert.match(pages, /import \{ GlobalAppShell \} from '\.\/components\/agent-sidebar\.jsx';/);
   assert.match(pages, /return <GlobalAppShell insetClassName=/);
-  assert.match(pages, /export function HistoryPage\(\) \{[\s\S]+return <GlobalAppShell sidebarWorkspaceSwitcher=\{false\}/);
-  assert.match(pages, /export function SettingsPage\(\) \{\s*return <GlobalAppShell sidebarWorkspaceSwitcher=\{false\}/);
+  assert.match(pages, /export function HistoryPage\(\) \{[\s\S]+return <GlobalAppShell insetClassName=/);
+  assert.match(pages, /export function SettingsPage\(\) \{\s*return <GlobalAppShell insetClassName=/);
   assert.match(entry, /const sidebarRuntimePages = new Set\(\['settings', 'history', 'performance'\]\);/);
   assert.match(entry, /import\('\.\/runtime\/global-sidebar\.js'\)/);
   assert.match(pages, /<SidebarTrigger className="workspace-sidebar-trigger" aria-label="open agents"/);
@@ -234,18 +248,18 @@ test('project home uses the shared global agent inbox sidebar', () => {
 });
 
 test('workspace agents header uses Spanner search filter, not a layout review surface', () => {
-  const filterButtonStart = pages.indexOf('<button id="sidebar-project-scope"');
-  const filterButtonEnd = pages.indexOf('</button>', filterButtonStart);
-  const filterButton = pages.slice(filterButtonStart, filterButtonEnd);
+  const filterButtonStart = agentSidebar.indexOf('<button id="sidebar-project-scope"');
+  const filterButtonEnd = agentSidebar.indexOf('</button>', filterButtonStart);
+  const filterButton = agentSidebar.slice(filterButtonStart, filterButtonEnd);
 
   assert.match(pages, /CaretUpIcon/);
   assert.match(pages, /CaretDownIcon/);
   assert.ok(filterButtonStart > -1 && filterButtonEnd > filterButtonStart);
   assert.doesNotMatch(filterButton, /CaretDownIcon/);
-  assert.doesNotMatch(pages, />return home<\/a>/);
-  assert.match(pages, /<span id="sidebar-project-scope-label" className="sr-only">All projects<\/span>/);
-  assert.match(pages, /data-sidebar-scope-toggle/);
-  assert.match(pages, /aria-label="Filter agents"/);
+  assert.doesNotMatch(agentSidebar, />return home<\/a>/);
+  assert.match(agentSidebar, /<span id="sidebar-project-scope-label" className="sr-only">All projects<\/span>/);
+  assert.match(agentSidebar, /data-sidebar-scope-toggle/);
+  assert.match(agentSidebar, /aria-label="Filter agents"/);
   assert.match(js, /data-sidebar-scope-option/);
   assert.match(js, /const RECENT_PROJECTS_KEY = 'spannerRecentProjects';/);
   assert.match(js, /const workspaceSwitcherSearch = document\.querySelector\('#workspace-switcher-search'\);/);
@@ -284,7 +298,9 @@ test('home settled section only moves threads after explicit settle', () => {
   assert.match(js, /settledThreads\.slice\(0, settledVisibleCount\)/);
   assert.match(js, /const hiddenSettledCount = Math\.max\(0, settledThreads\.length - renderedSettledThreads\.length\);/);
   assert.match(js, /<section class="action-lane sidebar-inbox-section sidebar-inbox-active" aria-label="Active work">/);
-  assert.match(js, /<section class="action-lane sidebar-inbox-section sidebar-inbox-settled" aria-label="Settled agents">/);
+  assert.match(js, /<section class="action-lane sidebar-inbox-section sidebar-inbox-settled" aria-label="Archived agents">/);
+  assert.match(js, /aria-label="Archive thread">archive<\/button>/);
+  assert.match(js, /aria-label="Unarchive thread">unarchive<\/button>/);
   assert.match(js, /data-settled-shelf-toggle aria-expanded="\$\{settledShelfExpanded \? 'true' : 'false'\}"/);
   assert.match(js, /data-settled-show-more/);
   assert.match(js, /data-sidebar-thread-row/);
@@ -341,7 +357,7 @@ test('thread page boots the same global sidebar shell', () => {
   const threadStart = pages.indexOf('export function ThreadPage()');
   const threadEnd = pages.indexOf('export function SettingsPage()', threadStart);
   const threadBlock = pages.slice(threadStart, threadEnd);
-  assert.match(threadBlock, /<GlobalAppShell sidebarWorkspaceSwitcher=\{false\} insetClassName="global-app-center">/);
+  assert.match(threadBlock, /<GlobalAppShell insetClassName="global-app-center">/);
   assert.doesNotMatch(threadBlock, /sidebarDefaultOpen=\{false\}/);
   assert.doesNotMatch(appCss, /body\.thread-page \[data-slot="sidebar-wrapper"\] > \[data-slot="sidebar"\] \{\s*display: none;/);
   assert.match(threadRuntime, /import \{ startGlobalSidebar \} from '\.\/global-sidebar\.js';/);
@@ -350,6 +366,9 @@ test('thread page boots the same global sidebar shell', () => {
   assert.match(globalSidebarRuntime, /fetchJson\('\/api\/threads'\)/);
   assert.match(globalSidebarRuntime, /function updateProjectScopeMenu\(threads\)/);
   assert.match(globalSidebarRuntime, /aria-current="page"/);
+  assert.match(appCss, /\.workspace-sidebar-edge-trigger \{[^}]*top: 20px;[^}]*left: calc\(var\(--sidebar-width\) - 42px\);/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.workspace-agents-head \{[^}]*padding: 20px 12px 4px;/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.sidebar-title-row \{[^}]*padding-right: 40px;/);
 });
 
 test('sidebar refresh avoids unnecessary redraws', () => {
@@ -387,17 +406,42 @@ test('global sidebar hydrates from the cached thread snapshot before refetching'
   assert.equal((js.match(/cacheGlobalSidebarThreads\(workspaceSwitcherThreads\);/g) || []).length, 2);
 });
 
-test('sidebar project icons fall back to repo or folder initials', () => {
-  const expectedInitial = "return String(label || '').trim().match(/[A-Za-z0-9]/)?.[0]?.toUpperCase() || '#';";
-  const expectedIcon = 'return `<span class="sidebar-thread-favicon" aria-hidden="true">${escapeHtml(sidebarProjectInitial(label))}</span>`;';
+test('sidebar groups threads by project and worktree metadata', () => {
+  assert.match(threads, /repoPath, sourceRepoPath, worktreePath, worktreeBranch, localWorktree,/);
   for (const runtime of [js, projectRuntime, globalSidebarRuntime]) {
-    assert.ok(runtime.includes('function sidebarProjectInitial(label) {'));
-    assert.ok(runtime.includes(expectedInitial));
-    assert.ok(runtime.includes(expectedIcon));
+    assert.match(runtime, /sourceRepoPath: thread\.sourceRepoPath/);
+    assert.match(runtime, /worktreePath: thread\.worktreePath/);
+    assert.match(runtime, /function sidebarThreadProjectValue\(thread\)/);
+    assert.match(runtime, /thread\?\.sourceRepoPath \|\| thread\?\.repoUrl \|\| thread\?\.repoPath/);
+    assert.match(runtime, /function sidebarThreadWorktreeValue\(thread\)/);
+    assert.match(runtime, /thread\?\.worktreePath \|\| thread\?\.repoPath \|\| thread\?\.repoUrl/);
+    assert.match(runtime, /function groupedSidebarThreads\(threads\)/);
+    assert.match(runtime, /function renderSidebarThreadGroups\(threads, renderCard\)/);
+    assert.match(runtime, /renderSidebarThreadGroups\(activeThreads, renderJumpThreadCard\)/);
+    assert.match(runtime, /renderSidebarThreadGroups\(renderedSettledThreads, renderJumpThreadCard\)/);
+    assert.match(runtime, /data-thread-worktree-key="\$\{escapeHtml\(worktreeKeyText\)\}"/);
+    assert.match(runtime, /sidebarThreadWorktreeLabel\(thread\)/);
+  }
+  assert.match(appCss, /\.workspace-agents-sidebar \.sidebar-project-group/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.sidebar-worktree-group-head \{[\s\S]*height: 28px;/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.sidebar-worktree-group-head::before/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.sidebar-worktree-thread-list \{[\s\S]*margin-left: 34px;[\s\S]*padding-left: 12px;/);
+});
+
+test('project icons use stable Phosphor-style line svgs', () => {
+  assert.match(projectIconsRuntime, /const PROJECT_ICON_PATHS = \{/);
+  assert.match(projectIconsRuntime, /export function projectIconName\(project\)/);
+  assert.match(projectIconsRuntime, /export function projectIconSvg\(project, className = 'project-line-icon'\)/);
+  for (const runtime of [js, projectRuntime, globalSidebarRuntime]) {
+    assert.match(runtime, /import \{ projectIconSvg \} from '\.\/project-icons\.js';/);
+    assert.ok(runtime.includes("return projectIconSvg(label, 'sidebar-thread-favicon project-line-icon');"));
     assert.match(runtime, /\$\{sidebarProjectIcon\(project\.label\)\}/);
     assert.match(runtime, /\$\{sidebarProjectIcon\(projectLabelText\)\}/);
   }
-  assert.match(appCss, /\.workspace-agents-sidebar \.sidebar-thread-favicon \{\s+display: grid;/);
+  assert.match(js, /project-switcher-icon/);
+  assert.match(projectRuntime, /project-choice-icon/);
+  assert.match(appCss, /\.project-line-icon \{ width: 16px; height: 16px;/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.sidebar-thread-favicon \{\s+display: block;/);
   assert.doesNotMatch(appCss, /\.sidebar-thread-favicon::after/);
 });
 
@@ -415,13 +459,13 @@ test('recently finished rows use compact T3-style settled rows', () => {
   assert.match(js, /const finished = running \? '' : sidebarDurationLabel\(formatFinishedAgo\(finishedValue\)\);/);
   assert.match(js, /const inactiveTimes = !running \? \[finished\]\.filter\(Boolean\) : \[\];/);
   assert.match(js, /<span class="finished-meta">\$\{inactiveTimes\.map\(\(text\) => `<time>\$\{escapeHtml\(text\)\}<\/time>`\)\.join\(''\)\}<\/span>/);
-  assert.match(js, /<span class="sidebar-thread-project-row">/);
-  assert.match(js, /<span class="sidebar-thread-meta-row">/);
-  assert.match(js, /\$\{sidebarProjectIcon\(projectLabelText\)\}/);
+  assert.match(js, /<span class="sidebar-thread-title-row">\s*<strong>\$\{escapeHtml\(displayTitle\)\}<\/strong>\s*<span class="sidebar-thread-status">\$\{activeRuntime\}<\/span>/);
+  assert.doesNotMatch(js.slice(js.indexOf('const activeBody ='), js.indexOf('const settledBody =', js.indexOf('const activeBody ='))), /sidebar-thread-meta-row/);
+  assert.match(js, /\$\{sidebarProjectIcon\(project\.label\)\}/);
   assert.match(js, /data-runtime-status="\$\{escapeHtml\(statusLabel\)\}"/);
-  assert.match(js, /label\.textContent = `\$\{status\} \$\{sidebarDurationLabel\(formatElapsed\(label\.dataset\.runtimeStart, Date\.now\(\)\)\)\}`;/);
+  assert.match(js, /label\.textContent = duration;/);
   assert.match(js, /class="answer-preview">\$\{escapeHtml\(outcome\)\}/);
-  assert.match(appCss, /\.workspace-agents-sidebar \.active-work \{\s+display: block;\s+height: 78px;/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.active-work \{\s+display: block;\s+height: 44px;/);
   assert.match(appCss, /\.workspace-agents-sidebar \.settled-work \{\s+display: grid;\s+grid-template-columns: 24px minmax\(0, 1fr\) auto;\s+gap: 0;\s+align-items: center;\s+height: 36px;/);
   assert.match(appCss, /\.workspace-agents-sidebar \.runtime-label::before \{\s+content: "";\s+width: 8px;\s+height: 8px;[\s\S]+background: var\(--runtime-dot, currentColor\);/);
   assert.match(appCss, /\.workspace-agents-sidebar \.running \.runtime-label::before,[\s\S]+\.workspace-agents-sidebar \.queued \.runtime-label::before \{\s+--runtime-dot: var\(--t3-amber\);\s+animation: status-pulse/);
@@ -465,7 +509,7 @@ test('workspace toasts when running agents finish', () => {
   assert.match(js, /description: detail \|\| undefined,\s*duration: 8000,\s*className: 'agent-main-link-toast',\s*\}\);/);
   assert.doesNotMatch(js, /action: \{ label: 'Open main'/);
   assert.match(appCss, /\[data-sonner-toaster\] \[data-sonner-toast\]\.agent-main-link-toast\[data-styled="true"\]/);
-  assert.match(appCss, /--agent-toast-success: #6ee7b7;/);
+  assert.match(appCss, /--agent-toast-success: #B1DFA4;/);
   assert.match(appCss, /background: var\(--agent-toast-success\);/);
   assert.doesNotMatch(appCss, /\[data-button\]\[data-action\]/);
   assert.match(js, /function notifyFinishedThreads\(threads\)/);

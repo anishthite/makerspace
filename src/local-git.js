@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdir, rm, stat } from 'node:fs/promises';
+import { homedir } from 'node:os';
 import path from 'node:path';
 
 import { parseGitHubRepoUrl } from './github.js';
@@ -14,6 +15,16 @@ function safePathSegment(value, fallback = 'repo') {
     .slice(0, 80) || fallback;
 }
 
+function safeBranchSegment(value, fallback = 'thread') {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/^[.-]+|[.-]+$/g, '')
+    .replace(/-{2,}/g, '-')
+    .slice(0, 48) || fallback;
+}
+
 function repoHash(value) {
   return createHash('sha256').update(String(value || '')).digest('hex').slice(0, 12);
 }
@@ -22,6 +33,14 @@ function repoLeaf(value) {
   const text = String(value || '').trim().replace(/\/+$/, '');
   const leaf = text.split(/[/:]/).filter(Boolean).pop() || 'repo';
   return safePathSegment(leaf.replace(/\.git$/i, ''), 'repo');
+}
+
+function remoteBranchName(value) {
+  let branch = String(value || '').trim();
+  branch = branch.replace(/^refs\/remotes\/origin\//, '').replace(/^refs\/heads\//, '').replace(/^origin\//, '');
+  if (!branch || branch.length > 200 || branch.includes('..') || branch.includes('//') || branch.includes(':')) return '';
+  if (branch.startsWith('/') || branch.endsWith('/') || branch.startsWith('-')) return '';
+  return /^[A-Za-z0-9._/-]+$/.test(branch) ? branch : '';
 }
 
 export function localGitRepoPath(session = {}, config = {}) {
@@ -85,13 +104,25 @@ async function runGit(args, { repoAuthHeader = '', cwd = process.cwd() } = {}) {
   });
 }
 
+async function fetchRemoteBranch(repoPath, baseName, repoAuthHeader = '') {
+  const branch = remoteBranchName(baseName);
+  if (!branch) return false;
+  try {
+    await runGit(
+      ['-C', repoPath, 'fetch', '--prune', 'origin', `refs/heads/${branch}:refs/remotes/origin/${branch}`],
+      { repoAuthHeader },
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function updateExistingRepo(repoPath, session) {
   const branch = String(session.branch || '').trim();
   await runGit(['-C', repoPath, 'remote', 'set-url', 'origin', session.repoUrl]);
-  await runGit(
-    ['-C', repoPath, 'fetch', '--prune', 'origin', ...(branch ? [branch] : [])],
-    { repoAuthHeader: session.repoAuthHeader },
-  );
+  if (branch && await fetchRemoteBranch(repoPath, branch, session.repoAuthHeader)) return repoPath;
+  await runGit(['-C', repoPath, 'fetch', '--prune', 'origin'], { repoAuthHeader: session.repoAuthHeader });
   return repoPath;
 }
 
@@ -117,6 +148,55 @@ async function cloneRepo(repoPath, session) {
   return repoPath;
 }
 
+async function gitTopLevel(repoPath) {
+  const { stdout } = await runGit(['-C', repoPath, 'rev-parse', '--show-toplevel']);
+  return path.resolve(stdout.trim());
+}
+
+async function hasOriginRemote(gitRoot) {
+  try {
+    await runGit(['-C', gitRoot, 'remote', 'get-url', 'origin']);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function verifyGitRef(gitRoot, ref) {
+  try {
+    await runGit(['-C', gitRoot, 'rev-parse', '--verify', `${ref}^{commit}`]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function resolveBaseRef(gitRoot, baseName, hasOrigin) {
+  const candidates = [...new Set([
+    ...(hasOrigin && !baseName.startsWith('origin/') ? [`origin/${baseName}`] : []),
+    baseName,
+    'HEAD',
+  ].filter(Boolean))];
+
+  for (const candidate of candidates) {
+    if (await verifyGitRef(gitRoot, candidate)) return candidate;
+  }
+  return 'HEAD';
+}
+
+function configuredWorktreeRoot(gitRoot, config = {}) {
+  const configured = String(config.localWorktreeDir || process.env.SPANNER_WORKTREE_DIR || '').trim();
+  if (configured) return path.isAbsolute(configured) ? configured : path.resolve(gitRoot, configured);
+
+  const baseDir = String(config.localWorktreeBaseDir || process.env.SPANNER_WORKTREE_BASE_DIR || path.join(homedir(), 'spanner')).trim();
+  const resolvedBase = path.isAbsolute(baseDir) ? baseDir : path.resolve(gitRoot, baseDir);
+  return path.join(resolvedBase, safePathSegment(path.basename(gitRoot), 'repo'));
+}
+
+async function isGitCheckout(filePath) {
+  return exists(path.join(filePath, '.git'));
+}
+
 export async function ensureLocalGitRepo(session = {}, config = {}) {
   if (session.repoMode !== 'git' || !session.repoUrl) throw new Error('A git repo URL is required for local GitHub launch.');
 
@@ -127,4 +207,32 @@ export async function ensureLocalGitRepo(session = {}, config = {}) {
 
   await mkdir(path.dirname(repoPath), { recursive: true });
   return cloneRepo(repoPath, session);
+}
+
+export async function ensureLocalGitWorktree(session = {}, config = {}) {
+  const sourceInput = String(session.sourceRepoPath || session.repoPath || '').trim();
+  if (!sourceInput) throw new Error('A source Git checkout is required for local worktrees.');
+
+  const sourceRepoPath = await gitTopLevel(sourceInput);
+  const baseName = String(session.branch || 'main').trim() || 'main';
+  const threadName = safePathSegment(session.name || session.title || 'thread', 'thread');
+  const branchSlug = safeBranchSegment(session.name || session.title || threadName, 'thread');
+  const worktreeBranch = `spanner/${branchSlug}-${repoHash(session.name || sourceRepoPath).slice(0, 8)}`;
+  const worktreeRoot = configuredWorktreeRoot(sourceRepoPath, config);
+  const worktreePath = path.join(worktreeRoot, threadName);
+  const origin = await hasOriginRemote(sourceRepoPath);
+
+  if (origin) await fetchRemoteBranch(sourceRepoPath, baseName, session.repoAuthHeader);
+  const worktreeBaseRef = await resolveBaseRef(sourceRepoPath, baseName, origin);
+
+  await mkdir(worktreeRoot, { recursive: true });
+  await runGit(['-C', sourceRepoPath, 'worktree', 'prune']).catch(() => {});
+
+  if (await isGitCheckout(worktreePath)) {
+    return { sourceRepoPath, worktreePath, worktreeBaseRef, worktreeBranch, localWorktree: true };
+  }
+  if (await exists(worktreePath)) throw new Error(`${worktreePath} exists but is not a git worktree.`);
+
+  await runGit(['-C', sourceRepoPath, 'worktree', 'add', '-B', worktreeBranch, worktreePath, worktreeBaseRef]);
+  return { sourceRepoPath, worktreePath, worktreeBaseRef, worktreeBranch, localWorktree: true };
 }
