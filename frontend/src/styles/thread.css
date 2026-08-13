@@ -4332,7 +4332,7 @@ body.thread-page .agent-activity .thinking-item {
 
 body.thread-page .agent-activity .thinking-card {
   width: min(100%, 900px);
-  padding-left: 27px;
+  padding-left: 0;
 }
 
 body.thread-page .agent-activity .thinking-body {
