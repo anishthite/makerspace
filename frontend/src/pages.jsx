@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { changelog } from 'virtual:spanner-changelog';
 
 import {
   ArrowLeftIcon,
@@ -568,6 +569,46 @@ export function HistoryPage() {
   </GlobalAppShell>;
 }
 
+function formatChangelogDate(value) {
+  if (!value) return 'date unavailable';
+  const date = new Date(`${value}T12:00:00Z`);
+  return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(date);
+}
+
+export function ChangelogPage() {
+  const releases = changelog?.releases || [];
+
+  return <GlobalAppShell insetClassName="px-[clamp(16px,4vw,56px)] py-6 pb-18 max-sm:px-2.5 max-sm:py-3 max-sm:pb-7">
+    <main className="mx-auto grid w-[min(920px,100%)] gap-6 px-0">
+      <nav className={topbarClass} aria-label="Changelog navigation">
+        <Brand href="/workspace.html" label="Spanner workspace" />
+        <div className={headerActionsClass}><Button as="a" variant="ghost" href="/workspace.html"><RobotIcon {...buttonIconProps} />workspace</Button><Button as="a" variant="ghost" href="/settings.html"><GearSixIcon {...buttonIconProps} />settings</Button></div>
+      </nav>
+      <header className="grid gap-2 pt-3">
+        <p className={eyebrowClass}>release notes</p>
+        <h1 className="m-0 text-[clamp(34px,5vw,52px)] leading-none tracking-[-.06em]">Changelog</h1>
+        <p className={ledeClass}>Built from Git tags and non-merge commits through {formatChangelogDate(changelog?.generatedAt)}.</p>
+      </header>
+      {releases.length ? <ol className="m-0 grid list-none gap-3 p-0" aria-label="Release history">
+        {releases.map((release) => <li key={release.version}>
+          <Surface as="section" className="grid gap-3 p-4 md:p-5" aria-labelledby={`release-${release.version}`}>
+            <header className="flex flex-wrap items-baseline justify-between gap-2 border-b border-[var(--rule)] pb-3">
+              <h2 id={`release-${release.version}`} className="m-0 text-xl tracking-[-.03em]">{release.version}</h2>
+              <time className="font-[var(--mono)] text-[11px] font-bold lowercase text-[var(--ink-3)]" dateTime={release.date}>{formatChangelogDate(release.date)}</time>
+            </header>
+            {release.commits.length ? <ul className="m-0 grid list-none gap-2 p-0">
+              {release.commits.map((commit) => <li key={commit.hash} className="grid gap-1 border-b border-[color-mix(in_srgb,var(--rule)_72%,transparent)] pb-2 last:border-b-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-baseline sm:gap-3">
+                <span className="min-w-0 text-sm leading-5 text-[var(--ink-2)]">{commit.subject}</span>
+                <span className="font-[var(--mono)] text-[11px] text-[var(--ink-3)]"><code>{commit.shortHash}</code> · <time dateTime={commit.date}>{formatChangelogDate(commit.date)}</time></span>
+              </li>)}
+            </ul> : <p className="m-0 text-sm text-[var(--ink-3)]">No non-merge commits in this release.</p>}
+          </Surface>
+        </li>)}
+      </ol> : <Surface className="p-5 text-sm text-[var(--ink-3)]">Git history was unavailable when this frontend built.</Surface>}
+    </main>
+  </GlobalAppShell>;
+}
+
 export function PerformancePage() {
   const isLocal = globalThis.location?.pathname?.includes('local-telemetry');
   return <GlobalAppShell insetClassName="px-[clamp(16px,4vw,56px)] py-6 pb-18 max-sm:px-2.5 max-sm:py-3 max-sm:pb-7">
@@ -832,6 +873,7 @@ export const pages = {
   thread: ThreadPage,
   settings: SettingsPage,
   history: HistoryPage,
+  changelog: ChangelogPage,
   performance: PerformancePage,
   desktop: DesktopLandingPage,
   onboardingEditor: OnboardingEditorPage,

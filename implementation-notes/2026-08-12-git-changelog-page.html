@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec — Git changelog page</title>
+<meta name="task" content="Publish a build-generated changelog page from Git releases and commits.">
+<meta name="date-started" content="2026-08-12">
+<meta name="date-updated" content="2026-08-12">
+<meta name="status" content="ready-for-review">
+<meta name="blast-radius" content="low">
+<meta name="tags" content="spanner,frontend,changelog,git,vite">
+<meta name="related" content="">
+<style>body{font:14px/1.45 -apple-system,system-ui,sans-serif;max-width:880px;margin:1.5rem auto;padding:0 1rem;color:#111}h1{font-size:20px;margin:0 0 .25rem}h2{font-size:15px;margin:1.4rem 0 .4rem;border-bottom:1px solid #ddd;padding-bottom:.2rem}table{border-collapse:collapse;width:100%;margin:.4rem 0 .8rem}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f6f6f6;font-weight:600}code{font-family:ui-monospace,Menlo,monospace;background:#f1f1f1;padding:1px 4px;border-radius:3px;font-size:12.5px}.meta{color:#555;font-size:12.5px;margin-bottom:.8rem}.kv{display:grid;grid-template-columns:140px 1fr;gap:2px 14px;font-size:13px;margin:.4rem 0 1rem}.blast-low{color:#2a7a2a}.status-in-progress{color:#b85c00}</style>
+</head>
+<body>
+<h1>Git changelog page</h1>
+<p class="meta"><code>spanner/makerspace-20260813065649-6c1812-1d9ddecc</code> · worktree <code>/Users/anishthite/spanner/makerspace/makerspace-20260813065649-6c1812</code> · 2026-08-12 · status <b>ready-for-review</b> · blast <span class="blast-low">low</span></p>
+<h2>Summary</h2>
+<div class="kv"><b>Goal</b><div>Publish <code>/changelog.html</code> from the repository’s release tags and non-merge commits.</div><b>Source</b><div><code>git tag</code> and <code>git log</code> run by Vite while it builds the frontend.</div><b>Surface</b><div><code>/changelog.html</code> and the <code>virtual:spanner-changelog</code> build module.</div><b>Schema</b><div><code>{ version, date, commits: [{ hash, shortHash, date, subject }] }</code>.</div><b>Mobile</b><div>Stack release metadata and keep commit rows readable.</div><b>Open Qs</b><div>0.</div></div>
+<h2>Algorithm</h2>
+<ol><li>Read merged semantic-version tags in version order.</li><li>Read non-merge commits between each adjacent tag, plus <code>HEAD</code> commits after the latest tag.</li><li>Embed the release data into the Vite build and render it on <code>/changelog.html</code>.</li></ol>
+<h2>UI layout</h2>
+<ol><li>Header: release page title, generation date, workspace link.</li><li>Release list: version/date heading followed by commit subject, hash, and date rows.</li></ol>
+<h2>Files</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>vite.config.js</code></td><td>touch</td><td>Generate changelog data through a Vite virtual module.</td></tr><tr><td><code>frontend/changelog.html</code></td><td>new</td><td>Expose the React changelog route.</td></tr><tr><td><code>frontend/src/pages.jsx</code></td><td>touch</td><td>Render release groups.</td></tr><tr><td><code>frontend/src/styles/changelog.css</code></td><td>new</td><td>Style the release list responsively.</td></tr><tr><td><code>frontend/route-manifest.json</code></td><td>touch</td><td>Register the route.</td></tr><tr><td><code>test/frontend-route-manifest.test.js</code></td><td>touch</td><td>Pin the route and virtual data module.</td></tr><tr><td><code>implementation-notes/INDEX.html</code></td><td>touch</td><td>Register this note.</td></tr></table>
+<h2>Decisions</h2>
+<table><tr><th>ID</th><th>Choice · Rationale</th></tr><tr><td>D-001</td><td>Embed Git history at Vite build time. The deployed static frontend has no repository checkout.</td></tr></table>
+<h2>Tradeoffs</h2>
+<table><tr><th>ID</th><th>Picked over Rejected · Reason</th></tr><tr><td>T-001</td><td>Release tags and commit subjects over a generated prose summary. Git supplies both without an LLM, API, or a second source of truth.</td></tr></table>
+<h2>Assumptions</h2>
+<ul><li>A-001 · Release tags use the existing <code>vMAJOR.MINOR.PATCH</code> format. If wrong: unmatched tags remain in the unreleased group.</li></ul>
+<h2>Reversibility</h2>
+<p>R-001 · <span class="blast-low">low</span>. Remove the route, virtual module, and generated page assets.</p>
+<h2>Definition of done</h2>
+<ul><li><code>/changelog.html</code> renders tagged releases and post-release commits.</li><li><code>npm run build</code> and the route-manifest test pass.</li></ul>
+<h2>Implementation update</h2>
+<table><tr><th>Path</th><th>Kind</th><th>Delta</th></tr><tr><td><code>vite.config.js</code></td><td>touch</td><td>Embed release-tag and non-merge commit data through <code>virtual:spanner-changelog</code>.</td></tr><tr><td><code>frontend/changelog.html</code></td><td>new</td><td>Expose the React changelog entry.</td></tr><tr><td><code>frontend/src/pages.jsx</code></td><td>touch</td><td>Render release groups, commit hashes, and build date.</td></tr><tr><td><code>frontend/src/entry.jsx</code></td><td>touch</td><td>Load the standard app shell and sidebar runtime for the route.</td></tr><tr><td><code>frontend/route-manifest.json</code></td><td>touch</td><td>Register <code>/changelog.html</code>.</td></tr><tr><td><code>test/frontend-route-manifest.test.js</code></td><td>touch</td><td>Pin the new React entry and Vite input.</td></tr></table>
+<h2>Deviations</h2>
+<table><tr><th>ID</th><th>From spec · Did · Reason</th></tr><tr><td>X-001</td><td>Planned <code>frontend/src/styles/changelog.css</code>; used existing Tailwind and app-shell utilities; the page needs no route-specific styling.</td></tr></table>
+<h2>Validation</h2>
+<table><tr><th>Check</th><th>Result</th></tr><tr><td><code>npm run build</code></td><td>pass; emitted <code>dist/changelog.html</code>.</td></tr><tr><td><code>node --test test/frontend-route-manifest.test.js</code></td><td>pass, 4/4.</td></tr><tr><td>Playwright <code>/changelog.html</code> smoke</td><td>pass; releases, commits, and tag dates render.</td></tr><tr><td><code>git diff --check</code></td><td>pass.</td></tr></table>
+</body>
+</html>

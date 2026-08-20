@@ -43,6 +43,7 @@ const routeStyleLoaders = {
   traceComponents: () => loadCoreStyles(workspaceStyles, () => import('./styles/thread.css')),
   settings: () => loadCoreStyles(workspaceStyles, () => import('./styles/settings.css')),
   history: () => loadCoreStyles(workspaceStyles, () => import('./styles/history.css')),
+  changelog: () => loadCoreStyles(workspaceStyles),
   performance: () => loadCoreStyles(workspaceStyles, () => import('./styles/performance.css')),
   desktop: () => loadCoreStyles(workspaceStyles),
   onboardingEditor: () => loadCoreStyles(workspaceStyles),
@@ -50,7 +51,7 @@ const routeStyleLoaders = {
   assistantUiComponents: () => loadDemoStyles(() => import('./styles/assistant-ui-components.css')),
 };
 
-const sidebarRuntimePages = new Set(['settings', 'history', 'performance']);
+const sidebarRuntimePages = new Set(['settings', 'history', 'changelog', 'performance']);
 const threadPollingRuntimePages = new Set(['project', 'workspace', 'thread', ...sidebarRuntimePages]);
 
 function App({ page }) {

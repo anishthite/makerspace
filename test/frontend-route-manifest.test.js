@@ -6,7 +6,7 @@ import { test } from 'node:test';
 const root = new URL('..', import.meta.url);
 const read = (file) => readFileSync(new URL(file, root), 'utf8');
 const manifest = JSON.parse(read('frontend/route-manifest.json'));
-const reactFiles = ['index.html', 'workspace.html', 'thread.html', 'settings.html', 'history.html', 'telemetry.html', 'local-telemetry.html', 'desktop.html'];
+const reactFiles = ['index.html', 'workspace.html', 'thread.html', 'settings.html', 'history.html', 'changelog.html', 'telemetry.html', 'local-telemetry.html', 'desktop.html'];
 
 function walk(dir) {
   const fullDir = new URL(dir, root);
@@ -37,7 +37,10 @@ test('React core routes are explicit Vite MPA entries', () => {
   assert.ok(existsSync(new URL('frontend/chimes.html', root)));
   assert.ok(manifest.routes.some((route) => route.route === '/chimes.html' && route.file === 'chimes.html' && route.mode === 'vite'));
   assert.match(read('vite.config.js'), /chimes: page\('chimes\.html'\)/);
+  assert.ok(manifest.routes.some((route) => route.route === '/changelog.html' && route.file === 'changelog.html' && route.mode === 'react'));
+  assert.match(read('vite.config.js'), /changelog: page\('changelog\.html'\)/);
 });
+
 
 test('static public pages stay in frontend/public for Vite copy', () => {
   const publicHtml = walk('frontend/public/').filter((file) => file.endsWith('.html')).map((file) => file.replace(/^frontend\/public\//, '')).sort();

@@ -26,6 +26,11 @@
       "mode": "vite"
     },
     {
+      "route": "/changelog.html",
+      "file": "changelog.html",
+      "mode": "react"
+    },
+    {
       "route": "/desktop.html",
       "file": "desktop.html",
       "mode": "react"

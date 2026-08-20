@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
@@ -8,6 +9,54 @@ import { defineConfig } from 'vite';
 const frontendRoot = resolve(import.meta.dirname, 'frontend');
 const page = (file) => resolve(frontendRoot, file);
 const onboardingContentFile = resolve(frontendRoot, 'src/onboarding-content.json');
+const changelogModuleId = 'virtual:spanner-changelog';
+const resolvedChangelogModuleId = `\0${changelogModuleId}`;
+
+function git(args) {
+  try {
+    return execFileSync('git', args, { cwd: import.meta.dirname, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+  } catch {
+    return '';
+  }
+}
+
+function readCommits(range) {
+  return git(['log', '--no-merges', '--format=%H%x1f%h%x1f%ad%x1f%s', '--date=short', range])
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => {
+      const [hash, shortHash, date, subject] = line.split('\x1f');
+      return { hash, shortHash, date, subject };
+    });
+}
+
+function readChangelog() {
+  const tags = git(['tag', '--merged', 'HEAD', '--sort=-version:refname'])
+    .split('\n')
+    .filter((tag) => /^v\d+\.\d+\.\d+$/.test(tag));
+  const releases = [];
+  const unreleased = tags[0] ? readCommits(`${tags[0]}..HEAD`) : readCommits('HEAD');
+
+  if (unreleased.length) releases.push({ version: 'Unreleased', date: unreleased[0].date, commits: unreleased });
+  for (const [index, tag] of tags.entries()) {
+    const range = tags[index + 1] ? `${tags[index + 1]}..${tag}` : tag;
+    releases.push({ version: tag, date: git(['show', '-s', '--format=%ad', '--date=short', `${tag}^{}`]), commits: readCommits(range) });
+  }
+
+  return { generatedAt: git(['log', '-1', '--format=%ad', '--date=short', 'HEAD']), releases };
+}
+
+function changelogPlugin() {
+  return {
+    name: 'spanner-git-changelog',
+    resolveId(id) {
+      return id === changelogModuleId ? resolvedChangelogModuleId : null;
+    },
+    load(id) {
+      return id === resolvedChangelogModuleId ? `export const changelog = ${JSON.stringify(readChangelog())};\n` : null;
+    },
+  };
+}
 
 function readRequestBody(request) {
   return new Promise((resolveBody, reject) => {
@@ -85,7 +134,7 @@ export default defineConfig({
   root: frontendRoot,
   envDir: import.meta.dirname,
   publicDir: resolve(frontendRoot, 'public'),
-  plugins: [cleanRouteAliasPlugin(), onboardingContentEditorPlugin(), react(), tailwindcss()],
+  plugins: [cleanRouteAliasPlugin(), onboardingContentEditorPlugin(), changelogPlugin(), react(), tailwindcss()],
   resolve: {
     alias: {
       '@': resolve(frontendRoot, 'src'),
@@ -104,6 +153,7 @@ export default defineConfig({
         telemetry: page('telemetry.html'),
         localTelemetry: page('local-telemetry.html'),
         chimes: page('chimes.html'),
+        changelog: page('changelog.html'),
         traceComponents: page('trace-components.html'),
         agentElementsDemo: page('agent-elements-demo.html'),
         assistantUiComponents: page('assistant-ui-components.html'),
