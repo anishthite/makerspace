@@ -29,6 +29,20 @@ function promptBlock(event: any): string {
 }
 
 export default function spannerDefaults(pi: any) {
+  pi.registerProvider('inference', {
+    name: 'Inference.net',
+    baseUrl: 'https://api.inference.net/v1',
+    api: 'openai-completions',
+    authHeader: true,
+    apiKey: '$INFERENCE_API_KEY',
+    models: [
+      { id: 'glm-5.2', name: 'glm-5.2', input: ['text'], contextWindow: 200000, maxTokens: 131072, reasoning: true, cost: { input: 1.3, output: 4.4, cacheRead: 0, cacheWrite: 0 } },
+      { id: 'kimi-k3', name: 'kimi-k3', input: ['text'], contextWindow: 1048576, maxTokens: 131072, reasoning: true, cost: { input: 3, output: 15, cacheRead: 0, cacheWrite: 0 } },
+      { id: 'kimi-k3-fast', name: 'kimi-k3-fast', input: ['text'], contextWindow: 1048576, maxTokens: 131072, reasoning: true, cost: { input: 4.5, output: 22.5, cacheRead: 0, cacheWrite: 0 } },
+      { id: 'deepseek-v4-flash-0731', name: 'deepseek-v4-flash-0731', input: ['text'], contextWindow: 1048575, maxTokens: 384000, reasoning: true, cost: { input: 0.168, output: 0.336, cacheRead: 0, cacheWrite: 0 } },
+    ],
+  });
+
   if (!agents && !rules) return;
 
   pi.on('before_agent_start', (event: any) => {

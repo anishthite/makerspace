@@ -19,6 +19,7 @@ const DEFAULT_FORWARD_ENV_KEYS = [
   'GEMINI_API_KEY',
   'OPENROUTER_API_KEY',
   'DEEPSEEK_API_KEY',
+  'INFERENCE_API_KEY',
 ];
 
 function splitList(value) {

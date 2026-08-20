@@ -3,7 +3,7 @@ import './appearance.js?v=palette-2';
 import { captureSpannerEvent } from '../lib/posthog.js';
 import { redirectIfAuthRequired } from './auth-redirect.js';
 import { notifyAgentThreads } from './agent-toasts.js';
-import { projectIconSvg } from './project-icons.js';
+import { archiveIconSvg, projectIconSvg } from './project-icons.js';
 import { bindSidebarPromptLightbox, openSidebarPromptLightbox } from './sidebar-prompt-lightbox.js';
 
 const BROWSER_SESSION_KEY = 'spannerBrowserSession';
@@ -728,12 +728,22 @@ function projectFromScopeValue(value, label = folderLabel(value), options = {}) 
     ...(sourceRepoPath ? { sourceRepoPath } : {}),
     ...(worktreePath ? { worktreePath } : {}),
     ...(options.reuseRepoPath ? { reuseRepoPath: true } : {}),
+    ...(options.newWorktree ? { newWorktree: true } : {}),
   };
 }
 
 function writeSelectedProject(project) {
   if (!project?.value) return;
   localStorage.setItem(PROJECT_KEY, JSON.stringify(project));
+}
+
+function readSelectedProject() {
+  try {
+    const project = JSON.parse(localStorage.getItem(PROJECT_KEY) || 'null');
+    return project?.value ? project : null;
+  } catch {
+    return null;
+  }
 }
 
 function selectedScopeProject() {
@@ -968,7 +978,7 @@ function sidebarDurationLabel(value) {
   return compact.replace(/\b(\d+m)\s+\d+s\b/g, '$1');
 }
 
-function renderThreadCard(thread, jumpLabel = '') {
+function renderThreadCard(thread) {
   const rawStatus = effectiveThreadStatus(thread) || 'unknown';
   const badgeClass = statusClass(rawStatus);
   const running = isActiveThread(thread);
@@ -992,7 +1002,7 @@ function renderThreadCard(thread, jumpLabel = '') {
   const projectKeyText = sidebarThreadProjectKey(thread);
   const worktreeKeyText = sidebarThreadWorktreeKey(thread);
   const settleButton = canSettleThread(thread) && !settled
-    ? `<button class="textbtn archive-thread" type="button" data-settle-thread="${escapeHtml(thread.name)}" aria-label="Archive thread">archive</button>`
+    ? `<button class="textbtn archive-thread" type="button" data-settle-thread="${escapeHtml(thread.name)}" aria-label="Archive thread" title="Archive thread">${archiveIconSvg()}<span class="sr-only">archive</span></button>`
     : '';
   const unsettleButton = settled
     ? `<button class="textbtn archive-thread" type="button" data-unsettle-thread="${escapeHtml(thread.name)}" aria-label="Unarchive thread">unarchive</button>`
@@ -1018,11 +1028,10 @@ function renderThreadCard(thread, jumpLabel = '') {
     ${outcome ? `<small class="answer-preview">${escapeHtml(outcome)}</small>` : ''}
   `;
   return `
-    <div class="inbox-item action-thread sidebar-thread ${modeClass} ${badgeClass}${selected ? ' is-selected' : ''}" data-sidebar-thread-row data-thread-name="${escapeHtml(thread.name)}" data-thread-project-key="${escapeHtml(projectKeyText)}" data-thread-worktree-key="${escapeHtml(worktreeKeyText)}" aria-selected="${selected ? 'true' : 'false'}"${jumpLabel ? ` data-jump-index="${escapeHtml(jumpLabel)}"` : ''}>
+    <div class="inbox-item action-thread sidebar-thread ${modeClass} ${badgeClass}${selected ? ' is-selected' : ''}" data-sidebar-thread-row data-thread-name="${escapeHtml(thread.name)}" data-thread-project-key="${escapeHtml(projectKeyText)}" data-thread-worktree-key="${escapeHtml(worktreeKeyText)}" aria-selected="${selected ? 'true' : 'false'}">
       ${selectButton}
       ${cardMode ? activeBody : settledBody}
       ${statusDot}
-      ${jumpLabel ? `<span class="jump-hint" aria-hidden="true">${escapeHtml(jumpLabel)}</span>` : ''}
     </div>
   `;
 }
@@ -1059,20 +1068,10 @@ function renderGlobalSidebar(threads = globalSidebarThreads) {
   updateProjectScopeMenu(globalSidebarThreads);
   const scopedThreads = scopedAgentThreads(globalSidebarThreads);
   const filteredThreads = filterAgentThreads(scopedThreads);
-  const searchActive = Boolean(agentSearchQuery());
-  const inboxThreads = filteredThreads;
-  const activeThreads = inboxThreads.filter((thread) => !isSettledThread(thread));
-  const settledThreads = inboxThreads.filter(isSettledThread);
-  const renderedSettledThreads = searchActive
-    ? settledThreads
-    : settledShelfExpanded
-      ? settledThreads.slice(0, settledVisibleCount)
-      : [];
-  const hiddenSettledCount = Math.max(0, settledThreads.length - renderedSettledThreads.length);
-  const renderedThreads = [...activeThreads, ...renderedSettledThreads];
+  const activeThreads = filteredThreads.filter((thread) => !isSettledThread(thread));
+  const renderedThreads = activeThreads;
   pruneSidebarSelection(renderedThreads);
 
-  const hasFreshFinished = settledThreads.some(hasFreshFinishedIndicator);
   const list = currentThreadsListNode();
   if (!list) {
     return;
@@ -1087,8 +1086,6 @@ function renderGlobalSidebar(threads = globalSidebarThreads) {
   list.classList.toggle('has-sidebar-selection', selectedSidebarThreadNames.size > 0);
 
   renderedSidebarThreadNames = renderedThreads.map((thread) => thread.name).filter(Boolean);
-  const jumpLabels = new Map(renderedSidebarThreadNames.slice(0, 9).map((name, index) => [name, String(index + 1)]));
-  const renderJumpThreadCard = (thread) => renderThreadCard(thread, jumpLabels.get(thread.name) || '');
   const batchBar = renderSidebarBatchBar();
   const selectableActiveCount = activeThreads.filter((thread) => canSettleThread(thread) && !isSettledThread(thread)).length;
   const selectActiveButton = selectableActiveCount
@@ -1100,40 +1097,11 @@ function renderGlobalSidebar(threads = globalSidebarThreads) {
         <h3>Active work</h3>
         <span class="action-lane-tools">${selectActiveButton}</span>
       </div>
-      <div class="action-list sidebar-active-list">${renderSidebarThreadGroups(activeThreads, renderJumpThreadCard)}</div>
+      <div class="action-list sidebar-active-list">${renderSidebarThreadGroups(activeThreads, renderThreadCard)}</div>
     </section>
   ` : '';
-  const freshBadge = hasFreshFinished ? '<span class="fresh-finished-count" data-finished-indicator-count>new</span>' : '';
   const historyLink = '<a class="textbtn lane-history" href="/history.html">history</a>';
-  const settledEmpty = searchActive && !filteredThreads.length
-    ? 'No agents match that search.'
-    : searchActive
-      ? 'No matching archived agents.'
-      : sidebarProjectScope !== 'all' && !scopedThreads.length
-        ? 'No agents in this project yet.'
-      : activeThreads.length
-        ? 'No archived agents yet.'
-        : 'No agents yet.';
-  const settledLabel = 'Archived';
-  const settledSection = `
-    <section class="action-lane sidebar-inbox-section sidebar-inbox-settled" aria-label="Archived agents">
-      <div class="action-lane-head">
-        <button class="settled-shelf-toggle" type="button" data-settled-shelf-toggle aria-expanded="${settledShelfExpanded ? 'true' : 'false'}">
-          <span>${escapeHtml(settledLabel)}</span>
-          <span class="settled-shelf-chevron" aria-hidden="true">⌄</span>
-        </button>
-        <span class="action-lane-tools">
-          ${freshBadge}
-          ${historyLink}
-        </span>
-      </div>
-      <div class="action-list sidebar-settled-list">
-        ${renderedSettledThreads.length ? renderSidebarThreadGroups(renderedSettledThreads, renderJumpThreadCard) : settledThreads.length ? '' : `<p class="empty-state">${escapeHtml(settledEmpty)}</p>`}
-        ${settledShelfExpanded && hiddenSettledCount > 0 ? `<button class="settled-show-more" type="button" data-settled-show-more><span aria-hidden="true">+</span>Show ${Math.min(hiddenSettledCount, SETTLED_TAIL_PAGE_COUNT)} more</button>` : ''}
-      </div>
-    </section>
-  `;
-  list.innerHTML = `${batchBar}${activeSection}${settledSection}`;
+  list.innerHTML = `${batchBar}${activeSection}${historyLink}`;
   updateFinishedIndicatorCount();
 }
 
@@ -1708,9 +1676,14 @@ function openScopeMenu() {
   }
 }
 
-function prepareNewThreadFromScope() {
-  const project = selectedScopeProject();
-  if (project) writeSelectedProject(project);
+function prepareNewWorktreeFromScope() {
+  const selected = selectedScopeProject() || readSelectedProject();
+  const sourceRepoPath = cleanProjectValue(selected?.sourceRepoPath || selected?.value);
+  if (!sourceRepoPath) return;
+  writeSelectedProject(projectFromScopeValue(sourceRepoPath, selected?.sourceRepoPath ? folderLabel(sourceRepoPath) : selected?.label, {
+    branch: selected?.branch || 'main',
+    newWorktree: true,
+  }));
 }
 
 function navigateToThreadName(name) {
@@ -1825,10 +1798,10 @@ document.addEventListener('click', async (event) => {
     return;
   }
 
-  const newThread = event.target?.closest?.('[data-sidebar-new-thread]');
-  if (newThread) {
+  const newWorktree = event.target?.closest?.('[data-sidebar-new-worktree]');
+  if (newWorktree) {
     event.preventDefault();
-    prepareNewThreadFromScope();
+    prepareNewWorktreeFromScope();
     closeScopeMenu();
     openWorkspaceComposer();
     return;
@@ -1984,7 +1957,7 @@ document.addEventListener('keydown', (event) => {
   }
   if (isCommand && event.key.toLowerCase() === 'n') {
     event.preventDefault();
-    prepareNewThreadFromScope();
+    prepareNewWorktreeFromScope();
     location.href = '/workspace.html';
     return;
   }
@@ -2006,8 +1979,6 @@ document.addEventListener('keydown', (event) => {
     navigateByOffset(-1);
     return;
   }
-  if (event.key === 'Meta' || event.key === 'Control') document.body.classList.add('sidebar-jump-hints');
-
   const scopeMenu = event.target?.closest?.('#sidebar-project-scope-menu');
   if (scopeMenu) {
     const options = [...scopeMenu.querySelectorAll('[data-sidebar-scope-option]')];
@@ -2064,9 +2035,6 @@ document.addEventListener('keydown', (event) => {
   }
 });
 
-document.addEventListener('keyup', (event) => {
-  if (event.key === 'Meta' || event.key === 'Control') document.body.classList.remove('sidebar-jump-hints');
-});
 
 document.addEventListener('keydown', (event) => {
   if (!event.target?.closest?.('#threads-list')) return;

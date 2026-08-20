@@ -27,6 +27,7 @@ import {
   githubRepoOwner,
 } from '../github-app.js';
 import { createInMemoryCredentialStore, createPiModelRegistry, createPiModelRuntime, writeCredentialFile } from '../pi-runtime.js';
+import { createPiResourceOptions, resolvePiDefaultsPackageDir } from '../pi-defaults-package.js';
 import { resolvePiSdkPackageDir } from '../pi-sdk-package.js';
 import { pruneBrowserSessions } from '../resource-utils.js';
 
@@ -567,16 +568,16 @@ export function createAuthService({ config, http }) {
       const credentials = authRequired()
         ? await authStorageForSession({ ownerUserId: user?.id || '' })
         : undefined;
-      const modelRuntime = await createPiModelRuntime(sdk, {
+      const resources = await createPiResourceOptions(sdk, {
+        cwd: config.rootDir,
+        agentDir: localPiAgentDir(),
         credentials,
-        authPath: credentials ? undefined : localPiAuthPath(),
         modelsPath: authRequired() ? null : localPiModelsPath(),
+        packageDir: resolvePiDefaultsPackageDir(config),
       });
-      if (modelRuntime?.getAvailable) return [...await modelRuntime.getAvailable()];
-
-      const authStorage = credentials || sdk.AuthStorage.create(localPiAuthPath());
-      const modelRegistry = createPiModelRegistry(sdk, { authStorage, modelsPath: authRequired() ? undefined : localPiModelsPath() });
-      return modelRegistry?.getAvailable?.() || [];
+      return resources.modelRuntime?.getAvailable
+        ? [...await resources.modelRuntime.getAvailable()]
+        : resources.modelRegistry?.getAvailable?.() || [];
     } catch {
       return [];
     }

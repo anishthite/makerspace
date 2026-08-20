@@ -36,7 +36,7 @@ export function AgentInboxSidebar() {
         </InputGroup>
         <div id="sidebar-project-scope-menu" className="sidebar-scope-menu" role="menu" hidden></div>
       </div>
-      <Button variant="ghost" className="sidebar-new-prompt-button sidebar-new-prompt-wide" type="button" data-sidebar-new-thread aria-label="New worktree" aria-keyshortcuts="N Meta+T Control+T" aria-haspopup="dialog" aria-expanded="false" aria-controls="sidebar-prompt-lightbox" title="New worktree (N; desktop: ⌘/Ctrl+T)"><PlusIcon className="size-4" aria-hidden="true" />new worktree</Button>
+      <Button variant="ghost" className="sidebar-new-prompt-button sidebar-new-prompt-wide" type="button" data-sidebar-new-worktree aria-label="New worktree" aria-keyshortcuts="N Meta+T Control+T" title="New worktree (N; desktop: ⌘/Ctrl+T)"><PlusIcon className="size-4" aria-hidden="true" />new worktree</Button>
     </SidebarHeader>
     <SidebarContent className="min-h-0">
       <ScrollArea id="threads-list" className="action-lanes px-2 pb-5"></ScrollArea>

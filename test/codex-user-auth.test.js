@@ -296,6 +296,27 @@ test('local Codex and Claude auth populate all signed-in model picker defaults',
   }
 });
 
+test('Inference.net aliases appear in model picker defaults when its key is configured', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-inference-models-'));
+  const previousKey = process.env.INFERENCE_API_KEY;
+  process.env.INFERENCE_API_KEY = 'test-inference-key';
+  try {
+    const auth = createAuthService({
+      config: { ...config(root), piDefaultsPackageDir: path.resolve('packages/spanner-pi-defaults') },
+      http: testHttp(),
+    });
+    const defaults = await auth.loadPiDefaults();
+
+    for (const model of ['inference/glm-5.2', 'inference/kimi-k3-fast', 'inference/deepseek-v4-flash-0731']) {
+      assert.ok(defaults.models.includes(model), model);
+    }
+  } finally {
+    if (previousKey === undefined) delete process.env.INFERENCE_API_KEY;
+    else process.env.INFERENCE_API_KEY = previousKey;
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('hosted Codex and Claude auth populate all signed-in model picker defaults', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'spanner-codex-models-'));
   try {

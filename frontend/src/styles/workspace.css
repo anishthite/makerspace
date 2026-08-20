@@ -750,6 +750,7 @@ body[data-react-page="workspace"] ::placeholder,
 .inbox-side { display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; }
 .inbox-side time { color: var(--ink-4); font: 10px/1 var(--mono); text-transform: lowercase; }
 .archive-thread { position: relative; z-index: 2; padding: 5px 7px; white-space: nowrap; }
+.archive-thread-icon { width: 12px; height: 12px; display: block; }
 @media (hover: hover) and (pointer: fine) {
   .archive-thread { opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 120ms ease; }
   .inbox-item:hover .archive-thread,
@@ -1328,7 +1329,7 @@ body[data-react-page="workspace"] ::placeholder,
 
 .workspace-agents-sidebar .sidebar-worktree-group-head {
   height: 30px;
-  margin: 0 4px 1px 31px;
+  margin: 0 0 1px 31px;
   border: 0;
   border-radius: 0;
   padding: 0 0 0 1px;
@@ -1376,7 +1377,6 @@ body[data-react-page="workspace"] ::placeholder,
 
 .workspace-agents-sidebar .sidebar-worktree-new:hover,
 .workspace-agents-sidebar .sidebar-worktree-new:focus-visible {
-  background: var(--t3-sidebar-hover);
   color: var(--t3-sidebar-fg);
   outline: 0;
 }
@@ -1659,28 +1659,6 @@ body[data-react-page="workspace"] ::placeholder,
   }
 }
 
-.workspace-agents-sidebar .jump-hint {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  z-index: 5;
-  min-width: 18px;
-  height: 18px;
-  transform: translateY(-50%);
-  border-radius: 4px;
-  background: rgba(255, 255, 255, .08);
-  color: rgba(231, 231, 231, .92);
-  opacity: 0;
-  pointer-events: none;
-  text-align: center;
-  font: 700 10px/18px var(--sans);
-  transition: opacity 120ms ease;
-}
-
-body.sidebar-jump-hints .workspace-agents-sidebar .sidebar-thread[data-jump-index] .jump-hint {
-  opacity: 1 !important;
-}
-
 .workspace-agents-sidebar .sidebar-thread:hover,
 .workspace-agents-sidebar .sidebar-thread:focus-within {
   background: var(--t3-sidebar-hover);
@@ -1900,6 +1878,17 @@ body.sidebar-jump-hints .workspace-agents-sidebar .sidebar-thread[data-jump-inde
 .workspace-agents-sidebar .archive-thread:hover,
 .workspace-agents-sidebar .archive-thread:focus-visible {
   color: var(--t3-sidebar-fg);
+}
+
+/* archive icon takes the status-dot slot at the row's right edge */
+.workspace-agents-sidebar .active-work:has(.archive-thread[data-settle-thread]) .inbox-side {
+  top: 8px;
+  right: 4px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .workspace-agents-sidebar .sidebar-thread:hover:has(.archive-thread[data-settle-thread]) > .status-dot,
+  .workspace-agents-sidebar .sidebar-thread:focus-within:has(.archive-thread[data-settle-thread]) > .status-dot { opacity: 0; }
 }
 
 .workspace-agents-sidebar .stop-thread {

@@ -138,6 +138,7 @@ GITHUB_CLIENT_SECRET=
 GITHUB_APP_ID= # optional; enables short-lived installation tokens for sandbox git
 GITHUB_APP_SLUG= # e.g. your-app-name; setup URL should be /api/auth/github/app/callback
 GITHUB_APP_PRIVATE_KEY= # PEM, or PEM with \n escapes
+INFERENCE_API_KEY= # enables Inference.net aliases in the Pi model picker
 AUTH_DATA_PATH=./data/auth.json
 SPANNER_STATE_STORE= # production auto-selects d1 when Cloudflare D1 env is complete; set file for disposable state
 SPANNER_WORKSPACE_MODE= # set true to reuse one remote workspace per signed-in user + repo
@@ -166,7 +167,7 @@ IDLE_BRIDGE_TTL_MS=3600000
 WARM_BRIDGE_POOL_SIZE=0
 PI_BRIDGE_STREAM_STALL_MS=60000
 PI_BRIDGE_RUN_MISSING_GRACE_MS=30000
-FORWARD_ENV_KEYS=GH_TOKEN,GITHUB_TOKEN,ANTHROPIC_API_KEY,OPENAI_API_KEY,GOOGLE_API_KEY,GEMINI_API_KEY,OPENROUTER_API_KEY
+FORWARD_ENV_KEYS=GH_TOKEN,GITHUB_TOKEN,ANTHROPIC_API_KEY,OPENAI_API_KEY,GOOGLE_API_KEY,GEMINI_API_KEY,OPENROUTER_API_KEY,INFERENCE_API_KEY
 PI_INSTALL_COMMAND=npm install -g --ignore-scripts @earendil-works/pi-coding-agent
 ```
 

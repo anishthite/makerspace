@@ -146,6 +146,24 @@ test('normalizeThreadRequest preserves clicked workspace reuse metadata', () => 
   assert.equal(session.reuseRepoPath, true);
 });
 
+test('normalizeThreadRequest makes new-worktree intent win over stale reuse metadata', () => {
+  const session = normalizeThreadRequest(
+    {
+      repoPath: '/Users/me/project',
+      sourceRepoPath: '/Users/me/project',
+      worktreePath: '/Users/me/project/.worktrees/sidebar-fix',
+      reuseRepoPath: true,
+      newWorktree: true,
+      prompt: 'Start fresh.',
+    },
+    config,
+  );
+
+  assert.equal(session.sourceRepoPath, '/Users/me/project');
+  assert.equal(session.worktreePath, undefined);
+  assert.equal(session.reuseRepoPath, undefined);
+});
+
 test('normalizeModelOptions rejects invalid thinking levels', () => {
   assert.throws(() => normalizeModelOptions({ thinkingLevel: 'maximum' }), /Thinking level/);
 });

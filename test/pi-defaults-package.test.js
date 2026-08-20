@@ -25,8 +25,13 @@ test('spanner Pi defaults package exposes pi resources', async () => {
   assert.match(extension, /before_agent_start/);
   assert.match(extension, /context\/AGENTS\.md/);
   assert.match(extension, /contextHasAgents/);
-  assert.doesNotMatch(extension, /registerProvider\('inference'/);
-  assert.doesNotMatch(extension, /\$INFERENCE_API_KEY/);
+  assert.match(extension, /registerProvider\('inference'/);
+  assert.match(extension, /baseUrl: 'https:\/\/api\.inference\.net\/v1'/);
+  assert.match(extension, /apiKey: '\$INFERENCE_API_KEY'/);
+  for (const model of ['glm-5.2', 'kimi-k3-fast', 'deepseek-v4-flash-0731']) assert.match(extension, new RegExp(`id: '${model}'`));
+  assert.match(extension, /cost: \{ input: 1\.3, output: 4\.4, cacheRead: 0, cacheWrite: 0 \}/);
+  assert.match(extension, /cost: \{ input: 4\.5, output: 22\.5, cacheRead: 0, cacheWrite: 0 \}/);
+  assert.match(extension, /cost: \{ input: 0\.168, output: 0\.336, cacheRead: 0, cacheWrite: 0 \}/);
 
   for (const skill of ['code-simplifier', 'playground', 'excalidraw-diagram', 'ponytail', 'ponytail-audit', 'ponytail-debt', 'ponytail-help', 'ponytail-review', 'emil-design-eng']) {
     assert.match(await readFile(path.join(packageDir, 'skills', skill, 'SKILL.md'), 'utf8'), /#|---|name:/);

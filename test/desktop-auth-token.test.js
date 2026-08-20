@@ -70,20 +70,21 @@ test('settings can manually check desktop updates', () => {
   assert.match(frontendSettings, /getUpdateStatus/);
 });
 
-test('desktop Cmd/Ctrl+T asks the renderer to open a new thread', () => {
+test('desktop Cmd/Ctrl+T asks the renderer to create a new worktree', () => {
   assert.match(desktopMain, /before-input-event/);
   assert.match(desktopMain, /String\(input\.key \|\| ''\)\.toLowerCase\(\) === 't'/);
   assert.match(desktopMain, /spanner:new-thread-shortcut/);
   assert.match(desktopPreload, /onNewThreadShortcut/);
-  assert.match(sidebarPromptRuntime, /onNewThreadShortcut\?\.\(openFromNewThreadShortcut\)/);
+  assert.match(sidebarPromptRuntime, /onNewThreadShortcut\?\.\(openFromNewWorktreeShortcut\)/);
 });
 
-test('website N shortcut opens the new-thread lightbox outside inputs', () => {
+test('website N shortcut opens the new-worktree composer outside inputs', () => {
   assert.match(frontendSidebar, /aria-keyshortcuts="N Meta\+T Control\+T"/);
   assert.match(sidebarPromptRuntime, /function isWebNewThreadShortcut\(event\)/);
   assert.match(sidebarPromptRuntime, /String\(event\.key \|\| ''\)\.toLowerCase\(\) === 'n'/);
   assert.match(sidebarPromptRuntime, /!isEditableShortcutTarget\(event\.target\)/);
-  assert.match(sidebarPromptRuntime, /openFromNewThreadShortcut\(\)/);
+  assert.match(sidebarPromptRuntime, /document\.querySelector\('\[data-sidebar-new-worktree\]'\)/);
+  assert.match(sidebarPromptRuntime, /button\.click\(\)/);
 });
 
 test('desktop package build emits the signed app OTA zip', () => {

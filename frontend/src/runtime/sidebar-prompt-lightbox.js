@@ -155,7 +155,7 @@ function elements() {
     imageTrigger: document.querySelector('#sidebar-prompt-images-trigger'),
     images: document.querySelector('#sidebar-prompt-images'),
     imageStatus: document.querySelector('#sidebar-prompt-image-status'),
-    triggers: [...document.querySelectorAll('[data-sidebar-new-thread], [data-sidebar-worktree-new-thread]')],
+    triggers: [...document.querySelectorAll('[data-sidebar-new-worktree], [data-sidebar-worktree-new-thread]')],
   };
 }
 
@@ -177,16 +177,21 @@ function isWebNewThreadShortcut(event) {
     && !isEditableShortcutTarget(event.target);
 }
 
-function openFromNewThreadShortcut() {
+function openFromNewWorktreeShortcut() {
+  const button = document.querySelector('[data-sidebar-new-worktree]');
+  if (button) {
+    button.click();
+    return;
+  }
   openSidebarPromptLightbox();
 }
 
 function bindNewThreadShortcuts() {
-  globalThis.spannerDesktop?.onNewThreadShortcut?.(openFromNewThreadShortcut);
+  globalThis.spannerDesktop?.onNewThreadShortcut?.(openFromNewWorktreeShortcut);
   document.addEventListener('keydown', (event) => {
     if (!isWebNewThreadShortcut(event)) return;
     event.preventDefault();
-    openFromNewThreadShortcut();
+    openFromNewWorktreeShortcut();
   });
 }
 

@@ -112,6 +112,15 @@ test('buildSetupScript clones a repo and auto-runs pi when requested', () => {
   assert.match(bridgeScript, /const run = runs\.get\(decodeURIComponent\(streamMatch\[1\]\)\);/);
 });
 
+test('buildSetupScript forwards the Inference.net key to the bridge', () => {
+  const script = buildSetupScript(
+    { name: 'inference-agent', repoMode: 'empty', repoUrl: '', branch: '', taskPrompt: '', autoRunAgent: false },
+    { ...config, forwardEnvKeys: ['INFERENCE_API_KEY'] },
+  );
+
+  assert.match(script, /printf 'export INFERENCE_API_KEY=%q\\n' "\$\{INFERENCE_API_KEY:-\}"/);
+});
+
 test('buildSetupScript bootstraps workspace main without wiping workspace root', () => {
   const script = buildSetupScript(
     {

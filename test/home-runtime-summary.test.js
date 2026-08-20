@@ -62,7 +62,7 @@ test('home agents header omits aggregate status line', () => {
 test('home running lane only uses active thread statuses', () => {
   assert.match(js, /function effectiveThreadStatus\(thread\)/);
   assert.match(js, /runStatus && runStatus !== 'unknown' \? runStatus : String\(thread\?\.status \|\| ''\)\.toLowerCase\(\)/);
-  assert.match(js, /const activeThreads = inboxThreads\.filter\(\(thread\) => !isSettledThread\(thread\)\);/);
+  assert.match(js, /const activeThreads = filteredThreads\.filter\(\(thread\) => !isSettledThread\(thread\)\);/);
 });
 
 test('home rows avoid workspace folder details', () => {
@@ -236,10 +236,9 @@ test('project home uses the shared global agent inbox sidebar', () => {
   assert.match(projectRuntime, /function renderGlobalSidebar\(threads = globalSidebarThreads\)/);
   assert.match(projectRuntime, /function updateProjectScopeMenu\(threads\)/);
   assert.match(projectRuntime, /const scopedThreads = scopedAgentThreads\(globalSidebarThreads\);/);
-  assert.match(projectRuntime, /const activeThreads = inboxThreads\.filter\(\(thread\) => !isSettledThread\(thread\)\);/);
-  assert.match(projectRuntime, /const settledThreads = inboxThreads\.filter\(isSettledThread\);/);
-  assert.match(projectRuntime, /data-settled-show-more/);
-  assert.match(projectRuntime, /data-settled-shelf-toggle aria-expanded="\$\{settledShelfExpanded \? 'true' : 'false'\}"/);
+  assert.match(projectRuntime, /const activeThreads = filteredThreads\.filter\(\(thread\) => !isSettledThread\(thread\)\);/);
+  assert.doesNotMatch(projectRuntime, /sidebar-inbox-settled/);
+  assert.match(projectRuntime, /const historyLink = '<a class="textbtn lane-history" href="\/history\.html">history<\/a>';/);
   assert.match(projectRuntime, /fetchJson\(`\/api\/threads\/\$\{encodeURIComponent\(stopButton\.dataset\.stopThread\)\}\/stop`, \{ method: 'POST' \}\)/);
   assert.match(projectRuntime, /data-settle-thread="\$\{escapeHtml\(thread\.name\)\}"/);
   assert.match(projectRuntime, /data-unsettle-thread="\$\{escapeHtml\(thread\.name\)\}"/);
@@ -287,34 +286,26 @@ test('workspace agents header uses Spanner search filter, not a layout review su
   assert.doesNotMatch(appCss, /workspace-layout-picker|data-workspace-sidebar-layout/);
 });
 
-test('home settled section only moves threads after explicit settle', () => {
+test('home sidebar replaces archived agents with a history link', () => {
   assert.doesNotMatch(pages, /main-screen-variations|>concepts<\/a>|id="refresh-threads"/);
-  assert.ok(js.includes("const SIDEBAR_SETTLED_EXPANDED_KEY = 'spannerSidebarSettledExpanded';"));
-  assert.ok(js.includes("const SIDEBAR_SETTLED_VISIBLE_KEY = 'spannerSidebarSettledVisible';"));
   assert.ok(js.includes("const SIDEBAR_SETTLED_THREADS_KEY = 'spannerSidebarSettledThreads';"));
-  assert.match(js, /function readSettledShelfExpanded\(\)/);
-  assert.match(js, /function setSettledShelfExpanded\(expanded\)/);
-  assert.match(js, /function setSettledVisibleCount\(value\)/);
   assert.match(js, /function markThreadSettled\(name\)/);
   assert.match(js, /function markThreadUnsettled\(name\)/);
   assert.match(js, /function isSettledThread\(thread\)/);
-  assert.match(js, /const activeThreads = inboxThreads\.filter\(\(thread\) => !isSettledThread\(thread\)\);/);
-  assert.match(js, /const settledThreads = inboxThreads\.filter\(isSettledThread\);/);
-  assert.match(js, /settledThreads\.slice\(0, settledVisibleCount\)/);
-  assert.match(js, /const hiddenSettledCount = Math\.max\(0, settledThreads\.length - renderedSettledThreads\.length\);/);
+  assert.match(js, /const activeThreads = filteredThreads\.filter\(\(thread\) => !isSettledThread\(thread\)\);/);
   assert.match(js, /<section class="action-lane sidebar-inbox-section sidebar-inbox-active" aria-label="Active work">/);
-  assert.match(js, /<section class="action-lane sidebar-inbox-section sidebar-inbox-settled" aria-label="Archived agents">/);
-  assert.match(js, /aria-label="Archive thread">archive<\/button>/);
+  for (const runtime of [js, projectRuntime, globalSidebarRuntime]) {
+    assert.doesNotMatch(runtime, /sidebar-inbox-settled/);
+    assert.match(runtime, /const historyLink = '<a class="textbtn lane-history" href="\/history\.html">history<\/a>';/);
+    assert.match(runtime, /list\.innerHTML = `\$\{batchBar\}\$\{activeSection\}\$\{historyLink\}`;/);
+  }
+  assert.match(js, /aria-label="Archive thread" title="Archive thread">\$\{archiveIconSvg\(\)\}<span class="sr-only">archive<\/span><\/button>/);
   assert.match(js, /aria-label="Unarchive thread">unarchive<\/button>/);
-  assert.match(js, /data-settled-shelf-toggle aria-expanded="\$\{settledShelfExpanded \? 'true' : 'false'\}"/);
-  assert.match(js, /data-settled-show-more/);
   assert.match(js, /data-sidebar-thread-row/);
   assert.match(js, /data-thread-menu-action="new-thread-project"/);
   assert.match(js, /data-thread-menu-action="settle"/);
   assert.match(js, /data-thread-menu-action="unsettle"/);
   assert.match(js, /data-thread-menu-action="delete"/);
-  assert.match(js, /data-jump-index/);
-  assert.match(js, /sidebar-jump-hints/);
   assert.match(js, /isCommand && event\.key\.toLowerCase\(\) === 'k'/);
   assert.match(js, /isCommand && event\.key\.toLowerCase\(\) === 'n'/);
   assert.match(js, /isCommand && \/\^\[1-9\]\$\/\.test\(event\.key\)/);
@@ -322,7 +313,6 @@ test('home settled section only moves threads after explicit settle', () => {
   assert.match(js, /event\.key === '\['/);
   assert.match(js, /function runThreadMenuAction\(action, thread\)/);
   assert.match(js, /\/api\/threads\/\$\{encodeURIComponent\(thread\.name\)\}\/delete/);
-  assert.match(js, /const historyLink = '<a class="textbtn lane-history" href="\/history\.html">history<\/a>';/);
   assert.doesNotMatch(js, /id="clear-finished-threads"/);
   assert.match(js, /data-stop-thread="\$\{escapeHtml\(thread\.name\)\}"/);
   assert.match(js, /data-settle-thread="\$\{escapeHtml\(thread\.name\)\}"/);
@@ -332,7 +322,7 @@ test('home settled section only moves threads after explicit settle', () => {
   assert.doesNotMatch(js, /dataset\.archiveThread/);
   assert.match(appCss, /\.workspace-agents-sidebar \.active-work/);
   assert.match(appCss, /\.workspace-agents-sidebar \.settled-work/);
-  assert.match(appCss, /\.workspace-agents-sidebar \.settled-shelf-toggle/);
+  assert.match(appCss, /\.workspace-agents-sidebar \.lane-history/);
   assert.doesNotMatch(appCss, /\.workspace-agents-sidebar \.active-work:hover \.sidebar-thread-status/);
   assert.match(js, /cache: 'no-store'/);
 });
@@ -425,8 +415,7 @@ test('sidebar groups threads by project and worktree metadata', () => {
     assert.match(runtime, /thread\?\.worktreePath \|\| thread\?\.repoPath \|\| thread\?\.repoUrl/);
     assert.match(runtime, /function groupedSidebarThreads\(threads\)/);
     assert.match(runtime, /function renderSidebarThreadGroups\(threads, renderCard\)/);
-    assert.match(runtime, /renderSidebarThreadGroups\(activeThreads, renderJumpThreadCard\)/);
-    assert.match(runtime, /renderSidebarThreadGroups\(renderedSettledThreads, renderJumpThreadCard\)/);
+    assert.match(runtime, /renderSidebarThreadGroups\(activeThreads, renderThreadCard\)/);
     assert.match(runtime, /data-thread-worktree-key="\$\{escapeHtml\(worktreeKeyText\)\}"/);
     assert.match(runtime, /sidebarThreadWorktreeLabel\(thread\)/);
     assert.match(runtime, /data-sidebar-worktree-new-thread/);
@@ -450,6 +439,22 @@ test('workspace composer preserves the clicked worktree target', () => {
   assert.match(workspaceSubmit, /sourceRepoPath: selectedProject\.sourceRepoPath/);
   assert.match(workspaceSubmit, /worktreePath: selectedProject\.worktreePath/);
   assert.match(workspaceSubmit, /reuseRepoPath: true/);
+  assert.match(workspaceSubmit, /newWorktree: true/);
+});
+
+test('sidebar new-worktree and worktree-plus actions keep separate targets', () => {
+  assert.match(agentSidebar, /data-sidebar-new-worktree/);
+  assert.doesNotMatch(agentSidebar, /data-sidebar-new-thread/);
+  assert.match(sidebarPromptRuntime, /\[data-sidebar-new-worktree\], \[data-sidebar-worktree-new-thread\]/);
+  for (const runtime of [js, projectRuntime, globalSidebarRuntime]) {
+    assert.match(runtime, /function prepareNewWorktreeFromScope\(\)/);
+    assert.match(runtime, /const sourceRepoPath = cleanProjectValue\(selected\?\.sourceRepoPath \|\| selected\?\.value\);/);
+    assert.match(runtime, /projectFromScopeValue\(sourceRepoPath,/);
+    assert.match(runtime, /newWorktree: true,/);
+    assert.match(runtime, /\[data-sidebar-new-worktree\]/);
+    assert.match(runtime, /\[data-sidebar-worktree-new-thread\]/);
+    assert.match(runtime, /reuseRepoPath: true,/);
+  }
 });
 
 test('project icons use stable Phosphor-style line svgs', () => {
@@ -457,7 +462,8 @@ test('project icons use stable Phosphor-style line svgs', () => {
   assert.match(projectIconsRuntime, /export function projectIconName\(project\)/);
   assert.match(projectIconsRuntime, /export function projectIconSvg\(project, className = 'project-line-icon'\)/);
   for (const runtime of [js, projectRuntime, globalSidebarRuntime]) {
-    assert.match(runtime, /import \{ projectIconSvg \} from '\.\/project-icons\.js';/);
+    assert.match(projectIconsRuntime, /export function archiveIconSvg\(\)/);
+    assert.match(runtime, /import \{ archiveIconSvg, projectIconSvg \} from '\.\/project-icons\.js';/);
     assert.ok(runtime.includes("return projectIconSvg(label, 'sidebar-thread-favicon project-line-icon');"));
     assert.match(runtime, /\$\{sidebarProjectIcon\(project\.label\)\}/);
     assert.match(runtime, /\$\{sidebarProjectIcon\(projectLabelText\)\}/);
@@ -469,51 +475,15 @@ test('project icons use stable Phosphor-style line svgs', () => {
   assert.doesNotMatch(appCss, /\.sidebar-thread-favicon::after/);
 });
 
-test('recently finished rows use compact T3-style settled rows', () => {
-  assert.match(js, /function finalAnswerSummary\(thread, maxLength = 160\)/);
-  assert.match(js, /function finishedOutcome\(thread, rawStatus\)/);
-  assert.match(js, /thread\?\.finalAnswerSummary/);
-  assert.match(js, /const outcome = running \? '' : finishedOutcome\(thread, rawStatus\);/);
-  assert.match(js, /function finishedAt\(thread\) \{/);
-  assert.match(js, /function finishedAtMs\(thread\) \{/);
-  assert.match(js, /return compact\.replace\(\/\\b\(\\d\+m\)\\s\+\\d\+s\\b\/g, '\$1'\);/);
-  assert.match(js, /const finishedValue = finishedAt\(thread\);/);
-  assert.match(js, /const finished = running \? '' : sidebarDurationLabel\(formatFinishedAgo\(finishedValue\)\);/);
-  assert.match(js, /const inactiveTimes = !running \? \[finished\]\.filter\(Boolean\) : \[\];/);
-  assert.match(js, /<span class="finished-meta">\$\{inactiveTimes\.map\(\(text\) => `<time>\$\{escapeHtml\(text\)\}<\/time>`\)\.join\(''\)\}<\/span>/);
-  assert.match(js, /<span class="sidebar-thread-title-row"><strong>\$\{escapeHtml\(displayTitle\)\}<\/strong><\/span>/);
-  assert.doesNotMatch(js.slice(js.indexOf('const activeBody ='), js.indexOf('const settledBody =', js.indexOf('const activeBody ='))), /sidebar-thread-meta-row/);
-  assert.match(js, /\$\{sidebarProjectIcon\(project\.label\)\}/);
-  assert.doesNotMatch(js, /data-runtime-status|data-runtime-start|activeRuntime/);
-  assert.match(js, /class="answer-preview">\$\{escapeHtml\(outcome\)\}/);
-  assert.match(appCss, /\.workspace-agents-sidebar \.active-work \{\s+display: grid;\s+grid-template-columns: 24px minmax\(0, 1fr\) 16px;[\s\S]*height: 38px;/);
-  assert.match(appCss, /--sidebar-agent-font: 500 14px\/21px var\(--sans\);/);
-  assert.match(appCss, /\.workspace-agents-sidebar \.settled-work \{\s+display: grid;\s+grid-template-columns: 24px minmax\(0, 1fr\) 16px;\s+gap: 0 4px;\s+align-items: center;\s+height: 36px;/);
-  assert.doesNotMatch(appCss, /runtime-label|sidebar-thread-status|background: var\(--runtime-dot, currentColor\);/);
-  assert.match(appCss, /\.workspace-agents-sidebar \.active-work > \.sidebar-thread-select,[\s\S]*\.workspace-agents-sidebar \.settled-work > \.sidebar-thread-select/);
-  assert.match(appCss, /\.workspace-agents-sidebar \.active-work > \.status-dot,[\s\S]*\.workspace-agents-sidebar \.settled-work > \.status-dot/);
-  assert.doesNotMatch(appCss, /\.workspace-agents-sidebar \.settled-work > \.status-dot \{\s+display: none;\s+\}/);
-  assert.doesNotMatch(appCss, /\.workspace-agents-sidebar \.settled-work\.failed > \.status-dot/);
-  assert.match(appCss, /\.workspace-agents-sidebar :where\(a, button, input, select, textarea, h1, h2, h3, strong, small, span, time, output, kbd\) \{\s+font: var\(--sidebar-agent-font\) !important;/);
-  assert.match(appCss, /\.workspace-agents-sidebar \.settled-work \.answer-preview \{\s+display: none;/);
-  assert.doesNotMatch(js, /function sortThreadInbox|\.sort\(sortThreadInbox\)/);
-  assert.match(js, /const inboxThreads = filteredThreads;/);
-  assert.match(runState, /scheduleFinalAnswerSummaryGeneration\(updated, text, runId\);/);
-  assert.match(runState, /scheduleFinalTurnStatusClassification\(updated, \{ text \}, runId\);/);
-  assert.match(runState, /scheduleSuggestedNextStepsGeneration\(updated, text, runId\);/);
-});
-
-test('recently finished success indicators can be dismissed locally', () => {
+test('finished indicators can be dismissed locally', () => {
   assert.ok(js.includes("const SEEN_FINISHED_THREADS_KEY = 'spannerSeenFinishedThreads';"));
   assert.ok(js.includes("return !active && ['completed', 'ready'].includes(rawStatus);"));
   assert.match(js, /function hasFreshFinishedIndicator\(thread\) \{/);
   assert.match(js, /return isSettledThread\(thread\) && canDismissFinishedIndicator/);
-  assert.match(js, /const hasFreshFinished = settledThreads\.some\(hasFreshFinishedIndicator\);/);
   assert.match(js, /const indicatorUnread = Boolean\(indicatorKey && !seenFinishedThreads\.has\(indicatorKey\)\);/);
   assert.match(js, /const showStatusDot = running \|\| rawStatus === 'failed' \|\| indicatorUnread;/);
   assert.match(js, /const statusDot = showStatusDot \? `<span class="status-dot" \$\{indicatorAttrs\}><\/span>` : '';/);
-  assert.match(js, /data-finished-indicator-count>new/);
-  assert.match(js, /list\.querySelectorAll\('\[data-finished-indicator\]'\)\.length/);
+
   assert.ok(js.includes('data-finished-indicator="${escapeHtml(indicatorKey)}"'));
   assert.ok(js.includes('data-finished-thread="${escapeHtml(indicatorKey)}"'));
   assert.ok(js.includes("document.addEventListener('keydown', (event) => {\n  if (!event.target?.closest?.('#threads-list')) return;"));

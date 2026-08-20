@@ -179,8 +179,9 @@ export function normalizeChatRequest(body, config) {
 export function normalizeThreadRequest(body, config) {
   const repoUrl = String(body.repoUrl || '').trim();
   const repoPath = String(body.repoPath || '').trim();
+  const freshWorktree = body.newWorktree === true;
   const sourceRepoPath = String(body.sourceRepoPath || '').trim();
-  const worktreePath = String(body.worktreePath || '').trim();
+  const worktreePath = freshWorktree ? '' : String(body.worktreePath || '').trim();
   const prompt = String(body.prompt || body.taskPrompt || '').trim();
   const repoSource = body.repoSource === 'github' ? 'github' : '';
   const repoRef = repoPath || repoUrl;
@@ -220,7 +221,7 @@ export function normalizeThreadRequest(body, config) {
     ...(repoSource ? { repoSource } : {}),
     ...(sourceRepoPath ? { sourceRepoPath } : {}),
     ...(worktreePath ? { worktreePath, localWorktree: true } : {}),
-    ...(body.reuseRepoPath === true ? { reuseRepoPath: true } : {}),
+    ...(!freshWorktree && body.reuseRepoPath === true ? { reuseRepoPath: true } : {}),
     threadBridge: true,
   };
 }

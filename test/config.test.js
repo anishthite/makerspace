@@ -51,11 +51,11 @@ test('collectForwardedEnv only forwards shared GitHub tokens in single-user mode
   });
 });
 
-test('default forwarded env excludes Inference.net', () => {
+test('default forwarded env includes Inference.net', () => {
   withEnv({ FORWARD_ENV_KEYS: undefined, INFRA_PROVIDER: 'local', SPANNER_HOME: '/tmp/spanner-test-home' }, () => {
     const keys = getConfig().forwardEnvKeys;
     assert.ok(keys.includes('ANTHROPIC_API_KEY'));
-    assert.equal(keys.includes('INFERENCE_API_KEY'), false);
+    assert.ok(keys.includes('INFERENCE_API_KEY'));
   });
 });
 

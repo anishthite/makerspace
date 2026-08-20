@@ -78,7 +78,7 @@ export async function createPiResourceOptions(sdk, options = {}) {
   const cwd = options.cwd || process.cwd();
   const agentDir = options.agentDir || defaultAgentDir(sdk);
   const authPath = path.join(agentDir, 'auth.json');
-  const modelsPath = path.join(agentDir, 'models.json');
+  const modelsPath = options.modelsPath === undefined ? path.join(agentDir, 'models.json') : options.modelsPath;
   const authStorage = options.authStorage || sdk.AuthStorage?.create?.(authPath);
   const modelRuntime = await createPiModelRuntime(sdk, {
     modelRuntime: options.modelRuntime,
