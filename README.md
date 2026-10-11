@@ -21,6 +21,16 @@ export OPENAI_BASE_URL='https://api.openai.com/v1'
 
 `OPENAI_BASE_URL` is the API base, not the full `/chat/completions` URL. The provider must support OpenAI-compatible streaming chat completions and function tool calls.
 
+### OpenRouter
+
+Set `OPENROUTER_API_KEY` and `OPENROUTER_MODEL` to use OpenRouter; it takes precedence over any `OPENAI_*` credentials and uses `https://openrouter.ai/api/v1`.
+
+```sh
+export OPENROUTER_API_KEY='your-key'
+export OPENROUTER_MODEL='openai/gpt-4.1'
+./spanner "list this repository"
+```
+
 ## Controls
 
 - Enter sends a prompt; Alt-Enter inserts a newline.

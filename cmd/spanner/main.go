@@ -22,6 +22,24 @@ func main() {
 		os.Exit(1)
 	}
 }
+func clientFromEnv(getenv func(string) string) (*llm.Client, error) {
+	key, model, base, provider := getenv("OPENAI_API_KEY"), getenv("OPENAI_MODEL"), getenv("OPENAI_BASE_URL"), "OPENAI"
+	if openRouterKey := getenv("OPENROUTER_API_KEY"); openRouterKey != "" {
+		key, model, base, provider = openRouterKey, getenv("OPENROUTER_MODEL"), "https://openrouter.ai/api/v1", "OPENROUTER"
+	}
+	if key == "" || model == "" {
+		return nil, fmt.Errorf("%s_API_KEY and %s_MODEL are required", provider, provider)
+	}
+	if base == "" {
+		base = "https://api.openai.com/v1"
+	}
+	u, err := url.Parse(base)
+	if err != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") {
+		return nil, fmt.Errorf("%s_BASE_URL must be an HTTP(S) base URL", provider)
+	}
+	return &llm.Client{BaseURL: base, APIKey: key, Model: model}, nil
+}
+
 func run() error {
 	maxTurns := flag.Int("max-turns", 0, "optional model/tool round cap; 0 is uncapped, followed by a final no-tools answer when capped")
 	headless := flag.Bool("headless", false, "stream to stdout without the interactive UI")
@@ -29,23 +47,15 @@ func run() error {
 	if *maxTurns < 0 {
 		return fmt.Errorf("max-turns must be nonnegative")
 	}
-	key, model := os.Getenv("OPENAI_API_KEY"), os.Getenv("OPENAI_MODEL")
-	if key == "" || model == "" {
-		return fmt.Errorf("OPENAI_API_KEY and OPENAI_MODEL are required")
-	}
-	base := os.Getenv("OPENAI_BASE_URL")
-	if base == "" {
-		base = "https://api.openai.com/v1"
-	}
-	u, err := url.Parse(base)
-	if err != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") {
-		return fmt.Errorf("OPENAI_BASE_URL must be an HTTP(S) base URL, e.g. https://api.openai.com/v1")
+	client, err := clientFromEnv(os.Getenv)
+	if err != nil {
+		return err
 	}
 	root, err := os.Getwd()
 	if err != nil {
 		return err
 	}
-	a := &agent.Agent{Client: &llm.Client{BaseURL: base, APIKey: key, Model: model}, Tools: tools.Tools{Root: root}, MaxTurns: *maxTurns}
+	a := &agent.Agent{Client: client, Tools: tools.Tools{Root: root}, MaxTurns: *maxTurns}
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 	prompt := strings.Join(flag.Args(), " ")
