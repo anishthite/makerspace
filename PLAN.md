@@ -12,8 +12,12 @@ user prompt → model → tool calls → tool results → model → final respon
 
 - Run only in the current working directory for a trusted local repository.
 - Use one OpenAI-compatible endpoint, configured by `OPENAI_API_KEY`, `OPENAI_BASE_URL`, and `OPENAI_MODEL`.
-- Stop after a final text response, cancellation, API/tool error, or `--max-turns` (default: 10).
-- Stream model text into the terminal; show tool activity and errors separately.
+- Run uncapped by default (`--max-turns 0`); stop after a final response, cancellation, or API error.
+- An optional positive `--max-turns` caps model/tool rounds, then makes one final request without tools to summarize progress.
+- Tool failures are recoverable results sent to the model, not fatal agent errors.
+- Stream model text into the terminal; show compact tool start/end activity and errors separately.
+- Propagate cancellation into HTTP requests and running command process groups.
+- Mark truncated tool output explicitly; keep all tool results bounded.
 
 ## Tools
 
@@ -43,7 +47,7 @@ The first screen has a scrolling transcript, one input, streamed assistant text,
 ```text
 cmd/spanner/main.go       CLI setup and process lifecycle
 internal/llm/client.go    OpenAI-compatible streaming request/response types
-internal/agent/agent.go   Conversation state and bounded tool-use loop
+internal/agent/agent.go   Conversation state and optionally capped tool-use loop
 internal/tools/tools.go   Tool definitions and dispatch
 internal/tui/tui.go       One Bubble Tea transcript/input model
 ```
@@ -53,7 +57,7 @@ Use the standard library except for Bubble Tea, Bubbles, and Lip Gloss. Keep the
 ## Delivery order
 
 1. Create the Go module and a headless loop with a fake `httptest` provider.
-2. Add `bash`, `read`, `write`, and `edit`, including output/turn limits and focused unit tests.
+2. Add `bash`, `read`, `write`, and `edit`, including output limits and optional graceful turn caps and focused unit tests.
 3. Add the OpenAI-compatible streaming client and env-based configuration.
 4. Add the minimal Bubble Tea shell and connect stream/tool events to its transcript.
 5. Add a README quickstart and manually run against a disposable repository.
@@ -68,4 +72,4 @@ Use the standard library except for Bubble Tea, Bubbles, and Lip Gloss. Keep the
 
 ## Deliberate follow-ups
 
-Add only after the v0 loop is reliable: session persistence, confirmation/permission UX, parallel independent tool calls with mutation locks, structured questions, model routing, LSP feedback, MCP, and subagents.
+Add only after the v0 loop is reliable: transient API retries, repeated-tool-call guards, session persistence, confirmation/permission UX, parallel independent tool calls with mutation locks, structured questions, model routing, LSP feedback, MCP, and subagents.
