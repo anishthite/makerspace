@@ -8,7 +8,7 @@ import (
 	"github.com/anishthite/spanner-go/internal/tools"
 )
 
-type Event struct{ Kind, Text, Name string }
+type Event struct{ Kind, Text, Name, ID string }
 type Agent struct {
 	Client   *llm.Client
 	Tools    tools.Tools
@@ -53,18 +53,12 @@ func (a *Agent) Run(ctx context.Context, prompt string, emit func(Event)) error 
 			return nil
 		}
 		send(Event{Kind: "separator"})
+		results := executeCalls(ctx, a.Tools.Root, msg.ToolCalls, a.Tools.Execute, send)
 		for i, tc := range msg.ToolCalls {
-			// Close every pending call in history even when cancellation interrupts a batch.
-			if ctx.Err() != nil {
-				for _, pending := range msg.ToolCalls[i:] {
-					a.Messages = append(a.Messages, llm.Message{Role: "tool", ToolCallID: pending.ID, Content: "Error: cancelled before execution"})
-				}
-				return ctx.Err()
-			}
-			send(Event{Kind: "tool_start", Name: tc.Function.Name, Text: tc.Function.Arguments})
-			result := a.Tools.Execute(ctx, tc.Function.Name, tc.Function.Arguments)
-			a.Messages = append(a.Messages, llm.Message{Role: "tool", ToolCallID: tc.ID, Content: result})
-			send(Event{Kind: "tool_end", Name: tc.Function.Name, Text: result})
+			a.Messages = append(a.Messages, llm.Message{Role: "tool", ToolCallID: tc.ID, Content: results[i]})
+		}
+		if err := ctx.Err(); err != nil {
+			return err
 		}
 	}
 }

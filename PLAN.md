@@ -30,7 +30,7 @@ Implement the four core file/code tools from Whip’s `internal/tools` package.
 | `write` | Create parent directories and replace one file’s full contents. |
 | `edit` | Replace an exact unique string; fail when it is absent or ambiguous. |
 
-Run tool calls sequentially in v0. Return tool failures to the model as tool results rather than aborting the whole turn. Keep a bounded output size so a command cannot consume the next request’s context.
+Run independent file calls in parallel within each model response. Preserve model order for calls on the same file (including symlink/hardlink aliases) and ancestor/descendant paths. Treat Bash and unclassifiable calls as exclusive barriers; resolve file identities again after each barrier. Join all workers and return results in original call order. Serialize event delivery and include call IDs so concurrent tool rows stay identifiable. Return tool failures to the model as tool results rather than aborting the whole turn; keep every result bounded.
 
 ## TUI
 
@@ -68,8 +68,8 @@ Use the standard library except for Bubble Tea, Bubbles, and Lip Gloss. Keep the
 - `spanner "list this repository"` runs in the terminal with configured API credentials.
 - The TUI renders text and tool activity without corrupting input.
 - A cancelled command/request stops cleanly.
-- No sessions, config files, provider catalog, MCP, subagents, browser automation, file locks, parallel tools, or compaction code exists in v0.
+- No sessions, config files, provider catalog, MCP, subagents, browser automation, persistent lock registry, or compaction code exists; parallel calls use batch-local completion dependencies.
 
 ## Deliberate follow-ups
 
-Add only after the v0 loop is reliable: transient API retries, repeated-tool-call guards, session persistence, confirmation/permission UX, parallel independent tool calls with mutation locks, structured questions, model routing, LSP feedback, MCP, and subagents.
+Add only after the v0 loop is reliable: transient API retries, repeated-tool-call guards, session persistence, confirmation/permission UX, structured questions, model routing, LSP feedback, MCP, and subagents.

@@ -47,7 +47,8 @@ spanner [--headless] [--max-turns N] ["prompt"]
                no          yes
                 │           ▼
                 │   internal/tools/tools.go
-                │   sequential dispatch
+                │   parallel independent file calls
+                │   ordered conflicts / exclusive Bash
                 │   ┌──────────────────────┐
                 │   │ bash read write edit │
                 │   └──────────┬───────────┘
@@ -68,7 +69,8 @@ spanner [--headless] [--max-turns N] ["prompt"]
 | --- | --- |
 | `cmd/spanner/main.go` | CLI flags, required credentials/model, base URL validation, working directory, interrupt/termination signals, frontend selection. |
 | `internal/llm/client.go` | Wire types, authenticated HTTP POST, bounded SSE event parsing, streamed text callback, tool delta assembly, HTTP/provider/truncated-stream errors. |
-| `internal/agent/agent.go` | System prompt, conversation history, model/tool loop, sequential calls, optional graceful cap, lifecycle events. |
+| `internal/agent/agent.go` | System prompt, conversation history, model/tool loop, ordered batch results, optional graceful cap, lifecycle events. |
+| `internal/agent/parallel.go` | Batch-local dependency scheduling, file identity resolution, exclusive barriers, serialized call-ID events, worker joining. |
 | `internal/tools/tools.go` | Four function schemas, argument validation, file operations, command timeout/process-group cancellation, bounded output. |
 | `internal/tui/tui.go` | Textarea and viewport, transcript wrapping, tool rows, input keys, async event delivery, worker shutdown. |
 
@@ -98,12 +100,27 @@ Assistant tool calls carry `id`, `type: "function"`, and a function name/JSON ar
 2. Append the new user prompt.
 3. Request a streamed assistant response with the four tool definitions.
 4. Append the completed assistant message; return if it contains no tool calls.
-5. Execute calls in order, emit start/end events, and append bounded tool results.
+5. Execute independent file calls concurrently, preserving conflicting call order and exclusive Bash barriers; emit serialized start/end events with call IDs, join workers, and append bounded results in original call order.
 6. Repeat until final response, cancellation, or API error.
 
 `--max-turns 0` means unlimited rounds. With a positive cap, after that many rounds the agent adds a temporary summary instruction and removes tools from one final request. This request does not execute tools, even if a provider incorrectly emits calls.
 
-Tool failures are ordinary tool results prefixed with `Error:`. They do not terminate the loop. Cancellation remains fatal to the active run, and unexecuted calls receive cancellation results so later interactive requests have valid conversation history. Partial assistant text from a failed stream can appear in the transcript but is not committed to history.
+### Parallel scheduling
+
+```text
+model call order: write a → edit a → read b → bash test → read a
+                   │          │       │          │         │
+                   └─done────→│       │          │         │
+                     independent read b overlaps │         │
+                              └──join───────────→│         │
+                                                 └─done───→│
+```
+
+File calls wait for earlier calls touching the same canonical path, existing hardlink identity, or ancestor/descendant path. Independent paths can overlap; even reads on the same file are serialized for a simple deterministic policy. Symlinked ancestors of new files are resolved. Unclassifiable paths (including dangling symlinks) and non-file calls run exclusively, so Bash never overlaps an agent file operation. Identities are resolved again after each barrier because shell commands can change links.
+
+Dependencies exist only for the current batch; no persistent file-lock map is needed. The conflict scan is O(n²) in batch size. External processes and detached shell jobs are outside this scheduler's coordination.
+
+Tool failures are ordinary tool results prefixed with `Error:`. They do not terminate the loop. Cancellation remains fatal to the active run, and waiting and unexecuted calls receive cancellation results so later interactive requests have valid conversation history. Partial assistant text from a failed stream can appear in the transcript but is not committed to history.
 
 ## Tool contracts
 
@@ -119,11 +136,11 @@ All tool results have a 32 KiB content bound plus an explicit notice when trunca
 ## Events and UI ownership
 
 ```text
-Agent background worker
+Agent owner + parallel file workers (callbacks serialized)
   ├─ text        → append streamed text
   ├─ separator   → separate text and tools
-  ├─ tool_start  → compact name + arguments row
-  └─ tool_end    → compact result/error row
+  ├─ tool_start  → compact name + call ID + arguments row
+  └─ tool_end    → compact name + call ID + result/error row
          │
          ▼ buffered event channel
 Bubble Tea Update (sole UI owner)
@@ -160,11 +177,12 @@ Ctrl-D cancels active work and waits for completion before exiting. Program tear
 
 This is a trusted local harness, **not a sandbox**. Relative file paths start at the captured workspace, but absolute paths and `..` are accepted. Bash has the user's host access and network access. Provider requests send conversation and tool outputs to the configured endpoint.
 
-There are no sessions, config files, provider catalogs, SDKs, permission dialogs, MCP, subagents, browser tools, file locks, parallel execution, retries, repeated-call guards, or context compaction. Long uncapped runs can exhaust provider context or incur costs; cancel manually or opt into a cap.
+There are no sessions, config files, provider catalogs, SDKs, permission dialogs, MCP, subagents, browser tools, persistent file-lock registries, retries, repeated-call guards, or context compaction. Long uncapped runs can exhaust provider context or incur costs; cancel manually or opt into a cap.
 
 ## Validation performed
 
-- `go test ./...`: streamed model → failing tool → tool result → final response, graceful cap, file operations, truncation/error visibility, HTTP errors, stream errors, command/HTTP cancellation, UI input preservation.
+- `go test ./...`: streamed model → failing tool → tool result → final response, graceful cap, file operations, truncation/error visibility, HTTP errors, stream errors, command/HTTP cancellation, UI input preservation; independent-call overlap, ordered alias conflicts, exclusive barriers, ordered results, and cancellation joining.
 - `go test -race ./...` and `go vet ./...`.
 - Built CLI, then ran headless and 80×24 PTY interactive modes in a disposable Git repository against a local fake provider; executed `bash ls`, rendered its result and final text, and exited with Ctrl-D.
+- Parallel-branch headless smoke against a fake provider in a disposable workspace: independent writes overlap, edit/read dependencies observe prior changes, model results stay ordered, and call IDs appear in tool rows.
 - Live-provider validation remains pending: no configured API credentials were available.

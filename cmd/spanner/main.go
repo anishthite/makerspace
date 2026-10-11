@@ -62,9 +62,9 @@ func run() error {
 		case "separator":
 			fmt.Println()
 		case "tool_start":
-			fmt.Fprintf(os.Stderr, "→ %s\n", e.Name)
+			fmt.Fprintf(os.Stderr, "→ %s [%s]\n", e.Name, e.ID)
 		case "tool_end":
-			fmt.Fprintf(os.Stderr, "← %s: %s\n", e.Name, e.Text)
+			fmt.Fprintf(os.Stderr, "← %s [%s]: %s\n", e.Name, e.ID, e.Text)
 		}
 	})
 	fmt.Println()
