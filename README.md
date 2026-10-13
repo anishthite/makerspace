@@ -6,6 +6,15 @@ A local, terminal-first coding agent: prompt → streaming model → tools → r
 
 Requires Go 1.25+, Bash, and macOS or Linux. Run only in a **trusted local repository**: commands and file tools have your host permissions, with no sandbox or confirmation prompts.
 
+Sign in to Codex with a ChatGPT account using a device code:
+
+```sh
+go build -o spanner ./cmd/spanner
+./spanner login
+```
+
+Open the displayed `auth.openai.com` URL, enter the one-time code, and return to the terminal. Tokens are saved only in `~/.spanner/auth.json` with user-only permissions. This login does **not yet** replace the model runtime below: the current agent still uses its OpenAI-compatible API configuration.
+
 ```sh
 go build -o spanner ./cmd/spanner
 export OPENAI_API_KEY='your-key'
@@ -62,4 +71,4 @@ go vet ./...
 
 Tests use a fake `httptest` provider; no credentials are needed. Headless and interactive PTY smoke tests were also run against a fake provider in a disposable Git repository. Live-provider validation remains outstanding because API credentials were unavailable.
 
-See [HARNESS.md](HARNESS.md) for the complete implemented harness sketch and [PLAN.md](PLAN.md) for scope. No sessions, compaction, retries, parallel tools, MCP, or subagents are included.
+See [HARNESS.md](HARNESS.md) for the complete implemented harness sketch and [PLAN.md](PLAN.md) for scope. No sessions, compaction, retries, parallel tools, MCP, or subagents are included. Codex device authentication is available now; connecting those credentials to a Codex inference runtime is deliberately deferred.
