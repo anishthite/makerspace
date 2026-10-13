@@ -11,6 +11,7 @@ import (
 	"syscall"
 
 	"github.com/anishthite/spanner-go/internal/agent"
+	"github.com/anishthite/spanner-go/internal/codexauth"
 	"github.com/anishthite/spanner-go/internal/llm"
 	"github.com/anishthite/spanner-go/internal/tools"
 	"github.com/anishthite/spanner-go/internal/tui"
@@ -23,6 +24,11 @@ func main() {
 	}
 }
 func run() error {
+	if len(os.Args) == 2 && os.Args[1] == "login" {
+		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer cancel()
+		return codexauth.Login(ctx, os.Stdout, codexauth.Config{})
+	}
 	maxTurns := flag.Int("max-turns", 0, "optional model/tool round cap; 0 is uncapped, followed by a final no-tools answer when capped")
 	headless := flag.Bool("headless", false, "stream to stdout without the interactive UI")
 	flag.Parse()
