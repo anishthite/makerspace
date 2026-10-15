@@ -50,7 +50,9 @@ Rounds are **uncapped by default**. An optional `--max-turns 20` allows 20 model
 
 Tool results are bounded to 32 KiB plus a truncation notice. Tool errors return to the model for recovery; API errors stop the run. Cancellation kills the command's Unix process group. File writes already completed are not rolled back.
 
-Relative paths resolve against the startup directory; absolute paths are accepted. This is a workspace convention, **not access confinement**.
+Independent file calls in one model response run concurrently. Same-file calls (including symlink/hardlink aliases) and ancestor/descendant paths keep model order. Bash runs exclusively between file-call groups because its side effects are unknown. Results reach the model in original call order; terminal tool rows include call IDs. Cancellation waits for all workers to finish.
+
+Relative paths resolve against the startup directory; absolute paths are accepted. This is a workspace convention, **not access confinement**. External processes are not coordinated by the batch scheduler.
 
 ## Checks
 
@@ -62,4 +64,4 @@ go vet ./...
 
 Tests use a fake `httptest` provider; no credentials are needed. Headless and interactive PTY smoke tests were also run against a fake provider in a disposable Git repository. Live-provider validation remains outstanding because API credentials were unavailable.
 
-See [HARNESS.md](HARNESS.md) for the complete implemented harness sketch and [PLAN.md](PLAN.md) for scope. No sessions, compaction, retries, parallel tools, MCP, or subagents are included.
+See [HARNESS.md](HARNESS.md) for the complete implemented harness sketch and [PLAN.md](PLAN.md) for scope. No sessions, compaction, retries, MCP, or subagents are included.

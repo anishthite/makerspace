@@ -112,9 +112,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "separator":
 			m.append("\n")
 		case "tool_start":
-			m.append("\n  → " + e.Name + " " + compact(e.Text, 160) + "\n")
+			m.append("\n  → " + e.Name + " [" + e.ID + "] " + compact(e.Text, 160) + "\n")
 		case "tool_end":
-			m.append("  ← " + e.Name + ": " + compact(e.Text, 240) + "\n")
+			m.append("  ← " + e.Name + " [" + e.ID + "]: " + compact(e.Text, 240) + "\n")
 		}
 		return m, m.wait()
 	case doneMsg:

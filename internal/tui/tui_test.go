@@ -9,6 +9,27 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+func TestConcurrentToolRowsStayCorrelated(t *testing.T) {
+	m := New(context.Background(), nil, "")
+	m.input.SetValue("next prompt")
+	for _, e := range []agent.Event{
+		{Kind: "tool_start", Name: "read", ID: "a", Text: "first"},
+		{Kind: "tool_start", Name: "read", ID: "b", Text: "second"},
+		{Kind: "tool_end", Name: "read", ID: "b", Text: "second result"},
+		{Kind: "tool_end", Name: "read", ID: "a", Text: "first result"},
+	} {
+		m.Update(e)
+	}
+	for _, row := range []string{"→ read [a] first", "→ read [b] second", "← read [b]: second result", "← read [a]: first result"} {
+		if !strings.Contains(m.transcript, row) {
+			t.Fatalf("missing %q", row)
+		}
+	}
+	if m.input.Value() != "next prompt" {
+		t.Fatal("tool events changed input")
+	}
+}
+
 func TestTranscriptPreservesComposer(t *testing.T) {
 	m := New(context.Background(), nil, "")
 	m.input.SetValue("next prompt")
